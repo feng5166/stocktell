@@ -64,7 +64,7 @@ export function BriefingFeed({
         ) : (
           <div className="space-y-3">
             {mine.map((it) => (
-              <BriefingCard key={it.id} item={it} mine />
+              <BriefingCard key={it.id} item={it} mine watchedCodes={wl.codes} />
             ))}
           </div>
         )}
@@ -76,7 +76,7 @@ export function BriefingFeed({
           <div className="space-y-3">
             {others.map((it) =>
               gate(it) ? (
-                <BriefingCard key={it.id} item={it} />
+                <BriefingCard key={it.id} item={it} watchedCodes={wl.codes} />
               ) : (
                 <LockedCard key={it.id} item={it} />
               )
@@ -105,7 +105,15 @@ function Hint({ children }: { children: React.ReactNode }) {
   );
 }
 
-function BriefingCard({ item, mine }: { item: BriefingItem; mine?: boolean }) {
+function BriefingCard({
+  item,
+  mine,
+  watchedCodes,
+}: {
+  item: BriefingItem;
+  mine?: boolean;
+  watchedCodes?: Set<string>;
+}) {
   const meta = IMPACT_META[item.impact];
   return (
     <article
@@ -129,15 +137,24 @@ function BriefingCard({ item, mine }: { item: BriefingItem; mine?: boolean }) {
       {item.beneficiaries.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-gray-400">受益 A 股</span>
-          {item.beneficiaries.map((b) => (
-            <Link
-              key={b.code}
-              href={`/stock/${b.code}`}
-              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-200"
-            >
-              {b.name}
-            </Link>
-          ))}
+          {item.beneficiaries.map((b) => {
+            const watched = watchedCodes?.has(b.code);
+            return (
+              <Link
+                key={b.code}
+                href={`/stock/${b.code}`}
+                title={watched ? "你的自选" : undefined}
+                className={`rounded px-2 py-0.5 text-xs ${
+                  watched
+                    ? "bg-amber-100 font-medium text-amber-800 ring-1 ring-amber-300 hover:bg-amber-200"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {watched && <span className="mr-0.5">★</span>}
+                {b.name}
+              </Link>
+            );
+          })}
         </div>
       )}
       <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2">
