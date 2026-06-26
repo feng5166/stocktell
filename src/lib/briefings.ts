@@ -1,5 +1,5 @@
-// 今日简报数据层:有 Supabase 用 Supabase,否则回退到本地 JSON 文件。
-// 切到生产只需在 .env.local 配好 Supabase,无需改业务代码。
+// 今日简报数据层:配了 Vercel Postgres(Prisma)就走 Postgres,否则回退到本地 JSON 文件。
+// 切到生产只需配好 POSTGRES_PRISMA_URL,无需改业务代码。
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";

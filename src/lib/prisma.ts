@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
-// 单例,避免 dev 热重载创建多个连接。无 DATABASE_URL 时返回 null(数据层回退本地 JSON)。
+// 单例,避免 dev 热重载创建多个连接。无 POSTGRES_PRISMA_URL 时返回 null(数据层回退本地 JSON)。
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };

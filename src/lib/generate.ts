@@ -1,6 +1,6 @@
 // 简报生成引擎:
-// 1) 拉美股异动 → 2) 映射 A 股 + 取数(预期差)→ 3) Claude 生成三段式草稿。
-// 没有 ANTHROPIC_API_KEY 时用模板生成,保证闭环可跑。
+// 1) 拉美股异动 → 2) 映射 A 股 + 取数(预期差)→ 3) LLM 生成三段式草稿。
+// 没有 LLM_API_KEY 时用模板生成,保证闭环可跑。
 import { STOCKS, STOCK_MAP, aSharePeers } from "@/data/stocks";
 import { fetchQuotes, type Quote } from "@/lib/quotes";
 import { getLLM, LLM_MODEL } from "@/lib/llm";
@@ -71,7 +71,7 @@ async function findMovers(): Promise<Mover[]> {
   return movers.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 }
 
-/* ---------- 模板生成(无 Claude 时) ---------- */
+/* ---------- 模板生成(无 LLM 时) ---------- */
 function templateDrafts(date: string, movers: Mover[]): NewBriefingItem[] {
   return movers.map((m) => {
     const dir = m.change > 0 ? "上涨" : "下跌";
@@ -100,7 +100,7 @@ function templateDrafts(date: string, movers: Mover[]): NewBriefingItem[] {
   });
 }
 
-/* ---------- Claude 生成 ---------- */
+/* ---------- LLM 生成 ---------- */
 const SYSTEM_PROMPT = `你是一名资深 A 股产业链分析师,面向看不懂产业链的散户说人话。
 任务:把"今日美股异动 + 对应 A 股标的数据"翻译成简报条目,每条三段式:影响等级 / 标题 / 散户怎么想。
 
