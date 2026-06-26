@@ -97,6 +97,31 @@ export async function listBriefing(opts: {
   return sortItems(items);
 }
 
+// 最近一期已发布简报(今天还没生成时,用于回退展示历史,而不是给用户一片空白)。
+// 返回该期日期 + 条目;库里一条都没有时 date=null。
+export async function latestBriefing(): Promise<{
+  date: string | null;
+  items: BriefingItem[];
+}> {
+  const db = getPrisma();
+  if (db) {
+    const newest = await db.briefingItem.findFirst({
+      where: { status: "published" },
+      orderBy: { date: "desc" },
+      select: { date: true },
+    });
+    if (!newest) return { date: null, items: [] };
+    const rows = await db.briefingItem.findMany({
+      where: { date: newest.date, status: "published" },
+    });
+    return { date: newest.date, items: sortItems(rows.map(fromRow)) };
+  }
+  const all = (await localRead()).filter((i) => i.status === "published");
+  if (all.length === 0) return { date: null, items: [] };
+  const date = all.reduce((m, i) => (i.date > m ? i.date : m), all[0].date);
+  return { date, items: sortItems(all.filter((i) => i.date === date)) };
+}
+
 export async function insertDrafts(
   drafts: NewBriefingItem[]
 ): Promise<BriefingItem[]> {

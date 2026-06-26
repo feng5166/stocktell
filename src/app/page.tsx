@@ -3,7 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { AuthStatus } from "@/components/auth/AuthStatus";
 import { BriefingFeed } from "@/components/BriefingFeed";
-import { listBriefing, storageBackend, type BriefingItem } from "@/lib/briefings";
+import {
+  listBriefing,
+  latestBriefing,
+  storageBackend,
+  type BriefingItem,
+} from "@/lib/briefings";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +31,23 @@ export default async function Home() {
     items = await listBriefing({ date, status: "published" });
   } catch {
     errored = true;
+  }
+
+  // 今天还没生成简报时,回退展示最近一期(0 点清零到次日 07:00 生成之间、以及周末/节假日,
+  // 都不该给用户一片空白)。stale=true 时明确标注"今日尚未更新,以下为 X 日"。
+  let shownDate = date;
+  let stale = false;
+  if (!errored && items.length === 0) {
+    try {
+      const latest = await latestBriefing();
+      if (latest.items.length > 0 && latest.date) {
+        items = latest.items;
+        shownDate = latest.date;
+        stale = true;
+      }
+    } catch {
+      /* 取历史失败就维持空状态 */
+    }
   }
 
   return (
@@ -58,10 +80,16 @@ export default async function Home() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">今日简报</h1>
             <p className="mt-1 text-xs text-gray-400">
-              {date} · AI 产业链动态,跟你的持仓有什么关系
+              {shownDate} · AI 产业链动态,跟你的持仓有什么关系
             </p>
           </div>
         </div>
+
+        {stale && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
+            今日简报尚未更新(每个交易日早盘前生成),以下为最近一期 · {shownDate}。
+          </div>
+        )}
 
         {items.length === 0 ? (
           <EmptyState errored={errored} />
