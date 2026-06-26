@@ -169,6 +169,7 @@ function BriefingCard({
 function WhyLine({ code, date }: { code: string; date: string }) {
   const [reason, setReason] = useState<string | null>(null);
   const [asOf, setAsOf] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     fetch(`/api/briefing/why?code=${encodeURIComponent(code)}&date=${date}`, {
@@ -179,6 +180,7 @@ function WhyLine({ code, date }: { code: string; date: string }) {
         if (active && d?.reason) {
           setReason(d.reason);
           setAsOf(d.asOf ?? null);
+          setSourceUrl(d.sourceUrl ?? null);
         }
       })
       .catch(() => {});
@@ -192,7 +194,19 @@ function WhyLine({ code, date }: { code: string; date: string }) {
     <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
       <span className="font-medium text-gray-600">为什么动</span>:{reason}
       {asOf && <span className="text-gray-400"> ·{asOf}</span>}
-      <span className="text-gray-400"> ·以官方公告为准</span>
+      {sourceUrl ? (
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-blue-500 hover:underline"
+        >
+          {" "}
+          ·来源
+        </a>
+      ) : (
+        <span className="text-gray-400"> ·以官方公告为准</span>
+      )}
     </p>
   );
 }
