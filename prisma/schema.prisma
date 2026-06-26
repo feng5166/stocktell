@@ -1,0 +1,42 @@
+// StockTell 数据库 schema(Prisma)
+// 底层 Postgres = Vercel Postgres(Neon)。Vercel 会把连接串自动注入项目环境变量。
+// POSTGRES_PRISMA_URL = 连接池(pgbouncer,运行时用);
+// POSTGRES_URL_NON_POOLING = 直连(给 prisma migrate / db push 用)。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  passwordHash String?  @map("password_hash")
+  nickname     String?
+  avatar       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model BriefingItem {
+  id            String   @id @default(uuid())
+  date          String // YYYY-MM-DD
+  impact        String // 高 / 中 / 低
+  title         String
+  triggerCode   String?  @map("trigger_code")
+  triggerName   String?  @map("trigger_name")
+  beneficiaries Json     @default("[]")
+  retailTake    String   @map("retail_take")
+  sourceUrl     String?  @map("source_url")
+  status        String   @default("draft") // draft / published
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([date, status])
+  @@map("briefing_items")
+}
