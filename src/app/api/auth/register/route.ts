@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   // 飞书提醒:新用户注册
   await sendFeishu(
     [
-      "🎉 StockTell 新用户注册",
+      "✅ StockTell 新用户注册",
       `邮箱:${user.email}`,
       "方式:邮箱密码",
       `时间:${beijingTime()}`,

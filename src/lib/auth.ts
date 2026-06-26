@@ -61,7 +61,7 @@ export const authOptions: NextAuthOptions = {
           // 飞书提醒:新用户(Google)
           await sendFeishu(
             [
-              "🎉 StockTell 新用户注册",
+              "✅ StockTell 新用户注册",
               `邮箱:${created.email}`,
               "方式:Google",
               `时间:${beijingTime()}`,
