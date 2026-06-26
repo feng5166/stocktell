@@ -1,20 +1,24 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { STOCKS, STOCK_MAP, type Position } from "@/data/stocks";
+import { STOCK_MAP, type Position } from "@/data/stocks";
+import { fetchQuotes } from "@/lib/quotes";
 
-export function generateStaticParams() {
-  return STOCKS.map((s) => ({ code: s.code }));
-}
+export const dynamic = "force-dynamic";
 
 const CHAIN: Position[] = ["上游", "中游", "下游"];
 
-export default function StockDetail({
+export default async function StockDetail({
   params,
 }: {
   params: { code: string };
 }) {
   const s = STOCK_MAP[params.code];
   if (!s) notFound();
+
+  // 拉实时行情,拿不到回退种子价
+  const q = (await fetchQuotes([s.code])).quotes[s.code];
+  const price = q?.price ?? s.price;
+  const change = q?.change ?? s.change;
 
   const usPeers = s.relations.filter((r) => STOCK_MAP[r]?.market === "美股");
   const aPeers = s.relations.filter((r) => STOCK_MAP[r]?.market === "A股");
@@ -49,17 +53,17 @@ export default function StockDetail({
           </span>
           <span
             className={`ml-auto font-mono text-lg font-semibold tabular-nums ${
-              s.change > 0
+              change > 0
                 ? "text-rose-600"
-                : s.change < 0
+                : change < 0
                 ? "text-emerald-600"
                 : "text-gray-400"
             }`}
           >
-            {s.price.toFixed(2)}{" "}
+            {price.toFixed(2)}{" "}
             <span className="text-sm">
-              {s.change > 0 ? "+" : ""}
-              {s.change.toFixed(2)}%
+              {change > 0 ? "+" : ""}
+              {change.toFixed(2)}%
             </span>
           </span>
         </div>
