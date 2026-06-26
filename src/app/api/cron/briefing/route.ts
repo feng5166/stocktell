@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDrafts, todayISO } from "@/lib/generate";
 import { insertDrafts, listBriefing } from "@/lib/briefings";
+import { runPreOpenDigest } from "@/lib/digest";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // LLM 生成可能要几十秒
@@ -60,7 +61,15 @@ export async function GET(req: NextRequest) {
     const created = await insertDrafts(
       drafts.map((d) => ({ ...d, status: "published" as const }))
     );
-    return NextResponse.json({ ok: true, date, engine, published: created.length });
+    // 盘前推送:发布后,给有自选+有相关动态的用户推一条(同一 cron 内做,省一个 cron 额度)
+    const digest = await runPreOpenDigest().catch(() => null);
+    return NextResponse.json({
+      ok: true,
+      date,
+      engine,
+      published: created.length,
+      digest,
+    });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

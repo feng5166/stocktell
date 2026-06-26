@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { STOCK_MAP, type Position } from "@/data/stocks";
+import { STOCK_MAP, resolvePeer, type Position, type Stock } from "@/data/stocks";
+import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
@@ -39,9 +40,11 @@ export default async function StockDetail({
     (it) => it.triggerCode === s.code || it.beneficiaries.some((b) => b.code === s.code)
   );
 
-  const usPeers = s.relations.filter((r) => STOCK_MAP[r]?.market === "美股");
-  const aPeers = s.relations.filter((r) => STOCK_MAP[r]?.market === "A股");
-  const otherPeers = s.relations.filter((r) => !STOCK_MAP[r]);
+  // relations 里美股用 code、A股引用名称,统一用 resolvePeer 解析(两头都能认)
+  const resolved = s.relations.map((t) => ({ token: t, peer: resolvePeer(t) ?? null }));
+  const usPeers = resolved.filter((r) => r.peer?.market === "美股");
+  const aPeers = resolved.filter((r) => r.peer?.market === "A股");
+  const otherPeers = resolved.filter((r) => !r.peer);
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
@@ -126,17 +129,23 @@ export default async function StockDetail({
           otherPeers.length === 0 ? (
             <p className="text-sm text-gray-400">暂无关联标的</p>
           ) : (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-3 text-sm">
               {usPeers.length > 0 && (
-                <PeerRow label="对应美股" peers={usPeers} />
+                <PeerGroup label="对应美股" anchor={s} items={usPeers} />
               )}
               {aPeers.length > 0 && (
-                <PeerRow label="对应 A 股" peers={aPeers} />
+                <PeerGroup label="对应 A 股" anchor={s} items={aPeers} />
               )}
               {otherPeers.length > 0 && (
-                <PeerRow label="相关" peers={otherPeers} plain />
+                <PeerGroup label="相关" items={otherPeers} />
               )}
             </div>
+          )}
+          {(usPeers.length > 0 || aPeers.length > 0) && (
+            <p className="mt-3 text-[11px] leading-relaxed text-gray-400">
+              强 = 有明确供货/直接业务绑定;中 = 对标/国产替代(无直接供货);弱 =
+              同主题、蹭概念。关系为研究框架梳理,非确认的客户/供应商关系。
+            </p>
           )}
         </Section>
 
@@ -190,40 +199,50 @@ function Section({
   );
 }
 
-function PeerRow({
+function PeerGroup({
   label,
-  peers,
-  plain,
+  anchor,
+  items,
 }: {
   label: string;
-  peers: string[];
-  plain?: boolean;
+  anchor?: Stock;
+  items: { token: string; peer: Stock | null }[];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-gray-400">{label}</span>
-      {peers.map((name) => {
-        const peer = STOCK_MAP[name];
-        if (plain || !peer) {
+    <div>
+      <div className="mb-1.5 text-xs text-gray-400">{label}</div>
+      <div className="space-y-1.5">
+        {items.map(({ token, peer }) => {
+          const info = anchor && peer ? edgeInfo(anchor.code, peer.code) : null;
           return (
-            <span
-              key={name}
-              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+            <div
+              key={peer?.code ?? token}
+              className="flex flex-wrap items-center gap-2"
             >
-              {name}
-            </span>
+              {info && (
+                <span
+                  className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[11px] ring-1 ring-inset ${STRENGTH_BADGE[info.strength]}`}
+                >
+                  {info.strength}关联
+                </span>
+              )}
+              {peer ? (
+                <Link
+                  href={`/stock/${peer.code}`}
+                  className="font-medium text-gray-800 hover:text-blue-600"
+                >
+                  {peer.name}
+                </Link>
+              ) : (
+                <span className="text-gray-600">{token}</span>
+              )}
+              {info && (
+                <span className="text-xs text-gray-400">· {info.basis}</span>
+              )}
+            </div>
           );
-        }
-        return (
-          <Link
-            key={name}
-            href={`/stock/${peer.code}`}
-            className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-200"
-          >
-            {name}
-          </Link>
-        );
-      })}
+        })}
+      </div>
     </div>
   );
 }
