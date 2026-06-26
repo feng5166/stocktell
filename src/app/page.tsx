@@ -93,7 +93,7 @@ export default async function Home() {
           以上内容为信息整理,不构成投资建议。历史规律不代表未来表现。
         </p>
         <p className="mt-2 text-center text-[11px] text-gray-300">
-          存储:{storageBackend() === "supabase" ? "Supabase" : "本地(未配置 Supabase)"} ·{" "}
+          存储:{storageBackend() === "postgres" ? "Vercel Postgres" : "本地(未连数据库)"} ·{" "}
           <Link href="/admin/briefing" className="hover:text-gray-500">
             后台
           </Link>
