@@ -2,12 +2,10 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { AuthStatus } from "@/components/auth/AuthStatus";
-import { AuthButton } from "@/components/auth/AuthButton";
+import { BriefingFeed } from "@/components/BriefingFeed";
 import { listBriefing, storageBackend, type BriefingItem } from "@/lib/briefings";
 
 export const dynamic = "force-dynamic";
-
-const FREE_LIMIT = 3;
 
 function todayISO(): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -17,15 +15,6 @@ function todayISO(): string {
     day: "2-digit",
   }).format(new Date());
 }
-
-const IMPACT_META: Record<
-  BriefingItem["impact"],
-  { dot: string; label: string; ring: string }
-> = {
-  高: { dot: "🔴", label: "高影响", ring: "border-rose-200" },
-  中: { dot: "🟡", label: "中影响", ring: "border-amber-200" },
-  低: { dot: "🟢", label: "低影响", ring: "border-emerald-200" },
-};
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -38,14 +27,6 @@ export default async function Home() {
   } catch {
     errored = true;
   }
-
-  // 登录用户全解锁;游客:高影响全部可见 + 累计前 3 条,其余锁定
-  let shown = 0;
-  const rows = items.map((it) => {
-    const free = loggedIn || it.impact === "高" || shown < FREE_LIMIT;
-    if (free) shown++;
-    return { it, free };
-  });
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
@@ -82,18 +63,10 @@ export default async function Home() {
           </div>
         </div>
 
-        {rows.length === 0 ? (
+        {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
-          <div className="space-y-3">
-            {rows.map(({ it, free }) =>
-              free ? (
-                <BriefingCard key={it.id} item={it} />
-              ) : (
-                <LockedCard key={it.id} item={it} />
-              )
-            )}
-          </div>
+          <BriefingFeed items={items} loggedIn={loggedIn} />
         )}
 
         <p className="mt-6 text-center text-xs text-gray-400">
@@ -107,60 +80,6 @@ export default async function Home() {
         </p>
       </main>
     </div>
-  );
-}
-
-function BriefingCard({ item }: { item: BriefingItem }) {
-  const meta = IMPACT_META[item.impact];
-  return (
-    <article className={`rounded-xl border bg-white p-4 ${meta.ring}`}>
-      <div className="mb-1 flex items-center gap-2 text-xs font-medium">
-        <span>{meta.dot}</span>
-        <span className="text-gray-500">{meta.label}</span>
-      </div>
-      <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
-      {item.beneficiaries.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-gray-400">受益 A 股</span>
-          {item.beneficiaries.map((b) => (
-            <Link
-              key={b.code}
-              href={`/stock/${b.code}`}
-              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-200"
-            >
-              {b.name}
-            </Link>
-          ))}
-        </div>
-      )}
-      <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2">
-        <div className="mb-1 text-xs font-medium text-amber-700">散户怎么想</div>
-        <p className="text-sm leading-relaxed text-gray-800">{item.retailTake}</p>
-      </div>
-    </article>
-  );
-}
-
-function LockedCard({ item }: { item: BriefingItem }) {
-  const meta = IMPACT_META[item.impact];
-  return (
-    <article className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4">
-      <div className="pointer-events-none select-none blur-[5px]">
-        <div className="mb-1 flex items-center gap-2 text-xs font-medium">
-          <span>{meta.dot}</span>
-          <span className="text-gray-500">{meta.label}</span>
-        </div>
-        <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
-        <p className="mt-3 text-sm text-gray-500">
-          登录后查看完整分析与受益标的……
-        </p>
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <AuthButton className="rounded-full bg-gray-900 px-4 py-1.5 text-xs font-medium text-white shadow hover:bg-gray-700">
-          🔓 登录解锁全部简报
-        </AuthButton>
-      </div>
-    </article>
   );
 }
 

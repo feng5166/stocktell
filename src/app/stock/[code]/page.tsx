@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { STOCK_MAP, type Position } from "@/data/stocks";
 import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
+import { WatchStar } from "@/components/WatchStar";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,7 @@ export default async function StockDetail({
           >
             {s.market}
           </span>
+          <WatchStar code={s.code} />
           {live ? (
             <span
               className={`ml-auto font-mono text-lg font-semibold tabular-nums ${

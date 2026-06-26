@@ -51,7 +51,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { drafts, engine } = await generateDrafts();
+    const { drafts, engine, usMarketClosed } = await generateDrafts();
+    // 美股休市(节假日):不硬拿旧数据生成隔夜映射,明说跳过
+    if (usMarketClosed) {
+      return NextResponse.json({ ok: true, date, skipped: "us-market-closed" });
+    }
     // 方案 B:生成后直接发布上线
     const created = await insertDrafts(
       drafts.map((d) => ({ ...d, status: "published" as const }))

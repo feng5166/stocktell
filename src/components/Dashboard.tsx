@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthStatus } from "@/components/auth/AuthStatus";
+import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
 import {
   STOCKS,
   aSharePeers,
@@ -66,6 +67,8 @@ export default function Dashboard() {
   const [sector, setSector] = useState<string>("全部");
   const [relation, setRelation] = useState<string>("全部关系");
   const [query, setQuery] = useState("");
+  const [onlyWatch, setOnlyWatch] = useState(false);
+  const wl = useWatchlist();
 
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [live, setLive] = useState(false);
@@ -111,6 +114,7 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => {
     return rows.filter((s) => {
+      if (onlyWatch && !wl.codes.has(s.code)) return false;
       if (market !== "全部" && s.market !== market) return false;
       if (position !== "全部" && s.position !== position) return false;
       if (sector !== "全部" && s.sector !== sector) return false;
@@ -127,7 +131,7 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [rows, market, position, sector, relation, query]);
+  }, [rows, market, position, sector, relation, query, onlyWatch, wl.codes]);
 
   const stats = useMemo(() => {
     const coverage = filtered.filter((s) => s.live).length;
@@ -215,6 +219,9 @@ export default function Dashboard() {
                 {m}
               </Chip>
             ))}
+            <Chip active={onlyWatch} onClick={() => setOnlyWatch((v) => !v)}>
+              ★ 只看自选{wl.codes.size ? `(${wl.codes.size})` : ""}
+            </Chip>
           </FilterGroup>
           <FilterGroup label="位置">
             {POSITIONS.map((p) => (
@@ -267,7 +274,7 @@ export default function Dashboard() {
 
         {/* 主内容 */}
         {tab === "股票列表" && (
-          <StockTable rows={filtered} newsCodes={newsCodes} />
+          <StockTable rows={filtered} newsCodes={newsCodes} wl={wl} />
         )}
         {tab === "关联图谱" && <RelationMap rows={filtered} />}
         {tab === "特征矩阵" && <FeatureMatrix rows={filtered} />}
@@ -348,9 +355,11 @@ function Chip({
 function StockTable({
   rows,
   newsCodes,
+  wl,
 }: {
   rows: Stock[];
   newsCodes: Set<string>;
+  wl: UseWatchlist;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (code: string) =>
@@ -367,6 +376,7 @@ function StockTable({
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
+              <Th></Th>
               <Th>代码</Th>
               <Th>公司</Th>
               <Th>市场</Th>
@@ -387,6 +397,8 @@ function StockTable({
                   key={s.code}
                   s={s}
                   hasNews={newsCodes.has(s.code)}
+                  watched={wl.has(s.code)}
+                  onToggleWatch={() => wl.toggle(s.code)}
                   isOpen={isOpen}
                   toggle={() => toggle(s.code)}
                 />
@@ -395,7 +407,7 @@ function StockTable({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="px-4 py-12 text-center text-sm text-gray-400"
                 >
                   没有符合条件的标的,试试放宽筛选条件
@@ -412,11 +424,15 @@ function StockTable({
 function ReactFragmentRow({
   s,
   hasNews,
+  watched,
+  onToggleWatch,
   isOpen,
   toggle,
 }: {
   s: Stock;
   hasNews: boolean;
+  watched: boolean;
+  onToggleWatch: () => void;
   isOpen: boolean;
   toggle: () => void;
 }) {
@@ -432,6 +448,21 @@ function ReactFragmentRow({
         onClick={toggle}
         className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
       >
+        <Td className="pr-0 text-center">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWatch();
+            }}
+            aria-label={watched ? "取消自选" : "加入自选"}
+            title={watched ? "取消自选" : "加入自选"}
+            className={`text-base leading-none ${
+              watched ? "text-amber-400" : "text-gray-300 hover:text-amber-400"
+            }`}
+          >
+            {watched ? "★" : "☆"}
+          </button>
+        </Td>
         <Td className="font-mono text-xs text-gray-500">{s.code}</Td>
         <Td className="whitespace-nowrap font-medium text-gray-900">
           <Link
@@ -485,7 +516,7 @@ function ReactFragmentRow({
       </tr>
       {isOpen && (
         <tr className="border-b border-gray-100 bg-amber-50/50">
-          <td colSpan={10} className="px-4 py-3">
+          <td colSpan={11} className="px-4 py-3">
             <div className="flex gap-2">
               <span className="shrink-0 text-base">💡</span>
               <div>

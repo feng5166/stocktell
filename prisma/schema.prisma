@@ -73,3 +73,15 @@ model BriefingOutcome {
   @@index([date])
   @@map("briefing_outcomes")
 }
+
+// 我的自选/持仓:只存 code(成本/持股二期再说)。游客走 localStorage,登录用户落这张表。
+model Watchlist {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String // 关联 STOCK_MAP 的 code
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, code])
+  @@index([userId])
+  @@map("watchlist")
+}

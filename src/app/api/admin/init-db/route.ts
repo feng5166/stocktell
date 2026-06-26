@@ -35,6 +35,17 @@ const T_OUTCOME = `CREATE TABLE IF NOT EXISTS "briefing_outcomes" (
 const IDX_OUTCOME_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "briefing_outcomes_briefing_id_code_key" ON "briefing_outcomes" ("briefing_id", "code")`;
 const IDX_OUTCOME_DATE = `CREATE INDEX IF NOT EXISTS "briefing_outcomes_date_idx" ON "briefing_outcomes" ("date")`;
 
+// 自选/持仓表(幂等)
+const T_WATCHLIST = `CREATE TABLE IF NOT EXISTS "watchlist" (
+  "id" text NOT NULL,
+  "user_id" text NOT NULL,
+  "code" text NOT NULL,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "watchlist_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_WATCHLIST_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "watchlist_user_id_code_key" ON "watchlist" ("user_id", "code")`;
+const IDX_WATCHLIST_USER = `CREATE INDEX IF NOT EXISTS "watchlist_user_id_idx" ON "watchlist" ("user_id")`;
+
 export async function POST(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
@@ -50,10 +61,14 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(T_OUTCOME);
     await db.$executeRawUnsafe(IDX_OUTCOME_UNIQUE);
     await db.$executeRawUnsafe(IDX_OUTCOME_DATE);
+    await db.$executeRawUnsafe(T_WATCHLIST);
+    await db.$executeRawUnsafe(IDX_WATCHLIST_UNIQUE);
+    await db.$executeRawUnsafe(IDX_WATCHLIST_USER);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,
-      message: "password_reset_tokens + briefing_outcomes + trigger_change ready",
+      message:
+        "password_reset_tokens + briefing_outcomes + trigger_change + watchlist ready",
       count,
     });
   } catch (e) {
