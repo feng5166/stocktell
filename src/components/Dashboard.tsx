@@ -158,6 +158,9 @@ export default function Dashboard() {
             <span className="cursor-default font-medium text-gray-900">
               股票池
             </span>
+            <Link href="/track" className="hover:text-gray-900">
+              战绩
+            </Link>
             <AuthStatus />
           </nav>
         </div>
