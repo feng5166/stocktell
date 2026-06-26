@@ -125,3 +125,18 @@ export function summarize(rows: OutcomeRow[]): HitStats {
     rate: judged.length ? hits / judged.length : null,
   };
 }
+
+// 样本低于此数不亮总命中率,只说"样本积累中"——早期几条数据的命中率没意义,亮出来反而误导。
+export const MIN_SAMPLE = 10;
+
+// 按影响等级(高/中/低)拆命中率,只返回有样本的等级。
+export function summarizeByImpact(
+  rows: OutcomeRow[]
+): { impact: string; stats: HitStats }[] {
+  return (["高", "中", "低"] as const)
+    .map((impact) => ({
+      impact,
+      stats: summarize(rows.filter((r) => r.impact === impact)),
+    }))
+    .filter((x) => x.stats.evaluated > 0);
+}

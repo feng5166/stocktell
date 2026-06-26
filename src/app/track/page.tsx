@@ -2,8 +2,11 @@ import Link from "next/link";
 import {
   listOutcomes,
   summarize,
+  summarizeByImpact,
   HIT_THRESHOLD,
+  MIN_SAMPLE,
   type OutcomeRow,
+  type HitStats,
 } from "@/lib/outcomes";
 import { storageBackend } from "@/lib/briefings";
 
@@ -26,6 +29,8 @@ export default async function TrackPage() {
   const backtest = await listOutcomes(300, true).catch(() => []);
   const liveStats = summarize(live);
   const btStats = summarize(backtest);
+  const liveByImpact = summarizeByImpact(live);
+  const btByImpact = summarizeByImpact(backtest);
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
@@ -65,7 +70,7 @@ export default async function TrackPage() {
           <h2 className="mb-2 text-sm font-semibold text-gray-700">
             实盘喊单 · 自动记账起
           </h2>
-          <Overview stats={liveStats} />
+          <Overview stats={liveStats} byImpact={liveByImpact} />
           {live.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white py-12 text-center">
               <div className="text-sm font-medium text-gray-500">还在积累中</div>
@@ -90,7 +95,7 @@ export default async function TrackPage() {
               ⚠️ 以下为用历史行情回放同一套信号的复盘结果,<b>不是实盘喊单</b>,
               仅用于看这类信号过去大致的规律。实盘战绩只看上面那一栏。
             </div>
-            <Overview stats={btStats} />
+            <Overview stats={btStats} byImpact={btByImpact} />
             <OutcomeTable rows={backtest} />
           </section>
         )}
@@ -105,17 +110,41 @@ export default async function TrackPage() {
 
 function Overview({
   stats,
+  byImpact,
 }: {
-  stats: { rate: number | null; evaluated: number; hits: number };
+  stats: HitStats;
+  byImpact: { impact: string; stats: HitStats }[];
 }) {
+  // 样本不足不亮命中率,避免几条数据的虚高/虚低误导
+  const enough = stats.evaluated >= MIN_SAMPLE;
   return (
-    <div className="mb-3 grid grid-cols-3 gap-3">
-      <Stat
-        label="命中率"
-        value={stats.rate === null ? "—" : `${Math.round(stats.rate * 100)}%`}
-      />
-      <Stat label="已判定" value={String(stats.evaluated)} />
-      <Stat label="跟上了" value={String(stats.hits)} />
+    <div className="mb-3">
+      <div className="grid grid-cols-3 gap-3">
+        <Stat
+          label="命中率"
+          value={
+            !enough || stats.rate === null
+              ? "—"
+              : `${Math.round(stats.rate * 100)}%`
+          }
+          sub={!enough ? `样本积累中 ${stats.evaluated}/${MIN_SAMPLE}` : undefined}
+        />
+        <Stat label="已判定" value={String(stats.evaluated)} />
+        <Stat label="跟上了" value={String(stats.hits)} />
+      </div>
+      {byImpact.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+          {byImpact.map(({ impact, stats: s }) => (
+            <span key={impact}>
+              {IMPACT_DOT[impact]} {impact}影响{" "}
+              {s.rate === null ? "—" : `${Math.round(s.rate * 100)}%`}{" "}
+              <span className="text-gray-400">
+                ({s.hits}/{s.evaluated})
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -181,13 +210,22 @@ function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center">
       <div className="text-xs text-gray-400">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">
         {value}
       </div>
+      {sub && <div className="mt-0.5 text-[11px] text-gray-400">{sub}</div>}
     </div>
   );
 }
