@@ -8,11 +8,28 @@ export function AuthStatus() {
   const { open } = useAuthModal();
 
   if (status === "authenticated") {
+    const u = data.user;
+    // 默认头像:邮箱(或昵称)第一个字母,大写
+    const initial = (u?.email?.[0] || u?.name?.[0] || "?").toUpperCase();
+    const title = u?.email || u?.name || "已登录";
     return (
       <span className="flex items-center gap-2 text-xs text-gray-500">
-        <span className="hidden max-w-[120px] truncate sm:inline">
-          {data.user?.email}
-        </span>
+        {u?.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={u.image}
+            alt={title}
+            title={title}
+            className="h-7 w-7 rounded-full object-cover"
+          />
+        ) : (
+          <span
+            title={title}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white"
+          >
+            {initial}
+          </span>
+        )}
         <button
           onClick={() => signOut()}
           className="rounded-md border border-gray-300 px-2.5 py-1 hover:bg-gray-100"
