@@ -21,11 +21,12 @@ const cache = new Map<string, WhyResult>();
 /* ---------- 路径 1:博查检索增强 ---------- */
 const RAG_PROMPT = `你要根据【检索材料】解释某只美股最近一个交易日为什么明显异动。
 铁律(违反即失败):
-- 只能使用材料里出现的、可核实的公开事实(财报/官方公告/权威新闻)。
-- 材料中若没有能解释本次异动的明确事件 → reason 必须为 null。
-- 绝不使用材料之外的知识或猜测,不写"可能/或因/预计"之类硬凑因果。
-- reason 给出时为一句话(≤40字,中文),并给出 asOf(该事件依据材料的日期 YYYY-MM-DD),
-  sourceIndex 指向你引用的材料编号(整数)。
+- 只能使用材料里出现的、可核实的公开事实(财报/官方公告/权威新闻/板块行情)。
+- 优先给公司个体事件(财报/并购/指引等);若没有个体事件,但材料显示该股是所属板块/同行
+  集体异动的一部分(如整个光通信/液冷/AI软件板块普跌普涨),则给板块性原因,并在 reason
+  里点明"板块/行业层面"。
+- 材料里连板块层面都无法解释本次异动 → reason 必须为 null。绝不编造,不写"可能/或因/预计"。
+- reason 一句话(≤45字,中文),给出 asOf(依据材料的日期 YYYY-MM-DD),sourceIndex 指材料编号(整数)。
 只输出 JSON:{"reason":string|null,"asOf":string|null,"sourceIndex":number|null},不要多余文字。`;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -33,10 +34,14 @@ async function retrievalWhy(
   client: any,
   name: string,
   code: string,
-  date: string
+  date: string,
+  title?: string
 ): Promise<WhyResult> {
+  // 用简报标题做检索线索:标题里有人工写好的板块概括(如"光通信产业链承压"),
+  // 能把博查带到切题的板块新闻,从而支持"板块性原因"。
+  const cue = title ? ` ${title}` : "";
   const hits = await bochaSearch(
-    `${name}(${code}) 美股 股价 大涨 大跌 异动 原因 财报 公告`,
+    `${name}(${code})${cue} 美股 异动 原因 财报`,
     { count: 8, freshness: "oneWeek" }
   );
   if (!hits || hits.length === 0) return EMPTY; // 搜不到就不编
@@ -133,7 +138,8 @@ async function legacyWhy(
 export async function explainMove(
   name: string,
   code: string,
-  date: string
+  date: string,
+  title?: string
 ): Promise<WhyResult> {
   const key = `${code}:${date}`;
   const cached = cache.get(key);
@@ -144,7 +150,7 @@ export async function explainMove(
 
   let out: WhyResult = EMPTY;
   if (bochaEnabled()) {
-    out = await retrievalWhy(client, name, code, date); // 优先真实检索
+    out = await retrievalWhy(client, name, code, date, title); // 优先真实检索
   } else if (process.env.WHY_ENABLED) {
     out = await legacyWhy(client, name, code); // 兼容旧开关
   } else {

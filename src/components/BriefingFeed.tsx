@@ -132,7 +132,7 @@ function BriefingCard({
       </div>
       <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
       {mine && item.triggerCode && (
-        <WhyLine code={item.triggerCode} date={item.date} />
+        <WhyLine code={item.triggerCode} date={item.date} title={item.title} />
       )}
       {item.beneficiaries.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -166,15 +166,26 @@ function BriefingCard({
 }
 
 // 为什么动:仅「和我相关」卡片按需拉;后端没开联网检索就返回空,这里啥也不显示(不编因果)。
-function WhyLine({ code, date }: { code: string; date: string }) {
+function WhyLine({
+  code,
+  date,
+  title,
+}: {
+  code: string;
+  date: string;
+  title?: string;
+}) {
   const [reason, setReason] = useState<string | null>(null);
   const [asOf, setAsOf] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    fetch(`/api/briefing/why?code=${encodeURIComponent(code)}&date=${date}`, {
-      cache: "no-store",
-    })
+    fetch(
+      `/api/briefing/why?code=${encodeURIComponent(code)}&date=${date}${
+        title ? `&title=${encodeURIComponent(title)}` : ""
+      }`,
+      { cache: "no-store" }
+    )
       .then((r) => r.json())
       .then((d) => {
         if (active && d?.reason) {
@@ -187,7 +198,7 @@ function WhyLine({ code, date }: { code: string; date: string }) {
     return () => {
       active = false;
     };
-  }, [code, date]);
+  }, [code, date, title]);
 
   if (!reason) return null;
   return (

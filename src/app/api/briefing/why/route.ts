@@ -10,8 +10,9 @@ export const maxDuration = 60; // 冷启动 + 博查检索 + LLM 总结,留足�
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code") || "";
   const date = req.nextUrl.searchParams.get("date") || "";
+  const title = req.nextUrl.searchParams.get("title") || undefined;
   const s = STOCK_MAP[code];
   if (!s) return NextResponse.json({ ok: true, reason: null, asOf: null });
-  const r = await explainMove(s.name, s.code, date);
+  const r = await explainMove(s.name, s.code, date, title);
   return NextResponse.json({ ok: true, ...r });
 }
