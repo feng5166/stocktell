@@ -25,10 +25,11 @@ export default async function StockDetail({
   const s = STOCK_MAP[params.code];
   if (!s) notFound();
 
-  // 拉实时行情,拿不到回退种子价
+  // 拉实时行情;拿不到就不显示编造的种子价,标注"休市/未连接"
   const q = (await fetchQuotes([s.code])).quotes[s.code];
-  const price = q?.price ?? s.price;
-  const change = q?.change ?? s.change;
+  const live = Boolean(q);
+  const price = q?.price ?? null;
+  const change = q?.change ?? null;
 
   // 今天的简报里是否提到这只(真实"今日有新消息")
   const todayNews = (
@@ -68,21 +69,25 @@ export default async function StockDetail({
           >
             {s.market}
           </span>
-          <span
-            className={`ml-auto font-mono text-lg font-semibold tabular-nums ${
-              change > 0
-                ? "text-rose-600"
-                : change < 0
-                ? "text-emerald-600"
-                : "text-gray-400"
-            }`}
-          >
-            {price.toFixed(2)}{" "}
-            <span className="text-sm">
-              {change > 0 ? "+" : ""}
-              {change.toFixed(2)}%
+          {live ? (
+            <span
+              className={`ml-auto font-mono text-lg font-semibold tabular-nums ${
+                change! > 0
+                  ? "text-rose-600"
+                  : change! < 0
+                  ? "text-emerald-600"
+                  : "text-gray-400"
+              }`}
+            >
+              {price!.toFixed(2)}{" "}
+              <span className="text-sm">
+                {change! > 0 ? "+" : ""}
+                {change!.toFixed(2)}%
+              </span>
             </span>
-          </span>
+          ) : (
+            <span className="ml-auto text-sm text-gray-400">休市 / 行情未连接</span>
+          )}
         </div>
 
         <Section title="它是干什么的">

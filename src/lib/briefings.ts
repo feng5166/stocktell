@@ -21,6 +21,7 @@ export interface BriefingItem {
   title: string;
   triggerCode: string | null;
   triggerName: string | null;
+  triggerChange: number | null;
   beneficiaries: Beneficiary[];
   retailTake: string;
   sourceUrl: string | null;
@@ -57,6 +58,7 @@ function fromRow(r: any): BriefingItem {
     title: r.title,
     triggerCode: r.triggerCode ?? null,
     triggerName: r.triggerName ?? null,
+    triggerChange: r.triggerChange ?? null,
     beneficiaries: (r.beneficiaries ?? []) as Beneficiary[],
     retailTake: r.retailTake,
     sourceUrl: r.sourceUrl ?? null,
@@ -108,6 +110,7 @@ export async function insertDrafts(
         title: d.title,
         triggerCode: d.triggerCode,
         triggerName: d.triggerName,
+        triggerChange: d.triggerChange,
         beneficiaries: d.beneficiaries as unknown as Prisma.InputJsonValue,
         retailTake: d.retailTake,
         sourceUrl: d.sourceUrl,
@@ -141,6 +144,7 @@ export async function updateBriefing(
         title: patch.title,
         triggerCode: patch.triggerCode,
         triggerName: patch.triggerName,
+        triggerChange: patch.triggerChange,
         beneficiaries: patch.beneficiaries as unknown as Prisma.InputJsonValue,
         retailTake: patch.retailTake,
         sourceUrl: patch.sourceUrl,

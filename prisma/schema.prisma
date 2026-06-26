@@ -43,6 +43,7 @@ model BriefingItem {
   title         String
   triggerCode   String?  @map("trigger_code")
   triggerName   String?  @map("trigger_name")
+  triggerChange Float?   @map("trigger_change") // 触发美股当时涨跌%,记账判方向用
   beneficiaries Json     @default("[]")
   retailTake    String   @map("retail_take")
   sourceUrl     String?  @map("source_url")
@@ -51,4 +52,24 @@ model BriefingItem {
 
   @@index([date, status])
   @@map("briefing_items")
+}
+
+// 简报记账:每条简报的受益股,在简报当日收盘后回填实际表现,等用户查账。
+// 判命中规则透明:触发美股涨→期待A股涨,跌→期待A股跌;同向且|涨跌|≥阈值记 hit。
+model BriefingOutcome {
+  id          String   @id @default(cuid())
+  briefingId  String   @map("briefing_id")
+  date        String // 简报日 YYYY-MM-DD
+  title       String // 冗余简报标题,查账页直接展示
+  impact      String // 高 / 中 / 低
+  code        String // 受益 A 股代码
+  name        String // 受益 A 股名称
+  expected    String // "涨" / "跌",来自触发美股方向
+  change      Float? // 评估日(简报当日收盘)A股实际涨跌%
+  hit         Boolean? // 是否跟上;null = 当时取不到行情
+  evaluatedAt DateTime @default(now()) @map("evaluated_at")
+
+  @@unique([briefingId, code])
+  @@index([date])
+  @@map("briefing_outcomes")
 }

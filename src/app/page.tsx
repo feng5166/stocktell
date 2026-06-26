@@ -64,6 +64,9 @@ export default async function Home() {
             <Link href="/stocks" className="hover:text-gray-900">
               股票池
             </Link>
+            <Link href="/track" className="hover:text-gray-900">
+              战绩
+            </Link>
             <AuthStatus />
           </nav>
         </div>

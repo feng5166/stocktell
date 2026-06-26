@@ -30,6 +30,18 @@ function fmtChange(change: number) {
   return `${sign}${change.toFixed(2)}%`;
 }
 
+// 行情未连接(live=false)时,绝不显示种子里编造的价格/涨跌,一律给"—"。
+// 散户宁可看到"休市/未连接",也不该被一个看似真实的假数字误导。
+function livePrice(s: Stock) {
+  return s.live ? s.price.toFixed(2) : "—";
+}
+function liveChange(s: Stock) {
+  return s.live ? fmtChange(s.change) : "—";
+}
+function liveChangeClass(s: Stock) {
+  return s.live ? changeClass(s.change) : "text-gray-300";
+}
+
 const POSITION_BADGE: Record<Position, string> = {
   上游: "bg-sky-50 text-sky-700 ring-sky-600/20",
   中游: "bg-violet-50 text-violet-700 ring-violet-600/20",
@@ -119,8 +131,9 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     const coverage = filtered.filter((s) => s.live).length;
-    const up = filtered.filter((s) => s.change > 0).length;
-    const down = filtered.filter((s) => s.change < 0).length;
+    // 涨跌只统计真实行情;行情未连接时不拿模拟值充数
+    const up = filtered.filter((s) => s.live && s.change > 0).length;
+    const down = filtered.filter((s) => s.live && s.change < 0).length;
     return { total: filtered.length, coverage, up, down };
   }, [filtered]);
 
@@ -165,7 +178,7 @@ export default function Dashboard() {
             />
             {live
               ? `行情已连接 · 覆盖 ${stats.coverage}/${filtered.length}`
-              : "行情连接中(暂用模拟数据)"}
+              : "行情未连接 · 休市/非交易时段不显示涨跌"}
           </div>
         </div>
 
@@ -449,12 +462,12 @@ function ReactFragmentRow({
         </Td>
         <Td className="whitespace-nowrap text-xs text-gray-500">{s.sector}</Td>
         <Td className="text-right font-mono tabular-nums text-gray-700">
-          {s.price.toFixed(2)}
+          {livePrice(s)}
         </Td>
         <Td
-          className={`text-right font-mono font-medium tabular-nums ${changeClass(s.change)}`}
+          className={`text-right font-mono font-medium tabular-nums ${liveChangeClass(s)}`}
         >
-          {fmtChange(s.change)}
+          {liveChange(s)}
         </Td>
         <Td className="max-w-[260px] text-xs text-gray-600">{s.positioning}</Td>
         <Td>
@@ -555,9 +568,9 @@ function RelationMap({ rows }: { rows: Stock[] }) {
               </Link>
               <span className="font-mono text-xs text-gray-400">{us.code}</span>
               <span
-                className={`ml-auto font-mono text-sm tabular-nums ${changeClass(us.change)}`}
+                className={`ml-auto font-mono text-sm tabular-nums ${liveChangeClass(us)}`}
               >
-                {fmtChange(us.change)}
+                {liveChange(us)}
               </span>
             </div>
             <div className="mb-2 text-xs text-gray-400">↓ A股受益标的</div>
@@ -570,9 +583,9 @@ function RelationMap({ rows }: { rows: Stock[] }) {
                 >
                   <span className="font-medium text-gray-800">{p.name}</span>
                   <span
-                    className={`font-mono text-xs tabular-nums ${changeClass(p.change)}`}
+                    className={`font-mono text-xs tabular-nums ${liveChangeClass(p)}`}
                   >
-                    {fmtChange(p.change)}
+                    {liveChange(p)}
                   </span>
                 </Link>
               ))}
@@ -589,10 +602,13 @@ function FeatureMatrix({ rows }: { rows: Stock[] }) {
     const inSec = rows.filter((r) => r.sector === sec);
     const us = inSec.filter((r) => r.market === "美股");
     const a = inSec.filter((r) => r.market === "A股");
-    const avg = (list: Stock[]) =>
-      list.length
-        ? list.reduce((sum, r) => sum + r.change, 0) / list.length
+    // 均值只用真实行情;没有 live 数据的板块给 null(显示"—"),不拿模拟值算热力
+    const avg = (list: Stock[]) => {
+      const ls = list.filter((r) => r.live);
+      return ls.length
+        ? ls.reduce((sum, r) => sum + r.change, 0) / ls.length
         : null;
+    };
     return { sec, count: inSec.length, usAvg: avg(us), aAvg: avg(a) };
   }).filter((d) => d.count > 0);
 
@@ -657,12 +673,13 @@ function ActiveDiscovery({ rows }: { rows: Stock[] }) {
   const GAP = 1.5; // 美股领先 A股 至少 1.5 个点才算预期差
   const map = new Map(rows.map((r) => [r.code, r]));
 
+  // 只在真实行情上算预期差;行情未连接时不拿模拟数据编造信号
   const signals = rows
-    .filter((s) => s.market === "美股" && s.change > 1)
+    .filter((s) => s.market === "美股" && s.live && s.change > 1)
     .map((us) => {
       const lagging = aSharePeers(us)
         .map((p) => map.get(p.code) ?? p)
-        .filter((p) => us.change - p.change >= GAP);
+        .filter((p) => p.live && us.change - p.change >= GAP);
       return { us, lagging };
     })
     .filter((x) => x.lagging.length > 0)
