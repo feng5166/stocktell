@@ -13,6 +13,17 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
+model User {
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  passwordHash String?  @map("password_hash")
+  nickname     String?
+  avatar       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
 model BriefingItem {
   id            String   @id @default(uuid())
   date          String // YYYY-MM-DD

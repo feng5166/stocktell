@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AuthStatus } from "@/components/auth/AuthStatus";
 import {
   STOCKS,
   aSharePeers,
@@ -140,9 +141,7 @@ export default function Dashboard() {
             <span className="cursor-default font-medium text-gray-900">
               股票池
             </span>
-            <button className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700">
-              登录
-            </button>
+            <AuthStatus />
           </nav>
         </div>
       </header>

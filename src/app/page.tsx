@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { AuthStatus } from "@/components/auth/AuthStatus";
+import { AuthButton } from "@/components/auth/AuthButton";
 import { listBriefing, storageBackend, type BriefingItem } from "@/lib/briefings";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +28,8 @@ const IMPACT_META: Record<
 };
 
 export default async function Home() {
+  const session = await getServerSession(authOptions);
+  const loggedIn = !!session;
   const date = todayISO();
   let items: BriefingItem[] = [];
   let errored = false;
@@ -33,10 +39,10 @@ export default async function Home() {
     errored = true;
   }
 
-  // 免费墙:高影响全部可见 + 累计前 3 条可见,其余锁定
+  // 登录用户全解锁;游客:高影响全部可见 + 累计前 3 条,其余锁定
   let shown = 0;
   const rows = items.map((it) => {
-    const free = it.impact === "高" || shown < FREE_LIMIT;
+    const free = loggedIn || it.impact === "高" || shown < FREE_LIMIT;
     if (free) shown++;
     return { it, free };
   });
@@ -58,9 +64,7 @@ export default async function Home() {
             <Link href="/stocks" className="hover:text-gray-900">
               股票池
             </Link>
-            <button className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700">
-              登录
-            </button>
+            <AuthStatus />
           </nav>
         </div>
       </header>
@@ -149,9 +153,9 @@ function LockedCard({ item }: { item: BriefingItem }) {
         </p>
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
-        <button className="rounded-full bg-gray-900 px-4 py-1.5 text-xs font-medium text-white shadow hover:bg-gray-700">
+        <AuthButton className="rounded-full bg-gray-900 px-4 py-1.5 text-xs font-medium text-white shadow hover:bg-gray-700">
           🔓 登录解锁全部简报
-        </button>
+        </AuthButton>
       </div>
     </article>
   );
