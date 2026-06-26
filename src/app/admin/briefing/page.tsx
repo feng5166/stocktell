@@ -51,7 +51,9 @@ export default function AdminBriefing() {
         setMsg(
           d.usMarketClosed
             ? "美股休市,无隔夜映射,今日不生成"
-            : `生成 ${d.count} 条草稿(引擎:${d.engine === "llm" ? "AI模型" : "模板"})`
+            : d.engine === "llm"
+            ? `生成 ${d.count} 条草稿(引擎:AI模型)`
+            : `生成 ${d.count} 条草稿 ⚠️ 引擎:模板兜底(未配 LLM_API_KEY,内容偏套话,线上别裸跑)`
         );
         await load();
       } else {

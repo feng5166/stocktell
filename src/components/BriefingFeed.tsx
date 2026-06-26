@@ -3,6 +3,7 @@
 // 今日简报信息流:把简报按"是否命中我的自选"分成「和我相关」+「其他市场动态」。
 // 和我相关一律不锁(先认我,别拿用户自己的票去设墙);免费墙只作用于其他动态。
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { BriefingItem } from "@/lib/briefings";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { useWatchlist } from "@/components/useWatchlist";
@@ -122,6 +123,9 @@ function BriefingCard({ item, mine }: { item: BriefingItem; mine?: boolean }) {
         )}
       </div>
       <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
+      {mine && item.triggerCode && (
+        <WhyLine code={item.triggerCode} date={item.date} />
+      )}
       {item.beneficiaries.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-gray-400">受益 A 股</span>
@@ -141,6 +145,38 @@ function BriefingCard({ item, mine }: { item: BriefingItem; mine?: boolean }) {
         <p className="text-sm leading-relaxed text-gray-800">{item.retailTake}</p>
       </div>
     </article>
+  );
+}
+
+// 为什么动:仅「和我相关」卡片按需拉;后端没开联网检索就返回空,这里啥也不显示(不编因果)。
+function WhyLine({ code, date }: { code: string; date: string }) {
+  const [reason, setReason] = useState<string | null>(null);
+  const [asOf, setAsOf] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/briefing/why?code=${encodeURIComponent(code)}&date=${date}`, {
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (active && d?.reason) {
+          setReason(d.reason);
+          setAsOf(d.asOf ?? null);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [code, date]);
+
+  if (!reason) return null;
+  return (
+    <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
+      <span className="font-medium text-gray-600">为什么动</span>:{reason}
+      {asOf && <span className="text-gray-400"> ·{asOf}</span>}
+      <span className="text-gray-400"> ·以官方公告为准</span>
+    </p>
   );
 }
 
