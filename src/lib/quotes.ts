@@ -5,6 +5,7 @@ import { STOCK_MAP, sinaSymbol } from "@/data/stocks";
 export interface Quote {
   price: number;
   change: number; // 日涨跌 %
+  asOf?: string; // 行情日期 YYYY-MM-DD(美股=美东交易日;用于判断是否陈旧/休市)
 }
 
 function parseSina(text: string, codeBySina: Record<string, string>) {
@@ -29,10 +30,14 @@ function parseSina(text: string, codeBySina: Record<string, string>) {
         change = ((price - prevClose) / prevClose) * 100;
       }
     }
+    // 行情日期:新浪美股/ A 股串里都带一个 "YYYY-MM-DD ..." 字段,按正则取首个日期
+    const dt = fields.find((f) => /^\d{4}-\d{2}-\d{2}/.test(f));
+    const asOf = dt ? dt.slice(0, 10) : undefined;
     if (Number.isFinite(price) && price > 0 && Number.isFinite(change)) {
       out[code] = {
         price: Math.round(price * 100) / 100,
         change: Math.round(change * 100) / 100,
+        asOf,
       };
     }
   }
