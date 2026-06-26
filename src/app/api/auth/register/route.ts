@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getPrisma } from "@/lib/prisma";
+import { sendFeishu, beijingTime } from "@/lib/feishu";
 
 export const dynamic = "force-dynamic";
 
@@ -36,5 +37,17 @@ export async function POST(req: NextRequest) {
       nickname: normalizedEmail.split("@")[0],
     },
   });
+
+  // 飞书提醒:新用户注册
+  await sendFeishu(
+    [
+      "🎉 StockTell 新用户注册",
+      `邮箱:${user.email}`,
+      "方式:邮箱密码",
+      `时间:${beijingTime()}`,
+      `ID:${user.id}`,
+    ].join("\n")
+  );
+
   return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
 }

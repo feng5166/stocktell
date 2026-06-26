@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { getPrisma } from "@/lib/prisma";
+import { sendFeishu, beijingTime } from "@/lib/feishu";
 
 const gid = process.env.GOOGLE_CLIENT_ID;
 const gsecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -57,6 +58,16 @@ export const authOptions: NextAuthOptions = {
             },
           });
           user.id = created.id;
+          // 飞书提醒:新用户(Google)
+          await sendFeishu(
+            [
+              "🎉 StockTell 新用户注册",
+              `邮箱:${created.email}`,
+              "方式:Google",
+              `时间:${beijingTime()}`,
+              `ID:${created.id}`,
+            ].join("\n")
+          );
         } else {
           user.id = existing.id;
         }
