@@ -5,6 +5,7 @@ import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
+import { Fundamentals } from "@/components/Fundamentals";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +123,8 @@ export default async function StockDetail({
           </div>
           <p className="mt-2 text-xs text-gray-400">板块:{s.sector}</p>
         </Section>
+
+        <Fundamentals code={s.code} market={s.market} />
 
         <Section title="对应的股票">
           {usPeers.length === 0 &&
