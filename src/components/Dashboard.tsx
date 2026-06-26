@@ -276,9 +276,13 @@ export default function Dashboard() {
         {tab === "股票列表" && (
           <StockTable rows={filtered} newsCodes={newsCodes} wl={wl} />
         )}
-        {tab === "关联图谱" && <RelationMap rows={filtered} />}
+        {tab === "关联图谱" && (
+          <RelationMap rows={filtered} watchedCodes={wl.codes} />
+        )}
         {tab === "特征矩阵" && <FeatureMatrix rows={filtered} />}
-        {tab === "主动发现" && <ActiveDiscovery rows={rows} />}
+        {tab === "主动发现" && (
+          <ActiveDiscovery rows={rows} watchedCodes={wl.codes} />
+        )}
 
         <p className="mt-6 text-center text-xs text-gray-400">
           以上内容为信息整理,不构成投资建议。历史规律不代表未来表现。
@@ -446,7 +450,9 @@ function ReactFragmentRow({
     <>
       <tr
         onClick={toggle}
-        className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
+        className={`cursor-pointer border-b border-gray-100 ${
+          watched ? "bg-amber-50/60 hover:bg-amber-100/50" : "hover:bg-gray-50"
+        }`}
       >
         <Td className="pr-0 text-center">
           <button
@@ -563,7 +569,13 @@ function Td({
 }
 
 /* ============ 关联图谱:美股 → A股 映射 ============ */
-function RelationMap({ rows }: { rows: Stock[] }) {
+function RelationMap({
+  rows,
+  watchedCodes,
+}: {
+  rows: Stock[];
+  watchedCodes: Set<string>;
+}) {
   const codes = new Set(rows.map((r) => r.code));
   const byCode = new Map(rows.map((r) => [r.code, r]));
   const live = (s: Stock) => byCode.get(s.code) ?? s;
@@ -606,20 +618,31 @@ function RelationMap({ rows }: { rows: Stock[] }) {
             </div>
             <div className="mb-2 text-xs text-gray-400">↓ A股受益标的</div>
             <div className="flex flex-wrap gap-2">
-              {peers.map((p) => (
-                <Link
-                  key={p.code}
-                  href={`/stock/${p.code}`}
-                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2 py-1 text-sm hover:border-gray-400"
-                >
-                  <span className="font-medium text-gray-800">{p.name}</span>
-                  <span
-                    className={`font-mono text-xs tabular-nums ${liveChangeClass(p)}`}
+              {peers.map((p) => {
+                const watched = watchedCodes.has(p.code);
+                return (
+                  <Link
+                    key={p.code}
+                    href={`/stock/${p.code}`}
+                    title={watched ? "你的自选" : undefined}
+                    className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-sm ${
+                      watched
+                        ? "border-amber-300 bg-amber-50 hover:border-amber-400"
+                        : "border-gray-200 hover:border-gray-400"
+                    }`}
                   >
-                    {liveChange(p)}
-                  </span>
-                </Link>
-              ))}
+                    <span className="font-medium text-gray-800">
+                      {watched && <span className="text-amber-500">★</span>}
+                      {p.name}
+                    </span>
+                    <span
+                      className={`font-mono text-xs tabular-nums ${liveChangeClass(p)}`}
+                    >
+                      {liveChange(p)}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -700,7 +723,13 @@ function HeatBar({ value }: { value: number }) {
 }
 
 /* ============ 主动发现:预期差(美股涨了、A股还没跟上) ============ */
-function ActiveDiscovery({ rows }: { rows: Stock[] }) {
+function ActiveDiscovery({
+  rows,
+  watchedCodes,
+}: {
+  rows: Stock[];
+  watchedCodes: Set<string>;
+}) {
   const GAP = 1.5; // 美股领先 A股 至少 1.5 个点才算预期差
   const map = new Map(rows.map((r) => [r.code, r]));
 
@@ -748,20 +777,31 @@ function ActiveDiscovery({ rows }: { rows: Stock[] }) {
             对应 A 股还没跟上的标的:
           </div>
           <div className="flex flex-wrap gap-2">
-            {lagging.map((p) => (
-              <Link
-                key={p.code}
-                href={`/stock/${p.code}`}
-                className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-sm hover:border-amber-400"
-              >
-                <span className="font-medium text-gray-800">{p.name}</span>
-                <span
-                  className={`font-mono text-xs tabular-nums ${changeClass(p.change)}`}
+            {lagging.map((p) => {
+              const watched = watchedCodes.has(p.code);
+              return (
+                <Link
+                  key={p.code}
+                  href={`/stock/${p.code}`}
+                  title={watched ? "你的自选" : undefined}
+                  className={`flex items-center gap-1.5 rounded-lg border bg-amber-50 px-2 py-1 text-sm ${
+                    watched
+                      ? "border-amber-400 ring-1 ring-amber-300 hover:border-amber-500"
+                      : "border-amber-200 hover:border-amber-400"
+                  }`}
                 >
-                  {fmtChange(p.change)}
-                </span>
-              </Link>
-            ))}
+                  <span className="font-medium text-gray-800">
+                    {watched && <span className="text-amber-500">★</span>}
+                    {p.name}
+                  </span>
+                  <span
+                    className={`font-mono text-xs tabular-nums ${changeClass(p.change)}`}
+                  >
+                    {fmtChange(p.change)}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       ))}

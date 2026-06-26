@@ -87,7 +87,7 @@ export default async function Home() {
 
         {stale && (
           <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
-            今日简报尚未更新(每个交易日早盘前生成),以下为最近一期 · {shownDate}。
+            今日简报尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · {shownDate}。
           </div>
         )}
 
