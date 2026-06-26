@@ -20,6 +20,7 @@ export function AuthModal({
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
 
   if (!isOpen) return null;
 
@@ -74,6 +75,7 @@ export function AuthModal({
   }
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={onClose}
@@ -147,6 +149,16 @@ export function AuthModal({
             </div>
           </div>
 
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-xs text-gray-500 hover:text-gray-800"
+            >
+              忘记密码?
+            </button>
+          </div>
+
           <label className="flex items-start gap-2 text-xs text-gray-600">
             <input
               type="checkbox"
@@ -171,6 +183,108 @@ export function AuthModal({
             {loading ? "处理中…" : "免费开始 / 登录"}
           </button>
         </form>
+      </div>
+    </div>
+    {showForgot && (
+      <ForgotPasswordModal
+        defaultEmail={email}
+        onClose={() => setShowForgot(false)}
+      />
+    )}
+    </>
+  );
+}
+
+function ForgotPasswordModal({
+  defaultEmail,
+  onClose,
+}: {
+  defaultEmail: string;
+  onClose: () => void;
+}) {
+  const [email, setEmail] = useState(defaultEmail);
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    setError("");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("请输入有效的邮箱地址");
+    setLoading(true);
+    try {
+      await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setSent(true);
+    } catch {
+      setError("发送失败,请稍后重试");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
+          aria-label="关闭"
+        >
+          ✕
+        </button>
+        <h2 className="text-xl font-bold text-gray-900">忘记密码</h2>
+
+        {sent ? (
+          <div className="mt-4 text-sm text-gray-700">
+            <p>如果该邮箱已注册,重置链接已发送,请查收邮箱(15 分钟内有效)。</p>
+            <button
+              onClick={onClose}
+              className="mt-4 w-full rounded-lg bg-gray-900 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              知道了
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-gray-500">
+              请输入您的账号邮箱,我们将向您发送重置密码的链接。
+            </p>
+            <label className="mt-4 block text-sm font-medium text-gray-900">邮箱地址</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@example.com"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+            />
+            <p className="mt-1 text-xs text-gray-400">我们将向此邮箱发送重置密码的链接</p>
+            {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={onClose}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={submit}
+                disabled={loading}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-60"
+              >
+                {loading ? "发送中…" : "发送重置链接"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
