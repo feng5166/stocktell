@@ -150,6 +150,7 @@ export async function explainMove(
   } else {
     return EMPTY; // 默认关:既没检索也没显式开启,不打模型
   }
-  cache.set(key, out);
+  // 只缓存"成功拿到 reason"的结果;空结果可能源于偶发超时/失败,不缓存以便下次重试。
+  if (out.reason) cache.set(key, out);
   return out;
 }
