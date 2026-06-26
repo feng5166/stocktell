@@ -2,10 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { STOCK_MAP, type Position } from "@/data/stocks";
 import { fetchQuotes } from "@/lib/quotes";
+import { listBriefing } from "@/lib/briefings";
 
 export const dynamic = "force-dynamic";
 
 const CHAIN: Position[] = ["上游", "中游", "下游"];
+
+function todayISO(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 export default async function StockDetail({
   params,
@@ -19,6 +29,13 @@ export default async function StockDetail({
   const q = (await fetchQuotes([s.code])).quotes[s.code];
   const price = q?.price ?? s.price;
   const change = q?.change ?? s.change;
+
+  // 今天的简报里是否提到这只(真实"今日有新消息")
+  const todayNews = (
+    await listBriefing({ date: todayISO(), status: "published" }).catch(() => [])
+  ).filter(
+    (it) => it.triggerCode === s.code || it.beneficiaries.some((b) => b.code === s.code)
+  );
 
   const usPeers = s.relations.filter((r) => STOCK_MAP[r]?.market === "美股");
   const aPeers = s.relations.filter((r) => STOCK_MAP[r]?.market === "A股");
@@ -118,10 +135,12 @@ export default async function StockDetail({
 
         <Section title="最近发生了什么">
           <ul className="space-y-1.5 text-sm text-gray-700">
+            {todayNews.map((it) => (
+              <li key={it.id} className="text-rose-600">
+                • 今日简报:{it.title}
+              </li>
+            ))}
             <li>• {s.observation}</li>
-            {s.status === "今日有新消息" && (
-              <li className="text-rose-600">• 今日有新消息,关注盘面反应</li>
-            )}
           </ul>
         </Section>
 

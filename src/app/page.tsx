@@ -145,12 +145,12 @@ function LockedCard({ item }: { item: BriefingItem }) {
         </div>
         <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
         <p className="mt-3 text-sm text-gray-500">
-          订阅后查看完整分析与受益标的……
+          登录后查看完整分析与受益标的……
         </p>
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <button className="rounded-full bg-gray-900 px-4 py-1.5 text-xs font-medium text-white shadow hover:bg-gray-700">
-          🔒 订阅解锁全部简报
+          🔓 登录解锁全部简报
         </button>
       </div>
     </article>

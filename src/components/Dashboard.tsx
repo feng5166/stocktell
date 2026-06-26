@@ -56,6 +56,15 @@ export default function Dashboard() {
 
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [live, setLive] = useState(false);
+  const [newsCodes, setNewsCodes] = useState<Set<string>>(new Set());
+
+  // 今日简报涉及的标的 = 真实"今日有新消息"
+  useEffect(() => {
+    fetch("/api/briefing/news", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setNewsCodes(new Set<string>(d.codes ?? [])))
+      .catch(() => {});
+  }, []);
 
   // 轮询真实行情;拿不到则继续用模拟数据
   useEffect(() => {
@@ -245,7 +254,9 @@ export default function Dashboard() {
         </div>
 
         {/* 主内容 */}
-        {tab === "股票列表" && <StockTable rows={filtered} />}
+        {tab === "股票列表" && (
+          <StockTable rows={filtered} newsCodes={newsCodes} />
+        )}
         {tab === "关联图谱" && <RelationMap rows={filtered} />}
         {tab === "特征矩阵" && <FeatureMatrix rows={filtered} />}
         {tab === "主动发现" && <ActiveDiscovery rows={rows} />}
@@ -322,7 +333,13 @@ function Chip({
 }
 
 /* ============ 股票列表(行可展开看「散户怎么想」) ============ */
-function StockTable({ rows }: { rows: Stock[] }) {
+function StockTable({
+  rows,
+  newsCodes,
+}: {
+  rows: Stock[];
+  newsCodes: Set<string>;
+}) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (code: string) =>
     setOpen((prev) => {
@@ -357,6 +374,7 @@ function StockTable({ rows }: { rows: Stock[] }) {
                 <ReactFragmentRow
                   key={s.code}
                   s={s}
+                  hasNews={newsCodes.has(s.code)}
                   isOpen={isOpen}
                   toggle={() => toggle(s.code)}
                 />
@@ -381,13 +399,21 @@ function StockTable({ rows }: { rows: Stock[] }) {
 
 function ReactFragmentRow({
   s,
+  hasNews,
   isOpen,
   toggle,
 }: {
   s: Stock;
+  hasNews: boolean;
   isOpen: boolean;
   toggle: () => void;
 }) {
+  // 真实状态:今天进了简报才显示"今日有新消息";否则把种子里的假标降级
+  const status: string = hasNews
+    ? "今日有新消息"
+    : s.status === "今日有新消息"
+    ? "行情覆盖"
+    : s.status;
   return (
     <>
       <tr
@@ -435,10 +461,10 @@ function ReactFragmentRow({
         <Td>
           <span
             className={`inline-flex whitespace-nowrap rounded px-1.5 py-0.5 text-xs ring-1 ring-inset ${
-              STATUS_BADGE[s.status] ?? STATUS_BADGE["长期观察"]
+              STATUS_BADGE[status] ?? STATUS_BADGE["长期观察"]
             }`}
           >
-            {s.status}
+            {status}
           </span>
         </Td>
         <Td className="whitespace-nowrap text-xs text-gray-400">
