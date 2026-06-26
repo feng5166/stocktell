@@ -1,0 +1,17 @@
+name: Daily Feishu Briefing Push
+
+# 每天北京时间 07:10(= UTC 23:10)把当天简报推到飞书。
+# 需在 GitHub 仓库 Settings → Secrets and variables → Actions 添加 CRON_SECRET(与 Vercel 同值)。
+on:
+  schedule:
+    - cron: "10 23 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Push today's briefing to Feishu
+        run: |
+          curl -sS -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
