@@ -49,7 +49,7 @@ export default function AdminBriefing() {
       const d = await r.json();
       if (d.ok) {
         setMsg(
-          `生成 ${d.count} 条草稿(引擎:${d.engine === "claude" ? "Claude" : "模板"})`
+          `生成 ${d.count} 条草稿(引擎:${d.engine === "llm" ? "AI模型" : "模板"})`
         );
         await load();
       } else {
