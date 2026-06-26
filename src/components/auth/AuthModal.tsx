@@ -6,13 +6,7 @@ import { useRouter } from "next/navigation";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
 
-export function AuthModal({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export function AuthModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,8 +15,6 @@ export function AuthModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showForgot, setShowForgot] = useState(false);
-
-  if (!isOpen) return null;
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();

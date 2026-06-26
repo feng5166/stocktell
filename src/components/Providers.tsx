@@ -21,7 +21,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         value={{ open: () => setIsOpen(true), close: () => setIsOpen(false) }}
       >
         {children}
-        <AuthModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+        {isOpen && <AuthModal onClose={() => setIsOpen(false)} />}
       </AuthModalCtx.Provider>
     </SessionProvider>
   );
