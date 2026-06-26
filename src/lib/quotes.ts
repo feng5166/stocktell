@@ -39,32 +39,45 @@ function parseSina(text: string, codeBySina: Record<string, string>) {
   return out;
 }
 
+// 新浪单次请求代码数有限,分批拉取再合并
+const CHUNK = 50;
+
+async function fetchChunk(codes: string[]): Promise<Record<string, Quote>> {
+  const codeBySina: Record<string, string> = {};
+  const sinaList = codes.map((code) => {
+    const sym = sinaSymbol(STOCK_MAP[code]);
+    codeBySina[sym] = code;
+    return sym;
+  });
+  const resp = await fetch(`https://hq.sinajs.cn/list=${sinaList.join(",")}`, {
+    headers: {
+      Referer: "https://finance.sina.com.cn",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+    },
+    cache: "no-store",
+  });
+  if (!resp.ok) throw new Error(`sina ${resp.status}`);
+  const buf = await resp.arrayBuffer();
+  const text = new TextDecoder("gbk").decode(buf);
+  return parseSina(text, codeBySina);
+}
+
 export async function fetchQuotes(
   codes: string[]
 ): Promise<{ quotes: Record<string, Quote>; live: boolean }> {
   const valid = codes.filter((c) => STOCK_MAP[c]);
   if (valid.length === 0) return { quotes: {}, live: false };
 
-  const codeBySina: Record<string, string> = {};
-  const sinaList = valid.map((code) => {
-    const sym = sinaSymbol(STOCK_MAP[code]);
-    codeBySina[sym] = code;
-    return sym;
-  });
-
+  const chunks: string[][] = [];
+  for (let i = 0; i < valid.length; i += CHUNK) {
+    chunks.push(valid.slice(i, i + CHUNK));
+  }
   try {
-    const resp = await fetch(`https://hq.sinajs.cn/list=${sinaList.join(",")}`, {
-      headers: {
-        Referer: "https://finance.sina.com.cn",
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-      },
-      cache: "no-store",
-    });
-    if (!resp.ok) throw new Error(`sina ${resp.status}`);
-    const buf = await resp.arrayBuffer();
-    const text = new TextDecoder("gbk").decode(buf);
-    const quotes = parseSina(text, codeBySina);
+    const results = await Promise.all(
+      chunks.map((c) => fetchChunk(c).catch(() => ({} as Record<string, Quote>)))
+    );
+    const quotes: Record<string, Quote> = Object.assign({}, ...results);
     return { quotes, live: Object.keys(quotes).length > 0 };
   } catch {
     return { quotes: {}, live: false };
