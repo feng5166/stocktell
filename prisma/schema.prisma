@@ -67,10 +67,12 @@ model BriefingOutcome {
   expected    String // "涨" / "跌",来自触发美股方向
   change      Float? // 评估日(简报当日收盘)A股实际涨跌%
   hit         Boolean? // 是否跟上;null = 当时取不到行情
+  isBacktest  Boolean  @default(false) @map("is_backtest") // true=历史回测(明牌),非实盘喊单
   evaluatedAt DateTime @default(now()) @map("evaluated_at")
 
   @@unique([briefingId, code])
   @@index([date])
+  @@index([isBacktest])
   @@map("briefing_outcomes")
 }
 

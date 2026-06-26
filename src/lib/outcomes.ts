@@ -18,6 +18,7 @@ export interface OutcomeRow {
   expected: string; // "涨" / "跌"
   change: number | null; // 评估日 A 股实际涨跌%
   hit: boolean | null; // null = 当时取不到行情
+  isBacktest: boolean; // true=历史回测(明牌)
   evaluatedAt: string;
 }
 
@@ -34,6 +35,7 @@ function fromRow(r: any): OutcomeRow {
     expected: r.expected,
     change: r.change ?? null,
     hit: r.hit ?? null,
+    isBacktest: r.isBacktest ?? false,
     evaluatedAt:
       r.evaluatedAt instanceof Date ? r.evaluatedAt.toISOString() : r.evaluatedAt,
   };
@@ -83,6 +85,7 @@ export async function recordOutcomes(date: string): Promise<{
           expected,
           change,
           hit,
+          isBacktest: false,
         },
         update: { change, hit, evaluatedAt: new Date() },
       });
@@ -92,11 +95,15 @@ export async function recordOutcomes(date: string): Promise<{
   return { ok: true, evaluated };
 }
 
-// 查账:近若干条结果明细(按日期倒序)
-export async function listOutcomes(take = 300): Promise<OutcomeRow[]> {
+// 查账:近若干条结果明细(按日期倒序)。backtest 省略=全部;true=仅回测;false=仅实盘。
+export async function listOutcomes(
+  take = 300,
+  backtest?: boolean
+): Promise<OutcomeRow[]> {
   const db = getPrisma();
   if (!db) return [];
   const rows = await db.briefingOutcome.findMany({
+    where: backtest === undefined ? undefined : { isBacktest: backtest },
     orderBy: [{ date: "desc" }, { impact: "asc" }],
     take,
   });

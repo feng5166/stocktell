@@ -35,6 +35,10 @@ const T_OUTCOME = `CREATE TABLE IF NOT EXISTS "briefing_outcomes" (
 const IDX_OUTCOME_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "briefing_outcomes_briefing_id_code_key" ON "briefing_outcomes" ("briefing_id", "code")`;
 const IDX_OUTCOME_DATE = `CREATE INDEX IF NOT EXISTS "briefing_outcomes_date_idx" ON "briefing_outcomes" ("date")`;
 
+// 回测明牌列(幂等)
+const ALTER_OUTCOME_BACKTEST = `ALTER TABLE "briefing_outcomes" ADD COLUMN IF NOT EXISTS "is_backtest" boolean NOT NULL DEFAULT false`;
+const IDX_OUTCOME_BACKTEST = `CREATE INDEX IF NOT EXISTS "briefing_outcomes_is_backtest_idx" ON "briefing_outcomes" ("is_backtest")`;
+
 // 自选/持仓表(幂等)
 const T_WATCHLIST = `CREATE TABLE IF NOT EXISTS "watchlist" (
   "id" text NOT NULL,
@@ -61,6 +65,8 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(T_OUTCOME);
     await db.$executeRawUnsafe(IDX_OUTCOME_UNIQUE);
     await db.$executeRawUnsafe(IDX_OUTCOME_DATE);
+    await db.$executeRawUnsafe(ALTER_OUTCOME_BACKTEST);
+    await db.$executeRawUnsafe(IDX_OUTCOME_BACKTEST);
     await db.$executeRawUnsafe(T_WATCHLIST);
     await db.$executeRawUnsafe(IDX_WATCHLIST_UNIQUE);
     await db.$executeRawUnsafe(IDX_WATCHLIST_USER);
