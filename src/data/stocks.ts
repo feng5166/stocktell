@@ -185,6 +185,33 @@ export const STOCK_MAP: Record<string, Stock> = Object.fromEntries(
   STOCKS.map((s) => [s.code, s])
 );
 
+export const STOCK_BY_NAME: Record<string, Stock> = Object.fromEntries(
+  STOCKS.map((s) => [s.name, s])
+);
+
+// relations 里既可能是代码(A股引用美股 ticker),也可能是名称(美股引用A股名)
+export function resolvePeer(token: string): Stock | undefined {
+  return STOCK_MAP[token] ?? STOCK_BY_NAME[token];
+}
+
+// 一只美股对应的 A 股标的(双向取并集)
+export function aSharePeers(us: Stock): Stock[] {
+  const out = new Map<string, Stock>();
+  us.relations.forEach((t) => {
+    const p = resolvePeer(t);
+    if (p && p.market === "A股") out.set(p.code, p);
+  });
+  STOCKS.forEach((s) => {
+    if (
+      s.market === "A股" &&
+      (s.relations.includes(us.code) || s.relations.includes(us.name))
+    ) {
+      out.set(s.code, s);
+    }
+  });
+  return Array.from(out.values());
+}
+
 // 转新浪行情代码:A股 sh/sz/bj 前缀,美股 gb_<ticker>
 export function sinaSymbol(s: Pick<Stock, "code" | "market">): string {
   if (s.market === "美股") return `gb_${s.code.toLowerCase()}`;

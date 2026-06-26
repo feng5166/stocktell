@@ -27,7 +27,7 @@ export default function StockDetail({
           <Link href="/" className="text-lg font-bold tracking-tight">
             StockTell
           </Link>
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">
+          <Link href="/stocks" className="text-sm text-gray-500 hover:text-gray-900">
             ← 返回股票池
           </Link>
         </div>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   STOCKS,
-  STOCK_MAP,
+  aSharePeers,
   SECTORS,
   RELATION_TYPES,
   type Market,
@@ -125,9 +125,9 @@ export default function Dashboard() {
             </span>
           </div>
           <nav className="flex items-center gap-4 text-sm text-gray-500">
-            <span className="hidden cursor-pointer hover:text-gray-900 sm:inline">
+            <Link href="/" className="hidden hover:text-gray-900 sm:inline">
               今日简报
-            </span>
+            </Link>
             <span className="cursor-default font-medium text-gray-900">
               股票池
             </span>
@@ -496,22 +496,12 @@ function Td({
 /* ============ 关联图谱:美股 → A股 映射 ============ */
 function RelationMap({ rows }: { rows: Stock[] }) {
   const codes = new Set(rows.map((r) => r.code));
-  const anchors = STOCKS.filter((s) => s.market === "美股").map((us) => {
-    // 该美股关联的 A 股(双向取并集)
-    const peers = new Set<string>();
-    us.relations.forEach((n) => {
-      if (STOCK_MAP[n]?.market === "A股") peers.add(n);
-    });
-    STOCKS.forEach((s) => {
-      if (s.market === "A股" && s.relations.includes(us.name)) peers.add(s.name);
-    });
-    return {
-      us,
-      peers: Array.from(peers)
-        .map((n) => STOCK_MAP[n])
-        .filter((p): p is Stock => Boolean(p)),
-    };
-  });
+  const byCode = new Map(rows.map((r) => [r.code, r]));
+  const live = (s: Stock) => byCode.get(s.code) ?? s;
+  const anchors = STOCKS.filter((s) => s.market === "美股").map((us) => ({
+    us: live(us),
+    peers: aSharePeers(us).map(live),
+  }));
   const visible = anchors.filter(
     (a) => codes.has(a.us.code) || a.peers.some((p) => codes.has(p.code))
   );
@@ -645,17 +635,7 @@ function ActiveDiscovery({ rows }: { rows: Stock[] }) {
   const signals = rows
     .filter((s) => s.market === "美股" && s.change > 1)
     .map((us) => {
-      const peers = new Set<string>();
-      us.relations.forEach((n) => {
-        if (STOCK_MAP[n]?.market === "A股") peers.add(n);
-      });
-      rows.forEach((s) => {
-        if (s.market === "A股" && s.relations.includes(us.name))
-          peers.add(s.name);
-      });
-      const lagging = Array.from(peers)
-        .map((n) => STOCK_MAP[n])
-        .filter((p): p is Stock => Boolean(p))
+      const lagging = aSharePeers(us)
         .map((p) => map.get(p.code) ?? p)
         .filter((p) => us.change - p.change >= GAP);
       return { us, lagging };
