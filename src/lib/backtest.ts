@@ -124,31 +124,27 @@ export async function computeBacktestRows(days = 20): Promise<BacktestCompute> {
   return { ok: true, triggers: triggers.length, usCovered, aCovered, evaluatedDates: aDates.length, rows };
 }
 
-// 只写库(在 Vercel 上跑,DB 可达)。幂等:(briefingId, code) 唯一,upsert。
+// 只写库(在 Vercel 上跑,DB 可达)。批量插入,(briefingId, code) 唯一,skipDuplicates 保证可重复跑。
+// 用 createMany 而非逐条 upsert:465 条逐条往返 Neon 会超 60s 函数上限,批量插入一条 SQL 搞定。
 export async function ingestRows(rows: BacktestRow[]): Promise<number> {
   const db = getPrisma();
-  if (!db) return 0;
-  let n = 0;
-  for (const r of rows) {
-    await db.briefingOutcome.upsert({
-      where: { briefingId_code: { briefingId: r.briefingId, code: r.code } },
-      create: {
-        briefingId: r.briefingId,
-        date: r.date,
-        title: r.title,
-        impact: r.impact,
-        code: r.code,
-        name: r.name,
-        expected: r.expected,
-        change: r.change,
-        hit: r.hit,
-        isBacktest: true,
-      },
-      update: { change: r.change, hit: r.hit, isBacktest: true, evaluatedAt: new Date() },
-    });
-    n++;
-  }
-  return n;
+  if (!db || rows.length === 0) return 0;
+  const res = await db.briefingOutcome.createMany({
+    data: rows.map((r) => ({
+      briefingId: r.briefingId,
+      date: r.date,
+      title: r.title,
+      impact: r.impact,
+      code: r.code,
+      name: r.name,
+      expected: r.expected,
+      change: r.change,
+      hit: r.hit,
+      isBacktest: true,
+    })),
+    skipDuplicates: true,
+  });
+  return res.count;
 }
 
 export interface BacktestResult extends Omit<BacktestCompute, "rows"> {
