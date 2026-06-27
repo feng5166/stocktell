@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { Resend } from "resend";
 import { getPrisma } from "@/lib/prisma";
+import { sendMail } from "@/lib/mailer";
 
 const TOKEN_EXPIRY_MINUTES = 15;
 
@@ -53,19 +53,10 @@ export async function resetPassword(
   }
 }
 
-// 用 Resend 发重置邮件;未配 RESEND_API_KEY 时降级:打印链接(开发/未配置)。
+// 发重置邮件,统一走 sendMail;发信失败(返回 false)时抛错(保持原有失败语义)。
 export async function sendResetEmail(email: string, resetUrl: string): Promise<void> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log("=== 密码重置链接(未配置 RESEND_API_KEY,降级输出)===");
-    console.log(`收件人: ${email}`);
-    console.log(`链接: ${resetUrl}`);
-    return;
-  }
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const from = process.env.EMAIL_FROM || "StockTell <onboarding@resend.dev>";
-  const { error } = await resend.emails.send({
-    from,
-    to: [email],
+  const ok = await sendMail({
+    to: email,
     subject: "重置您的 StockTell 密码",
     text: `点击以下链接重置密码(15 分钟内有效):\n${resetUrl}\n\n如果不是您本人操作,请忽略此邮件。`,
     html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
@@ -75,8 +66,7 @@ export async function sendResetEmail(email: string, resetUrl: string): Promise<v
       <p style="color:#888;font-size:12px">如果不是您本人操作,请忽略此邮件。</p>
     </div>`,
   });
-  if (error) {
-    console.error("[reset] resend error:", error);
+  if (!ok) {
     throw new Error("邮件发送失败");
   }
 }

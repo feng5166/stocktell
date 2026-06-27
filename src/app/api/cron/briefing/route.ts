@@ -1,36 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateDrafts, todayISO } from "@/lib/generate";
+import { generateDrafts } from "@/lib/generate";
 import { insertDrafts, listBriefing } from "@/lib/briefings";
 import { runPreOpenDigest } from "@/lib/digest";
+import { todayISO, beijingWeekday } from "@/lib/date";
+import { isCronAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // LLM 生成可能要几十秒
 
-// Asia/Shanghai 星期(0=周日 .. 6=周六)
-function beijingWeekday(): number {
-  const s = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Shanghai",
-    weekday: "short",
-  }).format(new Date());
-  const map: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
-  return map[s] ?? -1;
-}
-
 export async function GET(req: NextRequest) {
   // 鉴权:Vercel cron 会带 Authorization: Bearer ${CRON_SECRET}
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    }
+  if (!isCronAuthorized(req)) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
   // 跳过周末(A股不开盘;节假日日历放二期)

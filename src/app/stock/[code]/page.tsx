@@ -6,19 +6,11 @@ import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
 import { Fundamentals } from "@/components/Fundamentals";
+import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
 const CHAIN: Position[] = ["上游", "中游", "下游"];
-
-function todayISO(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 export default async function StockDetail({
   params,

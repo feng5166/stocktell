@@ -7,17 +7,9 @@ import { useEffect, useState } from "react";
 import type { BriefingItem } from "@/lib/briefings";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { useWatchlist } from "@/components/useWatchlist";
+import { IMPACT_META } from "@/lib/impact";
 
 const FREE_LIMIT = 3;
-
-const IMPACT_META: Record<
-  BriefingItem["impact"],
-  { dot: string; label: string; ring: string }
-> = {
-  高: { dot: "🔴", label: "高影响", ring: "border-rose-200" },
-  中: { dot: "🟡", label: "中影响", ring: "border-amber-200" },
-  低: { dot: "🟢", label: "低影响", ring: "border-emerald-200" },
-};
 
 export function BriefingFeed({
   items,
@@ -122,7 +114,7 @@ function BriefingCard({
       }`}
     >
       <div className="mb-1 flex items-center gap-2 text-xs font-medium">
-        <span>{meta.dot}</span>
+        <span>{meta.emoji}</span>
         <span className="text-gray-500">{meta.label}</span>
         {mine && (
           <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-700">
@@ -228,7 +220,7 @@ function LockedCard({ item }: { item: BriefingItem }) {
     <article className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4">
       <div className="pointer-events-none select-none blur-[5px]">
         <div className="mb-1 flex items-center gap-2 text-xs font-medium">
-          <span>{meta.dot}</span>
+          <span>{meta.emoji}</span>
           <span className="text-gray-500">{meta.label}</span>
         </div>
         <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>

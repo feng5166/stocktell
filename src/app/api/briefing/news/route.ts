@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
 import { listBriefing } from "@/lib/briefings";
+import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
-
-function todayISO(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 // 今天已发布简报里涉及的标的(触发美股 + 受益A股)→ 真实"今日有新消息"信号
 export async function GET() {

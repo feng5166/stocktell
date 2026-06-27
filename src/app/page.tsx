@@ -9,17 +9,9 @@ import {
   storageBackend,
   type BriefingItem,
 } from "@/lib/briefings";
+import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
-
-function todayISO(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 export default async function Home() {
   const session = await getServerSession(authOptions);

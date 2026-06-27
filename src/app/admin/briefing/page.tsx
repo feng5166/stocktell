@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { IMPACT_META } from "@/lib/impact";
 
 type Impact = "高" | "中" | "低";
 interface Beneficiary {
@@ -19,12 +20,6 @@ interface Item {
   status: "draft" | "published";
   createdAt: string;
 }
-
-const IMPACT_DOT: Record<Impact, string> = {
-  高: "bg-rose-500",
-  中: "bg-amber-500",
-  低: "bg-emerald-500",
-};
 
 export default function AdminBriefing() {
   const [items, setItems] = useState<Item[]>([]);
@@ -132,7 +127,7 @@ export default function AdminBriefing() {
               className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3"
             >
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${IMPACT_DOT[it.impact]}`}
+                className={`h-2 w-2 shrink-0 rounded-full ${IMPACT_META[it.impact].dotClass}`}
               />
               <span className="text-sm font-medium">{it.title}</span>
               <span className="text-xs text-gray-400">{it.date}</span>

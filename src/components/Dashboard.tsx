@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
+import { changeClass, fmtChange } from "@/lib/format";
 import {
   STOCKS,
   aSharePeers,
@@ -19,17 +20,6 @@ type Tab = (typeof TABS)[number];
 
 const MARKETS: ("全部" | Market)[] = ["全部", "美股", "A股"];
 const POSITIONS: ("全部" | Position)[] = ["全部", "上游", "中游", "下游"];
-
-// A股惯例:红涨绿跌
-function changeClass(change: number) {
-  if (change > 0) return "text-rose-600";
-  if (change < 0) return "text-emerald-600";
-  return "text-gray-400";
-}
-function fmtChange(change: number) {
-  const sign = change > 0 ? "+" : "";
-  return `${sign}${change.toFixed(2)}%`;
-}
 
 // 行情未连接(live=false)时,绝不显示种子里编造的价格/涨跌,一律给"—"。
 // 散户宁可看到"休市/未连接",也不该被一个看似真实的假数字误导。

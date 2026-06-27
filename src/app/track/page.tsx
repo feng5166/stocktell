@@ -9,21 +9,11 @@ import {
   type OutcomeRow,
   type HitStats,
 } from "@/lib/outcomes";
-import { storageBackend } from "@/lib/briefings";
+import { storageBackend, type Impact } from "@/lib/briefings";
+import { changeClass, fmtChange } from "@/lib/format";
+import { IMPACT_META } from "@/lib/impact";
 
 export const dynamic = "force-dynamic";
-
-// A股惯例:红涨绿跌
-function changeClass(v: number) {
-  if (v > 0) return "text-rose-600";
-  if (v < 0) return "text-emerald-600";
-  return "text-gray-400";
-}
-function fmtChange(v: number) {
-  return `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
-}
-
-const IMPACT_DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
 
 export default async function TrackPage() {
   const live = await listOutcomes(300, false).catch(() => []);
@@ -122,7 +112,7 @@ function Overview({
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
           {byImpact.map(({ impact, stats: s }) => (
             <span key={impact}>
-              {IMPACT_DOT[impact]} {impact}影响{" "}
+              {IMPACT_META[impact as Impact]?.emoji} {impact}影响{" "}
               {s.rate === null ? "—" : `${Math.round(s.rate * 100)}%`}{" "}
               <span className="text-gray-400">
                 ({s.hits}/{s.evaluated})
@@ -157,7 +147,7 @@ function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                   {r.date.slice(5)}
                 </Td>
                 <Td className="max-w-[220px] text-xs text-gray-700">
-                  <span className="mr-1">{IMPACT_DOT[r.impact] ?? ""}</span>
+                  <span className="mr-1">{IMPACT_META[r.impact as Impact]?.emoji ?? ""}</span>
                   {r.title}
                 </Td>
                 <Td className="whitespace-nowrap">

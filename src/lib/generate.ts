@@ -5,19 +5,9 @@ import { STOCKS, STOCK_MAP, aSharePeers } from "@/data/stocks";
 import { fetchQuotes, type Quote } from "@/lib/quotes";
 import { getLLM, LLM_MODEL } from "@/lib/llm";
 import type { Impact, NewBriefingItem } from "@/lib/briefings";
+import { todayISO } from "@/lib/date";
 
 const MOVER_THRESHOLD = 2; // 美股 |涨跌| ≥ 2% 视为异动
-
-export function todayISO(): string {
-  // Asia/Shanghai 日期
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return parts; // en-CA 给出 YYYY-MM-DD
-}
 
 interface Mover {
   code: string;
