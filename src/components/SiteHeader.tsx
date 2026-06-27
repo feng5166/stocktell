@@ -1,0 +1,55 @@
+// 共用站点头部:首页/股票池/战绩三个主页面统一用它,避免各自内联 header 漂移
+// (登录态、导航项、StockTell 链接以前就因为各写一份而对不齐)。
+// active 传当前页 label 高亮;wide 用于股票池的宽布局。详情页/后台 header 结构不同,各自保留。
+import Link from "next/link";
+import { AuthStatus } from "@/components/auth/AuthStatus";
+
+const NAV = [
+  { href: "/", label: "今日简报" },
+  { href: "/stocks", label: "股票池" },
+  { href: "/track", label: "战绩" },
+];
+
+export function SiteHeader({
+  active,
+  wide,
+}: {
+  active?: string;
+  wide?: boolean;
+}) {
+  return (
+    <header className="border-b border-gray-200 bg-white">
+      <div
+        className={`mx-auto flex ${
+          wide ? "max-w-7xl" : "max-w-3xl"
+        } items-center justify-between px-4 py-3 sm:px-6`}
+      >
+        <div className="flex items-center gap-2">
+          <Link href="/" className="text-lg font-bold tracking-tight">
+            StockTell
+          </Link>
+          <span className="hidden text-xs text-gray-400 sm:inline">
+            我不懂产业链,你告诉我怎么想
+          </span>
+        </div>
+        <nav className="flex items-center gap-4 text-sm text-gray-500">
+          {NAV.map((n) =>
+            n.label === active ? (
+              <span
+                key={n.href}
+                className="cursor-default font-medium text-gray-900"
+              >
+                {n.label}
+              </span>
+            ) : (
+              <Link key={n.href} href={n.href} className="hover:text-gray-900">
+                {n.label}
+              </Link>
+            )
+          )}
+          <AuthStatus />
+        </nav>
+      </div>
+    </header>
+  );
+}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { AuthStatus } from "@/components/auth/AuthStatus";
+import { SiteHeader } from "@/components/SiteHeader";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import {
   listBriefing,
@@ -52,30 +52,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="text-lg font-bold tracking-tight">
-              StockTell
-            </Link>
-            <span className="hidden text-xs text-gray-400 sm:inline">
-              我不懂产业链,你告诉我怎么想
-            </span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm text-gray-500">
-            <span className="cursor-default font-medium text-gray-900">
-              今日简报
-            </span>
-            <Link href="/stocks" className="hover:text-gray-900">
-              股票池
-            </Link>
-            <Link href="/track" className="hover:text-gray-900">
-              战绩
-            </Link>
-            <AuthStatus />
-          </nav>
-        </div>
-      </header>
+      <SiteHeader active="今日简报" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-5 flex items-end justify-between">

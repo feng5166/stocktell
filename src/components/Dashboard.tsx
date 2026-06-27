@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AuthStatus } from "@/components/auth/AuthStatus";
+import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
 import {
   STOCKS,
@@ -160,30 +160,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="text-lg font-bold tracking-tight">
-              StockTell
-            </Link>
-            <span className="hidden text-xs text-gray-400 sm:inline">
-              我不懂产业链,你告诉我怎么想
-            </span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm text-gray-500">
-            <Link href="/" className="hidden hover:text-gray-900 sm:inline">
-              今日简报
-            </Link>
-            <span className="cursor-default font-medium text-gray-900">
-              股票池
-            </span>
-            <Link href="/track" className="hover:text-gray-900">
-              战绩
-            </Link>
-            <AuthStatus />
-          </nav>
-        </div>
-      </header>
+      <SiteHeader active="股票池" wide />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">

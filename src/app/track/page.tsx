@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteHeader } from "@/components/SiteHeader";
 import {
   listOutcomes,
   summarize,
@@ -34,22 +35,7 @@ export default async function TrackPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            StockTell
-          </Link>
-          <nav className="flex items-center gap-4 text-sm text-gray-500">
-            <Link href="/" className="hover:text-gray-900">
-              今日简报
-            </Link>
-            <Link href="/stocks" className="hover:text-gray-900">
-              股票池
-            </Link>
-            <span className="cursor-default font-medium text-gray-900">战绩</span>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader active="战绩" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4">
