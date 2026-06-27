@@ -97,8 +97,9 @@ function recordSendResult(openId, r) {
 }
 
 // 单用户 getupdates 循环:保持 context_token 最新 + 处理「解绑」
-async function startWorker(openId) {
-  if (workers.has(openId)) return; // 已在跑
+function startWorker(openId) {
+  const existing = workers.get(openId);
+  if (existing) existing.stop = true; // 换绑/重连:让旧 worker 退出,由新 worker 接替
   const w = { stop: false };
   workers.set(openId, w);
   let buf = "";
@@ -136,7 +137,7 @@ async function startWorker(openId) {
       }
     }
     console.log(`[bridge] worker 退出 ${openId}`);
-    workers.delete(openId);
+    if (workers.get(openId) === w) workers.delete(openId); // 仅当还是自己才删,避免删掉接替的新 worker
   })();
 }
 
@@ -170,21 +171,22 @@ async function bindWatcher() {
         if (st.status === "expired") { p.state = "expired"; continue; }
         if (st.bot_token && st.ilink_user_id) {
           const openId = st.ilink_user_id;
+          const sameBot = creds[openId]?.botToken === st.bot_token;
           p.openId = openId;
           p.botToken = st.bot_token;
           p.state = "scanned";
-          // 换绑/重绑:若该微信已绑别的记录,覆盖为最新
-          const prev = workers.get(openId);
-          if (prev) prev.stop = true;
           creds[openId] = {
             accountId: p.accountId,
             botToken: st.bot_token,
             ilinkBotId: st.ilink_bot_id,
-            contextToken: creds[openId]?.contextToken || null,
+            // 新扫码=新 bot 会话,旧 context_token 已失效 → 置空,等用户发消息拿新的再激活
+            contextToken: sameBot ? creds[openId]?.contextToken || null : null,
             boundAt: creds[openId]?.boundAt || nowSec(),
+            failCount: 0,
+            lastError: null,
           };
           saveCreds();
-          console.log(`[bridge] 扫码确认 account=${p.accountId} openId=${openId}`);
+          console.log(`[bridge] 扫码确认 account=${p.accountId} openId=${openId} sameBot=${sameBot}`);
           startWorker(openId);
         }
       } else if (p.state === "scanned") {
