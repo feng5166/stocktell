@@ -246,3 +246,19 @@ export const DISCLAIMER =
 4. 收尾:#8、#9。
 
 每步:`npx tsc --noEmit` + `npm run build` 双过 → 按文件 `git add` → 提交。
+
+---
+
+## ✅ 执行记录(已全部完成)
+
+9 项全部落地,分两次提交:
+- `511a64e` — 新建 5 模块(`date`/`format`/`impact`/`api-guard`/`mailer`)+ 稳定文件迁移(#1 非 push、#3 非 push、#4、#5、#6、#7 password-reset)。
+- `a9c1361` — push 系列收尾(#1/#3 的 push 文件)+ #7 digest + #8 抽 `components/Table.tsx` + #9 新建 `lib/constants.ts`。
+
+**验证**:每批 `tsc --noEmit` 0 错 + `build` Compiled successfully;`process.env.CRON_SECRET`/`ADMIN_TOKEN` 现仅存于 `lib/api-guard.ts`。
+
+### 与本文档的实际偏差(留痕)
+- **#2 `feishu.ts`**:文档列其有 `beijingWeekday`,实际核查只有无关的 `beijingTime`,无 `beijingWeekday`,**未动**。`beijingWeekday` 的真实重复仅 `cron/briefing`、`cron/outcome` 两处,已迁移。
+- **#9 免责文案**:保守处理,仅统一 `page.tsx`、`Dashboard.tsx` 两处**与 `DISCLAIMER` 一字不差**的短免责。以下**刻意保留原样**(替换会改变可见文案):`stock/[code]/page.tsx`、`terms/page.tsx`、`privacy/page.tsx` 的长免责;`track/page.tsx`("历史表现复盘…"page 专属前缀);`digest.ts:30/44`(差"内容"二字、且 line30 少"历史规律"句);`push-feishu`/`push-weixin`/`generate.ts`/`data/stocks.ts` 里的免责**片段**(非完整句)。若日后接受统一措辞,可再收。
+- **#7 `sendResetEmail` 语义**:dev 环境未配 `RESEND_API_KEY` 时,由原"打印重置链接"改为"抛错"(经 `sendMail` 返回 `false`)。唯一调用方 `forgot-password` 已 try/catch 吞错,**API 契约与生产行为不变**,仅本地无 key 调试时不再打印 link。
+- **#8**:两处 `Th`/`Td` 逐字一致,已抽 `components/Table.tsx` 合并。
