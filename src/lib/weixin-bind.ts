@@ -63,6 +63,20 @@ export async function bindWeixinByToken(
   return { ok: true };
 }
 
+// 扫码绑定:桥扫码激活后直接按账号落库(无需绑定码)。最近扫码者胜:若该 openId 已绑别的账号,先解绑旧账号。
+export async function bindWeixinDirect(
+  userId: string,
+  openId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const db = getPrisma()!;
+  const conflict = await db.user.findUnique({ where: { weixinOpenId: openId } });
+  if (conflict && conflict.id !== userId) {
+    await db.user.update({ where: { id: conflict.id }, data: { weixinOpenId: null } });
+  }
+  await db.user.update({ where: { id: userId }, data: { weixinOpenId: openId } });
+  return { ok: true };
+}
+
 export async function unbindWeixin(userId: string): Promise<void> {
   const db = getPrisma()!;
   await db.user.update({
