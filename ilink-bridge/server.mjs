@@ -4,6 +4,7 @@
 // 运行:先 `npm run login` 拿 token.json,再 `npm start`。需常驻 + 公网可达(给 Vercel 调 /send)。
 import http from "http";
 import fs from "fs";
+import crypto from "crypto";
 
 const { bot_token, baseurl } = JSON.parse(fs.readFileSync("token.json", "utf8"));
 const BASE = baseurl || "https://ilinkai.weixin.qq.com";
@@ -28,12 +29,16 @@ function ilinkHeaders() {
 async function sendText(toUserId, text, contextToken) {
   const body = {
     msg: {
+      from_user_id: "",
       to_user_id: toUserId,
+      // 每条消息必须带全局唯一 client_id(服务端幂等去重键);缺了会被静默丢弃(只放过第一条)
+      client_id: `stocktell-weixin:${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
       message_type: 2,
       message_state: 2,
       context_token: contextToken || "",
       item_list: [{ type: 1, text_item: { text } }],
     },
+    base_info: { channel_version: "1.0.2" },
   };
   try {
     const r = await fetch(`${BASE}/ilink/bot/sendmessage`, {
@@ -41,8 +46,13 @@ async function sendText(toUserId, text, contextToken) {
       headers: ilinkHeaders(),
       body: JSON.stringify(body),
     });
-    const d = await r.json().catch(() => ({}));
-    return { ok: r.ok && d.ret === 0, ret: d.ret, http: r.status };
+    const raw = await r.text();
+    let d = {};
+    try { d = JSON.parse(raw); } catch {}
+    // iLink sendmessage 成功时返回 HTTP 200 + 空 {}(无 ret 字段);有 ret 时 0 才算成功
+    const ok = r.ok && (d.ret === undefined || d.ret === 0);
+    if (!ok) console.error(`[bridge] 发送失败 to=${toUserId} http=${r.status} body=${raw}`);
+    return { ok, ret: d.ret, http: r.status };
   } catch (e) {
     return { ok: false, error: String(e) };
   }
@@ -93,7 +103,10 @@ async function pollLoop() {
             token: text.toUpperCase(),
             openId: from,
           });
-          if (j.replyText) await sendText(from, j.replyText, ctoken);
+          console.log(`[bridge] bind 结果: ${JSON.stringify(j)}`);
+          const reply = j.replyText || (j.ok ? "绑定成功 ✅" : "绑定失败,请在 stocktell.me 重新获取绑定码后再发一次。");
+          const sr = await sendText(from, reply, ctoken);
+          console.log(`[bridge] bind 回复发送: ${JSON.stringify(sr)}`);
         } else if (text === "解绑" || /^unbind$/i.test(text)) {
           const j = await callStockTell("/api/push/unbind-weixin", { openId: from });
           await sendText(from, j.replyText || "已取消推送。", ctoken);

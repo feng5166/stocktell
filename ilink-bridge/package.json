@@ -8,8 +8,5 @@
     "login": "node login.mjs",
     "start": "node server.mjs"
   },
-  "dependencies": {
-    "qrcode-terminal": "^0.12.0"
-  },
   "engines": { "node": ">=18" }
 }
