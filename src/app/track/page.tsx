@@ -12,6 +12,7 @@ import {
 import { storageBackend, type Impact } from "@/lib/briefings";
 import { changeClass, fmtChange } from "@/lib/format";
 import { IMPACT_META } from "@/lib/impact";
+import { Th, Td } from "@/components/Table";
 
 export const dynamic = "force-dynamic";
 
@@ -206,26 +207,3 @@ function Stat({
   );
 }
 
-function Th({
-  children,
-  className = "",
-}: {
-  children?: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th className={`whitespace-nowrap px-3 py-2 font-medium ${className}`}>
-      {children}
-    </th>
-  );
-}
-
-function Td({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <td className={`px-3 py-2.5 align-top ${className}`}>{children}</td>;
-}

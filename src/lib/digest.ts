@@ -1,17 +1,9 @@
 // 盘前推送:给有自选、且今天有相关简报的登录用户,发一封"你的票今天有 N 条相关动态"。
 // 只在有相关动态时发(不骚扰"今天没事");跟密码重置一样,Resend 没配就降级打印,不报错。
-import { Resend } from "resend";
 import { getPrisma } from "@/lib/prisma";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
-
-function todayISO(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
+import { todayISO } from "@/lib/date";
+import { sendMail } from "@/lib/mailer";
 
 async function sendDigest(
   to: string,
@@ -44,24 +36,12 @@ async function sendDigest(
     <p style="color:#aaa;font-size:11px">以上为信息整理,不构成投资建议。历史规律不代表未来表现。</p>
   </div>`;
 
-  if (!process.env.RESEND_API_KEY) {
-    console.log(`[digest 降级] → ${to}:${items.length} 条相关动态`);
-    return false;
-  }
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const from = process.env.EMAIL_FROM || "StockTell <onboarding@resend.dev>";
-  const { error } = await resend.emails.send({
-    from,
-    to: [to],
+  return sendMail({
+    to,
     subject: `你的自选今天有 ${items.length} 条相关动态 · StockTell`,
     text,
     html,
   });
-  if (error) {
-    console.error("[digest] resend error:", error);
-    return false;
-  }
-  return true;
 }
 
 export async function runPreOpenDigest(): Promise<{

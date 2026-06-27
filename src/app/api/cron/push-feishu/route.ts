@@ -1,24 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listBriefing } from "@/lib/briefings";
 import { sendFeishu } from "@/lib/feishu";
+import { todayISO } from "@/lib/date";
+import { isCronAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
-
-function todayISO(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 const DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
 
 // 把当天已发布简报推一条到飞书(CRON_SECRET 鉴权;由 GitHub Actions 定时触发)
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const date = todayISO();

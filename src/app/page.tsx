@@ -10,6 +10,7 @@ import {
   type BriefingItem,
 } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
+import { DISCLAIMER } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export default async function Home() {
         )}
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          以上内容为信息整理,不构成投资建议。历史规律不代表未来表现。
+          {DISCLAIMER}
         </p>
         <p className="mt-2 text-center text-[11px] text-gray-300">
           存储:{storageBackend() === "postgres" ? "Vercel Postgres" : "本地(未连数据库)"} ·{" "}

@@ -2,24 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { listBriefing } from "@/lib/briefings";
 import { getPrisma } from "@/lib/prisma";
 import { sendPush, pushEnabled } from "@/lib/push";
+import { todayISO } from "@/lib/date";
+import { isCronAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function todayISO(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
 // 把当天已发布简报作为 Web Push 推给所有订阅者(CRON_SECRET 鉴权)
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   if (!pushEnabled()) return NextResponse.json({ ok: true, skipped: "push-disabled" });

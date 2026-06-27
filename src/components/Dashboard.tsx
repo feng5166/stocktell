@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
 import { changeClass, fmtChange } from "@/lib/format";
+import { Th, Td } from "@/components/Table";
+import { DISCLAIMER } from "@/lib/constants";
 import {
   STOCKS,
   aSharePeers,
@@ -296,7 +298,7 @@ export default function Dashboard() {
         )}
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          以上内容为信息整理,不构成投资建议。历史规律不代表未来表现。
+          {DISCLAIMER}
         </p>
       </main>
     </div>
@@ -572,30 +574,6 @@ function ReactFragmentRow({
       )}
     </>
   );
-}
-
-function Th({
-  children,
-  className = "",
-}: {
-  children?: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th className={`whitespace-nowrap px-3 py-2 font-medium ${className}`}>
-      {children}
-    </th>
-  );
-}
-
-function Td({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <td className={`px-3 py-2.5 align-top ${className}`}>{children}</td>;
 }
 
 /* ============ 关联图谱:美股 → A股 映射 ============ */
