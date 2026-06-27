@@ -15,3 +15,7 @@ jobs:
         run: |
           curl -sS -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+      - name: Push today's briefing to Web Push subscribers
+        run: |
+          curl -sS -X GET "https://stocktell.vercel.app/api/cron/push-web" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

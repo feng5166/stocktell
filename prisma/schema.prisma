@@ -13,6 +13,16 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("push_subscriptions")
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String?  @unique

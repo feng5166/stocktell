@@ -50,6 +50,18 @@ const T_WATCHLIST = `CREATE TABLE IF NOT EXISTS "watchlist" (
 const IDX_WATCHLIST_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "watchlist_user_id_code_key" ON "watchlist" ("user_id", "code")`;
 const IDX_WATCHLIST_USER = `CREATE INDEX IF NOT EXISTS "watchlist_user_id_idx" ON "watchlist" ("user_id")`;
 
+
+// 推送订阅表(幂等)
+const T_PUSH = `CREATE TABLE IF NOT EXISTS "push_subscriptions" (
+  "id" text NOT NULL,
+  "endpoint" text NOT NULL,
+  "p256dh" text NOT NULL,
+  "auth" text NOT NULL,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "push_subscriptions_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_PUSH = `CREATE UNIQUE INDEX IF NOT EXISTS "push_subscriptions_endpoint_key" ON "push_subscriptions" ("endpoint")`;
+
 export async function POST(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
@@ -70,6 +82,8 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(T_WATCHLIST);
     await db.$executeRawUnsafe(IDX_WATCHLIST_UNIQUE);
     await db.$executeRawUnsafe(IDX_WATCHLIST_USER);
+    await db.$executeRawUnsafe(T_PUSH);
+    await db.$executeRawUnsafe(IDX_PUSH);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,
