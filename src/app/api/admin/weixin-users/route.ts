@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
     lastMsgAt: number | null;
     active: boolean;
     windowSec: number | null;
+    failCount?: number;
+    lastError?: { ret: number | null; http: number | null; at: number } | null;
+    lastSendOkAt?: number | null;
   }
   const bridge = await clawbot<{ ok: boolean; users: BridgeUser[] }>("/users", null, "GET");
   const byOpen = new Map<string, BridgeUser>((bridge?.users || []).map((u) => [u.openId, u]));
@@ -45,6 +48,10 @@ export async function GET(req: NextRequest) {
       lastMsgAt: b?.lastMsgAt ?? null,
       windowSec: b?.windowSec ?? null,
       inWindow: b?.windowSec != null ? b.windowSec < 86400 : null,
+      failCount: b?.failCount ?? 0,
+      lastError: b?.lastError ?? null,
+      // 桥侧若已判定失效会自动清除,故出现在此列表=DB有记录但桥已无 → 视为可能失效
+      bridgeMissing: !b,
     };
   });
   return NextResponse.json({ ok: true, users: list });

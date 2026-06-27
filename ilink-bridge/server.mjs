@@ -18,6 +18,7 @@ const ILINK = "https://ilinkai.weixin.qq.com";
 const SECRET = process.env.BRIDGE_SECRET || "";
 const STOCKTELL = process.env.STOCKTELL_BASE || "https://www.stocktell.me";
 const PORT = process.env.PORT || 8787;
+const FAIL_THRESHOLD = Number(process.env.FAIL_THRESHOLD || 3); // 连续硬失败多少次判定失效
 
 // 持久化:每个微信用户的凭证
 const CREDS_FILE = "creds.json";
@@ -53,17 +54,46 @@ async function ilinkSend(botToken, toUserId, contextToken, text) {
     },
     base_info: { channel_version: "1.0.2" },
   };
-  const r = await fetch(`${ILINK}/ilink/bot/sendmessage`, {
-    method: "POST",
-    headers: ihdr(botToken),
-    body: JSON.stringify(body),
-  });
-  const raw = await r.text();
-  let d = {};
-  try { d = JSON.parse(raw); } catch {}
-  const ok = r.ok && (d.ret === undefined || d.ret === 0);
-  if (!ok) console.error(`[bridge] 发送失败 to=${toUserId} http=${r.status} body=${raw}`);
-  return { ok, ret: d.ret, http: r.status };
+  try {
+    const r = await fetch(`${ILINK}/ilink/bot/sendmessage`, {
+      method: "POST",
+      headers: ihdr(botToken),
+      body: JSON.stringify(body),
+    });
+    const raw = await r.text();
+    let d = {};
+    try { d = JSON.parse(raw); } catch {}
+    const ok = r.ok && (d.ret === undefined || d.ret === 0);
+    if (!ok) console.error(`[bridge] 发送失败 to=${toUserId} http=${r.status} body=${raw}`);
+    return { ok, ret: d.ret, http: r.status };
+  } catch (e) {
+    // 网络异常:不计为"硬失败"(避免把网络抖动当成用户解绑)
+    return { ok: false, error: String(e), http: 0 };
+  }
+}
+
+// 记录发送结果:硬失败累计到阈值 → 判定用户失效,清除 + 通知 StockTell。
+// 注意:成功与"静默丢弃(200+{})"在响应上无法区分,只有真错误码/HTTP错误才算硬失败。
+function recordSendResult(openId, r) {
+  const c = creds[openId];
+  if (!c) return;
+  if (r.ok) {
+    c.lastSendOkAt = nowSec();
+    if (c.failCount || c.lastError) { c.failCount = 0; c.lastError = null; }
+    saveCreds();
+    return;
+  }
+  const hardError = (r.http && r.http >= 400) || (typeof r.ret === "number" && r.ret !== 0);
+  if (!hardError) return; // 网络异常(http=0)等不计
+  c.failCount = (c.failCount || 0) + 1;
+  c.lastError = { ret: r.ret ?? null, http: r.http ?? null, at: nowSec() };
+  console.error(`[bridge] 硬失败 ${openId} #${c.failCount} ret=${r.ret} http=${r.http}`);
+  saveCreds();
+  if (c.failCount >= FAIL_THRESHOLD) {
+    console.warn(`[bridge] ${openId} 连续 ${c.failCount} 次硬失败 → 判定失效,清除并通知`);
+    stockTell("/api/push/unbind-weixin", { openId });
+    removeUser(openId);
+  }
 }
 
 // 单用户 getupdates 循环:保持 context_token 最新 + 处理「解绑」
@@ -87,6 +117,9 @@ async function startWorker(openId) {
           if (m.context_token && creds[openId]) {
             creds[openId].contextToken = m.context_token;
             creds[openId].lastMsgAt = nowSec();
+            // 用户又发消息 = 仍在订阅,清零失败计数
+            creds[openId].failCount = 0;
+            creds[openId].lastError = null;
             saveCreds();
           }
           const text = (m.item_list || []).map((i) => i.text_item?.text).filter(Boolean).join("").trim();
@@ -221,6 +254,7 @@ http.createServer(async (req, res) => {
     const c = creds[openId];
     if (!c) return json(res, 404, { ok: false, error: "not_bound" });
     const r = await ilinkSend(c.botToken, openId, c.contextToken, text);
+    recordSendResult(openId, r);
     return json(res, r.ok ? 200 : 502, r);
   }
   if (req.method === "POST" && url === "/unbind") {
@@ -232,6 +266,7 @@ http.createServer(async (req, res) => {
     const list = Object.entries(creds).map(([openId, c]) => ({
       openId, accountId: c.accountId, boundAt: c.boundAt, lastMsgAt: c.lastMsgAt || null,
       active: !!c.contextToken, windowSec: c.lastMsgAt ? nowSec() - c.lastMsgAt : null,
+      failCount: c.failCount || 0, lastError: c.lastError || null, lastSendOkAt: c.lastSendOkAt || null,
     }));
     return json(res, 200, { ok: true, users: list });
   }

@@ -11,6 +11,9 @@ interface WxUser {
   active: boolean | null;
   windowSec: number | null;
   inWindow: boolean | null;
+  failCount?: number;
+  lastError?: { ret: number | null; http: number | null; at: number } | null;
+  bridgeMissing?: boolean;
 }
 
 function fmtWindow(sec: number | null): string {
@@ -114,9 +117,17 @@ export default function AdminPushClient({ adminEmail }: { adminEmail: string }) 
                 <div className="truncate font-mono text-xs text-gray-400">{u.openId}</div>
               </div>
               <div className="text-right text-xs">
-                <span className={u.inWindow ? "text-emerald-600" : u.inWindow === false ? "text-red-500" : "text-gray-400"}>
-                  {u.active === false ? "未激活" : fmtWindow(u.windowSec)}
-                </span>
+                {u.bridgeMissing ? (
+                  <span className="text-red-500">已失效</span>
+                ) : u.failCount ? (
+                  <span className="text-orange-500" title={JSON.stringify(u.lastError)}>
+                    发送异常 ×{u.failCount}
+                  </span>
+                ) : (
+                  <span className={u.inWindow ? "text-emerald-600" : u.inWindow === false ? "text-red-500" : "text-gray-400"}>
+                    {u.active === false ? "未激活" : fmtWindow(u.windowSec)}
+                  </span>
+                )}
               </div>
             </label>
           ))}
