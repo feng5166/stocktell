@@ -69,6 +69,8 @@ export default function Dashboard() {
   const [query, setQuery] = useState("");
   const [onlyWatch, setOnlyWatch] = useState(false);
   const wl = useWatchlist();
+  // 统计卡点击后,股票列表按此视图收窄(all/live/up/down)
+  const [statView, setStatView] = useState<"all" | "live" | "up" | "down">("all");
 
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [live, setLive] = useState(false);
@@ -141,6 +143,21 @@ export default function Dashboard() {
     return { total: filtered.length, coverage, up, down };
   }, [filtered]);
 
+  // 股票列表实际展示行:在筛选结果上再叠加统计卡选的视图
+  const listRows = useMemo(() => {
+    if (statView === "live") return filtered.filter((s) => s.live);
+    if (statView === "up") return filtered.filter((s) => s.live && s.change > 0);
+    if (statView === "down")
+      return filtered.filter((s) => s.live && s.change < 0);
+    return filtered;
+  }, [filtered, statView]);
+
+  // 点统计卡:切到股票列表 + 设视图;再点同一个则取消回全部
+  const pickStat = (v: "all" | "live" | "up" | "down") => {
+    setStatView((cur) => (v !== "all" && cur === v ? "all" : v));
+    setTab("股票列表");
+  };
+
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
       <header className="border-b border-gray-200 bg-white">
@@ -208,10 +225,32 @@ export default function Dashboard() {
 
         {/* 统计面板 */}
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="当前标的" value={stats.total} />
-          <StatCard label="行情覆盖" value={stats.coverage} />
-          <StatCard label="上涨标的" value={stats.up} tone="up" />
-          <StatCard label="下跌标的" value={stats.down} tone="down" />
+          <StatCard
+            label="当前标的"
+            value={stats.total}
+            active={statView === "all"}
+            onClick={() => pickStat("all")}
+          />
+          <StatCard
+            label="行情覆盖"
+            value={stats.coverage}
+            active={statView === "live"}
+            onClick={() => pickStat("live")}
+          />
+          <StatCard
+            label="上涨标的"
+            value={stats.up}
+            tone="up"
+            active={statView === "up"}
+            onClick={() => pickStat("up")}
+          />
+          <StatCard
+            label="下跌标的"
+            value={stats.down}
+            tone="down"
+            active={statView === "down"}
+            onClick={() => pickStat("down")}
+          />
         </div>
 
         {/* 筛选区 */}
@@ -277,7 +316,7 @@ export default function Dashboard() {
 
         {/* 主内容 */}
         {tab === "股票列表" && (
-          <StockTable rows={filtered} newsCodes={newsCodes} wl={wl} />
+          <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
         )}
         {tab === "关联图谱" && (
           <RelationMap rows={filtered} watchedCodes={wl.codes} />
@@ -299,10 +338,14 @@ function StatCard({
   label,
   value,
   tone,
+  active,
+  onClick,
 }: {
   label: string;
   value: number;
   tone?: "up" | "down";
+  active?: boolean;
+  onClick?: () => void;
 }) {
   const color =
     tone === "up"
@@ -310,13 +353,28 @@ function StatCard({
       : tone === "down"
       ? "text-emerald-600"
       : "text-gray-900";
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-      <div className="text-xs text-gray-400">{label}</div>
+  const cls = `block w-full rounded-xl border bg-white px-4 py-3 text-left transition-colors ${
+    active
+      ? "border-gray-900 ring-1 ring-gray-900"
+      : "border-gray-200 hover:border-gray-400"
+  }`;
+  const inner = (
+    <>
+      <div className="flex items-center gap-1 text-xs text-gray-400">
+        {label}
+        {active && <span className="text-gray-900">·筛选中</span>}
+      </div>
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${color}`}>
         {value}
       </div>
-    </div>
+    </>
+  );
+  if (!onClick)
+    return <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">{inner}</div>;
+  return (
+    <button type="button" onClick={onClick} className={cls}>
+      {inner}
+    </button>
   );
 }
 
