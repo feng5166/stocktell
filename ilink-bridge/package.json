@@ -1,0 +1,15 @@
+{
+  "name": "stocktell-ilink-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "自托管微信推送桥(直连腾讯 iLink 协议)= 简易自建 WxPusher,对接 StockTell。",
+  "scripts": {
+    "login": "node login.mjs",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0"
+  },
+  "engines": { "node": ">=18" }
+}
