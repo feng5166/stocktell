@@ -160,8 +160,25 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
             />
             <span>
               我已年满 18 岁,并已阅读并同意
-              <span className="underline">服务条款</span> 和
-              <span className="underline">隐私政策</span>
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[#C2703D] underline"
+              >
+                服务条款
+              </a>{" "}
+              和
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[#C2703D] underline"
+              >
+                隐私政策
+              </a>
             </span>
           </label>
 
