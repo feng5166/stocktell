@@ -62,6 +62,22 @@ const T_PUSH = `CREATE TABLE IF NOT EXISTS "push_subscriptions" (
 )`;
 const IDX_PUSH = `CREATE UNIQUE INDEX IF NOT EXISTS "push_subscriptions_endpoint_key" ON "push_subscriptions" ("endpoint")`;
 
+// 微信:给 users 加 weixin_open_id 列 + 建微信绑定 token 表(幂等)。
+// 修复:schema 加了 weixinOpenId 但生产库缺该列,导致所有登录(查 users)报错。
+const ALTER_USER_WEIXIN = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "weixin_open_id" text`;
+const IDX_USER_WEIXIN = `CREATE UNIQUE INDEX IF NOT EXISTS "users_weixin_open_id_key" ON "users" ("weixin_open_id")`;
+const T_WEIXIN_BIND = `CREATE TABLE IF NOT EXISTS "weixin_bind_tokens" (
+  "id" text NOT NULL,
+  "user_id" text NOT NULL,
+  "token" text NOT NULL,
+  "expires_at" timestamp(3) NOT NULL,
+  "used" boolean NOT NULL DEFAULT false,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "weixin_bind_tokens_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_WEIXIN_BIND_TOKEN = `CREATE UNIQUE INDEX IF NOT EXISTS "weixin_bind_tokens_token_key" ON "weixin_bind_tokens" ("token")`;
+const IDX_WEIXIN_BIND_USER = `CREATE INDEX IF NOT EXISTS "weixin_bind_tokens_user_id_idx" ON "weixin_bind_tokens" ("user_id")`;
+
 export async function POST(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
@@ -84,11 +100,16 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(IDX_WATCHLIST_USER);
     await db.$executeRawUnsafe(T_PUSH);
     await db.$executeRawUnsafe(IDX_PUSH);
+    await db.$executeRawUnsafe(ALTER_USER_WEIXIN);
+    await db.$executeRawUnsafe(IDX_USER_WEIXIN);
+    await db.$executeRawUnsafe(T_WEIXIN_BIND);
+    await db.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
+    await db.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,
       message:
-        "password_reset_tokens + briefing_outcomes + trigger_change + watchlist ready",
+        "ready: ...watchlist + push + users.weixin_open_id + weixin_bind_tokens",
       count,
     });
   } catch (e) {
