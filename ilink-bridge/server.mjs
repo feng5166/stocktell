@@ -196,6 +196,13 @@ async function bindWatcher() {
           console.log(`[bridge] 激活 openId=${p.openId}`);
           // 落库:让 StockTell 把该账号的 weixinOpenId 设好(以 accountId 为准)
           await stockTell("/api/push/bind-weixin-direct", { accountId: p.accountId, openId: p.openId });
+          // 一个账号只绑一个微信:新绑定激活后,清理该账号下的其它旧 openId(含 worker)
+          for (const [oid, c] of Object.entries(creds)) {
+            if (oid !== p.openId && c.accountId === p.accountId) {
+              console.log(`[bridge] 换绑清理旧微信 account=${p.accountId} 旧openId=${oid}`);
+              removeUser(oid);
+            }
+          }
           // 发欢迎语确认绑定
           await ilinkSend(
             creds[p.openId].botToken,
