@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/api-guard";
+import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
 import { clawbot } from "@/lib/clawbot";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // 管理后台:列出已绑微信的用户(DB)+ 合并桥侧窗口信息
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthorized(req)) {
+  if (!isAdminAuthorized(req) && !(await isAdminSession())) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const db = getPrisma();

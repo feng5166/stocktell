@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/api-guard";
+import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
 import { clawbot } from "@/lib/clawbot";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // 管理后台:手动给指定用户推送。body: { openIds?: string[], all?: boolean, text }
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthorized(req)) {
+  if (!isAdminAuthorized(req) && !(await isAdminSession())) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const { openIds, all, text } = await req.json();

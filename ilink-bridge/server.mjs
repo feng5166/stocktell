@@ -161,6 +161,13 @@ async function bindWatcher() {
           console.log(`[bridge] 激活 openId=${p.openId}`);
           // 落库:让 StockTell 把该账号的 weixinOpenId 设好(以 accountId 为准)
           await stockTell("/api/push/bind-weixin-direct", { accountId: p.accountId, openId: p.openId });
+          // 发欢迎语确认绑定
+          await ilinkSend(
+            creds[p.openId].botToken,
+            p.openId,
+            creds[p.openId].contextToken,
+            "✓ 绑定成功!\n\n每天早上只在你的自选股有动静时提醒你,没动静不打扰。\n记得每天来发条消息保持接收(微信限制 24 小时窗口)。\n发「解绑」可取消。"
+          );
         }
       }
     }
