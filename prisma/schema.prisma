@@ -29,9 +29,22 @@ model User {
   passwordHash String?  @map("password_hash")
   nickname     String?
   avatar       String?
+  weixinOpenId String?  @unique @map("weixin_open_id")
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("users")
+}
+
+model WeixinBindToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("weixin_bind_tokens")
 }
 
 model PasswordResetToken {
