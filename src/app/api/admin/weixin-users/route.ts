@@ -20,8 +20,16 @@ export async function GET(req: NextRequest) {
   });
 
   // 桥侧窗口/活跃信息
-  const bridge = await clawbot<{ ok: boolean; users: any[] }>("/users", null, "GET");
-  const byOpen = new Map((bridge?.users || []).map((u) => [u.openId, u]));
+  interface BridgeUser {
+    openId: string;
+    accountId: string;
+    boundAt: number;
+    lastMsgAt: number | null;
+    active: boolean;
+    windowSec: number | null;
+  }
+  const bridge = await clawbot<{ ok: boolean; users: BridgeUser[] }>("/users", null, "GET");
+  const byOpen = new Map<string, BridgeUser>((bridge?.users || []).map((u) => [u.openId, u]));
 
   const list = users.map((u) => {
     const b = u.weixinOpenId ? byOpen.get(u.weixinOpenId) : null;

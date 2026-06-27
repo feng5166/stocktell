@@ -2,7 +2,7 @@
 const BASE = process.env.CLAWBOT_BASE_URL; // 如 http://47.84.8.167:8787
 const SECRET = process.env.CLAWBOT_SECRET;
 
-export async function clawbot<T = any>(
+export async function clawbot<T = unknown>(
   path: string,
   body?: unknown,
   method = "POST"
