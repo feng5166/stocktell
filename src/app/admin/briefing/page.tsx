@@ -25,6 +25,8 @@ export default function AdminBriefing() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [previewDate, setPreviewDate] = useState("");
+  const [preview, setPreview] = useState<Item[] | null>(null);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/briefing", { cache: "no-store" });
@@ -53,6 +55,35 @@ export default function AdminBriefing() {
         await load();
       } else {
         setMsg(`失败:${d.error}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 指定日期预览(不落库):用来演示/回测节后"假期累计"口径
+  async function previewByDate() {
+    if (!previewDate) {
+      setMsg("先选个日期");
+      return;
+    }
+    setLoading(true);
+    setMsg(`生成 ${previewDate} 预览(不落库)…`);
+    try {
+      const r = await fetch(
+        `/api/briefing/generate?date=${previewDate}&dryRun=1`,
+        { method: "POST" }
+      );
+      const d = await r.json();
+      if (d.ok) {
+        setPreview(d.items || []);
+        setMsg(
+          `${previewDate} 预览:${d.count} 条${
+            d.usMarketClosed ? "(美股休市)" : ""
+          } · 引擎 ${d.engine} · 仅预览未入库`
+        );
+      } else {
+        setMsg(`预览失败:${d.error}`);
       }
     } finally {
       setLoading(false);
@@ -93,7 +124,7 @@ export default function AdminBriefing() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             onClick={generate}
             disabled={loading}
@@ -101,8 +132,51 @@ export default function AdminBriefing() {
           >
             {loading ? "生成中…" : "⚡ 生成今日草稿"}
           </button>
+          <span className="text-gray-300">|</span>
+          <input
+            type="date"
+            value={previewDate}
+            onChange={(e) => setPreviewDate(e.target.value)}
+            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <button
+            onClick={previewByDate}
+            disabled={loading}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+            title="指定日期生成预览(不入库),用于看节后『假期累计』效果"
+          >
+            🔎 指定日期预览
+          </button>
           {msg && <span className="text-xs text-gray-500">{msg}</span>}
         </div>
+
+        {preview && (
+          <Section title={`指定日期预览 · ${previewDate}(不入库 ${preview.length} 条)`}>
+            {preview.length === 0 && <Empty text="该日无异动 / 美股休市" />}
+            {preview.map((it, i) => (
+              <div
+                key={i}
+                className="mb-2 rounded-lg border border-dashed border-blue-300 bg-blue-50/40 px-4 py-3"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${IMPACT_META[it.impact].dotClass}`}
+                  />
+                  <span className="text-sm font-medium">{it.title}</span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                  {it.retailTake}
+                </p>
+              </div>
+            ))}
+            <button
+              onClick={() => setPreview(null)}
+              className="mt-1 text-xs text-gray-400 hover:text-gray-700"
+            >
+              收起预览
+            </button>
+          </Section>
+        )}
 
         <Section title={`草稿(${drafts.length})`}>
           {drafts.length === 0 && (

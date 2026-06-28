@@ -11,7 +11,7 @@ async function emCloses(ticker: string): Promise<Bar[] | null> {
   for (const mkt of EM_MARKETS) {
     try {
       const r = await fetch(
-        `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${mkt}.${ticker}&fields1=f1&fields2=f51,f53&klt=101&fqt=1&end=20500101&lmt=40`,
+        `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${mkt}.${ticker}&fields1=f1&fields2=f51,f53&klt=101&fqt=1&end=20500101&lmt=250`,
         { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } }
       );
       if (!r.ok) continue;
