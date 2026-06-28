@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
+// 本设备上次登录用的邮箱(只记邮箱、不记密码),下次自动回填登录框
+const LAST_EMAIL_KEY = "stocktell:last-email";
 
 export function AuthModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -15,6 +17,16 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showForgot, setShowForgot] = useState(false);
+
+  // 回填本设备上次登录的邮箱(在客户端挂载后读,避免 SSR 水合不一致)
+  useEffect(() => {
+    try {
+      const last = localStorage.getItem(LAST_EMAIL_KEY);
+      if (last) setEmail(last);
+    } catch {
+      /* localStorage 不可用则忽略 */
+    }
+  }, []);
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +63,12 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
         setError(res.error);
         setLoading(false);
         return;
+      }
+      // 登录成功:只记住邮箱供下次回填,密码绝不存
+      try {
+        localStorage.setItem(LAST_EMAIL_KEY, email.toLowerCase().trim());
+      } catch {
+        /* 忽略 */
       }
       onClose();
       router.refresh();
@@ -117,6 +135,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="example@example.com"
+              autoComplete="email"
               className="w-full rounded-lg border border-[#E5E2DD] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#C2703D]"
             />
           </div>

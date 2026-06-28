@@ -39,7 +39,7 @@ export async function resetPassword(
   const db = getPrisma();
   if (!db) return false;
   const tokenHash = hashToken(token);
-  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
   try {
     await db.$transaction(async (tx) => {
       const rec = await tx.passwordResetToken.findUnique({ where: { token: tokenHash } });
