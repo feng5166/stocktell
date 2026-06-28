@@ -52,13 +52,13 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
   if (loading || shown.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-xl bg-white shadow-sm">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-gray-50"
       >
         <span className="text-sm font-medium text-gray-800">💰 你的票·资金面</span>
-        <span className="text-[11px] text-gray-400">
+        <span className="text-meta text-gray-400">
           {shown.length} 只{date ? ` · 截至 ${date.slice(5)}` : ""}
         </span>
         <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
@@ -96,7 +96,7 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
                 {it.longhu && (
                   <span
                     title={it.longhu.reason}
-                    className="rounded bg-rose-50 px-1.5 py-0.5 text-[11px] text-rose-600 ring-1 ring-inset ring-rose-600/20"
+                    className="rounded bg-rose-50 px-1.5 py-0.5 text-meta text-rose-600"
                   >
                     龙虎榜 {fmtYi(it.longhu.net)}
                   </span>
@@ -104,7 +104,7 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-gray-300">
+          <p className="mt-2 text-meta text-gray-300">
             资金面为 Tushare 收盘后数据,仅供参考,不构成投资建议。
           </p>
         </div>

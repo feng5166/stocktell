@@ -32,7 +32,7 @@ export function BriefingFeed({
 
   return (
     <div className="space-y-7">
-      <section className="rounded-2xl bg-indigo-50/40 p-3 ring-1 ring-indigo-100 sm:p-4">
+      <section className="rounded-2xl bg-brand-50/40 p-3 sm:p-4">
         <SectionHead
           title="和我相关"
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
@@ -71,7 +71,7 @@ export function BriefingFeed({
       </section>
 
       {others.length > 0 && (
-        <section>
+        <section className="rounded-2xl bg-gray-100/50 p-3 sm:p-4">
           <SectionHead title="其他市场动态" />
           {/* 付费分层暂未开启:所有用户简报功能一致,不再上免费墙(gated 默认 false)。
               仅自选保存、推送订阅需登录;LockedCard/FREE_LIMIT 基础设施保留,日后分层再开。 */}
@@ -159,7 +159,7 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
     );
   if (!brief) return null;
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+    <div className="rounded-xl bg-amber-50 px-4 py-3">
       <div className="mb-1 text-xs font-medium text-amber-700">☀️ 你的今日早报</div>
       <p className="text-sm leading-relaxed text-gray-800">
         {linkifyBrief(brief, items)}
@@ -233,7 +233,7 @@ function CardFeed({
         </div>
       ) : (
         items.length > STEP && (
-          <div className="py-4 text-center text-[11px] text-gray-300">
+          <div className="py-4 text-center text-meta text-gray-300">
             — 已全部加载({items.length}条)—
           </div>
         )
@@ -367,16 +367,16 @@ function BriefingCard({
 
   return (
     <article
-      className={`rounded-xl border border-gray-200 border-l-[3px] bg-white p-4 ${meta.barClass}`}
+      className={`rounded-xl bg-white p-4 shadow-sm`}
     >
       <div className="mb-1.5">
         <span
-          className={`inline-flex rounded px-1.5 py-0.5 text-[11px] font-medium ${meta.tagClass}`}
+          className={`inline-flex rounded px-1.5 py-0.5 text-meta font-medium ${meta.tagClass}`}
         >
           {meta.label}
         </span>
       </div>
-      <h2 className="text-[15px] font-semibold leading-snug text-gray-900">
+      <h2 className="text-title font-semibold leading-snug text-gray-900">
         {item.title}
       </h2>
       {mine && item.triggerCode && (
@@ -394,7 +394,7 @@ function BriefingCard({
                 title={watched ? "你的自选" : undefined}
                 className={`rounded px-2 py-0.5 text-xs ${
                   watched
-                    ? "bg-amber-100 font-medium text-amber-800 ring-1 ring-amber-300 hover:bg-amber-200"
+                    ? "bg-amber-100 font-medium text-amber-800 hover:bg-amber-200"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -405,7 +405,7 @@ function BriefingCard({
           })}
         </div>
       )}
-      <div className="mt-3 rounded-lg border-l-2 border-gray-200 bg-gray-50/70 px-3 py-2">
+      <div className="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
         <div className="mb-1 text-xs font-medium text-gray-500">散户怎么想</div>
         <p className="text-sm leading-relaxed text-gray-800">{inlineBold(item.retailTake, "rt-")}</p>
 
@@ -557,7 +557,7 @@ function WhyLine({
                 查看原文 ↗
               </a>
             )}
-            <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-gray-400">
+            <p className="mt-3 border-t border-gray-100 pt-2 text-meta text-gray-400">
               内容来自公开检索,仅供参考,以官方公告为准。
             </p>
           </div>
@@ -576,7 +576,7 @@ function LockedCard({ item }: { item: BriefingItem }) {
           <span>{meta.emoji}</span>
           <span className="text-gray-500">{meta.label}</span>
         </div>
-        <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
+        <h2 className="text-title font-semibold text-gray-900">{item.title}</h2>
         <p className="mt-3 text-sm text-gray-500">
           登录后查看完整分析与受益标的……
         </p>

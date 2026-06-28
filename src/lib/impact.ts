@@ -19,7 +19,7 @@ export const IMPACT_META: Record<
     ring: "border-rose-200",
     dotClass: "bg-rose-500",
     barClass: "border-l-rose-300",
-    tagClass: "text-rose-600 ring-1 ring-inset ring-rose-200",
+    tagClass: "bg-rose-50 text-rose-600", // 扁平徽章:浅填充+彩字,无描边
   },
   中: {
     emoji: "🟡",
@@ -27,7 +27,7 @@ export const IMPACT_META: Record<
     ring: "border-amber-200",
     dotClass: "bg-amber-500",
     barClass: "border-l-amber-300",
-    tagClass: "text-amber-700 ring-1 ring-inset ring-amber-200",
+    tagClass: "bg-amber-50 text-amber-700",
   },
   低: {
     emoji: "🟢",
@@ -35,6 +35,6 @@ export const IMPACT_META: Record<
     ring: "border-emerald-200",
     dotClass: "bg-emerald-500",
     barClass: "border-l-emerald-300",
-    tagClass: "text-emerald-600 ring-1 ring-inset ring-emerald-200",
+    tagClass: "bg-emerald-50 text-emerald-600",
   },
 };

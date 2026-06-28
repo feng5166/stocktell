@@ -48,25 +48,25 @@ export function ChainSentiment() {
     const ratio = a.up / (a.up + a.down || 1);
     mood =
       ratio >= 0.6 && a.avgPct > 0
-        ? { t: "偏强", c: "bg-rose-50 text-rose-600 ring-rose-600/20" }
+        ? { t: "偏强", c: "bg-rose-50 text-rose-600" }
         : ratio <= 0.4 && a.avgPct < 0
-        ? { t: "偏弱", c: "bg-emerald-50 text-emerald-600 ring-emerald-600/20" }
-        : { t: "中性", c: "bg-gray-100 text-gray-500 ring-gray-400/20" };
+        ? { t: "偏弱", c: "bg-emerald-50 text-emerald-600" }
+        : { t: "中性", c: "bg-gray-100 text-gray-500" };
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+    <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
       <div className="mb-2.5 flex items-center gap-2">
         <span className="text-sm font-semibold text-gray-800">AI链今日情绪</span>
         {mood && (
           <span
-            className={`rounded px-1.5 py-0.5 text-[11px] ring-1 ring-inset ${mood.c}`}
+            className={`rounded px-1.5 py-0.5 text-meta ${mood.c}`}
           >
             {mood.t}
           </span>
         )}
         {d.date && (
-          <span className="ml-auto text-[11px] text-gray-400">{d.date.slice(5)}</span>
+          <span className="ml-auto text-meta text-gray-400">{d.date.slice(5)}</span>
         )}
       </div>
       <div className="space-y-2">

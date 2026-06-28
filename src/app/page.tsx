@@ -45,7 +45,7 @@ export default async function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日简报" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
@@ -59,7 +59,7 @@ export default async function Home() {
         </div>
 
         {stale && (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
+          <div className="mb-3 rounded-lg bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
             今日简报尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · {shownDate}。
           </div>
         )}
