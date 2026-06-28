@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
+import { ChainSwitcher } from "@/components/ChainSwitcher";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
 import { DISCLAIMER } from "@/lib/constants";
@@ -176,6 +177,9 @@ export default function Dashboard() {
               : "行情未连接 · 休市/非交易时段不显示涨跌"}
           </div>
         </div>
+
+        {/* 产业链切换:AI 当前,其他「开发中」可投「我想要」 */}
+        <ChainSwitcher />
 
         {/* Tab 导航 */}
         <div className="mb-4 flex gap-1 border-b border-gray-200">

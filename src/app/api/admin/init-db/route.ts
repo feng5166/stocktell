@@ -101,6 +101,17 @@ const T_BRIEF_CACHE = `CREATE TABLE IF NOT EXISTS "morning_brief_cache" (
   CONSTRAINT "morning_brief_cache_pkey" PRIMARY KEY ("key")
 )`;
 
+// 其他产业链「我想要」投票表(幂等)
+const T_CHAIN_INTEREST = `CREATE TABLE IF NOT EXISTS "chain_interest" (
+  "id" text NOT NULL,
+  "chain" text NOT NULL,
+  "voter" text NOT NULL,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "chain_interest_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_CHAIN_INTEREST_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "chain_interest_chain_voter_key" ON "chain_interest" ("chain", "voter")`;
+const IDX_CHAIN_INTEREST_CHAIN = `CREATE INDEX IF NOT EXISTS "chain_interest_chain_idx" ON "chain_interest" ("chain")`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -129,6 +140,9 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);
     await db.$executeRawUnsafe(T_WHY_CACHE);
     await db.$executeRawUnsafe(T_BRIEF_CACHE);
+    await db.$executeRawUnsafe(T_CHAIN_INTEREST);
+    await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_UNIQUE);
+    await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_CHAIN);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,

@@ -136,3 +136,15 @@ model MorningBriefCache {
 
   @@map("morning_brief_cache")
 }
+
+// 其他产业链「我想要」投票:收集用户最想先看哪条链(去重:一人一链一票)。
+model ChainInterest {
+  id        String   @id @default(cuid())
+  chain     String // 产业链 key
+  voter     String // 投票人(登录 userId 或游客 clientId)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([chain, voter])
+  @@index([chain])
+  @@map("chain_interest")
+}
