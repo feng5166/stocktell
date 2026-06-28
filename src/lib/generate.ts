@@ -286,7 +286,10 @@ async function llmDrafts(
   });
 }
 
-export async function generateDrafts(opts?: { date?: string }): Promise<{
+export async function generateDrafts(opts?: {
+  date?: string;
+  forceTemplate?: boolean;
+}): Promise<{
   date: string;
   drafts: NewBriefingItem[];
   engine: "llm" | "template";
@@ -294,7 +297,7 @@ export async function generateDrafts(opts?: { date?: string }): Promise<{
 }> {
   const date = opts?.date || todayISO(); // 可指定日期(管理员演示/回测累计口径)
   const { movers, usMarketClosed } = await findMovers(date);
-  const useLLM = Boolean(getLLM());
+  const useLLM = !opts?.forceTemplate && Boolean(getLLM());
   let drafts: NewBriefingItem[];
   let engine: "llm" | "template" = "template";
   if (useLLM && movers.length > 0) {

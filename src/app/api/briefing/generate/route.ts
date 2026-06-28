@@ -10,6 +10,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date") || undefined; // YYYY-MM-DD,指定日期生成
   const dryRun = req.nextUrl.searchParams.get("dryRun") === "1"; // 预览:只返回不落库
+  const useLLM = req.nextUrl.searchParams.get("llm") === "1"; // 预览默认用模板(快);要 LLM 文案加 llm=1
 
   // 指定日期 / 预览 属管理操作(可用来演示节后累计口径),需管理员
   if ((date || dryRun) && !isAdminAuthorized(req) && !(await isAdminSession())) {
@@ -17,7 +18,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { date: d, drafts, engine, usMarketClosed } = await generateDrafts({ date });
+    // 预览默认走模板引擎(避免 LLM 慢撞 Hobby 60s 上限);正式生成仍用 LLM
+    const { date: d, drafts, engine, usMarketClosed } = await generateDrafts({
+      date,
+      forceTemplate: dryRun && !useLLM,
+    });
     if (dryRun) {
       return NextResponse.json({
         ok: true,
