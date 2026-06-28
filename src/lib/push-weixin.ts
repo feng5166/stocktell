@@ -1,12 +1,12 @@
 import { getPrisma } from "@/lib/prisma";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
+import { buildMorningBrief } from "@/lib/morning-brief";
 
 const DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
 
-function formatMessage(date: string, items: BriefingItem[]): string {
-  const lines = [`📊 StockTell · ${date} 盘前提醒`, ""];
-  lines.push(`你的自选今天有 ${items.length} 条相关动态:`, "");
+function formatMessage(date: string, items: BriefingItem[], brief: string): string {
+  const lines = [`📊 StockTell · ${date} 盘前早报`, "", brief, "", "—— 相关动态 ——", ""];
   for (const it of items) {
     lines.push(`${DOT[it.impact] ?? ""} ${it.title}`);
     if (it.beneficiaries.length) {
@@ -59,7 +59,7 @@ export async function runWeixinPush(): Promise<{
 
   const users = await db.user.findMany({
     where: { weixinOpenId: { not: null } },
-    select: { id: true, weixinOpenId: true },
+    select: { id: true, weixinOpenId: true, nickname: true },
   });
   if (users.length === 0)
     return { ok: true, skipped: "no-weixin-users", candidates: 0, sent: 0 };
@@ -93,7 +93,8 @@ export async function runWeixinPush(): Promise<{
     if (relevant.length === 0) continue;
 
     candidates++;
-    const text = formatMessage(date, relevant);
+    const brief = await buildMorningBrief(u.nickname, relevant);
+    const text = formatMessage(date, relevant, brief);
     if (await sendToClawBot(u.weixinOpenId, text)) sent++;
   }
 

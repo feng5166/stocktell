@@ -1,15 +1,17 @@
-// 盘前推送:给有自选、且今天有相关简报的登录用户,发一封"你的票今天有 N 条相关动态"。
-// 只在有相关动态时发(不骚扰"今天没事");跟密码重置一样,Resend 没配就降级打印,不报错。
+// 盘前推送:给有自选、且今天有相关简报的登录用户,发一封个性化早报。
+// 顶部是 LLM 综合的一段「你的票今天该看什么」,下面附相关动态列表。
+// 只在有相关动态时发(不骚扰"今天没事");Resend 没配就降级打印,不报错。
 import { getPrisma } from "@/lib/prisma";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { sendMail } from "@/lib/mailer";
+import { buildMorningBrief } from "@/lib/morning-brief";
 
 async function sendDigest(
   to: string,
-  nickname: string | null,
   date: string,
-  items: BriefingItem[]
+  items: BriefingItem[],
+  brief: string
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
   const rows = items.map((it) => {
@@ -17,12 +19,15 @@ async function sendDigest(
     return { impact: it.impact, title: it.title, benes };
   });
   const text =
-    `${nickname || "你好"},\n${date} 你的自选今天有 ${items.length} 条相关动态:\n\n` +
-    rows.map((r) => `· [${r.impact}] ${r.title}${r.benes ? ` — 受益:${r.benes}` : ""}`).join("\n") +
+    `${brief}\n\n—— 相关动态 ——\n` +
+    rows
+      .map((r) => `· [${r.impact}] ${r.title}${r.benes ? ` — 受益:${r.benes}` : ""}`)
+      .join("\n") +
     `\n\n打开看详情:${base}\n\n以上为信息整理,不构成投资建议。`;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
-    <h2 style="font-size:16px">你的自选今天有 ${items.length} 条相关动态</h2>
-    <p style="color:#888;font-size:12px;margin:0 0 12px">${date} · StockTell 盘前提醒</p>
+    <p style="color:#888;font-size:12px;margin:0 0 6px">${date} · StockTell 盘前早报</p>
+    <p style="font-size:14px;line-height:1.75;background:#fffef6;border:1px solid #f0e9c8;border-radius:10px;padding:12px 14px;margin:0 0 14px">${brief}</p>
+    <div style="font-size:13px;color:#666;margin:0 0 8px">相关动态</div>
     ${rows
       .map(
         (r) => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px">
@@ -89,7 +94,8 @@ export async function runPreOpenDigest(): Promise<{
     );
     if (relevant.length === 0) continue; // 没相关动态就不发,不骚扰
     candidates++;
-    if (await sendDigest(u.email, u.nickname, date, relevant)) sent++;
+    const brief = await buildMorningBrief(u.nickname, relevant);
+    if (await sendDigest(u.email, date, relevant, brief)) sent++;
   }
   return { ok: true, date, candidates, sent };
 }
