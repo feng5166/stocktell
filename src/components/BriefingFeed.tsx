@@ -55,6 +55,7 @@ export function BriefingFeed({
           <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
         ) : (
           <div className="space-y-3">
+            <MorningBrief codes={wl.codes} />
             {mine.map((it) => (
               <BriefingCard key={it.id} item={it} mine watchedCodes={wl.codes} />
             ))}
@@ -76,6 +77,47 @@ export function BriefingFeed({
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+// 「和我相关」顶部的个性化早报:LLM 综合你今天相关动态写一段人话。
+function MorningBrief({ codes }: { codes: Set<string> }) {
+  const [brief, setBrief] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const codeKey = Array.from(codes).sort().join(",");
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    fetch("/api/morning-brief", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codes: codeKey ? codeKey.split(",") : [] }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (active) {
+          setBrief(d.brief ?? null);
+          setLoading(false);
+        }
+      })
+      .catch(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [codeKey]);
+
+  if (loading)
+    return (
+      <div className="rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-3 text-sm text-gray-400">
+        ☀️ 正在为你生成今日早报…
+      </div>
+    );
+  if (!brief) return null;
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+      <div className="mb-1 text-xs font-medium text-amber-700">☀️ 你的今日早报</div>
+      <p className="text-sm leading-relaxed text-gray-800">{brief}</p>
     </div>
   );
 }
