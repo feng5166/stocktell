@@ -4,6 +4,7 @@
 // 数据来自 Tushare(T+1 收盘后)。散户自己拼不出来的"聪明钱动向",每天一眼。
 import { useEffect, useState } from "react";
 import { changeClass } from "@/lib/format";
+import { DeepRead } from "@/components/DeepRead";
 
 interface FundItem {
   code: string;
@@ -107,6 +108,7 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
           <p className="mt-2 text-meta text-gray-300">
             资金面为 Tushare 收盘后数据,仅供参考,不构成投资建议。
           </p>
+          <DeepRead payload={{ kind: "fundflow", items: shown, date }} />
         </div>
       )}
     </div>

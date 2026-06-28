@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const id: string | undefined = body.id;
   const code: string | undefined = body.code;
+  const kind: string | undefined = body.kind;
 
   const db = getPrisma();
   if (!db) return new Response("no database", { status: 500 });
@@ -99,6 +100,76 @@ ${peerLines || "(无)"}
 ${relLines || "(无)"}
 
 今天它没有专门的简报事件,请给这只票出一份"现在散户该怎么看"的完整解读。`;
+  } else if (kind === "morning") {
+    // 今日早报深读:对"我的自选相关动态"做整体解读(不逐条复述)
+    type Bene = { code: string; name: string };
+    type MItem = {
+      title?: string;
+      triggerName?: string;
+      triggerCode?: string;
+      triggerChange?: number;
+      retailTake?: string;
+      beneficiaries?: Bene[];
+    };
+    const items: MItem[] = Array.isArray(body.items) ? body.items : [];
+    if (items.length === 0) return new Response("missing items", { status: 400 });
+    const codeSet = new Set<string>();
+    for (const it of items) {
+      if (it.triggerCode) codeSet.add(it.triggerCode);
+      for (const b of it.beneficiaries ?? []) if (b?.code) codeSet.add(b.code);
+    }
+    const codes = Array.from(codeSet).sort();
+    cacheKey = `morning:${todayISO()}:${codes.join(",")}`;
+    const { quotes } = await fetchQuotes(codes);
+    const lines = items
+      .map((it) => {
+        const benes = it.beneficiaries ?? [];
+        const bl = benes
+          .map((b) => `${b.name}(${pctStr(quotes[b.code]?.change)})`)
+          .join("、");
+        const trig = it.triggerName
+          ? ` [触发:${it.triggerName}${it.triggerChange != null ? ` ${it.triggerChange}%` : ""}]`
+          : "";
+        return `- ${it.title ?? ""}${trig}${bl ? ` → 受益A股:${bl}` : ""}${it.retailTake ? `;快读:${it.retailTake}` : ""}`;
+      })
+      .join("\n");
+    userMsg = `这是今天和"我的自选"相关的全部动态汇总(含最新涨跌):
+${lines}
+
+请给我一份"今天我这些自选整体该怎么看"的完整解读:哪几条最值得关注、彼此有没有联动/共振、是题材还是业绩驱动、有没有预期差(没跟上)或超跌、今天盯盘该重点看哪些信号。要有重点和取舍,别逐条复述。`;
+  } else if (kind === "fundflow") {
+    // 资金面深读:对"我的自选"A股主力/融资/龙虎榜做整体解读
+    type FItem = {
+      code: string;
+      name?: string;
+      netMf?: number | null;
+      rzChgYi?: number | null;
+      longhu?: { net: number; reason: string } | null;
+    };
+    const items: FItem[] = Array.isArray(body.items) ? body.items : [];
+    if (items.length === 0) return new Response("missing items", { status: 400 });
+    const date =
+      typeof body.date === "string" && body.date ? body.date : todayISO();
+    const codes = items.map((it) => it.code).filter(Boolean).sort();
+    cacheKey = `fundflow:${date}:${codes.join(",")}`;
+    const lines = items
+      .map((it) => {
+        const parts: string[] = [];
+        if (it.netMf != null)
+          parts.push(`主力净流入 ${it.netMf > 0 ? "+" : ""}${it.netMf}亿`);
+        if (it.rzChgYi != null)
+          parts.push(`融资余额变化 ${it.rzChgYi > 0 ? "+" : ""}${it.rzChgYi}亿`);
+        if (it.longhu)
+          parts.push(
+            `登龙虎榜(净${it.longhu.net > 0 ? "+" : ""}${it.longhu.net}亿,${it.longhu.reason})`
+          );
+        return `- ${it.name ?? it.code}:${parts.join(",") || "无显著资金数据"}`;
+      })
+      .join("\n");
+    userMsg = `这是"我的自选"A股最近一个交易日(${date})的资金面数据:
+${lines}
+
+请从资金面角度给一份完整解读:这些"聪明钱"动向整体说明什么、是流入还是流出主导、主力与融资盘是否方向一致、龙虎榜是游资还是机构味道、哪些可能是陷阱(放量出货/对倒)、散户看资金面最容易误读什么。讲人话、有判断。`;
   } else {
     return new Response("missing id or code", { status: 400 });
   }

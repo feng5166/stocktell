@@ -10,6 +10,7 @@ import { AuthButton } from "@/components/auth/AuthButton";
 import { useAuthModal } from "@/components/Providers";
 import { useWatchlist } from "@/components/useWatchlist";
 import { FundFlow } from "@/components/FundFlow";
+import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
 
@@ -164,6 +165,7 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
       <p className="text-sm leading-relaxed text-gray-800">
         {linkifyBrief(brief, items)}
       </p>
+      <DeepRead payload={{ kind: "morning", items }} />
     </div>
   );
 }
