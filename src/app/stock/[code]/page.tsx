@@ -11,6 +11,7 @@ import { LiveQuote } from "@/components/LiveQuote";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
+import { Logo } from "@/components/Logo";
 import { todayISO } from "@/lib/date";
 
 // 页面本体(定位/关联/上下游)全来自内存静态数据,本可秒出;原本 force-dynamic + SSR
@@ -85,8 +86,8 @@ export default async function StockDetail({
     <div className="min-h-screen bg-canvas text-ink">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            StockTell
+          <Link href="/" aria-label="StockTell 首页">
+            <Logo className="h-6 w-auto" />
           </Link>
           <Link href="/stocks" className="text-sm text-gray-500 hover:text-gray-900">
             ← 返回股票池
