@@ -49,8 +49,7 @@ export default async function Home() {
       <SiteHeader active="今日简报" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <ChainSentiment />
-        <div className="mb-5 flex items-end justify-between">
+        <div className="mb-4 flex items-end justify-between">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">今日简报</h1>
             <p className="mt-1 text-xs text-gray-400">
@@ -64,6 +63,9 @@ export default async function Home() {
             今日简报尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · {shownDate}。
           </div>
         )}
+
+        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目) */}
+        <ChainSentiment />
 
         {items.length === 0 ? (
           <EmptyState errored={errored} />
