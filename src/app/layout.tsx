@@ -14,7 +14,10 @@ export const metadata: Metadata = {
     title: "StockTell",
   },
   icons: {
-    icon: "/icon-192.png",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png" },
+    ],
     apple: "/icon-180.png",
   },
 };
