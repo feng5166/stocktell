@@ -39,6 +39,8 @@ const IDX_OUTCOME_DATE = `CREATE INDEX IF NOT EXISTS "briefing_outcomes_date_idx
 // 回测明牌列(幂等)
 const ALTER_OUTCOME_BACKTEST = `ALTER TABLE "briefing_outcomes" ADD COLUMN IF NOT EXISTS "is_backtest" boolean NOT NULL DEFAULT false`;
 const IDX_OUTCOME_BACKTEST = `CREATE INDEX IF NOT EXISTS "briefing_outcomes_is_backtest_idx" ON "briefing_outcomes" ("is_backtest")`;
+// 战绩页主查询 where isBacktest + orderBy date 的复合索引
+const IDX_OUTCOME_BACKTEST_DATE = `CREATE INDEX IF NOT EXISTS "briefing_outcomes_is_backtest_date_idx" ON "briefing_outcomes" ("is_backtest", "date")`;
 
 // 自选/持仓表(幂等)
 const T_WATCHLIST = `CREATE TABLE IF NOT EXISTS "watchlist" (
@@ -146,6 +148,7 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(IDX_OUTCOME_DATE);
     await db.$executeRawUnsafe(ALTER_OUTCOME_BACKTEST);
     await db.$executeRawUnsafe(IDX_OUTCOME_BACKTEST);
+    await db.$executeRawUnsafe(IDX_OUTCOME_BACKTEST_DATE);
     await db.$executeRawUnsafe(T_WATCHLIST);
     await db.$executeRawUnsafe(IDX_WATCHLIST_UNIQUE);
     await db.$executeRawUnsafe(IDX_WATCHLIST_USER);

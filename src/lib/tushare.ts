@@ -70,6 +70,7 @@ export async function isAshareTradingDay(dateISO: string): Promise<boolean> {
   const idx = d.fields.indexOf("is_open");
   const open = String(d.items[0][idx]) === "1";
   tradingDayCache.set(ymd, open);
+  capDates(tradingDayCache, 500); // 交易日判定很小,留宽松上限即可
   return open;
 }
 
@@ -137,6 +138,17 @@ function ymdDaysAgo(days: number): string {
 /* ---------- 资金面(P0:你的票·资金面)---------- */
 // 都按"交易日全市场一次取 + 进程内按 ymd 缓存",调用方按自选过滤,省调用。
 
+// 进程内按 ymd 缓存全市场数据:长生命周期实例下会按访问过的日期累积。给个 FIFO 上限裁剪,
+// 防止内存缓慢膨胀(资金面只用最近 1-2 个交易日,日级缓存留 10 天足够)。
+const CACHE_MAX_DATES = 10;
+function capDates<V>(m: Map<string, V>, max = CACHE_MAX_DATES) {
+  while (m.size > max) {
+    const oldest = m.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    m.delete(oldest);
+  }
+}
+
 const mfCache = new Map<string, Map<string, number>>(); // ymd -> (裸code -> 主力净流入 亿元)
 const lhCache = new Map<string, Map<string, LonghuHit>>(); // ymd -> (裸code -> 龙虎榜)
 
@@ -160,6 +172,7 @@ export async function moneyflowByDate(ymd: string): Promise<Map<string, number>>
       if (v !== null) out.set(code, Math.round((v / 1e4) * 100) / 100);
     }
     mfCache.set(ymd, out); // 仅缓存成功结果
+    capDates(mfCache);
   }
   return out;
 }
@@ -184,6 +197,7 @@ export async function longhuByDate(ymd: string): Promise<Map<string, LonghuHit>>
       else out.set(code, { net: Math.round(net * 100) / 100, reason });
     }
     lhCache.set(ymd, out);
+    capDates(lhCache);
   }
   return out;
 }
@@ -205,6 +219,7 @@ export async function marginByDate(ymd: string): Promise<Map<string, number>> {
       if (v !== null) out.set(code, Math.round((v / 1e8) * 100) / 100);
     }
     mgCache.set(ymd, out);
+    capDates(mgCache);
   }
   return out;
 }
@@ -226,6 +241,7 @@ export async function dailyByDate(ymd: string): Promise<Map<string, number>> {
       if (v !== null) out.set(code, v);
     }
     dCache.set(ymd, out);
+    capDates(dCache);
   }
   return out;
 }

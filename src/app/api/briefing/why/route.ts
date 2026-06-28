@@ -16,3 +16,27 @@ export async function GET(req: NextRequest) {
   const r = await explainMove(s.name, s.code, date, title);
   return NextResponse.json({ ok: true, ...r });
 }
+
+// 批量版:「和我相关」首屏一次性把所有触发标的的"为什么动"取回,
+// 由 N 个卡片各发一次 → 合并成 1 次请求(各 explainMove 在服务端并行,带各自缓存)。
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  const items: { code: string; date: string; title?: string }[] = Array.isArray(
+    body.items
+  )
+    ? body.items
+    : [];
+  const valid = items.filter((it) => it && STOCK_MAP[it.code]).slice(0, 30);
+  const entries = await Promise.all(
+    valid.map(async (it) => {
+      const s = STOCK_MAP[it.code];
+      const r = await explainMove(s.name, s.code, it.date, it.title).catch(
+        () => ({ reason: null })
+      );
+      return [it.code, r] as const;
+    })
+  );
+  const results: Record<string, unknown> = {};
+  for (const [code, r] of entries) results[code] = r;
+  return NextResponse.json({ ok: true, results });
+}

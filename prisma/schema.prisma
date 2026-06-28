@@ -98,6 +98,8 @@ model BriefingOutcome {
   @@unique([briefingId, code])
   @@index([date])
   @@index([isBacktest])
+  // 战绩页分页/统计的主查询:where isBacktest + orderBy date —— 复合索引免全表扫
+  @@index([isBacktest, date])
   @@map("briefing_outcomes")
 }
 

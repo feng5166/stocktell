@@ -3,7 +3,7 @@
 // 今日简报信息流:把简报按"是否命中我的自选"分成「和我相关」+「其他市场动态」。
 // 和我相关一律不锁(先认我,别拿用户自己的票去设墙);免费墙只作用于其他动态。
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { BriefingItem } from "@/lib/briefings";
 import { AuthButton } from "@/components/auth/AuthButton";
@@ -33,7 +33,13 @@ export function BriefingFeed({
   const mine = items.filter(isMine);
   const others = items.filter((it) => !isMine(it));
 
+  // 批量"为什么动":一次取回所有命中自选触发标的的解读(替代每卡各发一次)
+  const mineTriggers = mine
+    .filter((it) => it.triggerCode)
+    .map((it) => ({ code: it.triggerCode as string, date: it.date, title: it.title }));
+
   return (
+    <WhyProvider triggers={mineTriggers}>
     <div className="space-y-7">
       <section className="rounded-2xl bg-brand-50/40 p-3 sm:p-4">
         <SectionHead
@@ -86,7 +92,53 @@ export function BriefingFeed({
         </section>
       )}
     </div>
+    </WhyProvider>
   );
+}
+
+// ===== 「为什么动」批量取数:一次请求拿回所有触发标的解读,卡片从 context 读 =====
+interface WhyData {
+  reason: string | null;
+  asOf?: string | null;
+  sourceUrl?: string | null;
+  sourceTitle?: string | null;
+  sourceSummary?: string | null;
+  sourceSite?: string | null;
+}
+const WhyCtx = createContext<Map<string, WhyData>>(new Map());
+
+function WhyProvider({
+  triggers,
+  children,
+}: {
+  triggers: { code: string; date: string; title?: string }[];
+  children: React.ReactNode;
+}) {
+  const [map, setMap] = useState<Map<string, WhyData>>(new Map());
+  const key = triggers.map((t) => t.code).join(",");
+  useEffect(() => {
+    if (triggers.length === 0) return;
+    let active = true;
+    fetch("/api/briefing/why", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: triggers }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!active || !d?.results) return;
+        const m = new Map<string, WhyData>();
+        for (const [c, v] of Object.entries(d.results)) m.set(c, v as WhyData);
+        setMap(m);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+    // triggers 由父组件按 mine 推导,引用每次渲染会变,用 code 串作稳定依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return <WhyCtx.Provider value={map}>{children}</WhyCtx.Provider>;
 }
 
 // 把早报正文里出现的股票名(来自相关条目的触发股/受益股)替换成可点链接 → /stock/[code]。
@@ -383,9 +435,7 @@ function BriefingCard({
       <h2 className="text-title font-semibold leading-snug text-gray-900">
         {item.title}
       </h2>
-      {mine && item.triggerCode && (
-        <WhyLine code={item.triggerCode} date={item.date} title={item.title} />
-      )}
+      {mine && item.triggerCode && <WhyLine code={item.triggerCode} />}
       {item.beneficiaries.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-gray-400">受益 A 股</span>
@@ -449,48 +499,17 @@ function BriefingCard({
 }
 
 // 为什么动:仅「和我相关」卡片按需拉;后端没开联网检索就返回空,这里啥也不显示(不编因果)。
-function WhyLine({
-  code,
-  date,
-  title,
-}: {
-  code: string;
-  date: string;
-  title?: string;
-}) {
-  const [reason, setReason] = useState<string | null>(null);
-  const [asOf, setAsOf] = useState<string | null>(null);
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
-  const [sourceTitle, setSourceTitle] = useState<string | null>(null);
-  const [sourceSummary, setSourceSummary] = useState<string | null>(null);
-  const [sourceSite, setSourceSite] = useState<string | null>(null);
+function WhyLine({ code }: { code: string }) {
+  const map = useContext(WhyCtx);
   const [showSrc, setShowSrc] = useState(false);
-  useEffect(() => {
-    let active = true;
-    fetch(
-      `/api/briefing/why?code=${encodeURIComponent(code)}&date=${date}${
-        title ? `&title=${encodeURIComponent(title)}` : ""
-      }`,
-      { cache: "no-store" }
-    )
-      .then((r) => r.json())
-      .then((d) => {
-        if (active && d?.reason) {
-          setReason(d.reason);
-          setAsOf(d.asOf ?? null);
-          setSourceUrl(d.sourceUrl ?? null);
-          setSourceTitle(d.sourceTitle ?? null);
-          setSourceSummary(d.sourceSummary ?? null);
-          setSourceSite(d.sourceSite ?? null);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [code, date, title]);
-
-  if (!reason) return null;
+  const data = map.get(code);
+  if (!data || !data.reason) return null;
+  const reason = data.reason;
+  const asOf = data.asOf ?? null;
+  const sourceUrl = data.sourceUrl ?? null;
+  const sourceTitle = data.sourceTitle ?? null;
+  const sourceSummary = data.sourceSummary ?? null;
+  const sourceSite = data.sourceSite ?? null;
   // 有来源摘要 → 站内弹窗展示(不跳外站);只有链接没摘要 → 退化为外链
   const hasInSite = !!(sourceTitle || sourceSummary);
   return (
