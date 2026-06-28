@@ -16,7 +16,7 @@ const CLEAN = `btrim(
     regexp_replace(
       regexp_replace(retail_take, '[\\s,，。]*[((][^))]*不构成投资建议[^))]*[))]\\s*$', ''),
       '[\\s,，。]*历史规律不代表未来表现?[。]?\\s*$', ''),
-    '[\\s,，。][^。！？]*不构成投资建议[。]?\\s*$', '')
+    '[\\s,，。;；、]*不构成投资建议[^。！？]*[。！？]?\\s*$', '')
 )`;
 
 export async function POST(req: NextRequest) {
