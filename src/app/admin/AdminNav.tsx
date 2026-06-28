@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "@/components/Logo";
 
 const TABS = [
   { href: "/admin/users", label: "用户" },
@@ -14,8 +15,8 @@ export function AdminNav({ adminEmail }: { adminEmail: string }) {
   return (
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-        <Link href="/" className="text-lg font-bold tracking-tight">
-          StockTell
+        <Link href="/" aria-label="StockTell 首页">
+          <Logo className="h-6 w-auto" />
         </Link>
         <span className="text-xs text-gray-400">后台</span>
         <nav className="flex gap-1">
