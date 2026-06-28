@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BriefingFeed } from "@/components/BriefingFeed";
+import { ChainSentiment } from "@/components/ChainSentiment";
 import {
   listBriefing,
   latestBriefing,
@@ -48,6 +49,7 @@ export default async function Home() {
       <SiteHeader active="今日简报" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+        <ChainSentiment />
         <div className="mb-5 flex items-end justify-between">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">今日简报</h1>

@@ -209,6 +209,27 @@ export async function marginByDate(ymd: string): Promise<Map<string, number>> {
   return out;
 }
 
+const dCache = new Map<string, Map<string, number>>(); // ymd -> (裸code -> 当日涨跌%)
+
+// 某交易日全市场日线涨跌幅(pct_chg %)。用于情绪仪表盘(整日涨跌家数/均幅)。
+export async function dailyByDate(ymd: string): Promise<Map<string, number>> {
+  const hit = dCache.get(ymd);
+  if (hit) return hit;
+  const out = new Map<string, number>();
+  const d = await tsCall("daily", { trade_date: ymd }, "ts_code,pct_chg");
+  if (d) {
+    const ci = d.fields.indexOf("ts_code");
+    const pi = d.fields.indexOf("pct_chg");
+    for (const r of d.items) {
+      const code = String(r[ci]).split(".")[0];
+      const v = n(r[pi]);
+      if (v !== null) out.set(code, v);
+    }
+    dCache.set(ymd, out);
+  }
+  return out;
+}
+
 // 解析"最新有资金面数据的交易日"(ymd):优先今天(收盘后才有),否则上一交易日。
 export async function latestFundYmd(todayISO: string): Promise<string | null> {
   const todayYmd = todayISO.replace(/-/g, "");
