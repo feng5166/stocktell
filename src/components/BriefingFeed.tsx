@@ -244,8 +244,10 @@ function CardFeed({
 
 function SectionHead({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="mb-2 flex items-baseline gap-2">
-      <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
+    <div className="mb-3 flex items-baseline gap-2">
+      <h2 className="text-base font-semibold tracking-tight text-gray-900">
+        {title}
+      </h2>
       {hint && <span className="text-xs text-gray-400">{hint}</span>}
     </div>
   );
@@ -365,15 +367,18 @@ function BriefingCard({
 
   return (
     <article
-      className={`rounded-xl border border-gray-200 bg-white p-4 ${
-        mine ? "border-l-2 border-l-amber-400" : ""
-      }`}
+      className={`rounded-xl border border-gray-200 border-l-[3px] bg-white p-4 ${meta.barClass}`}
     >
-      <div className="mb-1 flex items-center gap-2 text-xs font-medium">
-        <span>{meta.emoji}</span>
-        <span className="text-gray-500">{meta.label}</span>
+      <div className="mb-1.5">
+        <span
+          className={`inline-flex rounded px-1.5 py-0.5 text-[11px] font-medium ${meta.tagClass}`}
+        >
+          {meta.label}
+        </span>
       </div>
-      <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
+      <h2 className="text-[15px] font-semibold leading-snug text-gray-900">
+        {item.title}
+      </h2>
       {mine && item.triggerCode && (
         <WhyLine code={item.triggerCode} date={item.date} title={item.title} />
       )}
@@ -400,29 +405,29 @@ function BriefingCard({
           })}
         </div>
       )}
-      <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2">
-        <div className="mb-1 text-xs font-medium text-amber-700">散户怎么想</div>
+      <div className="mt-3 rounded-lg border-l-2 border-gray-200 bg-gray-50/70 px-3 py-2">
+        <div className="mb-1 text-xs font-medium text-gray-500">散户怎么想</div>
         <p className="text-sm leading-relaxed text-gray-800">{inlineBold(item.retailTake, "rt-")}</p>
 
         {!deepStarted && (
           <div className="mt-2 text-right">
             <button
               onClick={loadDeep}
-              className="inline-flex items-center gap-1 text-xs font-medium text-amber-700/90 hover:text-amber-900 hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
             >
-              🔍 想更深入?让 StockTell 帮你解读这条 →
+              🔍 让 StockTell 深读这条 →
             </button>
           </div>
         )}
 
         {deepStarted && (
-          <div className="mt-2.5 border-t border-amber-200/60 pt-2.5">
-            <div className="mb-1 flex items-center gap-1 text-xs font-medium text-amber-700">
+          <div className="mt-2.5 border-t border-gray-200 pt-2.5">
+            <div className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600">
               <span>🤖</span> StockTell 解读
             </div>
             {deepLoading && !deep && (
-              <p className="flex items-center gap-1.5 text-xs text-amber-600">
-                <span className="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-amber-500" />
+              <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-gray-400" />
                 StockTell 助手正在为你解读这条信息,请稍候…
               </p>
             )}

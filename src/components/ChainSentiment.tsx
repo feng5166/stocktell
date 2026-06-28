@@ -56,10 +56,8 @@ export function ChainSentiment() {
 
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
-      <div className="mb-1.5 flex items-center gap-2">
-        <span className="text-xs font-medium text-gray-600">
-          📊 AI链今日情绪
-        </span>
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className="text-sm font-semibold text-gray-800">AI链今日情绪</span>
         {mood && (
           <span
             className={`rounded px-1.5 py-0.5 text-[11px] ring-1 ring-inset ${mood.c}`}
@@ -68,28 +66,70 @@ export function ChainSentiment() {
           </span>
         )}
         {d.date && (
-          <span className="ml-auto text-[11px] text-gray-400">
-            {d.date.slice(5)}
-          </span>
+          <span className="ml-auto text-[11px] text-gray-400">{d.date.slice(5)}</span>
         )}
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+      <div className="space-y-2">
         {a && (
-          <span>
-            A股 <span className="text-rose-600">涨{a.up}</span>/
-            <span className="text-emerald-600">跌{a.down}</span> · 均{" "}
-            <span className={changeClass(a.avgPct)}>{fmtPct(a.avgPct)}</span> ·
-            主力 <span className={changeClass(a.netMfYi)}>{fmtYi(a.netMfYi)}</span>
-          </span>
+          <MoodRow
+            label="A股"
+            up={a.up}
+            down={a.down}
+            avgPct={a.avgPct}
+            extra={
+              <>
+                {" · 主力 "}
+                <span className={changeClass(a.netMfYi)}>{fmtYi(a.netMfYi)}</span>
+              </>
+            }
+          />
         )}
         {d.us && (
-          <span>
-            隔夜美股 <span className="text-rose-600">涨{d.us.up}</span>/
-            <span className="text-emerald-600">跌{d.us.down}</span> · 均{" "}
-            <span className={changeClass(d.us.avgPct)}>{fmtPct(d.us.avgPct)}</span>
-          </span>
+          <MoodRow
+            label="隔夜美股"
+            up={d.us.up}
+            down={d.us.down}
+            avgPct={d.us.avgPct}
+          />
         )}
       </div>
+    </div>
+  );
+}
+
+// 一行情绪:红(涨)/绿(跌)堆叠条 + 家数 + 均涨跌,一眼看多空
+function MoodRow({
+  label,
+  up,
+  down,
+  avgPct,
+  extra,
+}: {
+  label: string;
+  up: number;
+  down: number;
+  avgPct: number;
+  extra?: React.ReactNode;
+}) {
+  const total = up + down || 1;
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <span className="w-14 shrink-0 text-gray-500">{label}</span>
+      <div className="flex h-2 w-24 shrink-0 overflow-hidden rounded-full bg-gray-100">
+        <div className="bg-rose-400" style={{ width: `${(up / total) * 100}%` }} />
+        <div
+          className="bg-emerald-400"
+          style={{ width: `${(down / total) * 100}%` }}
+        />
+      </div>
+      <span className="tabular-nums text-gray-500">
+        <span className="text-rose-600">涨{up}</span>
+        <span className="text-gray-300"> / </span>
+        <span className="text-emerald-600">跌{down}</span>
+        {" · 均 "}
+        <span className={changeClass(avgPct)}>{fmtPct(avgPct)}</span>
+        {extra}
+      </span>
     </div>
   );
 }
