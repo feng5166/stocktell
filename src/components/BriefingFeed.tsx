@@ -9,6 +9,7 @@ import { AuthButton } from "@/components/auth/AuthButton";
 import { useWatchlist } from "@/components/useWatchlist";
 import { FundFlow } from "@/components/FundFlow";
 import { IMPACT_META } from "@/lib/impact";
+import { SECTOR_ALIASES } from "@/lib/sector-alias";
 
 const FREE_LIMIT = 3;
 
@@ -97,24 +98,30 @@ export function BriefingFeed({
 
 // 把早报正文里出现的股票名(来自相关条目的触发股/受益股)替换成可点链接 → /stock/[code]。
 function linkifyBrief(text: string, items: BriefingItem[]): React.ReactNode[] {
-  const nameToCode = new Map<string, string>();
+  const map = new Map<string, string>(); // 词 → 跳转链接
+  // 股票名 → 个股详情
   for (const it of items) {
     if (it.triggerName && it.triggerCode)
-      nameToCode.set(it.triggerName, it.triggerCode);
-    for (const b of it.beneficiaries) nameToCode.set(b.name, b.code);
+      map.set(it.triggerName, `/stock/${it.triggerCode}`);
+    for (const b of it.beneficiaries) map.set(b.name, `/stock/${b.code}`);
   }
-  const names = Array.from(nameToCode.keys())
-    .filter((n) => n && n.length >= 2)
-    .sort((a, b) => b.length - a.length); // 长名优先,避免子串误匹配
-  if (names.length === 0) return [text];
+  // 板块简称 → 股票池按板块筛选(股票名优先,不覆盖)
+  for (const [alias, sector] of Object.entries(SECTOR_ALIASES)) {
+    if (!map.has(alias))
+      map.set(alias, `/stocks?sector=${encodeURIComponent(sector)}`);
+  }
+  const words = Array.from(map.keys())
+    .filter((w) => w && w.length >= 2)
+    .sort((a, b) => b.length - a.length); // 长词优先,避免子串误匹配
+  if (words.length === 0) return [text];
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`(${names.map(esc).join("|")})`, "g");
+  const re = new RegExp(`(${words.map(esc).join("|")})`, "g");
   return text.split(re).map((seg, i) => {
-    const code = nameToCode.get(seg);
-    return code ? (
+    const href = map.get(seg);
+    return href ? (
       <Link
         key={i}
-        href={`/stock/${code}`}
+        href={href}
         className="font-medium text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-900"
       >
         {seg}

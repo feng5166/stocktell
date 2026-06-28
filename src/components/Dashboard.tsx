@@ -69,6 +69,15 @@ export default function Dashboard() {
   const [live, setLive] = useState(false);
   const [newsCodes, setNewsCodes] = useState<Set<string>>(new Set());
 
+  // 从早报板块链接进来:?sector=xxx 自动选中该板块,并放开市场到「全部」
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("sector");
+    if (s) {
+      setSector(s);
+      setMarket("全部");
+    }
+  }, []);
+
   // 今日简报涉及的标的 = 真实"今日有新消息"
   useEffect(() => {
     fetch("/api/briefing/news", { cache: "no-store" })
