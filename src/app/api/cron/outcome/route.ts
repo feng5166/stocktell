@@ -3,6 +3,7 @@ import { recordOutcomes } from "@/lib/outcomes";
 import { todayISO } from "@/lib/date";
 import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
+import { alertCron } from "@/lib/monitor";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     const res = await recordOutcomes(date);
     return NextResponse.json({ date, ...res });
   } catch (e) {
+    await alertCron("outcome(记账)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }

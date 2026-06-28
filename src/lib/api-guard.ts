@@ -15,10 +15,11 @@ function bearer(req: NextRequest): string | null {
   return m?.[1] ?? null;
 }
 
-// cron 鉴权:配了 CRON_SECRET 就校验 Authorization: Bearer;未配则放行(与现状一致)
+// cron 鉴权:fail-closed —— 未配 CRON_SECRET 一律拒(避免 cron 端点对公网裸奔被刷 LLM/Tushare)。
+// 生产已配 CRON_SECRET;Vercel Cron 调用时会自动带 Authorization: Bearer $CRON_SECRET。
 export function isCronAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
   const token = bearer(req);
   return !!token && safeEqual(token, secret);
 }

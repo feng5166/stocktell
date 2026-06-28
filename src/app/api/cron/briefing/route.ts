@@ -5,6 +5,7 @@ import { runPreOpenDigest } from "@/lib/digest";
 import { todayISO } from "@/lib/date";
 import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
+import { alertCron } from "@/lib/monitor";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // LLM 生成可能要几十秒
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest) {
       digest,
     });
   } catch (e) {
+    await alertCron("briefing(简报生成)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }

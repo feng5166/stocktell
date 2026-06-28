@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { sendPush, pushEnabled } from "@/lib/push";
 import { todayISO } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
+import { alertCron } from "@/lib/monitor";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ ok: true, date, subs: subs.length, sent, pruned: gone.length });
   } catch (e) {
+    await alertCron("push-web(网页推送)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }
