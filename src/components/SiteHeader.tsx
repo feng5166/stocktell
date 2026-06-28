@@ -8,6 +8,7 @@ const NAV = [
   { href: "/", label: "今日简报" },
   { href: "/stocks", label: "股票池" },
   { href: "/track", label: "战绩" },
+  { href: "/about", label: "关于我们" },
 ];
 
 export function SiteHeader({
