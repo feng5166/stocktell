@@ -56,14 +56,12 @@ export function BriefingFeed({
               <>
                 <MorningBrief codes={wl.codes} items={mine} />
                 <FundFlow codes={wl.codes} />
-                {mine.map((it) => (
-                  <BriefingCard
-                    key={it.id}
-                    item={it}
-                    mine
-                    watchedCodes={wl.codes}
-                  />
-                ))}
+                <CardFeed
+                  items={mine}
+                  loggedIn={loggedIn}
+                  watchedCodes={wl.codes}
+                  mine
+                />
               </>
             )}
           </div>
@@ -73,10 +71,11 @@ export function BriefingFeed({
       {others.length > 0 && (
         <section>
           <SectionHead title="其他市场动态" />
-          <OthersFeed
+          <CardFeed
             items={others}
             loggedIn={loggedIn}
             watchedCodes={wl.codes}
+            gated
           />
         </section>
       )}
@@ -167,14 +166,20 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
 }
 
 // 其他市场动态:瀑布流无限滚动。数据已全在客户端,这里只是渐进渲染,滚到底自动加载更多。
-function OthersFeed({
+// 卡片瀑布流:数据已全在客户端,渐进渲染,滚到底自动加载更多。
+// gated=true 时套免费墙(其他动态);mine=true 时按自选高亮(和我相关,不锁)。
+function CardFeed({
   items,
   loggedIn,
   watchedCodes,
+  gated = false,
+  mine = false,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
   watchedCodes: Set<string>;
+  gated?: boolean;
+  mine?: boolean;
 }) {
   const STEP = 6;
   const [visible, setVisible] = useState(STEP);
@@ -194,16 +199,21 @@ function OthersFeed({
     return () => obs.disconnect();
   }, [items.length]);
 
-  // 免费墙只作用于"其他动态":游客高影响全可见 + 累计前 3 条,其余锁定
+  // 免费墙(仅 gated):游客高影响全可见 + 累计前 3 条,其余锁定
   let shown = 0;
   const slice = items.slice(0, visible);
   return (
     <div className="space-y-3">
       {slice.map((it) => {
-        const free = loggedIn || it.impact === "高" || shown < FREE_LIMIT;
-        if (free) shown++;
+        const free = !gated || loggedIn || it.impact === "高" || shown < FREE_LIMIT;
+        if (gated && free) shown++;
         return free ? (
-          <BriefingCard key={it.id} item={it} watchedCodes={watchedCodes} />
+          <BriefingCard
+            key={it.id}
+            item={it}
+            mine={mine}
+            watchedCodes={watchedCodes}
+          />
         ) : (
           <LockedCard key={it.id} item={it} />
         );
