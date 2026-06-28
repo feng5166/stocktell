@@ -55,14 +55,15 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-gray-50"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-amber-50"
       >
-        <span className="text-xs font-medium text-gray-600">💰 你的票·资金面</span>
+        <span className="text-sm font-medium text-gray-800">💰 你的票·资金面</span>
         <span className="text-[11px] text-gray-400">
           {shown.length} 只{date ? ` · 截至 ${date.slice(5)}` : ""}
         </span>
-        <span className="ml-auto text-xs text-gray-400">
-          {open ? "收起 ▲" : "展开 ▾"}
+        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
+          {open ? "收起" : "展开看主力/龙虎榜"}
+          <span className="text-[10px]">{open ? "▲" : "▾"}</span>
         </span>
       </button>
       {open && (
