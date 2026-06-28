@@ -16,6 +16,18 @@ import crypto from "crypto";
 
 const ILINK = "https://ilinkai.weixin.qq.com";
 const SECRET = process.env.BRIDGE_SECRET || "";
+// fail-closed:没配 BRIDGE_SECRET 就别启动 —— 否则 /send /users /unbind 全裸奔(可任意发消息/拉全部 openId)。
+if (!SECRET) {
+  console.error("[bridge] 致命:未配置 BRIDGE_SECRET,拒绝启动(请设为与 Vercel CLAWBOT_SECRET 同值)");
+  process.exit(1);
+}
+// 常量时间比较 x-clawbot-secret,避免时间侧信道
+function secretOk(got) {
+  if (typeof got !== "string") return false;
+  const a = Buffer.from(got);
+  const b = Buffer.from(SECRET);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 const STOCKTELL = process.env.STOCKTELL_BASE || "https://www.stocktell.me";
 const PORT = process.env.PORT || 8787;
 const FAIL_THRESHOLD = Number(process.env.FAIL_THRESHOLD || 3); // 连续硬失败多少次判定失效
@@ -23,7 +35,11 @@ const FAIL_THRESHOLD = Number(process.env.FAIL_THRESHOLD || 3); // 连续硬失�
 // 持久化:每个微信用户的凭证
 const CREDS_FILE = "creds.json";
 let creds = fs.existsSync(CREDS_FILE) ? JSON.parse(fs.readFileSync(CREDS_FILE, "utf8")) : {};
-const saveCreds = () => fs.writeFileSync(CREDS_FILE, JSON.stringify(creds, null, 2));
+// 凭证含每个用户的 botToken/contextToken,锁 0600 防同机其他用户读取
+const saveCreds = () => {
+  fs.writeFileSync(CREDS_FILE, JSON.stringify(creds, null, 2), { mode: 0o600 });
+  try { fs.chmodSync(CREDS_FILE, 0o600); } catch { /* 已存在文件兜底改权限 */ }
+};
 
 // 进行中的绑定(内存即可):qrcode -> {accountId, state, openId, botToken, createdAt}
 const pending = new Map();
@@ -241,8 +257,8 @@ function readBody(req) {
 http.createServer(async (req, res) => {
   const url = req.url.split("?")[0];
   if (url === "/health") return json(res, 200, { ok: true, users: Object.keys(creds).length });
-  // 鉴权
-  if (SECRET && req.headers["x-clawbot-secret"] !== SECRET) return json(res, 401, { ok: false, error: "unauthorized" });
+  // 鉴权(fail-closed + 常量时间比较;/health 已在上面放行)
+  if (!secretOk(req.headers["x-clawbot-secret"])) return json(res, 401, { ok: false, error: "unauthorized" });
 
   if (req.method === "POST" && url === "/bind/start") {
     const { accountId } = await readBody(req);
