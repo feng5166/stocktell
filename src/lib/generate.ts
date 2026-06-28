@@ -6,6 +6,8 @@ import { fetchQuotes, type Quote } from "@/lib/quotes";
 import { getLLM, LLM_MODEL } from "@/lib/llm";
 import type { Impact, NewBriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
+import { prevAshareTradingDay } from "@/lib/tushare";
+import { usCumulativeChange } from "@/lib/us-history";
 
 const MOVER_THRESHOLD = 2; // 美股 |涨跌| ≥ 2% 视为异动
 
@@ -13,6 +15,9 @@ interface Mover {
   code: string;
   name: string;
   change: number;
+  cumulative?: boolean; // true=假期累计涨跌(节后首个交易日)
+  sinceDate?: string; // 累计起算日(上个 A 股交易日)
+  sessions?: number; // 累计跨越的美股交易日数
   peers: {
     code: string;
     name: string;
@@ -53,7 +58,9 @@ function mostRecentUSWeekday(now: Date): string {
 
 // 找美股异动 + 映射 A 股(双向取并集)。
 // usMarketClosed:美股最近一个工作日没有新行情(节假日休市),此时不硬生成隔夜映射。
-async function findMovers(): Promise<{ movers: Mover[]; usMarketClosed: boolean }> {
+async function findMovers(
+  date: string
+): Promise<{ movers: Mover[]; usMarketClosed: boolean }> {
   const { quotes } = await fetchQuotes(STOCKS.map((s) => s.code));
   const q = (code: string): Quote | undefined => quotes[code];
 
@@ -68,31 +75,75 @@ async function findMovers(): Promise<{ movers: Mover[]; usMarketClosed: boolean 
 
   if (usMarketClosed) return { movers: [], usMarketClosed: true };
 
+  // 节后缺口判定:与上个 A 股交易日间隔 ≥4 个自然日 → 用"假期累计"涨跌;否则维持实时单日。
+  const prevDay = await prevAshareTradingDay(date);
+  const gapDays = prevDay
+    ? Math.round(
+        (Date.parse(`${date}T00:00:00+08:00`) -
+          Date.parse(`${prevDay}T00:00:00+08:00`)) /
+          86400000
+      )
+    : 0;
+  const holiday = Boolean(prevDay) && gapDays >= 4;
+
   const movers: Mover[] = [];
-  for (const us of STOCKS) {
-    if (us.market !== "美股") continue;
-    const quote = q(us.code);
-    const change = quote?.change;
-    if (change === undefined || Math.abs(change) < MOVER_THRESHOLD) continue;
-    // 丢掉个别 asOf 落后于最新交易日的陈旧报价(避免拿旧数据当今日异动)
-    if (freshestUS && quote?.asOf && quote.asOf < freshestUS) continue;
 
-    const peers = aSharePeers(us);
-    if (peers.length === 0) continue;
+  if (holiday && prevDay) {
+    // 假期累计:对所有美股算"自上个 A 股交易日以来"的累计涨跌,按累计幅度选异动
+    const usStocks = STOCKS.filter((s) => s.market === "美股");
+    const results = await Promise.all(
+      usStocks.map(async (s) => ({
+        s,
+        cum: await usCumulativeChange(s.code, prevDay),
+      }))
+    );
+    for (const { s, cum } of results) {
+      if (!cum || Math.abs(cum.change) < MOVER_THRESHOLD) continue;
+      const peers = aSharePeers(s);
+      if (peers.length === 0) continue;
+      movers.push({
+        code: s.code,
+        name: s.name,
+        change: cum.change,
+        cumulative: true,
+        sinceDate: prevDay,
+        sessions: cum.sessions,
+        peers: peers.map((p) => ({
+          code: p.code,
+          name: p.name,
+          change: q(p.code)?.change ?? null,
+          position: p.position,
+          sector: p.sector,
+          observation: p.observation,
+        })),
+      });
+    }
+  } else {
+    for (const us of STOCKS) {
+      if (us.market !== "美股") continue;
+      const quote = q(us.code);
+      const change = quote?.change;
+      if (change === undefined || Math.abs(change) < MOVER_THRESHOLD) continue;
+      // 丢掉个别 asOf 落后于最新交易日的陈旧报价(避免拿旧数据当今日异动)
+      if (freshestUS && quote?.asOf && quote.asOf < freshestUS) continue;
 
-    movers.push({
-      code: us.code,
-      name: us.name,
-      change,
-      peers: peers.map((p) => ({
-        code: p.code,
-        name: p.name,
-        change: q(p.code)?.change ?? null,
-        position: p.position,
-        sector: p.sector,
-        observation: p.observation,
-      })),
-    });
+      const peers = aSharePeers(us);
+      if (peers.length === 0) continue;
+
+      movers.push({
+        code: us.code,
+        name: us.name,
+        change,
+        peers: peers.map((p) => ({
+          code: p.code,
+          name: p.name,
+          change: q(p.code)?.change ?? null,
+          position: p.position,
+          sector: p.sector,
+          observation: p.observation,
+        })),
+      });
+    }
   }
   // 异动幅度大的在前
   movers.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
@@ -103,22 +154,29 @@ async function findMovers(): Promise<{ movers: Mover[]; usMarketClosed: boolean 
 function templateDrafts(date: string, movers: Mover[]): NewBriefingItem[] {
   return movers.map((m) => {
     const dir = m.change > 0 ? "上涨" : "下跌";
+    // 假期累计 vs 隔夜单日,措辞不同
+    const window = m.cumulative
+      ? `假期累计${dir} ${Math.abs(m.change).toFixed(2)}%(${m.sessions ?? "多"}个交易日)`
+      : `隔夜${dir} ${Math.abs(m.change).toFixed(2)}%`;
     const lagging = m.peers.filter(
       (p) => p.change !== null && m.change - p.change >= 1.5
     );
     const peerText = m.peers
       .map((p) => `${p.name}(${p.change === null ? "未开盘" : (p.change > 0 ? "+" : "") + p.change.toFixed(2) + "%"})`)
       .join(" · ");
+    const prefix = m.cumulative
+      ? `A 股节后首个交易日,需一次性消化假期内美股的累计变动。${m.name}假期累计${dir} ${Math.abs(m.change).toFixed(2)}%`
+      : `${m.name}${dir} ${m.change.toFixed(2)}%`;
     const take =
       lagging.length > 0
-        ? `${m.name}已${dir} ${m.change.toFixed(2)}%,但对应 A 股 ${lagging
+        ? `${prefix},对应 A 股 ${lagging
             .map((p) => p.name)
-            .join("、")} 明显没跟上,存在预期差。注意板块情绪,追高需谨慎。`
-        : `${m.name}${dir} ${m.change.toFixed(2)}%,对应 A 股标的已基本同步反应,短期跟随板块情绪波动。`;
+            .join("、")} 还没跟上,存在预期差。注意板块情绪,追高需谨慎。`
+        : `${prefix},对应 A 股标的或同步反应,短期跟随板块情绪波动。`;
     return {
       date,
       impact: impactFromChange(Math.abs(m.change)),
-      title: `${m.name}隔夜${dir} ${Math.abs(m.change).toFixed(2)}%`,
+      title: `${m.name}${window}`,
       triggerCode: m.code,
       triggerName: m.name,
       triggerChange: m.change,
@@ -163,10 +221,13 @@ async function llmDrafts(
 ): Promise<NewBriefingItem[]> {
   const client = getLLM();
   if (!client) return templateDrafts(date, movers);
+  const cumulative = movers.some((m) => m.cumulative);
   const payload = movers.map((m) => ({
     triggerCode: m.code,
     triggerName: m.name,
     usChangePct: m.change,
+    cumulative: !!m.cumulative,
+    sessions: m.sessions,
     peers: m.peers.map((p) => ({
       code: p.code,
       name: p.name,
@@ -185,7 +246,11 @@ async function llmDrafts(
       { role: "system", content: `${SYSTEM_PROMPT}\n\n${JSON_SPEC}` },
       {
         role: "user",
-        content: `今日(${date})美股异动与对应 A 股数据如下(JSON)。请为每个异动生成一条简报条目。\n\n${JSON.stringify(
+        content: `${
+          cumulative
+            ? "【特别说明】今天是 A 股节后首个交易日,下方 usChangePct 是该美股在 A 股休市期间的【假期累计涨跌】(跨多个交易日,非单日)。title 和 retailTake 必须点明\"假期累计 / A股节后需一次性消化\",不要用\"隔夜\"字样。\n\n"
+            : ""
+        }今日(${date})美股异动与对应 A 股数据如下(JSON)。请为每个异动生成一条简报条目。\n\n${JSON.stringify(
           payload,
           null,
           2
@@ -227,7 +292,7 @@ export async function generateDrafts(): Promise<{
   usMarketClosed: boolean;
 }> {
   const date = todayISO();
-  const { movers, usMarketClosed } = await findMovers();
+  const { movers, usMarketClosed } = await findMovers(date);
   const useLLM = Boolean(getLLM());
   let drafts: NewBriefingItem[];
   let engine: "llm" | "template" = "template";

@@ -73,6 +73,57 @@ export async function isAshareTradingDay(dateISO: string): Promise<boolean> {
   return open;
 }
 
+// 上一个 A 股交易日(YYYY-MM-DD,严格早于 dateISO)。用于判断节后缺口/累计窗口。
+// Tushare 不可用时回退:往前找第一个非周末日。
+export async function prevAshareTradingDay(
+  dateISO: string
+): Promise<string | null> {
+  const end = dateISO.replace(/-/g, "");
+  const base = new Date(`${dateISO}T12:00:00+08:00`);
+  base.setUTCDate(base.getUTCDate() - 30);
+  const start = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(base)
+    .replace(/-/g, "");
+
+  const d = await tsCall(
+    "trade_cal",
+    { exchange: "SSE", start_date: start, end_date: end },
+    "cal_date,is_open"
+  ).catch(() => null);
+
+  if (d && d.items.length) {
+    const ci = d.fields.indexOf("cal_date");
+    const oi = d.fields.indexOf("is_open");
+    const openDays = d.items
+      .filter((r) => String(r[oi]) === "1")
+      .map((r) => String(r[ci]))
+      .filter((x) => x < end)
+      .sort();
+    const prev = openDays.at(-1);
+    if (prev) return `${prev.slice(0, 4)}-${prev.slice(4, 6)}-${prev.slice(6, 8)}`;
+  }
+
+  // 回退:往前找非周末
+  for (let i = 1; i <= 7; i++) {
+    const t = new Date(`${dateISO}T12:00:00+08:00`);
+    t.setUTCDate(t.getUTCDate() - i);
+    const iso = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(t);
+    const wd = new Date(`${iso}T12:00:00+08:00`).getUTCDay();
+    if (wd !== 0 && wd !== 6) return iso;
+  }
+  return null;
+}
+
 function ymdDaysAgo(days: number): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai",
