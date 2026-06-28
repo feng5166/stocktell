@@ -218,13 +218,22 @@ function CardFeed({
           <LockedCard key={it.id} item={it} />
         );
       })}
-      {visible < items.length && (
+      {visible < items.length ? (
         <div
           ref={sentinelRef}
-          className="py-4 text-center text-xs text-gray-400"
+          className="flex flex-col items-center gap-1 py-5 text-gray-400"
         >
-          下拉加载更多…
+          <span className="animate-bounce text-base leading-none">↓</span>
+          <span className="text-xs">
+            继续向下滚动,加载更多 · {visible}/{items.length}
+          </span>
         </div>
+      ) : (
+        items.length > STEP && (
+          <div className="py-4 text-center text-[11px] text-gray-300">
+            — 已全部加载({items.length}条)—
+          </div>
+        )
       )}
     </div>
   );
