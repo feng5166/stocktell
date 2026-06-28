@@ -44,6 +44,35 @@ async function tsCall(
   return data.data;
 }
 
+// A 股交易日历缓存(进程内,按 YYYYMMDD,仅缓存权威结果)
+const tradingDayCache = new Map<string, boolean>();
+
+// 判断某天(YYYY-MM-DD)是否 A 股交易日(上交所日历,含节假日)。
+// Tushare 未配/失败时回退:非周末即视为交易日(与旧行为一致,不致命退化)。
+export async function isAshareTradingDay(dateISO: string): Promise<boolean> {
+  const ymd = dateISO.replace(/-/g, "");
+  const cached = tradingDayCache.get(ymd);
+  if (cached !== undefined) return cached;
+
+  const weekendFallback = () => {
+    // dateISO 是北京日期;取当天 12:00+08(=04:00 UTC 同日)的 UTC 星期,稳妥不跨日
+    const wd = new Date(`${dateISO}T12:00:00+08:00`).getUTCDay();
+    return wd !== 0 && wd !== 6;
+  };
+
+  const d = await tsCall(
+    "trade_cal",
+    { exchange: "SSE", start_date: ymd, end_date: ymd },
+    "cal_date,is_open"
+  ).catch(() => null);
+
+  if (!d || d.items.length === 0) return weekendFallback();
+  const idx = d.fields.indexOf("is_open");
+  const open = String(d.items[0][idx]) === "1";
+  tradingDayCache.set(ymd, open);
+  return open;
+}
+
 function ymdDaysAgo(days: number): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordOutcomes } from "@/lib/outcomes";
-import { todayISO, beijingWeekday } from "@/lib/date";
+import { todayISO } from "@/lib/date";
+import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
@@ -13,13 +14,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  // 周末 A 股不开盘,无需记账
-  const wd = beijingWeekday();
-  if (wd === 0 || wd === 6) {
-    return NextResponse.json({ ok: true, skipped: "weekend" });
+  // 只在 A 股交易日记账(Tushare 交易日历,含节假日;不可用时回退周末判断)
+  const date = todayISO();
+  if (!(await isAshareTradingDay(date))) {
+    return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
   }
 
-  const date = todayISO();
   try {
     const res = await recordOutcomes(date);
     return NextResponse.json({ date, ...res });

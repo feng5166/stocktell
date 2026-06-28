@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateDrafts } from "@/lib/generate";
 import { insertDrafts, listBriefing } from "@/lib/briefings";
 import { runPreOpenDigest } from "@/lib/digest";
-import { todayISO, beijingWeekday } from "@/lib/date";
+import { todayISO } from "@/lib/date";
+import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
@@ -14,14 +15,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  // 跳过周末(A股不开盘;节假日日历放二期)
-  const wd = beijingWeekday();
-  if (wd === 0 || wd === 6) {
-    return NextResponse.json({ ok: true, skipped: "weekend" });
+  // 只在 A 股交易日生成(Tushare 交易日历,含节假日;不可用时回退周末判断)
+  const date = todayISO();
+  if (!(await isAshareTradingDay(date))) {
+    return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
   }
 
   // 幂等:当天已生成过就不重复
-  const date = todayISO();
   const existing = await listBriefing({ date });
   if (existing.length > 0) {
     return NextResponse.json({
