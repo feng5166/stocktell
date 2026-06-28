@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
+import { useProgressive } from "@/components/useProgressive";
 import { ChainSwitcher } from "@/components/ChainSwitcher";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
@@ -458,11 +459,15 @@ function StockTable({
       return next;
     });
 
+  // 长列表渐进加载:手机/桌面各一份(同时只显示一个视图)
+  const mob = useProgressive(rows, 12);
+  const desk = useProgressive(rows, 20);
+
   return (
     <>
       {/* 手机:卡片列表(桌面 sm 以上隐藏,不影响原表格) */}
       <div className="space-y-2 sm:hidden">
-        {rows.map((s) => (
+        {mob.slice.map((s) => (
           <StockCard
             key={s.code}
             s={s}
@@ -473,6 +478,14 @@ function StockTable({
             toggle={() => toggle(s.code)}
           />
         ))}
+        {mob.hasMore && (
+          <div
+            ref={mob.setSentinel}
+            className="py-3 text-center text-xs text-gray-400"
+          >
+            下拉加载更多 · {mob.shownCount}/{mob.total}
+          </div>
+        )}
         {rows.length === 0 && (
           <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-400">
             没有符合条件的标的,试试放宽筛选条件
@@ -500,7 +513,7 @@ function StockTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((s) => {
+            {desk.slice.map((s) => {
               const isOpen = open.has(s.code);
               return (
                 <ReactFragmentRow
@@ -514,6 +527,16 @@ function StockTable({
                 />
               );
             })}
+            {desk.hasMore && (
+              <tr ref={desk.setSentinel}>
+                <td
+                  colSpan={11}
+                  className="py-3 text-center text-xs text-gray-400"
+                >
+                  下拉加载更多 · {desk.shownCount}/{desk.total}
+                </td>
+              </tr>
+            )}
             {rows.length === 0 && (
               <tr>
                 <td
