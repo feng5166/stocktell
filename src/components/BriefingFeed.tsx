@@ -95,6 +95,36 @@ export function BriefingFeed({
   );
 }
 
+// 把早报正文里出现的股票名(来自相关条目的触发股/受益股)替换成可点链接 → /stock/[code]。
+function linkifyBrief(text: string, items: BriefingItem[]): React.ReactNode[] {
+  const nameToCode = new Map<string, string>();
+  for (const it of items) {
+    if (it.triggerName && it.triggerCode)
+      nameToCode.set(it.triggerName, it.triggerCode);
+    for (const b of it.beneficiaries) nameToCode.set(b.name, b.code);
+  }
+  const names = Array.from(nameToCode.keys())
+    .filter((n) => n && n.length >= 2)
+    .sort((a, b) => b.length - a.length); // 长名优先,避免子串误匹配
+  if (names.length === 0) return [text];
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(${names.map(esc).join("|")})`, "g");
+  return text.split(re).map((seg, i) => {
+    const code = nameToCode.get(seg);
+    return code ? (
+      <Link
+        key={i}
+        href={`/stock/${code}`}
+        className="font-medium text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-900"
+      >
+        {seg}
+      </Link>
+    ) : (
+      <span key={i}>{seg}</span>
+    );
+  });
+}
+
 // 「和我相关」顶部的个性化早报:LLM 综合你今天相关动态写一段人话。
 // 把已算好的相关条目 items 一并传给接口,服务端不再重查简报,命中缓存即秒回。
 function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingItem[] }) {
@@ -134,7 +164,9 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
       <div className="mb-1 text-xs font-medium text-amber-700">☀️ 你的今日早报</div>
-      <p className="text-sm leading-relaxed text-gray-800">{brief}</p>
+      <p className="text-sm leading-relaxed text-gray-800">
+        {linkifyBrief(brief, items)}
+      </p>
     </div>
   );
 }
