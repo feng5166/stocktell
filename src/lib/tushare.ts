@@ -188,6 +188,27 @@ export async function longhuByDate(ymd: string): Promise<Map<string, LonghuHit>>
   return out;
 }
 
+const mgCache = new Map<string, Map<string, number>>(); // ymd -> (裸code -> 融资余额 亿元)
+
+// 某交易日全市场融资余额(亿元)。rzye 单位元 → /1e8 = 亿元。
+export async function marginByDate(ymd: string): Promise<Map<string, number>> {
+  const hit = mgCache.get(ymd);
+  if (hit) return hit;
+  const out = new Map<string, number>();
+  const d = await tsCall("margin_detail", { trade_date: ymd }, "ts_code,rzye");
+  if (d) {
+    const ci = d.fields.indexOf("ts_code");
+    const yi = d.fields.indexOf("rzye");
+    for (const r of d.items) {
+      const code = String(r[ci]).split(".")[0];
+      const v = n(r[yi]);
+      if (v !== null) out.set(code, Math.round((v / 1e8) * 100) / 100);
+    }
+    mgCache.set(ymd, out);
+  }
+  return out;
+}
+
 // 解析"最新有资金面数据的交易日"(ymd):优先今天(收盘后才有),否则上一交易日。
 export async function latestFundYmd(todayISO: string): Promise<string | null> {
   const todayYmd = todayISO.replace(/-/g, "");

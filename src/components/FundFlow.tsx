@@ -10,6 +10,7 @@ interface FundItem {
   name: string;
   netMf: number | null; // 主力净流入(亿元)
   longhu: { net: number; reason: string } | null;
+  rzChgYi: number | null; // 融资余额变化(亿元)
 }
 
 function fmtYi(v: number) {
@@ -44,7 +45,9 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
   }, [codeKey]);
 
   // 至少有一只拿到数据才显示;否则(无 A 股自选 / 接口无权限)整块不渲染
-  const shown = items.filter((it) => it.netMf !== null || it.longhu);
+  const shown = items.filter(
+    (it) => it.netMf !== null || it.longhu || it.rzChgYi !== null
+  );
   if (loading || shown.length === 0) return null;
 
   return (
@@ -62,6 +65,14 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
                 主力{" "}
                 <span className={`font-mono tabular-nums ${changeClass(it.netMf)}`}>
                   {fmtYi(it.netMf)}
+                </span>
+              </span>
+            )}
+            {it.rzChgYi !== null && (
+              <span className="text-xs text-gray-500">
+                融资{" "}
+                <span className={`font-mono tabular-nums ${changeClass(it.rzChgYi)}`}>
+                  {fmtYi(it.rzChgYi)}
                 </span>
               </span>
             )}
