@@ -1,9 +1,8 @@
 import { SiteHeader } from "@/components/SiteHeader";
-import { OutcomeTable } from "@/components/OutcomeTable";
+import { OutcomeFeed } from "@/components/OutcomeFeed";
 import {
-  listOutcomes,
-  summarize,
-  summarizeByImpact,
+  pageOutcomes,
+  statsOutcomes,
   HIT_THRESHOLD,
   MIN_SAMPLE,
   type HitStats,
@@ -13,13 +12,20 @@ import { IMPACT_META } from "@/lib/impact";
 
 export const dynamic = "force-dynamic";
 
+const PAGE = 20;
+
 export default async function TrackPage() {
-  const live = await listOutcomes(300, false).catch(() => []);
-  const backtest = await listOutcomes(300, true).catch(() => []);
-  const liveStats = summarize(live);
-  const btStats = summarize(backtest);
-  const liveByImpact = summarizeByImpact(live);
-  const btByImpact = summarizeByImpact(backtest);
+  // 真分页:服务端只取首页 + 轻量统计;其余滚动时由 OutcomeFeed 向 /api/outcomes 拉
+  const [liveAgg, btAgg, liveFirst, btFirst] = await Promise.all([
+    statsOutcomes(false).catch(() => ({ stats: emptyStats(), byImpact: [] })),
+    statsOutcomes(true).catch(() => ({ stats: emptyStats(), byImpact: [] })),
+    pageOutcomes(false, 0, PAGE).catch(() => ({ rows: [], hasMore: false })),
+    pageOutcomes(true, 0, PAGE).catch(() => ({ rows: [], hasMore: false })),
+  ]);
+  const liveStats = liveAgg.stats;
+  const btStats = btAgg.stats;
+  const liveByImpact = liveAgg.byImpact;
+  const btByImpact = btAgg.byImpact;
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
@@ -45,7 +51,7 @@ export default async function TrackPage() {
             实盘喊单 · 自动记账起
           </h2>
           <Overview stats={liveStats} byImpact={liveByImpact} />
-          {live.length === 0 ? (
+          {liveFirst.rows.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white py-12 text-center">
               <div className="text-sm font-medium text-gray-500">还在积累中</div>
               <div className="mt-1 text-xs text-gray-400">
@@ -55,12 +61,16 @@ export default async function TrackPage() {
               </div>
             </div>
           ) : (
-            <OutcomeTable rows={live} />
+            <OutcomeFeed
+              backtest={false}
+              initial={liveFirst.rows}
+              initialHasMore={liveFirst.hasMore}
+            />
           )}
         </section>
 
         {/* 历史回测(明牌) */}
-        {backtest.length > 0 && (
+        {btFirst.rows.length > 0 && (
           <section className="mb-2">
             <h2 className="mb-2 text-sm font-semibold text-gray-700">
               历史回测 · 非实盘喊单
@@ -70,7 +80,11 @@ export default async function TrackPage() {
               仅用于看这类信号过去大致的规律。实盘战绩只看上面那一栏。
             </div>
             <Overview stats={btStats} byImpact={btByImpact} />
-            <OutcomeTable rows={backtest} />
+            <OutcomeFeed
+              backtest={true}
+              initial={btFirst.rows}
+              initialHasMore={btFirst.hasMore}
+            />
           </section>
         )}
 
@@ -80,6 +94,10 @@ export default async function TrackPage() {
       </main>
     </div>
   );
+}
+
+function emptyStats(): HitStats {
+  return { evaluated: 0, hits: 0, rate: null };
 }
 
 function Overview({

@@ -1,33 +1,21 @@
 "use client";
 
-// 战绩明细表(实盘/回测复用)。长列表渐进加载:初始一截,滚到底再加载更多。
+// 战绩明细表(实盘/回测复用),纯展示给定 rows。分页/加载交给 OutcomeFeed。
 import Link from "next/link";
 import type { OutcomeRow } from "@/lib/outcomes";
 import type { Impact } from "@/lib/briefings";
 import { changeClass, fmtChange } from "@/lib/format";
 import { IMPACT_META } from "@/lib/impact";
 import { Th, Td } from "@/components/Table";
-import { useProgressive } from "@/components/useProgressive";
 
 export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
-  const mob = useProgressive(rows, 12);
-  const desk = useProgressive(rows, 20);
-
   return (
     <>
       {/* 手机:卡片(桌面隐藏) */}
       <div className="space-y-2 sm:hidden">
-        {mob.slice.map((r) => (
+        {rows.map((r) => (
           <OutcomeCard key={r.id} r={r} />
         ))}
-        {mob.hasMore && (
-          <div
-            ref={mob.setSentinel}
-            className="py-3 text-center text-xs text-gray-400"
-          >
-            下拉加载更多 · {mob.shownCount}/{mob.total}
-          </div>
-        )}
       </div>
 
       {/* 桌面:表格(手机隐藏) */}
@@ -45,7 +33,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
               </tr>
             </thead>
             <tbody>
-              {desk.slice.map((r) => (
+              {rows.map((r) => (
                 <tr key={r.id} className="border-b border-gray-100 last:border-0">
                   <Td className="whitespace-nowrap font-mono text-xs text-gray-500">
                     {r.date.slice(5)}
@@ -89,16 +77,6 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                   </Td>
                 </tr>
               ))}
-              {desk.hasMore && (
-                <tr ref={desk.setSentinel}>
-                  <td
-                    colSpan={6}
-                    className="py-3 text-center text-xs text-gray-400"
-                  >
-                    下拉加载更多 · {desk.shownCount}/{desk.total}
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

@@ -116,7 +116,10 @@ export interface HitStats {
   rate: number | null; // 命中率 0-1;无样本为 null
 }
 
-export function summarize(rows: OutcomeRow[]): HitStats {
+// 只用到 impact/hit,接受最小形状(便于用轻量 select 算统计,不拉全行)
+type StatRow = { impact: string; hit: boolean | null };
+
+export function summarize(rows: StatRow[]): HitStats {
   const judged = rows.filter((r) => r.hit !== null);
   const hits = judged.filter((r) => r.hit).length;
   return {
@@ -126,12 +129,43 @@ export function summarize(rows: OutcomeRow[]): HitStats {
   };
 }
 
+// 分页取明细(真分页:滚到底才向服务器要下一页)。多取 1 条判 hasMore。
+export async function pageOutcomes(
+  backtest: boolean,
+  offset: number,
+  limit: number
+): Promise<{ rows: OutcomeRow[]; hasMore: boolean }> {
+  const db = getPrisma();
+  if (!db) return { rows: [], hasMore: false };
+  const rows = await db.briefingOutcome.findMany({
+    where: { isBacktest: backtest },
+    orderBy: [{ date: "desc" }, { impact: "asc" }],
+    skip: offset,
+    take: limit + 1,
+  });
+  const hasMore = rows.length > limit;
+  return { rows: rows.slice(0, limit).map(fromRow), hasMore };
+}
+
+// 命中率统计:命中率需全量,但只 select impact/hit 两字段算,不拉全行(快、payload 小)。
+export async function statsOutcomes(
+  backtest: boolean
+): Promise<{ stats: HitStats; byImpact: { impact: string; stats: HitStats }[] }> {
+  const db = getPrisma();
+  if (!db) return { stats: { evaluated: 0, hits: 0, rate: null }, byImpact: [] };
+  const rows = await db.briefingOutcome.findMany({
+    where: { isBacktest: backtest },
+    select: { impact: true, hit: true },
+  });
+  return { stats: summarize(rows), byImpact: summarizeByImpact(rows) };
+}
+
 // 样本低于此数不亮总命中率,只说"样本积累中"——早期几条数据的命中率没意义,亮出来反而误导。
 export const MIN_SAMPLE = 10;
 
 // 按影响等级(高/中/低)拆命中率,只返回有样本的等级。
 export function summarizeByImpact(
-  rows: OutcomeRow[]
+  rows: StatRow[]
 ): { impact: string; stats: HitStats }[] {
   return (["高", "中", "低"] as const)
     .map((impact) => ({
