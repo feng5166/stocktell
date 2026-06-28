@@ -40,29 +40,43 @@ export interface CumChange {
   sessions: number; // 累计跨越的美股交易日数
 }
 
-// 从"baseExclusiveISO 之前最后一个交易日的收盘"到"最新收盘"的累计涨跌。
-// baseExclusiveISO 传"上个 A 股交易日";正常情况(间隔1日)自然退化为最近一个 session 的涨跌。
+// 累计涨跌:从"baseExclusiveISO 之前最后一个交易日收盘"到"untilExclusiveISO 之前最后一个交易日收盘"。
+// baseExclusiveISO=上个 A 股交易日;untilExclusiveISO=简报日(终点取其前最后一个美股 session,即 A 股开盘前能看到的最新美股收盘)。
+// 正常情况(间隔1日)自然退化为最近一个 session 的涨跌。
 export async function usCumulativeChange(
   ticker: string,
-  baseExclusiveISO: string
+  baseExclusiveISO: string,
+  untilExclusiveISO: string
 ): Promise<CumChange | null> {
   const bars = await emCloses(ticker);
   if (!bars || bars.length < 2) return null;
-  const latest = bars[bars.length - 1];
-  let baseIdx = -1;
+
+  // 终点:最后一个 date < untilExclusiveISO 的 bar
+  let toIdx = -1;
   for (let i = bars.length - 1; i >= 0; i--) {
+    if (bars[i].date < untilExclusiveISO) {
+      toIdx = i;
+      break;
+    }
+  }
+  if (toIdx < 0) return null;
+
+  // 基准:最后一个 date < baseExclusiveISO 的 bar
+  let baseIdx = -1;
+  for (let i = toIdx; i >= 0; i--) {
     if (bars[i].date < baseExclusiveISO) {
       baseIdx = i;
       break;
     }
   }
-  if (baseIdx < 0) return null;
+  if (baseIdx < 0 || baseIdx === toIdx) return null;
+
   const base = bars[baseIdx];
-  if (base.date === latest.date) return null;
+  const to = bars[toIdx];
   return {
-    change: Math.round((latest.close / base.close - 1) * 10000) / 100,
+    change: Math.round((to.close / base.close - 1) * 10000) / 100,
     fromDate: base.date,
-    toDate: latest.date,
-    sessions: bars.length - 1 - baseIdx,
+    toDate: to.date,
+    sessions: toIdx - baseIdx,
   };
 }

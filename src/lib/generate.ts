@@ -95,7 +95,7 @@ async function findMovers(
     const results = await Promise.all(
       usStocks.map(async (s) => ({
         s,
-        cum: await usCumulativeChange(s.code, prevDay),
+        cum: await usCumulativeChange(s.code, prevDay, date),
       }))
     );
     for (const { s, cum } of results) {
