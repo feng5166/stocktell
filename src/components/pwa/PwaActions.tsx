@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -17,6 +18,7 @@ function urlB64ToUint8(base64: string): Uint8Array {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function PwaActions() {
   const { data: session } = useSession();
+  const confirm = useConfirm();
   const [deferred, setDeferred] = useState<any>(null);
   const [standalone, setStandalone] = useState(true);
   const [isIOS, setIsIOS] = useState(false);
@@ -171,7 +173,13 @@ export function PwaActions() {
   }
 
   async function unbindWx() {
-    if (!confirm("确定取消微信推送吗?")) return;
+    const ok = await confirm({
+      title: "取消微信推送",
+      message: "取消后将不再收到盘前早报和相关动态提醒,确定要取消吗?",
+      confirmText: "确定取消",
+      danger: true,
+    });
+    if (!ok) return;
     setWxBusy(true);
     try {
       const res = await fetch("/api/push/unbind-weixin", { method: "DELETE" });

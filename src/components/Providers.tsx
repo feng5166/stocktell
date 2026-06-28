@@ -5,6 +5,7 @@ import { createContext, useContext, useState } from "react";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import { PwaActions } from "@/components/pwa/PwaActions";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 
 const AuthModalCtx = createContext<{ open: () => void; close: () => void }>({
   open: () => {},
@@ -19,14 +20,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <SessionProvider>
-      <AuthModalCtx.Provider
-        value={{ open: () => setIsOpen(true), close: () => setIsOpen(false) }}
-      >
-        <OfflineBanner />
-        {children}
-        {isOpen && <AuthModal onClose={() => setIsOpen(false)} />}
-        <PwaActions />
-      </AuthModalCtx.Provider>
+      <ConfirmProvider>
+        <AuthModalCtx.Provider
+          value={{ open: () => setIsOpen(true), close: () => setIsOpen(false) }}
+        >
+          <OfflineBanner />
+          {children}
+          {isOpen && <AuthModal onClose={() => setIsOpen(false)} />}
+          <PwaActions />
+        </AuthModalCtx.Provider>
+      </ConfirmProvider>
     </SessionProvider>
   );
 }
