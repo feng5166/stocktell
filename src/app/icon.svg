@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="40" x2="440" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角方:像一个对话框/陪伴的容器 -->
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+
+  <!-- 趋势引导线(淡):盯盘的视线 -->
+  <path d="M150 356 L256 312 L354 236" fill="none" stroke="#ffffff" stroke-opacity="0.25"
+        stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 上升蜡烛(行情)-->
+  <g stroke-linecap="round">
+    <!-- c1 -->
+    <line x1="158" y1="300" x2="158" y2="382" stroke="#ffffff" stroke-width="9"/>
+    <rect x="138" y="322" width="40" height="46" rx="9" fill="#ffffff"/>
+    <!-- c2 -->
+    <line x1="256" y1="258" x2="256" y2="374" stroke="#ffffff" stroke-width="9"/>
+    <rect x="236" y="282" width="40" height="70" rx="9" fill="#ffffff"/>
+    <!-- c3:被 AI 点亮的那根(金色)-->
+    <line x1="354" y1="190" x2="354" y2="338" stroke="#fcd34d" stroke-width="9"/>
+    <rect x="334" y="214" width="40" height="92" rx="9" fill="#fbbf24"/>
+  </g>
+
+  <!-- AI 火花:点睛的"解读" -->
+  <path d="M398 120
+           C402 150 410 158 440 162
+           C410 166 402 174 398 204
+           C394 174 386 166 356 162
+           C386 158 394 150 398 120 Z"
+        fill="#fde68a"/>
+  <circle cx="446" cy="208" r="10" fill="#fde68a"/>
+</svg>
