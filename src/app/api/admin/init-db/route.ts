@@ -139,34 +139,40 @@ export async function POST(req: NextRequest) {
   const db = getPrisma();
   if (!db) return NextResponse.json({ ok: false, error: "no database" }, { status: 500 });
   try {
-    await db.$executeRawUnsafe(T);
-    await db.$executeRawUnsafe(IDX_TOKEN);
-    await db.$executeRawUnsafe(IDX_EMAIL);
-    await db.$executeRawUnsafe(ALTER_BRIEFING);
-    await db.$executeRawUnsafe(T_OUTCOME);
-    await db.$executeRawUnsafe(IDX_OUTCOME_UNIQUE);
-    await db.$executeRawUnsafe(IDX_OUTCOME_DATE);
-    await db.$executeRawUnsafe(ALTER_OUTCOME_BACKTEST);
-    await db.$executeRawUnsafe(IDX_OUTCOME_BACKTEST);
-    await db.$executeRawUnsafe(IDX_OUTCOME_BACKTEST_DATE);
-    await db.$executeRawUnsafe(T_WATCHLIST);
-    await db.$executeRawUnsafe(IDX_WATCHLIST_UNIQUE);
-    await db.$executeRawUnsafe(IDX_WATCHLIST_USER);
-    await db.$executeRawUnsafe(T_PUSH);
-    await db.$executeRawUnsafe(IDX_PUSH);
-    await db.$executeRawUnsafe(ALTER_USER_WEIXIN);
-    await db.$executeRawUnsafe(IDX_USER_WEIXIN);
-    await db.$executeRawUnsafe(ALTER_USER_WEIXIN_PENDING);
-    await db.$executeRawUnsafe(T_WEIXIN_BIND);
-    await db.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
-    await db.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);
-    await db.$executeRawUnsafe(T_WHY_CACHE);
-    await db.$executeRawUnsafe(T_BRIEF_CACHE);
-    await db.$executeRawUnsafe(T_CHAIN_INTEREST);
-    await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_UNIQUE);
-    await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_CHAIN);
-    await db.$executeRawUnsafe(T_QUOTES_CACHE);
-    await db.$executeRawUnsafe(T_DEEP_CACHE);
+    // 全部 DDL 包进单个事务:中途任一条失败则整体回滚,不会留半套表结构(B5)
+    await db.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(T);
+        await tx.$executeRawUnsafe(IDX_TOKEN);
+        await tx.$executeRawUnsafe(IDX_EMAIL);
+        await tx.$executeRawUnsafe(ALTER_BRIEFING);
+        await tx.$executeRawUnsafe(T_OUTCOME);
+        await tx.$executeRawUnsafe(IDX_OUTCOME_UNIQUE);
+        await tx.$executeRawUnsafe(IDX_OUTCOME_DATE);
+        await tx.$executeRawUnsafe(ALTER_OUTCOME_BACKTEST);
+        await tx.$executeRawUnsafe(IDX_OUTCOME_BACKTEST);
+        await tx.$executeRawUnsafe(IDX_OUTCOME_BACKTEST_DATE);
+        await tx.$executeRawUnsafe(T_WATCHLIST);
+        await tx.$executeRawUnsafe(IDX_WATCHLIST_UNIQUE);
+        await tx.$executeRawUnsafe(IDX_WATCHLIST_USER);
+        await tx.$executeRawUnsafe(T_PUSH);
+        await tx.$executeRawUnsafe(IDX_PUSH);
+        await tx.$executeRawUnsafe(ALTER_USER_WEIXIN);
+        await tx.$executeRawUnsafe(IDX_USER_WEIXIN);
+        await tx.$executeRawUnsafe(ALTER_USER_WEIXIN_PENDING);
+        await tx.$executeRawUnsafe(T_WEIXIN_BIND);
+        await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
+        await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);
+        await tx.$executeRawUnsafe(T_WHY_CACHE);
+        await tx.$executeRawUnsafe(T_BRIEF_CACHE);
+        await tx.$executeRawUnsafe(T_CHAIN_INTEREST);
+        await tx.$executeRawUnsafe(IDX_CHAIN_INTEREST_UNIQUE);
+        await tx.$executeRawUnsafe(IDX_CHAIN_INTEREST_CHAIN);
+        await tx.$executeRawUnsafe(T_QUOTES_CACHE);
+        await tx.$executeRawUnsafe(T_DEEP_CACHE);
+      },
+      { timeout: 30000 }
+    );
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,
