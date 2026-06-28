@@ -28,7 +28,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="关于我们" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">

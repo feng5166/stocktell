@@ -19,7 +19,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
       </div>
 
       {/* 桌面:表格(手机隐藏) */}
-      <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white sm:block">
+      <div className="hidden overflow-hidden rounded-xl bg-white shadow-sm sm:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
@@ -47,7 +47,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                   <Td className="whitespace-nowrap">
                     <Link
                       href={`/stock/${r.code}`}
-                      className="font-medium text-gray-900 hover:text-blue-600"
+                      className="font-medium text-gray-900 hover:text-brand-600"
                     >
                       {r.name}
                     </Link>
@@ -87,7 +87,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
 
 function OutcomeCard({ r }: { r: OutcomeRow }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3">
+    <div className="rounded-xl bg-white shadow-sm p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 text-sm text-gray-800">
           <span className="mr-1">
@@ -102,7 +102,7 @@ function OutcomeCard({ r }: { r: OutcomeRow }) {
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
         <Link
           href={`/stock/${r.code}`}
-          className="font-medium text-gray-900 hover:text-blue-600"
+          className="font-medium text-gray-900 hover:text-brand-600"
         >
           {r.name}
         </Link>

@@ -100,7 +100,7 @@ export default function AdminPushClient() {
         </button>
       </div>
 
-      {msg && <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">{msg}</div>}
+      {msg && <div className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{msg}</div>}
 
       <div className="mt-5">
         <div className="mb-2 text-sm text-gray-500">已绑微信用户 {users.length} 人(勾选后可单发/群发)</div>

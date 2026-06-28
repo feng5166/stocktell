@@ -55,7 +55,7 @@ function ResetForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f7f8fa] p-4">
+    <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-sm">
         <Link href="/" className="text-lg font-bold tracking-tight">
           StockTell
@@ -67,14 +67,14 @@ function ResetForm() {
         ) : !token || !valid ? (
           <div className="mt-4">
             <p className="text-sm text-rose-600">重置链接无效或已过期,请重新申请。</p>
-            <Link href="/" className="mt-4 inline-block text-sm text-blue-600 hover:underline">
+            <Link href="/" className="mt-4 inline-block text-sm text-brand-600 hover:underline">
               返回首页
             </Link>
           </div>
         ) : done ? (
           <div className="mt-4">
             <p className="text-sm text-emerald-600">密码已重置成功,请用新密码登录。</p>
-            <Link href="/" className="mt-4 inline-block text-sm text-blue-600 hover:underline">
+            <Link href="/" className="mt-4 inline-block text-sm text-brand-600 hover:underline">
               返回首页登录
             </Link>
           </div>

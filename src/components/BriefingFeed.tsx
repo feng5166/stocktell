@@ -42,7 +42,7 @@ export function BriefingFeed({
         ) : wl.codes.size === 0 ? (
           <Hint>
             还没告诉我你拿哪些票。去{" "}
-            <Link href="/stocks" className="text-blue-600 hover:underline">
+            <Link href="/stocks" className="text-brand-600 hover:underline">
               股票池
             </Link>{" "}
             点 ☆ 加自选,以后这儿只给你看跟你票相关的。
@@ -497,7 +497,7 @@ function WhyLine({
         <button
           type="button"
           onClick={() => setShowSrc(true)}
-          className="text-blue-500 hover:underline"
+          className="text-brand-500 hover:underline"
         >
           {" "}
           ·来源
@@ -507,7 +507,7 @@ function WhyLine({
           href={sourceUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-blue-500 hover:underline"
+          className="text-brand-500 hover:underline"
         >
           {" "}
           ·来源
@@ -552,7 +552,7 @@ function WhyLine({
                 href={sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 inline-block text-xs text-blue-500 hover:underline"
+                className="mt-4 inline-block text-xs text-brand-500 hover:underline"
               >
                 查看原文 ↗
               </a>
@@ -570,7 +570,7 @@ function WhyLine({
 function LockedCard({ item }: { item: BriefingItem }) {
   const meta = IMPACT_META[item.impact];
   return (
-    <article className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4">
+    <article className="relative overflow-hidden rounded-xl bg-white shadow-sm p-4">
       <div className="pointer-events-none select-none blur-[5px]">
         <div className="mb-1 flex items-center gap-2 text-xs font-medium">
           <span>{meta.emoji}</span>

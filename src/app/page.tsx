@@ -95,7 +95,7 @@ function EmptyState({ errored }: { errored: boolean }) {
       </div>
       <div className="mt-1 text-xs text-gray-400">
         去{" "}
-        <Link href="/admin/briefing" className="text-blue-600 hover:underline">
+        <Link href="/admin/briefing" className="text-brand-600 hover:underline">
           后台
         </Link>{" "}
         生成并发布今日简报

@@ -8,7 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const adminEmail = await getAdminEmail();
   if (!adminEmail) return <>{children}</>; // 非管理员:不渲染导航(page 的 requireAdmin 会 404)
   return (
-    <div className="min-h-screen bg-[#f7f8fa]">
+    <div className="min-h-screen bg-canvas">
       <AdminNav adminEmail={adminEmail} />
       <main>{children}</main>
     </div>

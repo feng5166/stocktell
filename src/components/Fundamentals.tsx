@@ -36,7 +36,7 @@ export function Fundamentals({ code, market }: { code: string; market: string })
     v === null ? "—" : v >= 10000 ? `${(v / 10000).toFixed(2)}万亿` : `${Math.round(v)}亿`;
 
   return (
-    <section className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+    <section className="mb-4 rounded-xl bg-white shadow-sm p-4">
       <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
         基本面(真实数据)
       </h2>

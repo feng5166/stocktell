@@ -38,8 +38,8 @@ export function ChainPosition({
         onClick={() => setOpen(isOpen ? null : side.key)}
         className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
           clickable
-            ? `bg-blue-50 font-medium text-blue-700 ring-1 ring-inset hover:bg-blue-100 ${
-                isOpen ? "ring-blue-400" : "ring-blue-200"
+            ? `bg-brand-50 font-medium text-brand-700 ring-1 ring-inset hover:bg-brand-100 ${
+                isOpen ? "ring-brand-400" : "ring-brand-200"
               }`
             : "bg-gray-50 text-gray-300"
         }`}
@@ -47,10 +47,10 @@ export function ChainPosition({
         {side.label}
         {clickable && (
           <>
-            <span className="ml-1 rounded-full bg-blue-100 px-1.5 text-xs text-blue-600">
+            <span className="ml-1 rounded-full bg-brand-100 px-1.5 text-xs text-brand-600">
               {side.list.length}
             </span>
-            <span className="ml-1 text-xs text-blue-400">{isOpen ? "▴" : "▾"}</span>
+            <span className="ml-1 text-xs text-brand-400">{isOpen ? "▴" : "▾"}</span>
           </>
         )}
       </button>
@@ -82,7 +82,7 @@ export function ChainPosition({
             >
               {x.name}
               {x.market === "美股" && (
-                <span className="ml-0.5 text-blue-500">·美</span>
+                <span className="ml-0.5 text-brand-500">·美</span>
               )}
             </Link>
           ))}

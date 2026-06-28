@@ -9,7 +9,7 @@ const UPDATED = "2026 年 6 月";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
+    <div className="min-h-screen bg-canvas text-ink">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="text-lg font-bold tracking-tight">

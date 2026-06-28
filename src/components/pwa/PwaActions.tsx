@@ -291,7 +291,7 @@ export function PwaActions() {
                       <img
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(wxQrImg)}`}
                         alt="绑定二维码"
-                        className="h-48 w-48 rounded-lg border border-gray-200 bg-white object-contain"
+                        className="h-48 w-48 rounded-lg bg-white shadow-sm object-contain"
                       />
                     ) : (
                       <div className="flex h-48 w-48 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-gray-400">

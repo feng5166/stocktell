@@ -107,7 +107,7 @@ export default function AdminBriefingClient() {
   const published = items.filter((i) => i.status === "published");
 
   return (
-    <div className="text-[#1a1d24]">
+    <div className="text-ink">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
@@ -141,7 +141,7 @@ export default function AdminBriefingClient() {
             {preview.map((it, i) => (
               <div
                 key={i}
-                className="mb-2 rounded-lg border border-dashed border-blue-300 bg-blue-50/40 px-4 py-3"
+                className="mb-2 rounded-lg border border-dashed border-brand-300 bg-brand-50/40 px-4 py-3"
               >
                 <div className="flex items-center gap-2">
                   <span
@@ -183,7 +183,7 @@ export default function AdminBriefingClient() {
           {published.map((it) => (
             <div
               key={it.id}
-              className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3"
+              className="mb-2 flex items-center gap-2 rounded-lg bg-white shadow-sm px-4 py-3"
             >
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${IMPACT_META[it.impact].dotClass}`}
@@ -230,7 +230,7 @@ function EditableCard({
     retailTake !== item.retailTake;
 
   return (
-    <div className="mb-3 rounded-xl border border-gray-200 bg-white p-4">
+    <div className="mb-3 rounded-xl bg-white shadow-sm p-4">
       <div className="mb-2 flex items-center gap-2">
         <select
           value={impact}

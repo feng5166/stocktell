@@ -130,7 +130,7 @@ export default function AdminUsersClient() {
         </button>
       </div>
 
-      {msg && <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">{msg}</div>}
+      {msg && <div className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{msg}</div>}
 
       <div className="mt-4 overflow-hidden rounded-lg border border-gray-200">
         <table className="w-full text-sm">

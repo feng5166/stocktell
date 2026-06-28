@@ -10,7 +10,7 @@ export function PageSkeleton({
   wide?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-[#f7f8fa]">
+    <div className="min-h-screen bg-canvas">
       <SiteHeader active={active} wide={wide} />
       <main
         className={`mx-auto ${wide ? "max-w-7xl" : "max-w-3xl"} px-4 py-6 sm:px-6`}

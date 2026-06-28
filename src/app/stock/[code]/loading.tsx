@@ -3,7 +3,7 @@ import Link from "next/link";
 // 详情页骨架(头部与详情页一致:StockTell + 返回股票池),避免用到根 loading 的错误头部。
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-[#f7f8fa]">
+    <div className="min-h-screen bg-canvas">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="text-lg font-bold tracking-tight">

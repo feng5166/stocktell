@@ -188,7 +188,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="股票池" wide />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
@@ -267,7 +267,7 @@ export default function Dashboard() {
         </div>
 
         {/* 筛选区 */}
-        <div className="mb-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="mb-4 space-y-3 rounded-xl bg-white shadow-sm p-4">
           {/* 手机:折叠开关(桌面隐藏) */}
           <button
             type="button"
@@ -399,7 +399,7 @@ function StatCard({
     </>
   );
   if (!onClick)
-    return <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">{inner}</div>;
+    return <div className="rounded-xl bg-white shadow-sm px-4 py-3">{inner}</div>;
   return (
     <button type="button" onClick={onClick} className={cls}>
       {inner}
@@ -492,14 +492,14 @@ function StockTable({
           </div>
         )}
         {rows.length === 0 && (
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-400">
+          <div className="rounded-xl bg-white shadow-sm px-4 py-12 text-center text-sm text-gray-400">
             没有符合条件的标的,试试放宽筛选条件
           </div>
         )}
       </div>
 
       {/* 桌面:原表格(手机隐藏) */}
-      <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white sm:block">
+      <div className="hidden overflow-hidden rounded-xl bg-white shadow-sm sm:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
           <thead>
@@ -614,7 +614,7 @@ function StockCard({
         <span
           className={`rounded px-1.5 py-0.5 ${
             s.market === "美股"
-              ? "bg-blue-50 text-blue-600"
+              ? "bg-brand-50 text-brand-600"
               : "bg-red-50 text-red-600"
           }`}
         >
@@ -646,7 +646,7 @@ function StockCard({
           <p className="text-sm leading-relaxed text-gray-800">{s.retailTake}</p>
           <Link
             href={`/stock/${s.code}`}
-            className="mt-1 inline-block text-xs text-blue-600"
+            className="mt-1 inline-block text-xs text-brand-600"
           >
             查看完整详情 →
           </Link>
@@ -705,7 +705,7 @@ function ReactFragmentRow({
           <Link
             href={`/stock/${s.code}`}
             onClick={(e) => e.stopPropagation()}
-            className="hover:text-blue-600 hover:underline"
+            className="hover:text-brand-600 hover:underline"
           >
             {s.name}
           </Link>
@@ -714,7 +714,7 @@ function ReactFragmentRow({
           <span
             className={`rounded px-1.5 py-0.5 text-xs ${
               s.market === "美股"
-                ? "bg-blue-50 text-blue-600"
+                ? "bg-brand-50 text-brand-600"
                 : "bg-red-50 text-red-600"
             }`}
           >
@@ -762,7 +762,7 @@ function ReactFragmentRow({
                 </p>
                 <Link
                   href={`/stock/${s.code}`}
-                  className="mt-1 inline-block text-xs text-blue-600 hover:underline"
+                  className="mt-1 inline-block text-xs text-brand-600 hover:underline"
                 >
                   查看完整详情 →
                 </Link>
@@ -804,15 +804,15 @@ function RelationMap({
         .map(({ us, peers }) => (
           <div
             key={us.code}
-            className="rounded-xl border border-gray-200 bg-white p-4"
+            className="rounded-xl bg-white shadow-sm p-4"
           >
             <div className="mb-3 flex items-center gap-2">
-              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600">
+              <span className="rounded bg-brand-50 px-1.5 py-0.5 text-xs text-brand-600">
                 美股
               </span>
               <Link
                 href={`/stock/${us.code}`}
-                className="font-medium text-gray-900 hover:text-blue-600"
+                className="font-medium text-gray-900 hover:text-brand-600"
               >
                 {us.name}
               </Link>
@@ -876,7 +876,7 @@ function FeatureMatrix({ rows }: { rows: Stock[] }) {
   if (data.length === 0) return <Empty text="当前筛选下没有数据" />;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-xl bg-white shadow-sm">
       <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
         <thead>
@@ -967,13 +967,13 @@ function ActiveDiscovery({
       {signals.map(({ us, lagging }) => (
         <div
           key={us.code}
-          className="rounded-xl border border-gray-200 bg-white p-4"
+          className="rounded-xl bg-white shadow-sm p-4"
         >
           <div className="mb-2 flex items-center gap-2">
             <span className="text-base">⚡</span>
             <Link
               href={`/stock/${us.code}`}
-              className="font-medium text-gray-900 hover:text-blue-600"
+              className="font-medium text-gray-900 hover:text-brand-600"
             >
               {us.name}
             </Link>

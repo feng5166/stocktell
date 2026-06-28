@@ -28,7 +28,7 @@ export default async function TrackPage() {
   const btByImpact = btAgg.byImpact;
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="战绩" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
@@ -151,7 +151,7 @@ function Stat({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center">
+    <div className="rounded-xl bg-white shadow-sm px-4 py-3 text-center">
       <div className="text-xs text-gray-400">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">
         {value}
