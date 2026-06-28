@@ -61,9 +61,7 @@ export function ChainPosition({
 
       {open && (lists[open]?.length ?? 0) > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-gray-400">
-            {sector} · {open}:
-          </span>
+          <span className="text-xs text-gray-400">{open}关联:</span>
           {lists[open].map((x) => (
             <Link
               key={x.code}

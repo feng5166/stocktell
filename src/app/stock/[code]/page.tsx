@@ -53,13 +53,25 @@ export default async function StockDetail({
   const aPeers = resolved.filter((r) => r.peer?.market === "A股");
   const otherPeers = resolved.filter((r) => !r.peer);
 
-  // 同板块上中下游标的(供产业链位置图点击识别)
+  // 产业链上下游导航:位置(上/中/下游)是全链全局的,板块基本是单一位置,
+  // 按同板块取上下游几乎永远为空。改用关联图谱(双向)——当前标的指向的关联 +
+  // 反向把当前标的列为关联的,按各自的产业链位置归类,即真实的上下游邻居。
+  const related = new Map<string, Stock>();
+  for (const t of s.relations) {
+    const p = resolvePeer(t);
+    if (p && p.code !== s.code) related.set(p.code, p);
+  }
+  for (const x of STOCKS) {
+    if (x.code === s.code) continue;
+    if (x.relations.some((t) => resolvePeer(t)?.code === s.code))
+      related.set(x.code, x);
+  }
   const chainLists = Object.fromEntries(
     CHAIN.map((pos) => [
       pos,
-      STOCKS.filter(
-        (x) => x.sector === s.sector && x.position === pos && x.code !== s.code
-      ).map((x) => ({ code: x.code, name: x.name, market: x.market })),
+      Array.from(related.values())
+        .filter((x) => x.position === pos)
+        .map((x) => ({ code: x.code, name: x.name, market: x.market })),
     ])
   ) as Record<Position, { code: string; name: string; market: string }[]>;
 
@@ -130,6 +142,8 @@ export default async function StockDetail({
           </p>
         </Section>
 
+        <Fundamentals code={s.code} market={s.market} />
+
         <Section title="在产业链的位置">
           <ChainPosition
             current={s.position}
@@ -137,8 +151,6 @@ export default async function StockDetail({
             lists={chainLists}
           />
         </Section>
-
-        <Fundamentals code={s.code} market={s.market} />
 
         {s.market === "A股" && <Similarity code={s.code} />}
 
