@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return new Response("登录后才能用详细解读哦。", { status: 401 });
+  if (!session?.user?.id) return new Response("登录后才能看「StockTell 解读」哦。", { status: 401 });
 
   const { id } = await req.json().catch(() => ({ id: "" }));
   if (!id) return new Response("missing id", { status: 400 });

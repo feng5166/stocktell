@@ -4,8 +4,10 @@
 // 和我相关一律不锁(先认我,别拿用户自己的票去设墙);免费墙只作用于其他动态。
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import type { BriefingItem } from "@/lib/briefings";
 import { AuthButton } from "@/components/auth/AuthButton";
+import { useAuthModal } from "@/components/Providers";
 import { useWatchlist } from "@/components/useWatchlist";
 import { FundFlow } from "@/components/FundFlow";
 import { IMPACT_META } from "@/lib/impact";
@@ -318,8 +320,15 @@ function BriefingCard({
   const [deep, setDeep] = useState("");
   const [deepLoading, setDeepLoading] = useState(false);
   const [deepStarted, setDeepStarted] = useState(false);
+  const { status } = useSession();
+  const { open: openAuth } = useAuthModal();
 
   async function loadDeep() {
+    // 未登录:弹登录框 + 友好提示,不打接口
+    if (status !== "authenticated") {
+      openAuth();
+      return;
+    }
     setDeepStarted(true);
     setDeepLoading(true);
     setDeep("");
@@ -330,7 +339,13 @@ function BriefingCard({
         body: JSON.stringify({ id: item.id }),
       });
       if (!res.ok || !res.body) {
-        setDeep(res.status === 401 ? "登录后才能看「详细解读」哦。" : "解读暂时不可用,稍后再试。");
+        if (res.status === 401) {
+          // 会话过期:弹登录框,收起解读区
+          openAuth();
+          setDeepStarted(false);
+          return;
+        }
+        setDeep("解读暂时不可用,稍后再试。");
         setDeepLoading(false);
         return;
       }
