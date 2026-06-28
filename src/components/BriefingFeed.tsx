@@ -257,6 +257,54 @@ function Hint({ children }: { children: React.ReactNode }) {
   );
 }
 
+// 行内加粗:把 **xxx** 渲染成 <strong>(快读/解读里都用)
+function inlineBold(s: string, kp: string) {
+  return s.split(/(\*\*[^*]+\*\*)/g).map((seg, i) =>
+    /^\*\*[^*]+\*\*$/.test(seg) ? (
+      <strong key={kp + i} className="font-semibold text-gray-900">
+        {seg.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={kp + i}>{seg}</span>
+    )
+  );
+}
+
+// 轻量 Markdown 渲染(给 StockTell 解读的流式文本):加粗、小标题、列表;忽略 --- 分隔线
+function renderRich(text: string): JSX.Element[] {
+  const blocks: JSX.Element[] = [];
+  text.split("\n").forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line) return;
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) return; // 忽略分隔线
+    const heading = /^#{1,6}\s/.test(line) || /^\*\*[^*]+\*\*[::]?$/.test(line);
+    let content = line.replace(/^#{1,6}\s*/, "");
+    const isList = /^[-*]\s+/.test(content);
+    if (isList) content = content.replace(/^[-*]\s+/, "");
+    if (heading) {
+      const t = content.replace(/^\*\*/, "").replace(/\*\*[::]?$/, "");
+      blocks.push(
+        <p key={i} className="mt-3 text-sm font-semibold text-gray-900 first:mt-0">
+          {t}
+        </p>
+      );
+    } else if (isList) {
+      blocks.push(
+        <p key={i} className="ml-1 mt-1 text-sm leading-relaxed text-gray-700">
+          • {inlineBold(content, i + "-")}
+        </p>
+      );
+    } else {
+      blocks.push(
+        <p key={i} className="mt-1.5 text-sm leading-relaxed text-gray-700">
+          {inlineBold(content, i + "-")}
+        </p>
+      );
+    }
+  });
+  return blocks;
+}
+
 function BriefingCard({
   item,
   mine,
@@ -339,15 +387,17 @@ function BriefingCard({
       )}
       <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2">
         <div className="mb-1 text-xs font-medium text-amber-700">散户怎么想</div>
-        <p className="text-sm leading-relaxed text-gray-800">{item.retailTake}</p>
+        <p className="text-sm leading-relaxed text-gray-800">{inlineBold(item.retailTake, "rt-")}</p>
 
         {!deepStarted && (
-          <button
-            onClick={loadDeep}
-            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700/90 hover:text-amber-900 hover:underline"
-          >
-            🔍 想更深入?让 StockTell 帮你解读这条 →
-          </button>
+          <div className="mt-2 text-right">
+            <button
+              onClick={loadDeep}
+              className="inline-flex items-center gap-1 text-xs font-medium text-amber-700/90 hover:text-amber-900 hover:underline"
+            >
+              🔍 想更深入?让 StockTell 帮你解读这条 →
+            </button>
+          </div>
         )}
 
         {deepStarted && (
@@ -362,10 +412,10 @@ function BriefingCard({
               </p>
             )}
             {deep && (
-              <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">
-                {deep}
-                {deepLoading && <span className="animate-pulse">▍</span>}
-              </p>
+              <div>
+                {renderRich(deep)}
+                {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
+              </div>
             )}
           </div>
         )}
