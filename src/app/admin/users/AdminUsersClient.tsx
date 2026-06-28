@@ -35,6 +35,9 @@ export default function AdminUsersClient({ adminEmail }: { adminEmail: string })
   const [msg, setMsg] = useState("");
   const [onlyBound, setOnlyBound] = useState(false);
   const [q, setQ] = useState("");
+  const [sendTo, setSendTo] = useState<Row | null>(null);
+  const [sendText, setSendText] = useState("");
+  const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,6 +62,32 @@ export default function AdminUsersClient({ adminEmail }: { adminEmail: string })
   useEffect(() => {
     load();
   }, [load]);
+
+  async function doSend() {
+    if (!sendTo || !sendText.trim()) return;
+    setSending(true);
+    try {
+      const r = await fetch("/api/admin/weixin-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ openIds: [sendTo.openId], text: sendText }),
+      });
+      const d = await r.json();
+      setMsg(
+        d.ok
+          ? `已发给 ${sendTo.nickname || sendTo.email || "该用户"}:${d.sent}/${d.total}`
+          : `失败:${d.error}`
+      );
+      if (d.ok && d.sent > 0) {
+        setSendTo(null);
+        setSendText("");
+      }
+    } catch (e) {
+      setMsg(`出错:${String(e)}`);
+    } finally {
+      setSending(false);
+    }
+  }
 
   const filtered = rows.filter((u) => {
     if (onlyBound && !u.weixinBound) return false;
@@ -142,12 +171,23 @@ export default function AdminUsersClient({ adminEmail }: { adminEmail: string })
                 <td className="px-3 py-2.5 text-xs text-gray-500">{fmtDate(u.createdAt)}</td>
                 <td className="px-3 py-2.5">
                   {u.weixinBound ? (
-                    <span
-                      className="text-xs font-medium text-emerald-600"
-                      title={u.openId || ""}
-                    >
-                      ✓ 已绑
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-xs font-medium text-emerald-600"
+                        title={u.openId || ""}
+                      >
+                        ✓ 已绑
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSendTo(u);
+                          setSendText("");
+                        }}
+                        className="rounded bg-emerald-600 px-2 py-0.5 text-xs text-white hover:bg-emerald-700"
+                      >
+                        发推送
+                      </button>
+                    </div>
                   ) : (
                     <span className="text-xs text-gray-300">—</span>
                   )}
@@ -157,6 +197,54 @@ export default function AdminUsersClient({ adminEmail }: { adminEmail: string })
           </tbody>
         </table>
       </div>
+
+      {sendTo && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setSendTo(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">
+                发微信推送 · {sendTo.nickname || sendTo.email || sendTo.id}
+              </h3>
+              <button
+                onClick={() => setSendTo(null)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="关闭"
+              >
+                ✕
+              </button>
+            </div>
+            <textarea
+              value={sendText}
+              onChange={(e) => setSendText(e.target.value)}
+              rows={5}
+              autoFocus
+              placeholder="推送内容…(注意:用户需在过去 24h 内发过消息才收得到)"
+              className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={() => setSendTo(null)}
+                className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
+              >
+                取消
+              </button>
+              <button
+                onClick={doSend}
+                disabled={sending || !sendText.trim()}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {sending ? "发送中…" : "发送"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
