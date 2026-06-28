@@ -170,6 +170,10 @@ function WhyLine({
   const [reason, setReason] = useState<string | null>(null);
   const [asOf, setAsOf] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [sourceTitle, setSourceTitle] = useState<string | null>(null);
+  const [sourceSummary, setSourceSummary] = useState<string | null>(null);
+  const [sourceSite, setSourceSite] = useState<string | null>(null);
+  const [showSrc, setShowSrc] = useState(false);
   useEffect(() => {
     let active = true;
     fetch(
@@ -184,6 +188,9 @@ function WhyLine({
           setReason(d.reason);
           setAsOf(d.asOf ?? null);
           setSourceUrl(d.sourceUrl ?? null);
+          setSourceTitle(d.sourceTitle ?? null);
+          setSourceSummary(d.sourceSummary ?? null);
+          setSourceSite(d.sourceSite ?? null);
         }
       })
       .catch(() => {});
@@ -193,11 +200,22 @@ function WhyLine({
   }, [code, date, title]);
 
   if (!reason) return null;
+  // 有来源摘要 → 站内弹窗展示(不跳外站);只有链接没摘要 → 退化为外链
+  const hasInSite = !!(sourceTitle || sourceSummary);
   return (
     <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
       <span className="font-medium text-gray-600">为什么动</span>:{reason}
       {asOf && <span className="text-gray-400"> ·{asOf}</span>}
-      {sourceUrl ? (
+      {hasInSite ? (
+        <button
+          type="button"
+          onClick={() => setShowSrc(true)}
+          className="text-blue-500 hover:underline"
+        >
+          {" "}
+          ·来源
+        </button>
+      ) : sourceUrl ? (
         <a
           href={sourceUrl}
           target="_blank"
@@ -209,6 +227,54 @@ function WhyLine({
         </a>
       ) : (
         <span className="text-gray-400"> ·以官方公告为准</span>
+      )}
+
+      {showSrc && hasInSite && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setShowSrc(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-sm font-semibold leading-snug text-gray-900">
+                {sourceTitle ?? "来源"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSrc(false)}
+                className="shrink-0 text-gray-400 hover:text-gray-600"
+                aria-label="关闭"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-1 text-xs text-gray-400">
+              {sourceSite && <span>{sourceSite}</span>}
+              {asOf && <span> ·{asOf}</span>}
+            </div>
+            {sourceSummary && (
+              <p className="mt-3 max-h-72 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-gray-700">
+                {sourceSummary}
+              </p>
+            )}
+            {sourceUrl && (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-block text-xs text-blue-500 hover:underline"
+              >
+                查看原文 ↗
+              </a>
+            )}
+            <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-gray-400">
+              内容来自公开检索,仅供参考,以官方公告为准。
+            </p>
+          </div>
+        </div>
       )}
     </p>
   );

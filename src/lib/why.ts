@@ -6,17 +6,29 @@
 //   都没有 → 返回 null。
 import { getLLM, LLM_MODEL } from "@/lib/llm";
 import { bochaSearch, bochaEnabled, type BochaHit } from "@/lib/bocha";
+import { getPrisma } from "@/lib/prisma";
 
 export interface WhyResult {
   reason: string | null; // 一句话起因;无可靠信息时为 null
   asOf: string | null; // 依据信息的大致日期 YYYY-MM-DD
-  sourceUrl: string | null; // 可核实来源(检索路径才有)
+  sourceUrl: string | null; // 可核实来源链接(检索路径才有)
+  sourceTitle: string | null; // 来源标题(站内展示,免跳外站)
+  sourceSummary: string | null; // 来源摘要(站内展示)
+  sourceSite: string | null; // 来源站点名
 }
 
-const EMPTY: WhyResult = { reason: null, asOf: null, sourceUrl: null };
+const EMPTY: WhyResult = {
+  reason: null,
+  asOf: null,
+  sourceUrl: null,
+  sourceTitle: null,
+  sourceSummary: null,
+  sourceSite: null,
+};
 
-// 进程内缓存,按 code+date,避免同一天重复检索/打模型
+// L1:进程内缓存(同实例秒级命中);L2:DB why_cache(全局持久)
 const cache = new Map<string, WhyResult>();
+const RETRY_NULL_MS = 6 * 3600 * 1000; // null 结果 6 小时后允许重试,防偶发失败永久空
 
 /* ---------- 路径 1:博查检索增强 ---------- */
 const RAG_PROMPT = `你要根据【检索材料】解释某只美股最近一个交易日为什么明显异动。
@@ -89,6 +101,9 @@ async function retrievalWhy(
         src?.datePublished ??
         null,
       sourceUrl: src?.url ?? null,
+      sourceTitle: src?.name ?? null,
+      sourceSummary: src ? src.summary || src.snippet || null : null,
+      sourceSite: src?.siteName ?? null,
     };
   } catch {
     return EMPTY;
@@ -124,10 +139,10 @@ async function legacyWhy(
     const txt = resp.choices[0]?.message?.content ?? "{}";
     const p = JSON.parse(txt) as { reason?: unknown; asOf?: unknown };
     return {
+      ...EMPTY,
       reason:
         typeof p.reason === "string" && p.reason.trim() ? p.reason.trim() : null,
       asOf: typeof p.asOf === "string" && p.asOf.trim() ? p.asOf.trim() : null,
-      sourceUrl: null,
     };
   } catch {
     return EMPTY;
@@ -142,8 +157,40 @@ export async function explainMove(
   title?: string
 ): Promise<WhyResult> {
   const key = `${code}:${date}`;
-  const cached = cache.get(key);
-  if (cached) return cached;
+
+  // L1:进程内
+  const l1 = cache.get(key);
+  if (l1) return l1;
+
+  // L2:全局 DB 缓存(读优先)。命中且 reason 有值 → 直接返回;
+  // reason 为 null 但仍在重试窗口内 → 也直接返回(不重复打 API)。
+  const db = getPrisma();
+  if (db) {
+    try {
+      const row = await db.whyCache.findUnique({
+        where: { code_date: { code, date } },
+      });
+      if (row) {
+        const result: WhyResult = {
+          reason: row.reason,
+          asOf: row.asOf,
+          sourceUrl: row.sourceUrl,
+          sourceTitle: row.sourceTitle,
+          sourceSummary: row.sourceSummary,
+          sourceSite: row.sourceSite,
+        };
+        const fresh =
+          !!row.reason || Date.now() - row.updatedAt.getTime() < RETRY_NULL_MS;
+        if (fresh) {
+          if (row.reason) cache.set(key, result);
+          return result;
+        }
+        // null 且已过重试窗口 → 往下重新拉取
+      }
+    } catch {
+      /* 读缓存失败不致命,继续走实时 */
+    }
+  }
 
   const client = getLLM();
   if (!client) return EMPTY;
@@ -154,9 +201,21 @@ export async function explainMove(
   } else if (process.env.WHY_ENABLED) {
     out = await legacyWhy(client, name, code); // 兼容旧开关
   } else {
-    return EMPTY; // 默认关:既没检索也没显式开启,不打模型
+    return EMPTY; // 默认关:既没检索也没显式开启,不打模型,也不写缓存
   }
-  // 只缓存"成功拿到 reason"的结果;空结果可能源于偶发超时/失败,不缓存以便下次重试。
+
+  // 写全局缓存(含 null,带 updatedAt 控制重试窗口)
+  if (db) {
+    try {
+      await db.whyCache.upsert({
+        where: { code_date: { code, date } },
+        create: { code, date, ...out },
+        update: { ...out, updatedAt: new Date() },
+      });
+    } catch {
+      /* 写缓存失败不致命 */
+    }
+  }
   if (out.reason) cache.set(key, out);
   return out;
 }

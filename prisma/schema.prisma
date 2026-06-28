@@ -110,3 +110,20 @@ model Watchlist {
   @@index([userId])
   @@map("watchlist")
 }
+
+// 「为什么动」全局缓存:按 code+date 存检索+总结结果(含来源摘要),避免重复打博查/LLM。
+// reason 为 null 也缓存(带 updatedAt 控制重试),避免对"确实没新闻"的标的反复检索。
+model WhyCache {
+  code          String
+  date          String
+  reason        String?
+  asOf          String?  @map("as_of")
+  sourceUrl     String?  @map("source_url")
+  sourceTitle   String?  @map("source_title")
+  sourceSummary String?  @map("source_summary")
+  sourceSite    String?  @map("source_site")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([code, date])
+  @@map("why_cache")
+}

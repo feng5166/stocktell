@@ -79,6 +79,20 @@ const T_WEIXIN_BIND = `CREATE TABLE IF NOT EXISTS "weixin_bind_tokens" (
 const IDX_WEIXIN_BIND_TOKEN = `CREATE UNIQUE INDEX IF NOT EXISTS "weixin_bind_tokens_token_key" ON "weixin_bind_tokens" ("token")`;
 const IDX_WEIXIN_BIND_USER = `CREATE INDEX IF NOT EXISTS "weixin_bind_tokens_user_id_idx" ON "weixin_bind_tokens" ("user_id")`;
 
+// 「为什么动」全局缓存表(幂等)
+const T_WHY_CACHE = `CREATE TABLE IF NOT EXISTS "why_cache" (
+  "code" text NOT NULL,
+  "date" text NOT NULL,
+  "reason" text,
+  "as_of" text,
+  "source_url" text,
+  "source_title" text,
+  "source_summary" text,
+  "source_site" text,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "why_cache_pkey" PRIMARY KEY ("code","date")
+)`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -105,6 +119,7 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(T_WEIXIN_BIND);
     await db.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
     await db.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);
+    await db.$executeRawUnsafe(T_WHY_CACHE);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,
