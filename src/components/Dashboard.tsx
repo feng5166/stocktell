@@ -484,15 +484,12 @@ function StockTable({
           />
         ))}
         {mob.hasMore && (
-          <div
-            ref={mob.setSentinel}
-            className="flex flex-col items-center gap-1 py-4 text-gray-400"
+          <button
+            onClick={mob.loadMore}
+            className="w-full rounded-xl border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            <span className="animate-bounce text-base leading-none">↓</span>
-            <span className="text-xs">
-              继续向下滚动,加载更多 · {mob.shownCount}/{mob.total}
-            </span>
-          </div>
+            加载更多 · 已显示 {mob.shownCount}/{mob.total}
+          </button>
         )}
         {rows.length === 0 && (
           <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-400">
@@ -536,14 +533,14 @@ function StockTable({
               );
             })}
             {desk.hasMore && (
-              <tr ref={desk.setSentinel}>
-                <td colSpan={11} className="py-4 text-center text-gray-400">
-                  <span className="animate-bounce mr-1 inline-block text-base">
-                    ↓
-                  </span>
-                  <span className="text-xs">
-                    继续向下滚动,加载更多 · {desk.shownCount}/{desk.total}
-                  </span>
+              <tr>
+                <td colSpan={11} className="px-3 py-3 text-center">
+                  <button
+                    onClick={desk.loadMore}
+                    className="rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    加载更多 · 已显示 {desk.shownCount}/{desk.total}
+                  </button>
                 </td>
               </tr>
             )}

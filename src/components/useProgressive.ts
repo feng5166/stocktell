@@ -25,11 +25,15 @@ export function useProgressive<T>(items: T[], step = 12) {
 
   useEffect(() => () => obs.current?.disconnect(), []);
 
+  // 手动加载下一页(点击按钮用,客户端数据滚动自动加载太快、看不出分页)
+  const loadMore = () => setVisible((v) => v + step);
+
   return {
     slice: items.slice(0, visible),
     hasMore: visible < items.length,
     shownCount: Math.min(visible, items.length),
     total: items.length,
     setSentinel,
+    loadMore,
   };
 }
