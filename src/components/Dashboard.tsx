@@ -24,6 +24,22 @@ type Tab = (typeof TABS)[number];
 const MARKETS: ("全部" | Market)[] = ["全部", "美股", "A股"];
 const POSITIONS: ("全部" | Position)[] = ["全部", "上游", "中游", "下游"];
 
+// 缓存行情的"截至"时间(Asia/Shanghai)
+function fmtAsOf(iso: string | null): string {
+  if (!iso) return "未知";
+  try {
+    return new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Shanghai",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return iso.slice(0, 16).replace("T", " ");
+  }
+}
+
 // 行情未连接(live=false)时,绝不显示种子里编造的价格/涨跌,一律给"—"。
 // 散户宁可看到"休市/未连接",也不该被一个看似真实的假数字误导。
 function livePrice(s: Stock) {
@@ -68,6 +84,8 @@ export default function Dashboard() {
 
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [live, setLive] = useState(false);
+  const [cached, setCached] = useState(false); // 行情未连接时显示的是缓存数据
+  const [quotesAsOf, setQuotesAsOf] = useState<string | null>(null); // 缓存截至时间
   const [newsCodes, setNewsCodes] = useState<Set<string>>(new Set());
 
   // 从早报板块链接进来:?sector=xxx 自动选中该板块,并放开市场到「全部」
@@ -97,6 +115,8 @@ export default function Dashboard() {
         if (!active) return;
         setQuotes(data.quotes ?? {});
         setLive(Boolean(data.live));
+        setCached(Boolean(data.cached));
+        setQuotesAsOf(data.asOf ?? null);
       } catch {
         /* 静默回退到模拟数据 */
       }
@@ -179,12 +199,14 @@ export default function Dashboard() {
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <span
               className={`inline-block h-1.5 w-1.5 rounded-full ${
-                live ? "bg-emerald-500" : "bg-gray-300"
+                live ? "bg-emerald-500" : cached ? "bg-amber-400" : "bg-gray-300"
               }`}
             />
             {live
               ? `行情已连接 · 覆盖 ${stats.coverage}/${filtered.length}`
-              : "行情未连接 · 休市/非交易时段不显示涨跌"}
+              : cached
+              ? `行情未连接 · 显示截至 ${fmtAsOf(quotesAsOf)} 的缓存行情`
+              : "行情未连接 · 暂无数据"}
           </div>
         </div>
 

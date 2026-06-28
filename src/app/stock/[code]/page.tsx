@@ -4,6 +4,7 @@ import { STOCKS, STOCK_MAP, resolvePeer, type Position, type Stock } from "@/dat
 import { ChainPosition } from "@/components/ChainPosition";
 import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { fetchQuotes } from "@/lib/quotes";
+import { readQuotesCache } from "@/lib/quotes-cache";
 import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
 import { Fundamentals } from "@/components/Fundamentals";
@@ -22,9 +23,20 @@ export default async function StockDetail({
   const s = STOCK_MAP[params.code];
   if (!s) notFound();
 
-  // 拉实时行情;拿不到就不显示编造的种子价,标注"休市/未连接"
-  const q = (await fetchQuotes([s.code])).quotes[s.code];
-  const live = Boolean(q);
+  // 拉实时行情;拿不到读缓存(上次真实行情)并标注"截至几号";都没有才显示休市
+  let q = (await fetchQuotes([s.code])).quotes[s.code];
+  let stale = false;
+  let quotesAsOf: string | null = null;
+  if (!q) {
+    const cache = await readQuotesCache();
+    const cq = cache?.quotes[s.code];
+    if (cq) {
+      q = cq;
+      stale = true;
+      quotesAsOf = cache!.asOf;
+    }
+  }
+  const hasData = Boolean(q);
   const price = q?.price ?? null;
   const change = q?.change ?? null;
 
@@ -79,7 +91,7 @@ export default async function StockDetail({
             {s.market}
           </span>
           <WatchStar code={s.code} />
-          {live ? (
+          {hasData ? (
             <span
               className={`ml-auto font-mono text-lg font-semibold tabular-nums ${
                 change! > 0
@@ -94,6 +106,18 @@ export default async function StockDetail({
                 {change! > 0 ? "+" : ""}
                 {change!.toFixed(2)}%
               </span>
+              {stale && quotesAsOf && (
+                <span className="ml-1 text-xs font-normal text-gray-400">
+                  · 截至{" "}
+                  {new Intl.DateTimeFormat("zh-CN", {
+                    timeZone: "Asia/Shanghai",
+                    month: "numeric",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(new Date(quotesAsOf))}
+                </span>
+              )}
             </span>
           ) : (
             <span className="ml-auto text-sm text-gray-400">休市 / 行情未连接</span>

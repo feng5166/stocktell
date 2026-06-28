@@ -112,6 +112,14 @@ const T_CHAIN_INTEREST = `CREATE TABLE IF NOT EXISTS "chain_interest" (
 const IDX_CHAIN_INTEREST_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "chain_interest_chain_voter_key" ON "chain_interest" ("chain", "voter")`;
 const IDX_CHAIN_INTEREST_CHAIN = `CREATE INDEX IF NOT EXISTS "chain_interest_chain_idx" ON "chain_interest" ("chain")`;
 
+// 行情缓存表(幂等)
+const T_QUOTES_CACHE = `CREATE TABLE IF NOT EXISTS "quotes_cache" (
+  "id" text NOT NULL,
+  "data" jsonb NOT NULL,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "quotes_cache_pkey" PRIMARY KEY ("id")
+)`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -143,6 +151,7 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(T_CHAIN_INTEREST);
     await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_UNIQUE);
     await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_CHAIN);
+    await db.$executeRawUnsafe(T_QUOTES_CACHE);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,

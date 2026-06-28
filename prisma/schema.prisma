@@ -148,3 +148,12 @@ model ChainInterest {
   @@index([chain])
   @@map("chain_interest")
 }
+
+// 行情缓存:行情接口成功时写最新一份,断连/休市时读它(标注"截至几号"),避免给用户空白。
+model QuotesCache {
+  id        String   @id @default("latest")
+  data      Json // Record<code, {price,change,asOf}>
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("quotes_cache")
+}
