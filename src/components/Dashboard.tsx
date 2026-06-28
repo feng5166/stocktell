@@ -78,7 +78,7 @@ export default function Dashboard() {
   const [relation, setRelation] = useState<string>("全部关系");
   const [query, setQuery] = useState("");
   const [onlyWatch, setOnlyWatch] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false); // 手机筛选区折叠
+  const [filterOpen, setFilterOpen] = useState(true); // 手机筛选区:默认展开(可手动收起)
   const wl = useWatchlist();
   // 统计卡点击后,股票列表按此视图收窄(all/live/up/down)
   const [statView, setStatView] = useState<"all" | "live" | "up" | "down">("all");
