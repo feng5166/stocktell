@@ -84,7 +84,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
           ✕
         </button>
 
-        <h2 className="text-center text-2xl font-bold text-[#1C1A16]">登录 / 注册</h2>
+        <h2 className="text-center text-h1 font-bold text-ink">登录 / 注册</h2>
         <p className="mt-1 text-center text-sm text-gray-500">
           登录或创建账号以继续使用
         </p>
@@ -92,7 +92,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
         <button
           onClick={handleGoogle}
           disabled={!GOOGLE_ENABLED}
-          className="mt-5 flex w-full items-center justify-center gap-3 rounded-lg border border-[#E5E2DD] bg-white py-3 text-sm font-medium text-[#1C1A16] hover:bg-[#FAF9F6] disabled:opacity-60"
+          className="mt-5 flex w-full items-center justify-center gap-3 rounded-lg border border-[#E5E2DD] bg-white py-3 text-sm font-medium text-ink hover:bg-[#FAF9F6] disabled:opacity-60"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" />
@@ -111,7 +111,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
 
         <form onSubmit={handleEmail} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#1C1A16]">邮箱</label>
+            <label className="mb-1 block text-sm font-medium text-ink">邮箱</label>
             <input
               type="email"
               value={email}
@@ -121,7 +121,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#1C1A16]">密码</label>
+            <label className="mb-1 block text-sm font-medium text-ink">密码</label>
             <div className="relative">
               <input
                 type={showPwd ? "text" : "password"}
@@ -165,7 +165,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-[#C2703D] underline"
+                className="text-brand-600 underline"
               >
                 服务条款
               </a>{" "}
@@ -175,7 +175,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-[#C2703D] underline"
+                className="text-brand-600 underline"
               >
                 隐私政策
               </a>
@@ -250,7 +250,7 @@ function ForgotPasswordModal({
         >
           ✕
         </button>
-        <h2 className="text-xl font-bold text-gray-900">忘记密码</h2>
+        <h2 className="text-h2 font-bold text-gray-900">忘记密码</h2>
 
         {sent ? (
           <div className="mt-4 text-sm text-gray-700">

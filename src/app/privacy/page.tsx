@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">隐私政策</h1>
+        <h1 className="text-h1 font-semibold tracking-tight">隐私政策</h1>
         <p className="mt-1 text-xs text-gray-400">最近更新:{UPDATED}</p>
 
         <div className="mt-6 space-y-6 text-sm leading-relaxed text-gray-700">
@@ -90,7 +90,7 @@ export default function PrivacyPage() {
 
           <Section title="10. 联系我们">
             如对你的隐私或本政策有任何疑问,请联系:
-            <a href="mailto:support@stocktell.me" className="text-[#C2703D] underline">
+            <a href="mailto:support@stocktell.me" className="text-brand-600 underline">
               support@stocktell.me
             </a>
             。
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
 
         <p className="mt-8 text-center text-xs text-gray-400">
           另见{" "}
-          <Link href="/terms" className="text-[#C2703D] hover:underline">
+          <Link href="/terms" className="text-brand-600 hover:underline">
             服务条款
           </Link>
         </p>
@@ -117,7 +117,7 @@ function Section({
 }) {
   return (
     <section>
-      <h2 className="mb-1.5 text-sm font-semibold text-gray-900">{title}</h2>
+      <h2 className="mb-1.5 text-h2 font-semibold text-gray-900">{title}</h2>
       <div>{children}</div>
     </section>
   );

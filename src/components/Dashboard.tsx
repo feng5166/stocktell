@@ -194,7 +194,7 @@ export default function Dashboard() {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">
+            <h1 className="text-h1 font-semibold tracking-tight">
               AI产业链股票池
             </h1>
             <p className="mt-1 text-xs text-gray-400">
@@ -393,7 +393,7 @@ function StatCard({
         {label}
         {active && <span className="text-gray-900">·筛选中</span>}
       </div>
-      <div className={`mt-1 text-2xl font-semibold tabular-nums ${color}`}>
+      <div className={`mt-1 text-display font-semibold tabular-nums ${color}`}>
         {value}
       </div>
     </>

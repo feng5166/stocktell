@@ -83,7 +83,7 @@ export function Similarity({ code }: { code: string }) {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+      <p className="mt-2 text-meta leading-relaxed text-gray-400">
         {small && "样本较少,仅供参考。"}口径:美股单日|涨跌|≥2% 视为异动,取
         A 股次一交易日表现。历史统计,非预测,不构成投资建议。
       </p>

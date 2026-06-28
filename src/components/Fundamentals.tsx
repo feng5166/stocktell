@@ -46,7 +46,7 @@ export function Fundamentals({ code, market }: { code: string; market: string })
         <Cell label="总市值" value={mv(f.totalMvYi)} />
         <Cell label="换手率" value={fmt(f.turnover, "%")} />
       </div>
-      <p className="mt-2 text-[11px] text-gray-300">
+      <p className="mt-2 text-meta text-gray-300">
         数据 Tushare · {f.tradeDate} 收盘
       </p>
     </section>

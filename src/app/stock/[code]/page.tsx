@@ -112,7 +112,7 @@ export default async function StockDetail({
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         {/* 标题 */}
         <div className="mb-6 flex flex-wrap items-baseline gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{s.name}</h1>
+          <h1 className="text-h1 font-semibold tracking-tight">{s.name}</h1>
           <span className="font-mono text-sm text-gray-400">{s.code}</span>
           <span
             className={`rounded px-1.5 py-0.5 text-xs ${
@@ -158,7 +158,7 @@ export default async function StockDetail({
         </div>
 
         <Section title="它是干什么的">
-          <p className="text-[15px] leading-relaxed text-gray-800">
+          <p className="text-title leading-relaxed text-gray-800">
             {s.positioning}
           </p>
         </Section>
@@ -184,7 +184,7 @@ export default async function StockDetail({
             </div>
           )}
           {(usPeers.length > 0 || aPeers.length > 0) && (
-            <p className="mt-3 text-[11px] leading-relaxed text-gray-400">
+            <p className="mt-3 text-meta leading-relaxed text-gray-400">
               强 = 有明确供货/直接业务绑定;中 = 对标/国产替代(无直接供货);弱 =
               同主题、蹭概念。关系为研究框架梳理,非确认的客户/供应商关系。
             </p>
@@ -287,7 +287,7 @@ function PeerGroup({
             >
               {info && (
                 <span
-                  className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[11px] ${STRENGTH_BADGE[info.strength]}`}
+                  className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-meta ${STRENGTH_BADGE[info.strength]}`}
                 >
                   {info.strength}关联
                 </span>

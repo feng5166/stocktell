@@ -51,7 +51,7 @@ export default async function Home() {
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">今日简报</h1>
+            <h1 className="text-h1 font-semibold tracking-tight">今日简报</h1>
             <p className="mt-1 text-xs text-gray-400">
               {shownDate} · AI 产业链动态,跟你的持仓有什么关系
             </p>
@@ -76,7 +76,7 @@ export default async function Home() {
         <p className="mt-6 text-center text-xs text-gray-400">
           {DISCLAIMER}
         </p>
-        <p className="mt-2 text-center text-[11px] text-gray-300">
+        <p className="mt-2 text-center text-meta text-gray-300">
           存储:{storageBackend() === "postgres" ? "Vercel Postgres" : "本地(未连数据库)"} ·{" "}
           <Link href="/admin/briefing" className="hover:text-gray-500">
             后台

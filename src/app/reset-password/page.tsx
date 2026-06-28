@@ -60,7 +60,7 @@ function ResetForm() {
         <Link href="/" className="text-lg font-bold tracking-tight">
           StockTell
         </Link>
-        <h1 className="mt-4 text-xl font-semibold">重置密码</h1>
+        <h1 className="mt-4 text-h1 font-semibold">重置密码</h1>
 
         {checking ? (
           <p className="mt-4 text-sm text-gray-500">校验链接中…</p>

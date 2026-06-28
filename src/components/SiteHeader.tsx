@@ -32,7 +32,7 @@ export function SiteHeader({
             <Link href="/" aria-label="StockTell 首页">
               <Logo className="h-7 w-auto" />
             </Link>
-            <span className="pl-0.5 text-[11px] leading-none text-gray-400">
+            <span className="pl-0.5 text-meta leading-none text-gray-400">
               我不懂产业链,你告诉我怎么想
             </span>
           </div>

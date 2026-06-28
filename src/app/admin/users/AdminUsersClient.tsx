@@ -101,7 +101,7 @@ export default function AdminUsersClient() {
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="text-xl font-semibold text-gray-900">网站用户</h1>
+      <h1 className="text-h1 font-semibold text-gray-900">网站用户</h1>
 
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
         <span className="rounded-lg bg-gray-100 px-3 py-1.5">

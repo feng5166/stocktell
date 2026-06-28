@@ -22,7 +22,7 @@ export default function TermsPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">服务条款</h1>
+        <h1 className="text-h1 font-semibold tracking-tight">服务条款</h1>
         <p className="mt-1 text-xs text-gray-400">最近更新:{UPDATED}</p>
 
         <div className="mt-6 space-y-6 text-sm leading-relaxed text-gray-700">
@@ -69,7 +69,7 @@ export default function TermsPage() {
 
           <Section title="10. 联系我们">
             如对本条款有任何疑问,请联系:
-            <a href="mailto:support@stocktell.me" className="text-[#C2703D] underline">
+            <a href="mailto:support@stocktell.me" className="text-brand-600 underline">
               support@stocktell.me
             </a>
             。
@@ -78,7 +78,7 @@ export default function TermsPage() {
 
         <p className="mt-8 text-center text-xs text-gray-400">
           另见{" "}
-          <Link href="/privacy" className="text-[#C2703D] hover:underline">
+          <Link href="/privacy" className="text-brand-600 hover:underline">
             隐私政策
           </Link>
         </p>
@@ -96,7 +96,7 @@ function Section({
 }) {
   return (
     <section>
-      <h2 className="mb-1.5 text-sm font-semibold text-gray-900">{title}</h2>
+      <h2 className="mb-1.5 text-h2 font-semibold text-gray-900">{title}</h2>
       <p>{children}</p>
     </section>
   );

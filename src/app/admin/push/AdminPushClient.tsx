@@ -110,7 +110,7 @@ export default function AdminPushClient() {
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="text-xl font-semibold text-gray-900">微信推送管理</h1>
+      <h1 className="text-h1 font-semibold text-gray-900">微信推送管理</h1>
 
       <div className="mt-3 flex gap-2">
         <button
@@ -128,11 +128,11 @@ export default function AdminPushClient() {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
           <div className="text-xs text-gray-400">已绑微信</div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">{stats.bound}</div>
+          <div className="mt-1 text-display font-semibold tabular-nums text-gray-900">{stats.bound}</div>
         </div>
         <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
           <div className="text-xs text-gray-400">待激活(扫了没发消息)</div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-amber-600">{stats.pending}</div>
+          <div className="mt-1 text-display font-semibold tabular-nums text-amber-600">{stats.pending}</div>
         </div>
       </div>
 

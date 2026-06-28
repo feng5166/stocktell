@@ -33,7 +33,7 @@ export default async function TrackPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4">
-          <h1 className="text-xl font-semibold tracking-tight">查账 · 我准不准</h1>
+          <h1 className="text-h1 font-semibold tracking-tight">查账 · 我准不准</h1>
           <p className="mt-1 text-xs text-gray-400">
             每条简报喊的受益 A 股,当日收盘后回填实际表现。喊了就记,记了就敢给你查。
           </p>
@@ -153,10 +153,10 @@ function Stat({
   return (
     <div className="rounded-xl bg-white shadow-sm px-4 py-3 text-center">
       <div className="text-xs text-gray-400">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">
+      <div className="mt-1 text-display font-semibold tabular-nums text-gray-900">
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[11px] text-gray-400">{sub}</div>}
+      {sub && <div className="mt-0.5 text-meta text-gray-400">{sub}</div>}
     </div>
   );
 }

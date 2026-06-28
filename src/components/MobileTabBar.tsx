@@ -77,7 +77,7 @@ export function MobileTabBar() {
               }`}
             >
               {t.icon(active)}
-              <span className={`text-[11px] ${active ? "font-medium" : "font-normal"}`}>
+              <span className={`text-meta ${active ? "font-medium" : "font-normal"}`}>
                 {t.label}
               </span>
             </Link>
