@@ -283,7 +283,7 @@ function PeerGroup({
             >
               {info && (
                 <span
-                  className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[11px] ring-1 ring-inset ${STRENGTH_BADGE[info.strength]}`}
+                  className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[11px] ${STRENGTH_BADGE[info.strength]}`}
                 >
                   {info.strength}关联
                 </span>

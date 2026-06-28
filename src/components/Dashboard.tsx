@@ -54,15 +54,15 @@ function liveChangeClass(s: Stock) {
 }
 
 const POSITION_BADGE: Record<Position, string> = {
-  上游: "bg-sky-50 text-sky-700 ring-sky-600/20",
-  中游: "bg-violet-50 text-violet-700 ring-violet-600/20",
-  下游: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  上游: "bg-sky-50 text-sky-700",
+  中游: "bg-violet-50 text-violet-700",
+  下游: "bg-amber-50 text-amber-700",
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  今日有新消息: "bg-rose-50 text-rose-600 ring-rose-600/20",
-  行情覆盖: "bg-gray-100 text-gray-600 ring-gray-500/20",
-  长期观察: "bg-gray-50 text-gray-400 ring-gray-400/20",
+  今日有新消息: "bg-rose-50 text-rose-600",
+  行情覆盖: "bg-gray-100 text-gray-600",
+  长期观察: "bg-gray-50 text-gray-400",
 };
 
 interface Quote {
@@ -621,13 +621,13 @@ function StockCard({
           {s.market}
         </span>
         <span
-          className={`inline-flex rounded px-1.5 py-0.5 ring-1 ring-inset ${POSITION_BADGE[s.position]}`}
+          className={`inline-flex rounded px-1.5 py-0.5 ${POSITION_BADGE[s.position]}`}
         >
           {s.position}
         </span>
         <span className="text-gray-500">{s.sector}</span>
         <span
-          className={`ml-auto inline-flex whitespace-nowrap rounded px-1.5 py-0.5 ring-1 ring-inset ${
+          className={`ml-auto inline-flex whitespace-nowrap rounded px-1.5 py-0.5 ${
             STATUS_BADGE[status] ?? STATUS_BADGE["长期观察"]
           }`}
         >
@@ -723,7 +723,7 @@ function ReactFragmentRow({
         </Td>
         <Td>
           <span
-            className={`inline-flex rounded px-1.5 py-0.5 text-xs ring-1 ring-inset ${POSITION_BADGE[s.position]}`}
+            className={`inline-flex rounded px-1.5 py-0.5 text-xs ${POSITION_BADGE[s.position]}`}
           >
             {s.position}
           </span>
@@ -740,7 +740,7 @@ function ReactFragmentRow({
         <Td className="max-w-[260px] text-xs text-gray-600">{s.positioning}</Td>
         <Td>
           <span
-            className={`inline-flex whitespace-nowrap rounded px-1.5 py-0.5 text-xs ring-1 ring-inset ${
+            className={`inline-flex whitespace-nowrap rounded px-1.5 py-0.5 text-xs ${
               STATUS_BADGE[status] ?? STATUS_BADGE["长期观察"]
             }`}
           >

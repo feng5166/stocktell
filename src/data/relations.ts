@@ -73,7 +73,7 @@ export function edgeInfo(codeA: string, codeB: string): EdgeInfo | null {
 }
 
 export const STRENGTH_BADGE: Record<Strength, string> = {
-  强: "bg-rose-50 text-rose-700 ring-rose-600/20",
-  中: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  弱: "bg-gray-100 text-gray-500 ring-gray-400/20",
+  强: "bg-rose-50 text-rose-700",
+  中: "bg-amber-50 text-amber-700",
+  弱: "bg-gray-100 text-gray-500",
 };
