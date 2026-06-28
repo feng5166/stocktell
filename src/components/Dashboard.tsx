@@ -484,12 +484,12 @@ function StockTable({
           />
         ))}
         {mob.hasMore && (
-          <button
-            onClick={mob.loadMore}
-            className="w-full rounded-xl border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          <div
+            ref={mob.setSentinel}
+            className="py-3 text-center text-xs text-gray-400"
           >
-            加载更多 · 已显示 {mob.shownCount}/{mob.total}
-          </button>
+            向下滚动加载更多 · {mob.shownCount}/{mob.total}
+          </div>
         )}
         {rows.length === 0 && (
           <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-400">
@@ -533,14 +533,12 @@ function StockTable({
               );
             })}
             {desk.hasMore && (
-              <tr>
-                <td colSpan={11} className="px-3 py-3 text-center">
-                  <button
-                    onClick={desk.loadMore}
-                    className="rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    加载更多 · 已显示 {desk.shownCount}/{desk.total}
-                  </button>
+              <tr ref={desk.setSentinel}>
+                <td
+                  colSpan={11}
+                  className="py-3 text-center text-xs text-gray-400"
+                >
+                  向下滚动加载更多 · {desk.shownCount}/{desk.total}
                 </td>
               </tr>
             )}
