@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { STOCK_MAP, resolvePeer, type Stock } from "@/data/stocks";
 import { ChainPosition } from "@/components/ChainPosition";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { chainNeighbors } from "@/data/chainEdges";
 import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { fetchQuotes } from "@/lib/quotes";
@@ -229,6 +230,9 @@ export default async function StockDetail({
           免责声明:以上内容为公开信息整理,不构成投资建议。产业链关系为研究框架梳理,非确认的客户/供应商/持仓关系。历史规律不代表未来表现。
         </p>
       </main>
+
+      {/* 移动端底部主导航(与主站一致;详情页自带顶栏故单独挂载) */}
+      <MobileTabBar />
     </div>
   );
 }

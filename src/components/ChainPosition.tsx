@@ -59,7 +59,8 @@ export function ChainPosition({
 
   return (
     <div>
-      <div className="flex items-center gap-2">
+      {/* 窄屏可换行,避免上游→你在这→下游 三节点横向溢出;桌面仍单行 */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
         <Btn side={sides[0]} />
         <span className="text-gray-300">→</span>
         <span className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
