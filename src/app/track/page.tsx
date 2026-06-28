@@ -19,8 +19,8 @@ export default async function TrackPage() {
   const [liveAgg, btAgg, liveFirst, btFirst] = await Promise.all([
     statsOutcomes(false).catch(() => ({ stats: emptyStats(), byImpact: [] })),
     statsOutcomes(true).catch(() => ({ stats: emptyStats(), byImpact: [] })),
-    pageOutcomes(false, 0, PAGE).catch(() => ({ rows: [], hasMore: false })),
-    pageOutcomes(true, 0, PAGE).catch(() => ({ rows: [], hasMore: false })),
+    pageOutcomes(false, null, PAGE).catch(() => ({ rows: [], hasMore: false, nextCursor: null })),
+    pageOutcomes(true, null, PAGE).catch(() => ({ rows: [], hasMore: false, nextCursor: null })),
   ]);
   const liveStats = liveAgg.stats;
   const btStats = btAgg.stats;

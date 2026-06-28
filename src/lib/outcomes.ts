@@ -129,23 +129,29 @@ export function summarize(rows: StatRow[]): HitStats {
   };
 }
 
-// 分页取明细(真分页:滚到底才向服务器要下一页)。多取 1 条判 hasMore。
+// 分页取明细(真分页:滚到底才向服务器要下一页)。游标分页:cursorId = 上一页最后一行 id,
+// 比 skip/offset 不随翻深变慢(借 (is_backtest,date) 复合索引 + id 唯一兜底键稳定 seek)。
+// 多取 1 条判 hasMore。cursorId=null 取首页。
 export async function pageOutcomes(
   backtest: boolean,
-  offset: number,
+  cursorId: string | null,
   limit: number
-): Promise<{ rows: OutcomeRow[]; hasMore: boolean }> {
+): Promise<{ rows: OutcomeRow[]; hasMore: boolean; nextCursor: string | null }> {
   const db = getPrisma();
-  if (!db) return { rows: [], hasMore: false };
+  if (!db) return { rows: [], hasMore: false, nextCursor: null };
   const rows = await db.briefingOutcome.findMany({
     where: { isBacktest: backtest },
-    // 加 id 唯一兜底键:同日同影响也有稳定次序,跨页不重复/不漏
     orderBy: [{ date: "desc" }, { impact: "asc" }, { id: "asc" }],
-    skip: offset,
     take: limit + 1,
+    ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
   });
   const hasMore = rows.length > limit;
-  return { rows: rows.slice(0, limit).map(fromRow), hasMore };
+  const page = rows.slice(0, limit).map(fromRow);
+  return {
+    rows: page,
+    hasMore,
+    nextCursor: hasMore && page.length ? page[page.length - 1].id : null,
+  };
 }
 
 // 命中率统计:用 DB 侧 groupBy(impact,hit) 聚合计数,不再把整张 outcome 表拉进 Node 求和

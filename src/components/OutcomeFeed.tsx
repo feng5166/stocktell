@@ -24,11 +24,19 @@ export function OutcomeFeed({
 
   const loadMore = useCallback(async () => {
     if (busy.current || !hasMore) return;
+    // 游标 = 已加载最后一行 id(orderBy 末位是唯一 id,稳定 seek,不随翻深变慢)
+    const cursor = rows[rows.length - 1]?.id;
+    if (!cursor) {
+      setHasMore(false);
+      return;
+    }
     busy.current = true;
     setLoading(true);
     try {
       const r = await fetch(
-        `/api/outcomes?backtest=${backtest ? 1 : 0}&offset=${rows.length}&limit=${PAGE}`,
+        `/api/outcomes?backtest=${backtest ? 1 : 0}&cursor=${encodeURIComponent(
+          cursor
+        )}&limit=${PAGE}`,
         { cache: "no-store" }
       ).then((x) => x.json());
       if (r?.ok && Array.isArray(r.rows)) {
@@ -43,7 +51,7 @@ export function OutcomeFeed({
       busy.current = false;
       setLoading(false);
     }
-  }, [backtest, rows.length, hasMore]);
+  }, [backtest, rows, hasMore]);
 
   const setSentinel = useCallback(
     (el: HTMLElement | null) => {
