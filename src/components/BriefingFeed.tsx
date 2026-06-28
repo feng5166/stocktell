@@ -267,6 +267,39 @@ function BriefingCard({
   watchedCodes?: Set<string>;
 }) {
   const meta = IMPACT_META[item.impact];
+  const [deep, setDeep] = useState("");
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [deepStarted, setDeepStarted] = useState(false);
+
+  async function loadDeep() {
+    setDeepStarted(true);
+    setDeepLoading(true);
+    setDeep("");
+    try {
+      const res = await fetch("/api/briefing/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id }),
+      });
+      if (!res.ok || !res.body) {
+        setDeep(res.status === 401 ? "登录后才能看「详细解读」哦。" : "解读暂时不可用,稍后再试。");
+        setDeepLoading(false);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        setDeep((prev) => prev + decoder.decode(value, { stream: true }));
+      }
+    } catch {
+      setDeep("解读出错了,稍后再点一次试试。");
+    } finally {
+      setDeepLoading(false);
+    }
+  }
+
   return (
     <article
       className={`rounded-xl border border-gray-200 bg-white p-4 ${
@@ -305,8 +338,35 @@ function BriefingCard({
         </div>
       )}
       <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2">
-        <div className="mb-1 text-xs font-medium text-amber-700">散户怎么想</div>
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-xs font-medium text-amber-700">散户怎么想</span>
+          {!deepStarted && (
+            <button
+              onClick={loadDeep}
+              className="text-xs font-medium text-amber-700 hover:text-amber-900 hover:underline"
+            >
+              🔍 详细解读
+            </button>
+          )}
+        </div>
         <p className="text-sm leading-relaxed text-gray-800">{item.retailTake}</p>
+
+        {deepStarted && (
+          <div className="mt-2 border-t border-amber-200/60 pt-2">
+            {deepLoading && !deep && (
+              <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                <span className="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-amber-500" />
+                StockTell 助手正在为你解读这条信息,请稍候…
+              </p>
+            )}
+            {deep && (
+              <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">
+                {deep}
+                {deepLoading && <span className="animate-pulse">▍</span>}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );

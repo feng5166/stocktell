@@ -128,6 +128,15 @@ model WhyCache {
   @@map("why_cache")
 }
 
+// 「散户怎么想·详细解读」缓存:按简报条目 id 存一次,点击即取/生成,避免重复打 LLM。
+model DeepAnalysisCache {
+  briefingId String   @id @map("briefing_id")
+  content    String
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("deep_analysis_cache")
+}
+
 // 个性化早报每日缓存:key = 当天日期 + 自选组合 hash;同自选同一天只生成一次。
 model MorningBriefCache {
   key       String   @id

@@ -120,6 +120,14 @@ const T_QUOTES_CACHE = `CREATE TABLE IF NOT EXISTS "quotes_cache" (
   CONSTRAINT "quotes_cache_pkey" PRIMARY KEY ("id")
 )`;
 
+// 「散户怎么想·详细解读」缓存表(幂等)
+const T_DEEP_CACHE = `CREATE TABLE IF NOT EXISTS "deep_analysis_cache" (
+  "briefing_id" text NOT NULL,
+  "content" text NOT NULL,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "deep_analysis_cache_pkey" PRIMARY KEY ("briefing_id")
+)`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -152,6 +160,7 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_UNIQUE);
     await db.$executeRawUnsafe(IDX_CHAIN_INTEREST_CHAIN);
     await db.$executeRawUnsafe(T_QUOTES_CACHE);
+    await db.$executeRawUnsafe(T_DEEP_CACHE);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,

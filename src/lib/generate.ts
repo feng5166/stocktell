@@ -10,7 +10,7 @@ import { prevAshareTradingDay } from "@/lib/tushare";
 import { usCumulativeChange } from "@/lib/us-history";
 
 const MOVER_THRESHOLD = 2; // 美股 |涨跌| ≥ 2% 视为异动
-const MAX_MOVERS = 12; // 异动条数封顶(控 LLM 时长,避免节后累计一堆破阈值导致超时)
+const MAX_MOVERS = 8; // 异动条数封顶(控 LLM 时长,让 LLM 在 40s 内更可能跑完;深度解读走按需流式)
 
 interface Mover {
   code: string;
@@ -178,16 +178,20 @@ function buildTake(m: Mover): string {
   const mag = Math.abs(m.change).toFixed(1);
   const tag = m.cumulative ? "假期累计" : "隔夜";
   const lead = m.cumulative ? "A股节后首日要一次性消化假期里的变动:" : "";
+  const shortObs = (s?: string) => (s ? s.split(/[;;。,,]/)[0].slice(0, 28) : "");
   const known = m.peers
     .filter((p) => p.change !== null)
-    .map((p) => ({ name: p.name, change: p.change as number }));
+    .map((p) => ({ name: p.name, change: p.change as number, obs: shortObs(p.observation) }));
   const pick = (arr: { name: string }[]) => arr.slice(0, 2).map((p) => p.name).join("、");
   const others = pick(m.peers); // 没有实时涨跌时退而用名字
+  // 用领头标的的 observation 加一句"懂这只票"的个性化,消除多只雷同
+  const color = (arr: { name: string; obs: string }[]) =>
+    arr[0]?.obs ? `(${arr[0].name}:${arr[0].obs})` : "";
 
   if (m.change > 0) {
     const lag = known.filter((p) => m.change - p.change >= 1.5);
     if (lag.length)
-      return `${lead}海外${m.name}${tag}涨了${mag}%,A股${pick(lag)}却没怎么跟——要么是还没反应过来的补涨机会,要么是它跟这条线没那么相关(海外营收占比低)。先别一开盘就追,看它能不能放量站上去;站不住,这"预期差"多半是假的。`;
+      return `${lead}海外${m.name}${tag}涨了${mag}%,A股${pick(lag)}却没怎么跟${color(lag)}——要么是还没反应过来的补涨机会,要么是它跟这条线没那么相关(海外营收占比低)。先别一开盘就追,看它能不能放量站上去;站不住,这"预期差"多半是假的。`;
     if (known.length)
       return `${lead}海外${m.name}${tag}涨${mag}%,A股对应标的基本同步涨上去了,该反应的都写在脸上。这种时候追最容易接在情绪高点,想参与也等回踩、别追高。`;
     return `${lead}海外${m.name}${tag}涨${mag}%,A股${others}今天还没开盘。开盘看高开后能不能放量走强,高开冲高回落往往是借利好出货,别被一根高开骗进去。`;
@@ -195,10 +199,10 @@ function buildTake(m: Mover): string {
 
   const over = known.filter((p) => p.change - m.change <= -1.5); // A股跌得比美股更狠
   if (over.length)
-    return `${lead}海外${m.name}${tag}才跌${mag}%,A股${pick(over)}却跌得更狠——这通常是A股自己的情绪宣泄叠加大盘,不是单纯跟跌。别一看"美股没跌多少"就当错杀冲进去,先看跌势有没有缩量企稳。`;
+    return `${lead}海外${m.name}${tag}才跌${mag}%,A股${pick(over)}却跌得更狠${color(over)}——这通常是A股自己的情绪宣泄叠加大盘,不是单纯跟跌。别一看"美股没跌多少"就当错杀冲进去,先看跌势有没有缩量企稳。`;
   const resil = known.filter((p) => p.change - m.change >= 1.5); // A股相对抗跌
   if (resil.length)
-    return `${lead}海外${m.name}${tag}跌${mag}%,A股${pick(resil)}反而扛住了——要么有独立逻辑或资金护盘,要么是补跌还没轮到,留意第二天低开补跌的风险。`;
+    return `${lead}海外${m.name}${tag}跌${mag}%,A股${pick(resil)}反而扛住了${color(resil)}——要么有独立逻辑或资金护盘,要么是补跌还没轮到,留意第二天低开补跌的风险。`;
   if (known.length)
     return `${lead}海外${m.name}${tag}跌${mag}%,A股对应标的也跟着跌、情绪面承压。越是这种时候越别被恐慌带着走,先看板块整体跌势缓没缓再说。`;
   return `${lead}海外${m.name}${tag}跌${mag}%,A股${others}还没开盘,大概率低开。低开别急着反应,看是低开企稳还是低开杀跌——前者常是错杀、后者是真承压。`;
