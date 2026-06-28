@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
   if (!email) return NextResponse.json({ error: "缺少 email" }, { status: 400 });
   const user = await db.user.findUnique({
     where: { email: String(email).toLowerCase().trim() },
+    select: { id: true }, // 只判存在,避免 select 到生产库尚未建的新列
   });
   return NextResponse.json({ exists: !!user });
 }

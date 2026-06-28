@@ -12,13 +12,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const db = getPrisma();
-  if (!db) return NextResponse.json({ ok: true, users: [] });
+  if (!db) return NextResponse.json({ ok: true, users: [], pending: [], stats: { bound: 0, pending: 0 } });
 
   const users = await db.user.findMany({
     where: { weixinOpenId: { not: null } },
     select: { id: true, email: true, nickname: true, weixinOpenId: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });
+
+  // 扫了码但还没发消息激活的用户(weixinOpenId 仍空但有扫码时间戳)。这些人收不到推送,值得运营盯。
+  const pendingUsers = await db.user.findMany({
+    where: { weixinOpenId: null, weixinPendingScanAt: { not: null } },
+    select: { id: true, email: true, nickname: true, weixinPendingScanAt: true },
+    orderBy: { weixinPendingScanAt: "desc" },
+  });
+  const pending = pendingUsers.map((u) => ({
+    id: u.id,
+    email: u.email,
+    nickname: u.nickname,
+    scanAt: u.weixinPendingScanAt,
+  }));
 
   // 桥侧窗口/活跃信息
   interface BridgeUser {
@@ -54,5 +67,10 @@ export async function GET(req: NextRequest) {
       bridgeMissing: !b,
     };
   });
-  return NextResponse.json({ ok: true, users: list });
+  return NextResponse.json({
+    ok: true,
+    users: list,
+    pending,
+    stats: { bound: list.length, pending: pending.length },
+  });
 }

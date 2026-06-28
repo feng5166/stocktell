@@ -30,6 +30,8 @@ model User {
   nickname     String?
   avatar       String?
   weixinOpenId String?  @unique @map("weixin_open_id")
+  // 扫码了但还没发消息激活的时间戳;激活/解绑时清空。用于站内"还差一步"提醒 + 后台统计。
+  weixinPendingScanAt DateTime? @map("weixin_pending_scan_at")
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("users")

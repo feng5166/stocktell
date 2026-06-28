@@ -29,6 +29,8 @@ export const authOptions: NextAuthOptions = {
         }
         const user = await db.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
+          // 显式 select:避免查到新增列(如 weixin_pending_scan_at),否则生产库该列还没建时登录全挂
+          select: { id: true, email: true, passwordHash: true, nickname: true, avatar: true },
         });
         if (!user || !user.passwordHash) return null;
         const ok = await bcrypt.compare(credentials.password, user.passwordHash);
@@ -48,7 +50,10 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google") {
         const db = getPrisma();
         if (!db || !user.email) return false;
-        const existing = await db.user.findUnique({ where: { email: user.email } });
+        const existing = await db.user.findUnique({
+          where: { email: user.email },
+          select: { id: true }, // 仅判存在,避免 select 到生产库尚未建的新列
+        });
         if (!existing) {
           const created = await db.user.create({
             data: {
@@ -56,6 +61,7 @@ export const authOptions: NextAuthOptions = {
               nickname: user.name ?? user.email.split("@")[0],
               avatar: user.image,
             },
+            select: { id: true, email: true },
           });
           user.id = created.id;
           // 飞书提醒:新用户(Google)

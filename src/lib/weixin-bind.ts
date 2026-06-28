@@ -53,7 +53,7 @@ export async function bindWeixinByToken(
   await db.$transaction([
     db.user.update({
       where: { id: rec.userId },
-      data: { weixinOpenId: openId },
+      data: { weixinOpenId: openId, weixinPendingScanAt: null },
     }),
     db.weixinBindToken.update({
       where: { token },
@@ -73,14 +73,26 @@ export async function bindWeixinDirect(
   if (conflict && conflict.id !== userId) {
     await db.user.update({ where: { id: conflict.id }, data: { weixinOpenId: null } });
   }
-  await db.user.update({ where: { id: userId }, data: { weixinOpenId: openId } });
+  await db.user.update({
+    where: { id: userId },
+    data: { weixinOpenId: openId, weixinPendingScanAt: null },
+  });
   return { ok: true };
+}
+
+// 桥侧检测到扫码但用户还没发消息激活:记一个时间戳(已绑的不动),供站内提醒 + 后台统计。
+export async function markWeixinScanned(userId: string): Promise<void> {
+  const db = getPrisma()!;
+  await db.user.updateMany({
+    where: { id: userId, weixinOpenId: null },
+    data: { weixinPendingScanAt: new Date() },
+  });
 }
 
 export async function unbindWeixin(userId: string): Promise<void> {
   const db = getPrisma()!;
   await db.user.update({
     where: { id: userId },
-    data: { weixinOpenId: null },
+    data: { weixinOpenId: null, weixinPendingScanAt: null },
   });
 }

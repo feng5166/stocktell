@@ -67,6 +67,8 @@ const IDX_PUSH = `CREATE UNIQUE INDEX IF NOT EXISTS "push_subscriptions_endpoint
 // 修复:schema 加了 weixinOpenId 但生产库缺该列,导致所有登录(查 users)报错。
 const ALTER_USER_WEIXIN = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "weixin_open_id" text`;
 const IDX_USER_WEIXIN = `CREATE UNIQUE INDEX IF NOT EXISTS "users_weixin_open_id_key" ON "users" ("weixin_open_id")`;
+// 扫码未激活的时间戳(站内"还差一步"提醒 + 后台待激活统计)
+const ALTER_USER_WEIXIN_PENDING = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "weixin_pending_scan_at" timestamp(3)`;
 const T_WEIXIN_BIND = `CREATE TABLE IF NOT EXISTS "weixin_bind_tokens" (
   "id" text NOT NULL,
   "user_id" text NOT NULL,
@@ -151,6 +153,7 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(IDX_PUSH);
     await db.$executeRawUnsafe(ALTER_USER_WEIXIN);
     await db.$executeRawUnsafe(IDX_USER_WEIXIN);
+    await db.$executeRawUnsafe(ALTER_USER_WEIXIN_PENDING);
     await db.$executeRawUnsafe(T_WEIXIN_BIND);
     await db.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
     await db.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);

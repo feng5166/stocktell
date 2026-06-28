@@ -5,6 +5,7 @@ import { createContext, useContext, useState } from "react";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import { PwaActions } from "@/components/pwa/PwaActions";
+import { WeixinActivateBanner } from "@/components/pwa/WeixinActivateBanner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 
 const AuthModalCtx = createContext<{ open: () => void; close: () => void }>({
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           value={{ open: () => setIsOpen(true), close: () => setIsOpen(false) }}
         >
           <OfflineBanner />
+          <WeixinActivateBanner />
           {children}
           {isOpen && <AuthModal onClose={() => setIsOpen(false)} />}
           <PwaActions />
