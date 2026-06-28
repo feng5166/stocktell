@@ -169,12 +169,17 @@ export default function Dashboard() {
 
   // 股票列表实际展示行:在筛选结果上再叠加统计卡选的视图
   const listRows = useMemo(() => {
-    if (statView === "live") return filtered.filter((s) => s.live);
-    if (statView === "up") return filtered.filter((s) => s.live && s.change > 0);
-    if (statView === "down")
-      return filtered.filter((s) => s.live && s.change < 0);
-    return filtered;
-  }, [filtered, statView]);
+    let base = filtered;
+    if (statView === "live") base = filtered.filter((s) => s.live);
+    else if (statView === "up")
+      base = filtered.filter((s) => s.live && s.change > 0);
+    else if (statView === "down")
+      base = filtered.filter((s) => s.live && s.change < 0);
+    // 自选置顶:稳定排序,自选内部 / 非自选内部各自保持原有顺序
+    const watched = base.filter((s) => wl.codes.has(s.code));
+    if (watched.length === 0 || watched.length === base.length) return base;
+    return [...watched, ...base.filter((s) => !wl.codes.has(s.code))];
+  }, [filtered, statView, wl.codes]);
 
   // 点统计卡:切到股票列表 + 设视图;再点同一个则取消回全部
   const pickStat = (v: "all" | "live" | "up" | "down") => {
