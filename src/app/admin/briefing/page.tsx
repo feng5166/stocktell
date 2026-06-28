@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { IMPACT_META } from "@/lib/impact";
 
@@ -108,22 +107,8 @@ export default function AdminBriefing() {
   const published = items.filter((i) => i.status === "published");
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="text-lg font-bold tracking-tight">
-              StockTell
-            </Link>
-            <span className="text-xs text-gray-400">后台 · 简报审发</span>
-          </div>
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">
-            看前台 →
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+    <div className="text-[#1a1d24]">
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             onClick={generate}
@@ -220,7 +205,7 @@ export default function AdminBriefing() {
             </div>
           ))}
         </Section>
-      </main>
+      </div>
     </div>
   );
 }

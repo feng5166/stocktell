@@ -1,11 +1,8 @@
-import { notFound } from "next/navigation";
-import { getAdminEmail } from "@/lib/admin";
 import AdminUsersClient from "./AdminUsersClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminUsersPage() {
-  const adminEmail = await getAdminEmail();
-  if (!adminEmail) notFound(); // 非管理员账号 → 404
-  return <AdminUsersClient adminEmail={adminEmail} />;
+// 鉴权由 src/app/admin/layout.tsx 统一处理
+export default function AdminUsersPage() {
+  return <AdminUsersClient />;
 }

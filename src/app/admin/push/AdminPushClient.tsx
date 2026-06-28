@@ -24,7 +24,7 @@ function fmtWindow(sec: number | null): string {
   return `${Math.floor(sec / 86400)}天前(超窗)`;
 }
 
-export default function AdminPushClient({ adminEmail }: { adminEmail: string }) {
+export default function AdminPushClient() {
   const [users, setUsers] = useState<WxUser[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [text, setText] = useState("");
@@ -88,15 +88,7 @@ export default function AdminPushClient({ adminEmail }: { adminEmail: string }) 
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">微信推送管理</h1>
-        <div className="flex items-center gap-3 text-xs">
-          <a href="/admin/users" className="text-blue-600 hover:underline">
-            全部用户 →
-          </a>
-          <span className="text-gray-400">{adminEmail}</span>
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold text-gray-900">微信推送管理</h1>
 
       <div className="mt-3 flex gap-2">
         <button

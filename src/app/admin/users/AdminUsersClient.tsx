@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 interface Row {
@@ -27,7 +26,7 @@ function fmtDate(s: string): string {
   }
 }
 
-export default function AdminUsersClient({ adminEmail }: { adminEmail: string }) {
+export default function AdminUsersClient() {
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [bound, setBound] = useState(0);
@@ -102,15 +101,7 @@ export default function AdminUsersClient({ adminEmail }: { adminEmail: string })
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">网站用户</h1>
-        <div className="flex items-center gap-3 text-xs">
-          <Link href="/admin/push" className="text-blue-600 hover:underline">
-            微信推送管理 →
-          </Link>
-          <span className="text-gray-400">{adminEmail}</span>
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold text-gray-900">网站用户</h1>
 
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
         <span className="rounded-lg bg-gray-100 px-3 py-1.5">
