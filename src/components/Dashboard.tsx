@@ -420,9 +420,31 @@ function StockTable({
     });
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+    <>
+      {/* 手机:卡片列表(桌面 sm 以上隐藏,不影响原表格) */}
+      <div className="space-y-2 sm:hidden">
+        {rows.map((s) => (
+          <StockCard
+            key={s.code}
+            s={s}
+            hasNews={newsCodes.has(s.code)}
+            watched={wl.has(s.code)}
+            onToggleWatch={() => wl.toggle(s.code)}
+            isOpen={open.has(s.code)}
+            toggle={() => toggle(s.code)}
+          />
+        ))}
+        {rows.length === 0 && (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-400">
+            没有符合条件的标的,试试放宽筛选条件
+          </div>
+        )}
+      </div>
+
+      {/* 桌面:原表格(手机隐藏) */}
+      <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white sm:block">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
               <Th></Th>
@@ -464,8 +486,105 @@ function StockTable({
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
+    </>
+  );
+}
+
+/* ============ 股票卡片(移动端;桌面用 StockTable 表格) ============ */
+function StockCard({
+  s,
+  hasNews,
+  watched,
+  onToggleWatch,
+  isOpen,
+  toggle,
+}: {
+  s: Stock;
+  hasNews: boolean;
+  watched: boolean;
+  onToggleWatch: () => void;
+  isOpen: boolean;
+  toggle: () => void;
+}) {
+  const status: string = hasNews
+    ? "今日有新消息"
+    : s.status === "今日有新消息"
+    ? "行情覆盖"
+    : s.status;
+  return (
+    <div
+      className={`rounded-xl border p-3 ${
+        watched ? "border-amber-300 bg-amber-50/40" : "border-gray-200 bg-white"
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <button
+          onClick={onToggleWatch}
+          aria-label={watched ? "取消自选" : "加入自选"}
+          className={`-m-1 p-1 text-lg leading-none ${
+            watched ? "text-amber-400" : "text-gray-300"
+          }`}
+        >
+          {watched ? "★" : "☆"}
+        </button>
+        <Link href={`/stock/${s.code}`} className="min-w-0 flex-1">
+          <span className="font-medium text-gray-900">{s.name}</span>{" "}
+          <span className="font-mono text-xs text-gray-400">{s.code}</span>
+        </Link>
+        <div
+          className={`shrink-0 text-right font-mono font-semibold tabular-nums ${liveChangeClass(
+            s
+          )}`}
+        >
+          {liveChange(s)}
+          <div className="text-xs font-normal text-gray-400">{livePrice(s)}</div>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+        <span
+          className={`rounded px-1.5 py-0.5 ${
+            s.market === "美股"
+              ? "bg-blue-50 text-blue-600"
+              : "bg-red-50 text-red-600"
+          }`}
+        >
+          {s.market}
+        </span>
+        <span
+          className={`inline-flex rounded px-1.5 py-0.5 ring-1 ring-inset ${POSITION_BADGE[s.position]}`}
+        >
+          {s.position}
+        </span>
+        <span className="text-gray-500">{s.sector}</span>
+        <span
+          className={`ml-auto inline-flex whitespace-nowrap rounded px-1.5 py-0.5 ring-1 ring-inset ${
+            STATUS_BADGE[status] ?? STATUS_BADGE["长期观察"]
+          }`}
+        >
+          {status}
+        </span>
+      </div>
+      <p className="mt-1.5 text-xs text-gray-600">{s.positioning}</p>
+      <button
+        onClick={toggle}
+        className="mt-1.5 text-xs text-gray-400 hover:text-gray-600"
+      >
+        {isOpen ? "收起 ▲" : "散户怎么想 ▾"}
+      </button>
+      {isOpen && (
+        <div className="mt-2 rounded-lg bg-amber-50/70 p-2.5">
+          <p className="text-sm leading-relaxed text-gray-800">{s.retailTake}</p>
+          <Link
+            href={`/stock/${s.code}`}
+            className="mt-1 inline-block text-xs text-blue-600"
+          >
+            查看完整详情 →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
