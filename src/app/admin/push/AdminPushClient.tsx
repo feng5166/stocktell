@@ -90,7 +90,12 @@ export default function AdminPushClient({ adminEmail }: { adminEmail: string }) 
     <div className="mx-auto max-w-3xl p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">微信推送管理</h1>
-        <span className="text-xs text-gray-400">{adminEmail}</span>
+        <div className="flex items-center gap-3 text-xs">
+          <a href="/admin/users" className="text-blue-600 hover:underline">
+            全部用户 →
+          </a>
+          <span className="text-gray-400">{adminEmail}</span>
+        </div>
       </div>
 
       <div className="mt-3 flex gap-2">
