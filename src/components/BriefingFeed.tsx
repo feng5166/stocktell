@@ -55,7 +55,7 @@ export function BriefingFeed({
           <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
         ) : (
           <div className="space-y-3">
-            <MorningBrief codes={wl.codes} />
+            <MorningBrief codes={wl.codes} items={mine} />
             {mine.map((it) => (
               <BriefingCard key={it.id} item={it} mine watchedCodes={wl.codes} />
             ))}
@@ -82,7 +82,8 @@ export function BriefingFeed({
 }
 
 // 「和我相关」顶部的个性化早报:LLM 综合你今天相关动态写一段人话。
-function MorningBrief({ codes }: { codes: Set<string> }) {
+// 把已算好的相关条目 items 一并传给接口,服务端不再重查简报,命中缓存即秒回。
+function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingItem[] }) {
   const [brief, setBrief] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const codeKey = Array.from(codes).sort().join(",");
@@ -92,7 +93,7 @@ function MorningBrief({ codes }: { codes: Set<string> }) {
     fetch("/api/morning-brief", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codes: codeKey ? codeKey.split(",") : [] }),
+      body: JSON.stringify({ codes: codeKey ? codeKey.split(",") : [], items }),
     })
       .then((r) => r.json())
       .then((d) => {
@@ -105,6 +106,8 @@ function MorningBrief({ codes }: { codes: Set<string> }) {
     return () => {
       active = false;
     };
+    // items 跟随 codes 变化,用 codeKey 作依赖即可(避免 mine 数组引用每次变导致重复请求)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codeKey]);
 
   if (loading)
