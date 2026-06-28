@@ -60,12 +60,12 @@
     </div>
 
     <!-- 过期提示(amber=提示语义,保留) -->
-    <div class="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-meta leading-relaxed text-amber-800">
+    <div class="mb-3 rounded-xl bg-amber-50 px-4 py-2.5 text-meta leading-relaxed text-amber-800">
       今日简报尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · 2026-06-27。
     </div>
 
     <!-- AI链今日情绪(归入今日简报模块,红绿堆叠条) -->
-    <div class="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+    <div class="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
       <div class="mb-2.5 flex items-center gap-2">
         <span class="text-h2 font-semibold text-gray-800">AI链今日情绪</span>
         <span class="rounded px-1.5 py-0.5 text-meta bg-emerald-50 text-emerald-600">偏弱</span>
@@ -99,14 +99,14 @@
 
     <div class="space-y-7">
       <!-- 和我相关:靛色专区 -->
-      <section class="rounded-2xl bg-brand-50/40 p-3 ring-1 ring-brand-100 sm:p-4">
+      <section class="rounded-2xl bg-brand-50/40 p-3 sm:p-4">
         <div class="mb-3 flex items-baseline gap-2">
           <h2 class="text-h2 font-semibold tracking-tight text-ink">和我相关</h2>
           <span class="text-meta text-gray-400">按你的 9 只自选筛选</span>
         </div>
         <div class="space-y-3">
           <!-- 你的早报(amber=个人语义,保留) -->
-          <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div class="rounded-xl bg-amber-50 px-4 py-3">
             <div class="mb-1 text-meta font-medium text-amber-700">☀️ 你的今日早报</div>
             <p class="text-body text-gray-800">
               今天你的票整体偏弱,算力链情绪承压。最该留意 <a href="#" class="font-medium text-amber-800 underline decoration-amber-300 underline-offset-2">中际旭创</a>,隔夜英伟达跌 3% 拖累光通信,加上主力净流出 16.4 亿,资金面也不乐观;短期注意板块联动风险。
@@ -114,7 +114,7 @@
           </div>
 
           <!-- 你的票·资金面(展开态:对齐成列 + 按主力净流入排序 + 迷你强度条) -->
-          <div class="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div class="overflow-hidden rounded-xl bg-white shadow-sm">
             <button class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-gray-50">
               <span class="text-body font-medium text-gray-800">💰 你的票·资金面</span>
               <span class="text-meta text-gray-400">9 只 · 截至 06-26</span>
@@ -183,8 +183,7 @@
           </div>
 
           <!-- 卡片:高影响(左色条 + 描边标签) -->
-          <article class="relative rounded-xl border border-gray-200 bg-white p-4 pl-5">
-            <span class="absolute left-1.5 top-4 bottom-4 w-1 rounded-full bg-rose-300"></span>
+          <article class="rounded-xl bg-white p-4 shadow-sm">
             <div class="mb-1.5">
               <span class="inline-flex rounded px-1.5 py-0.5 text-meta font-medium bg-rose-50 text-rose-600">高影响</span>
             </div>
@@ -197,7 +196,7 @@
               <span class="text-meta text-gray-400">受益 A 股</span>
               <a href="#" class="rounded px-2 py-0.5 text-meta font-medium text-amber-800 bg-amber-100 hover:bg-amber-200">★ 光迅科技</a>
             </div>
-            <div class="mt-3 rounded-lg border-l-2 border-gray-200 bg-gray-50/70 px-3 py-2">
+            <div class="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
               <div class="mb-1 text-meta font-medium text-gray-500">散户怎么想</div>
               <p class="text-body text-gray-800">相干一跌,光迅反而跌更狠,简单当"错杀"去抄底,A 股这边可能有自己的雷或情绪宣泄。盯紧光迅能否在关键支撑放量企稳,否则小心还有惯性。</p>
               <div class="mt-2 text-right">
@@ -207,8 +206,7 @@
           </article>
 
           <!-- 卡片:高影响 -->
-          <article class="relative rounded-xl border border-gray-200 bg-white p-4 pl-5">
-            <span class="absolute left-1.5 top-4 bottom-4 w-1 rounded-full bg-rose-300"></span>
+          <article class="rounded-xl bg-white p-4 shadow-sm">
             <div class="mb-1.5">
               <span class="inline-flex rounded px-1.5 py-0.5 text-meta font-medium bg-rose-50 text-rose-600">高影响</span>
             </div>
@@ -218,7 +216,7 @@
               <a href="#" class="rounded bg-gray-100 px-2 py-0.5 text-meta text-gray-700 hover:bg-gray-200">新易盛</a>
               <a href="#" class="rounded px-2 py-0.5 text-meta font-medium text-amber-800 bg-amber-100 hover:bg-amber-200">★ 天孚通信</a>
             </div>
-            <div class="mt-3 rounded-lg border-l-2 border-gray-200 bg-gray-50/70 px-3 py-2">
+            <div class="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
               <div class="mb-1 text-meta font-medium text-gray-500">散户怎么想</div>
               <p class="text-body text-gray-800">海外映射失灵:迈威尔只跌 5 个点,新易盛、天孚却砸了 7% 多,说明 A 股光模块叠加了自身情绪宣泄。最容易踩的坑是把"美股小跌、A 股大跌"当抄底机会。</p>
               <div class="mt-2 text-right">
@@ -230,13 +228,12 @@
       </section>
 
       <!-- 其他市场动态:与「和我相关」同款面板结构,中性灰底区分 -->
-      <section class="rounded-2xl bg-gray-100/50 p-3 ring-1 ring-gray-200/70 sm:p-4">
+      <section class="rounded-2xl bg-gray-100/50 p-3 sm:p-4">
         <div class="mb-3 flex items-baseline gap-2">
           <h2 class="text-h2 font-semibold tracking-tight text-ink">其他市场动态</h2>
         </div>
         <div class="space-y-3">
-          <article class="relative rounded-xl border border-gray-200 bg-white p-4 pl-5">
-            <span class="absolute left-1.5 top-4 bottom-4 w-1 rounded-full bg-rose-300"></span>
+          <article class="rounded-xl bg-white p-4 shadow-sm">
             <div class="mb-1.5">
               <span class="inline-flex rounded px-1.5 py-0.5 text-meta font-medium bg-rose-50 text-rose-600">高影响</span>
             </div>
@@ -246,7 +243,7 @@
               <a href="#" class="rounded bg-gray-100 px-2 py-0.5 text-meta text-gray-700 hover:bg-gray-200">兆易创新</a>
               <a href="#" class="rounded bg-gray-100 px-2 py-0.5 text-meta text-gray-700 hover:bg-gray-200">澜起科技</a>
             </div>
-            <div class="mt-3 rounded-lg border-l-2 border-gray-200 bg-gray-50/70 px-3 py-2">
+            <div class="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
               <div class="mb-1 text-meta font-medium text-gray-500">散户怎么想</div>
               <p class="text-body text-gray-800">美光领跌,存储板块承压,但兆易创新明显抗跌(仅微跌),可能是资金在赌国产替代或产品结构差异,别一刀切当利空出尽。</p>
               <div class="mt-2 text-right">
@@ -255,8 +252,7 @@
             </div>
           </article>
 
-          <article class="relative rounded-xl border border-gray-200 bg-white p-4 pl-5">
-            <span class="absolute left-1.5 top-4 bottom-4 w-1 rounded-full bg-amber-300"></span>
+          <article class="rounded-xl bg-white p-4 shadow-sm">
             <div class="mb-1.5">
               <span class="inline-flex rounded px-1.5 py-0.5 text-meta font-medium bg-amber-50 text-amber-700">中影响</span>
             </div>
@@ -266,7 +262,7 @@
               <a href="#" class="rounded bg-gray-100 px-2 py-0.5 text-meta text-gray-700 hover:bg-gray-200">英维克</a>
               <a href="#" class="rounded bg-gray-100 px-2 py-0.5 text-meta text-gray-700 hover:bg-gray-200">科华数据</a>
             </div>
-            <div class="mt-3 rounded-lg border-l-2 border-gray-200 bg-gray-50/70 px-3 py-2">
+            <div class="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
               <div class="mb-1 text-meta font-medium text-gray-500">散户怎么想</div>
               <p class="text-body text-gray-800">Vertiv 这一跌,直接把液冷/电力设备的短期情绪浇凉了,但 A 股温控没一边倒:英维克跟着跌了 5%,但没破位就不算事;盯住能否缩量企稳。</p>
               <div class="mt-2 text-right">
@@ -275,8 +271,7 @@
             </div>
           </article>
 
-          <article class="relative rounded-xl border border-gray-200 bg-white p-4 pl-5">
-            <span class="absolute left-1.5 top-4 bottom-4 w-1 rounded-full bg-emerald-300"></span>
+          <article class="rounded-xl bg-white p-4 shadow-sm">
             <div class="mb-1.5">
               <span class="inline-flex rounded px-1.5 py-0.5 text-meta font-medium bg-emerald-50 text-emerald-600">低影响</span>
             </div>
@@ -285,7 +280,7 @@
               <span class="text-meta text-gray-400">受益 A 股</span>
               <a href="#" class="rounded bg-gray-100 px-2 py-0.5 text-meta text-gray-700 hover:bg-gray-200">北方华创</a>
             </div>
-            <div class="mt-3 rounded-lg border-l-2 border-gray-200 bg-gray-50/70 px-3 py-2">
+            <div class="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
               <div class="mb-1 text-meta font-medium text-gray-500">散户怎么想</div>
               <p class="text-body text-gray-800">应用材料大跌 6 个点,北方华创反而涨了快 2 个点,说明资金在走独立逻辑,别硬套美股映射。逆势拉涨最怕后劲不足,盯紧分时均线与板块联动。</p>
               <div class="mt-2 text-right">
