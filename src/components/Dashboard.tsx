@@ -191,12 +191,12 @@ export default function Dashboard() {
         <ChainSwitcher />
 
         {/* Tab 导航 */}
-        <div className="mb-4 flex gap-1 border-b border-gray-200">
+        <div className="mb-4 flex gap-1 overflow-x-auto border-b border-gray-200">
           {TABS.map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
+              className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors ${
                 tab === t
                   ? "border-gray-900 font-medium text-gray-900"
                   : "border-transparent text-gray-400 hover:text-gray-700"
@@ -810,6 +810,7 @@ function FeatureMatrix({ rows }: { rows: Stock[] }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
@@ -838,6 +839,7 @@ function FeatureMatrix({ rows }: { rows: Stock[] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
