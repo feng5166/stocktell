@@ -61,6 +61,7 @@ export default function Dashboard() {
   const [relation, setRelation] = useState<string>("全部关系");
   const [query, setQuery] = useState("");
   const [onlyWatch, setOnlyWatch] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false); // 手机筛选区折叠
   const wl = useWatchlist();
   // 统计卡点击后,股票列表按此视图收窄(all/live/up/down)
   const [statView, setStatView] = useState<"all" | "live" | "up" | "down">("all");
@@ -239,6 +240,21 @@ export default function Dashboard() {
 
         {/* 筛选区 */}
         <div className="mb-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+          {/* 手机:折叠开关(桌面隐藏) */}
+          <button
+            type="button"
+            onClick={() => setFilterOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-sm text-gray-500 sm:hidden"
+          >
+            <span>筛选 / 搜索</span>
+            <span>{filterOpen ? "收起 ▲" : "展开 ▾"}</span>
+          </button>
+          {/* 内容:手机折叠,桌面 sm:block 始终展开、布局不变 */}
+          <div
+            className={`${
+              filterOpen ? "space-y-3" : "hidden"
+            } sm:block sm:space-y-3`}
+          >
           <FilterGroup label="市场">
             {MARKETS.map((m) => (
               <Chip key={m} active={market === m} onClick={() => setMarket(m)}>
@@ -293,8 +309,9 @@ export default function Dashboard() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="搜索代码 / 公司 / 定位"
-              className="min-w-[180px] flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+              className="min-w-[160px] flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-gray-900"
             />
+          </div>
           </div>
         </div>
 
