@@ -239,7 +239,8 @@ async function llmDrafts(
     })),
   }));
 
-  const resp = await client.chat.completions.create({
+  const resp = await client.chat.completions.create(
+    {
     model: LLM_MODEL,
     max_tokens: 8000,
     response_format: { type: "json_object" },
@@ -258,7 +259,9 @@ async function llmDrafts(
         )}`,
       },
     ],
-  });
+    },
+    { timeout: 45000 } // 45s 超时:超了抛错 → generateDrafts catch 回退模板,避免被 Hobby 60s 杀
+  );
 
   const text = resp.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(text) as { items: LLMItem[] };
