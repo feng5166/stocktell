@@ -144,16 +144,6 @@ export default async function StockDetail({
 
         <Fundamentals code={s.code} market={s.market} />
 
-        <Section title="在产业链的位置">
-          <ChainPosition
-            current={s.position}
-            sector={s.sector}
-            lists={chainLists}
-          />
-        </Section>
-
-        {s.market === "A股" && <Similarity code={s.code} />}
-
         <Section title="对应的股票">
           {usPeers.length === 0 &&
           aPeers.length === 0 &&
@@ -179,6 +169,16 @@ export default async function StockDetail({
             </p>
           )}
         </Section>
+
+        <Section title="在产业链的位置">
+          <ChainPosition
+            current={s.position}
+            sector={s.sector}
+            lists={chainLists}
+          />
+        </Section>
+
+        {s.market === "A股" && <Similarity code={s.code} />}
 
         <Section title="最近发生了什么">
           <ul className="space-y-1.5 text-sm text-gray-700">
