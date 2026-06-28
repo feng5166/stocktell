@@ -2,10 +2,10 @@
 // 换 provider / 换模型只改环境变量,无需改代码:
 //   LLM_BASE_URL  默认 https://api.modelverse.cn/v1
 //   LLM_API_KEY   没配则不调用模型(简报走模板回退)
-//   LLM_MODEL     默认 glm-5.2(modelverse 上可用:glm-5.2 / qwen3.7-plus / doubao-seed-2-1-pro-260628 / MiniMax-M3 ...)
+//   LLM_MODEL     默认 deepseek-v4-pro(推理模型,质量好但较慢;modelverse 上也有 deepseek-v4-flash / glm-5.2 / qwen3.7-plus ...)
 import OpenAI from "openai";
 
-export const LLM_MODEL = process.env.LLM_MODEL || "glm-5.2";
+export const LLM_MODEL = process.env.LLM_MODEL || "deepseek-v4-pro";
 export const LLM_BASE_URL =
   process.env.LLM_BASE_URL || "https://api.modelverse.cn/v1";
 

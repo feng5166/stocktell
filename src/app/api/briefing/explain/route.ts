@@ -77,7 +77,7 @@ ${peerLines || "(无)"}
   const llmStream = await client.chat.completions.create({
     model: LLM_MODEL,
     stream: true,
-    max_tokens: 1200,
+    max_tokens: 4000, // 推理模型会先吃一段思考 token,留足空间给正式解读
     messages: [
       { role: "system", content: SYS },
       { role: "user", content: userMsg },
