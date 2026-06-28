@@ -220,6 +220,34 @@ export async function latestFundYmd(todayISO: string): Promise<string | null> {
   return prev ? prev.replace(/-/g, "") : null;
 }
 
+// A 股日线历史(date YYYY-MM-DD, pct 当日涨跌%),按日期升序。用于历史相似性统计。
+export async function dailyHistory(
+  code: string,
+  startYmd: string
+): Promise<{ date: string; pct: number }[]> {
+  const ts = tsCode(code);
+  if (!ts) return [];
+  const d = await tsCall(
+    "daily",
+    { ts_code: ts, start_date: startYmd },
+    "trade_date,pct_chg"
+  );
+  if (!d) return [];
+  const ci = d.fields.indexOf("trade_date");
+  const pi = d.fields.indexOf("pct_chg");
+  return d.items
+    .map((r) => {
+      const ymd = String(r[ci]);
+      const pct = n(r[pi]);
+      return {
+        date: `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`,
+        pct: pct ?? 0,
+      };
+    })
+    .filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.date))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 // 取某只 A 股最近一个交易日的基本面
 export async function fetchFundamental(code: string): Promise<Fundamental | null> {
   const ts = tsCode(code);

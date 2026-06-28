@@ -6,6 +6,7 @@ import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
 import { Fundamentals } from "@/components/Fundamentals";
+import { Similarity } from "@/components/Similarity";
 import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
@@ -117,6 +118,8 @@ export default async function StockDetail({
         </Section>
 
         <Fundamentals code={s.code} market={s.market} />
+
+        {s.market === "A股" && <Similarity code={s.code} />}
 
         <Section title="对应的股票">
           {usPeers.length === 0 &&
