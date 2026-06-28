@@ -71,11 +71,12 @@ export function BriefingFeed({
       {others.length > 0 && (
         <section>
           <SectionHead title="其他市场动态" />
+          {/* 付费分层暂未开启:所有用户简报功能一致,不再上免费墙(gated 默认 false)。
+              仅自选保存、推送订阅需登录;LockedCard/FREE_LIMIT 基础设施保留,日后分层再开。 */}
           <CardFeed
             items={others}
             loggedIn={loggedIn}
             watchedCodes={wl.codes}
-            gated
           />
         </section>
       )}
