@@ -36,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased">
+      <body className="antialiased pb-14 sm:pb-0">
         <Providers>{children}</Providers>
         <PWARegister />
       </body>
