@@ -3,6 +3,7 @@ import { generateDrafts } from "@/lib/generate";
 import { insertDrafts } from "@/lib/briefings";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
+import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -11,9 +12,14 @@ export async function POST(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date") || undefined; // YYYY-MM-DD,指定日期生成
   const dryRun = req.nextUrl.searchParams.get("dryRun") === "1"; // 预览:只返回不落库
   const useLLM = req.nextUrl.searchParams.get("llm") === "1"; // 预览默认用模板(快);要 LLM 文案加 llm=1
+  const replace = req.nextUrl.searchParams.get("replace") === "1"; // 重刷:删该日旧简报→新口径重生成并发布
 
-  // 指定日期 / 预览 属管理操作(可用来演示节后累计口径),需管理员
-  if ((date || dryRun) && !isAdminAuthorized(req) && !(await isAdminSession())) {
+  // 指定日期 / 预览 / 重刷 属管理操作,需管理员
+  if (
+    (date || dryRun || replace) &&
+    !isAdminAuthorized(req) &&
+    !(await isAdminSession())
+  ) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -34,6 +40,17 @@ export async function POST(req: NextRequest) {
         items: drafts,
       });
     }
+
+    // 重刷:先删该日旧简报(注意:今日简报尚无 outcome 记账,删除安全),再以发布态写入
+    if (replace) {
+      const db = getPrisma();
+      if (db) await db.briefingItem.deleteMany({ where: { date: d } });
+      const created = await insertDrafts(
+        drafts.map((x) => ({ ...x, status: "published" as const }))
+      );
+      return NextResponse.json({ ok: true, date: d, engine, usMarketClosed, replaced: true, count: created.length });
+    }
+
     const created = await insertDrafts(drafts);
     return NextResponse.json({
       ok: true,
