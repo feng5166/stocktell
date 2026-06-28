@@ -10,6 +10,7 @@ import { prevAshareTradingDay } from "@/lib/tushare";
 import { usCumulativeChange } from "@/lib/us-history";
 
 const MOVER_THRESHOLD = 2; // 美股 |涨跌| ≥ 2% 视为异动
+const MAX_MOVERS = 12; // 异动条数封顶(控 LLM 时长,避免节后累计一堆破阈值导致超时)
 
 interface Mover {
   code: string;
@@ -145,9 +146,9 @@ async function findMovers(
       });
     }
   }
-  // 异动幅度大的在前
+  // 异动幅度大的在前,并封顶条数(控时)
   movers.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
-  return { movers, usMarketClosed: false };
+  return { movers: movers.slice(0, MAX_MOVERS), usMarketClosed: false };
 }
 
 /* ---------- 模板生成(无 LLM 时) ---------- */
