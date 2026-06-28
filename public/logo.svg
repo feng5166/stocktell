@@ -1,0 +1,18 @@
+<svg width="1080" height="380" viewBox="0 0 1080 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="logomark" cx="0.36" cy="0.3" r="0.85">
+      <stop offset="0" stop-color="#3b414b"/>
+      <stop offset="1" stop-color="#0c0e13"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(70,70)">
+    <circle cx="120" cy="110" r="96" fill="url(#logomark)"/>
+    <path d="M70 170 L40 250 L150 178 Z" fill="url(#logomark)"/>
+    <path d="M78 150 L112 116 L138 138 L172 92" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M150 84 L178 84 L178 112" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="380" y="170" font-family="'Avenir Next','Helvetica Neue',Arial,sans-serif" font-weight="300" font-size="96" letter-spacing="26" fill="#454b54">STOCK</text>
+  <text x="380" y="296" font-family="'Avenir Next','Helvetica Neue',Arial,sans-serif" font-weight="300" font-size="96" letter-spacing="26" fill="#454b54">TELL</text>
+  <circle cx="690" cy="262" r="13" fill="#454b54"/>
+  <path d="M690 275 Q686 296 668 304" fill="none" stroke="#454b54" stroke-width="9" stroke-linecap="round"/>
+</svg>
