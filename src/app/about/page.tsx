@@ -18,8 +18,8 @@ const TIMELINE = [
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-9 first:mt-0">
-      <h2 className="text-lg font-semibold tracking-tight text-gray-900">{title}</h2>
-      <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-gray-700">
+      <h2 className="text-h2 font-semibold tracking-tight text-gray-900">{title}</h2>
+      <div className="mt-3 space-y-3 text-body text-gray-700">
         {children}
       </div>
     </section>
@@ -32,8 +32,8 @@ export default function AboutPage() {
       <SiteHeader active="关于我们" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">关于我们</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-gray-500">
+        <h1 className="text-h1 font-semibold tracking-tight">关于我们</h1>
+        <p className="mt-2 text-title leading-relaxed text-gray-500">
           用 AI,把复杂的市场,翻译成你听得懂的人话。
         </p>
 
@@ -66,7 +66,7 @@ export default function AboutPage() {
           <ul className="mt-2 space-y-2">
             {TIMELINE.map(([date, text]) => (
               <li key={date} className="flex gap-3">
-                <span className="shrink-0 font-mono text-sm text-amber-700">{date}</span>
+                <span className="shrink-0 font-mono text-body text-amber-700">{date}</span>
                 <span className="text-gray-700">{text}</span>
               </li>
             ))}
@@ -94,7 +94,7 @@ export default function AboutPage() {
           </p>
         </Section>
 
-        <p className="mt-10 border-t border-gray-200 pt-4 text-xs text-gray-400">
+        <p className="mt-10 border-t border-gray-100 pt-4 text-meta text-gray-400">
           以上为公司介绍与信息整理,不构成投资建议。投资有风险,决策需谨慎。
         </p>
       </main>
