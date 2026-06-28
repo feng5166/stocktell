@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 
 export const metadata = {
   title: "服务条款 · StockTell",
@@ -12,8 +13,8 @@ export default function TermsPage() {
     <div className="min-h-screen bg-canvas text-ink">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            StockTell
+          <Link href="/" aria-label="StockTell 首页">
+            <Logo className="h-6 w-auto" />
           </Link>
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">
             ← 返回首页

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { useSearchParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -57,8 +58,8 @@ function ResetForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-sm">
-        <Link href="/" className="text-lg font-bold tracking-tight">
-          StockTell
+        <Link href="/" aria-label="StockTell 首页" className="inline-block">
+          <Logo className="h-6 w-auto" />
         </Link>
         <h1 className="mt-4 text-h1 font-semibold">重置密码</h1>
 
