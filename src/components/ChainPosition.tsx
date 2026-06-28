@@ -1,10 +1,10 @@
 "use client";
 
-// 产业链位置图:上游→中游→下游。非当前位置若同板块有标的,可点击展开并跳转。
+// 产业链上下游图:以本股为中心,左=上游(供货给它的)、右=下游(采购它的)。
+// 方向来自 chainEdges 的真实关联边(供货/对标/映射,均有公开依据),非按板块硬凑。
 import { useState } from "react";
 import Link from "next/link";
 
-type Pos = "上游" | "中游" | "下游";
 interface Peer {
   code: string;
   name: string;
@@ -12,62 +12,69 @@ interface Peer {
 }
 
 export function ChainPosition({
-  current,
+  pos,
   sector,
-  lists,
+  up,
+  down,
 }: {
-  current: Pos;
+  pos: string;
   sector: string;
-  lists: Record<Pos, Peer[]>;
+  up: Peer[];
+  down: Peer[];
 }) {
-  const [open, setOpen] = useState<Pos | null>(null);
-  const order: Pos[] = ["上游", "中游", "下游"];
+  const [open, setOpen] = useState<"up" | "down" | null>(null);
+  const sides: { key: "up" | "down"; label: string; list: Peer[] }[] = [
+    { key: "up", label: "上游", list: up },
+    { key: "down", label: "下游", list: down },
+  ];
+
+  const Btn = ({ side }: { side: { key: "up" | "down"; label: string; list: Peer[] } }) => {
+    const clickable = side.list.length > 0;
+    const isOpen = open === side.key;
+    return (
+      <button
+        type="button"
+        disabled={!clickable}
+        onClick={() => setOpen(isOpen ? null : side.key)}
+        className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+          clickable
+            ? `bg-blue-50 font-medium text-blue-700 ring-1 ring-inset hover:bg-blue-100 ${
+                isOpen ? "ring-blue-400" : "ring-blue-200"
+              }`
+            : "bg-gray-50 text-gray-300"
+        }`}
+      >
+        {side.label}
+        {clickable && (
+          <>
+            <span className="ml-1 rounded-full bg-blue-100 px-1.5 text-xs text-blue-600">
+              {side.list.length}
+            </span>
+            <span className="ml-1 text-xs text-blue-400">{isOpen ? "▴" : "▾"}</span>
+          </>
+        )}
+      </button>
+    );
+  };
 
   return (
     <div>
       <div className="flex items-center gap-2">
-        {order.map((p, i) => {
-          const isCur = p === current;
-          const list = lists[p] ?? [];
-          const clickable = !isCur && list.length > 0;
-          return (
-            <div key={p} className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!clickable}
-                onClick={() => setOpen(open === p ? null : p)}
-                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-                  isCur
-                    ? "bg-gray-900 font-medium text-white"
-                    : clickable
-                    ? `bg-blue-50 font-medium text-blue-700 ring-1 ring-inset hover:bg-blue-100 ${
-                        open === p ? "ring-blue-400" : "ring-blue-200"
-                      }`
-                    : "bg-gray-50 text-gray-300"
-                }`}
-              >
-                {isCur ? `你在这 · ${p}` : p}
-                {clickable && (
-                  <span className="ml-1 rounded-full bg-blue-100 px-1.5 text-xs text-blue-600">
-                    {list.length}
-                  </span>
-                )}
-                {clickable && (
-                  <span className="ml-1 text-xs text-blue-400">
-                    {open === p ? "▴" : "▾"}
-                  </span>
-                )}
-              </button>
-              {i < order.length - 1 && <span className="text-gray-300">→</span>}
-            </div>
-          );
-        })}
+        <Btn side={sides[0]} />
+        <span className="text-gray-300">→</span>
+        <span className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white">
+          你在这 · {pos}
+        </span>
+        <span className="text-gray-300">→</span>
+        <Btn side={sides[1]} />
       </div>
 
-      {open && (lists[open]?.length ?? 0) > 0 && (
+      {open && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-gray-400">{open}关联:</span>
-          {lists[open].map((x) => (
+          <span className="text-xs text-gray-400">
+            {open === "up" ? "上游(供货给它)" : "下游(采购它的)"}:
+          </span>
+          {(open === "up" ? up : down).map((x) => (
             <Link
               key={x.code}
               href={`/stock/${x.code}`}

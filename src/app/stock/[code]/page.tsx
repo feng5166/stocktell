@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { STOCKS, STOCK_MAP, resolvePeer, type Position, type Stock } from "@/data/stocks";
+import { STOCK_MAP, resolvePeer, type Stock } from "@/data/stocks";
 import { ChainPosition } from "@/components/ChainPosition";
+import { chainNeighbors } from "@/data/chainEdges";
 import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { fetchQuotes } from "@/lib/quotes";
 import { readQuotesCache } from "@/lib/quotes-cache";
@@ -12,8 +13,6 @@ import { Similarity } from "@/components/Similarity";
 import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
-
-const CHAIN: Position[] = ["上游", "中游", "下游"];
 
 export default async function StockDetail({
   params,
@@ -47,33 +46,49 @@ export default async function StockDetail({
     (it) => it.triggerCode === s.code || it.beneficiaries.some((b) => b.code === s.code)
   );
 
-  // relations 里美股用 code、A股引用名称,统一用 resolvePeer 解析(两头都能认)
-  const resolved = s.relations.map((t) => ({ token: t, peer: resolvePeer(t) ?? null }));
-  const usPeers = resolved.filter((r) => r.peer?.market === "美股");
-  const aPeers = resolved.filter((r) => r.peer?.market === "A股");
-  const otherPeers = resolved.filter((r) => !r.peer);
-
-  // 产业链上下游导航:位置(上/中/下游)是全链全局的,板块基本是单一位置,
-  // 按同板块取上下游几乎永远为空。改用关联图谱(双向)——当前标的指向的关联 +
-  // 反向把当前标的列为关联的,按各自的产业链位置归类,即真实的上下游邻居。
-  const related = new Map<string, Stock>();
+  // 统一关联邻居 = 既有 relations(美股用 code、A股用名称)+ 产业链真实关联边
+  // (chainEdges,双向、含 A股↔A股/美股↔美股),按代码去重。
+  const peerMap = new Map<string, Stock>();
+  const otherTokens: string[] = [];
   for (const t of s.relations) {
     const p = resolvePeer(t);
-    if (p && p.code !== s.code) related.set(p.code, p);
+    if (!p) {
+      otherTokens.push(t);
+      continue;
+    }
+    if (p.code !== s.code) peerMap.set(p.code, p);
   }
-  for (const x of STOCKS) {
-    if (x.code === s.code) continue;
-    if (x.relations.some((t) => resolvePeer(t)?.code === s.code))
-      related.set(x.code, x);
+  for (const n of chainNeighbors(s.code)) {
+    const p = STOCK_MAP[n.code];
+    if (p && p.code !== s.code) peerMap.set(p.code, p);
   }
-  const chainLists = Object.fromEntries(
-    CHAIN.map((pos) => [
-      pos,
-      Array.from(related.values())
-        .filter((x) => x.position === pos)
-        .map((x) => ({ code: x.code, name: x.name, market: x.market })),
-    ])
-  ) as Record<Position, { code: string; name: string; market: string }[]>;
+  const peers = Array.from(peerMap.values());
+
+  // 按关联强度降序(edgeInfo 现已覆盖产业链边)
+  const STR_RANK: Record<string, number> = { 强: 3, 中: 2, 弱: 1 };
+  const strengthOf = (code: string) =>
+    STR_RANK[edgeInfo(s.code, code)?.strength ?? "弱"] ?? 0;
+  const byStrength = (arr: Stock[]) =>
+    [...arr].sort((a, b) => strengthOf(b.code) - strengthOf(a.code));
+
+  const usPeers = byStrength(peers.filter((p) => p.market === "美股")).map(
+    (p) => ({ token: p.code, peer: p })
+  );
+  const aPeers = byStrength(peers.filter((p) => p.market === "A股")).map(
+    (p) => ({ token: p.code, peer: p })
+  );
+  const otherPeers = otherTokens.map((t) => ({ token: t, peer: null as Stock | null }));
+
+  // 产业链上下游导航:按边的真实方向分(up=供货给本股的上游;down=采购本股的下游),
+  // 而非按全局位置——否则同为「上游」的供应商会落进「你在这」被隐藏。已按强度降序。
+  const upPeers: { code: string; name: string; market: string }[] = [];
+  const downPeers: { code: string; name: string; market: string }[] = [];
+  for (const n of chainNeighbors(s.code)) {
+    const p = STOCK_MAP[n.code];
+    if (!p) continue;
+    const item = { code: p.code, name: p.name, market: p.market };
+    (n.dir === "up" ? upPeers : downPeers).push(item);
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
@@ -172,9 +187,10 @@ export default async function StockDetail({
 
         <Section title="在产业链的位置">
           <ChainPosition
-            current={s.position}
+            pos={s.position}
             sector={s.sector}
-            lists={chainLists}
+            up={upPeers}
+            down={downPeers}
           />
         </Section>
 
@@ -239,11 +255,14 @@ function PeerGroup({
   anchor?: Stock;
   items: { token: string; peer: Stock | null }[];
 }) {
+  const CAP = 12; // 龙头(如英伟达)关联众多,封顶展示强关联,其余折叠计数
+  const shownItems = items.slice(0, CAP);
+  const hidden = items.length - shownItems.length;
   return (
     <div>
       <div className="mb-1.5 text-xs text-gray-400">{label}</div>
       <div className="space-y-1.5">
-        {items.map(({ token, peer }) => {
+        {shownItems.map(({ token, peer }) => {
           const info = anchor && peer ? edgeInfo(anchor.code, peer.code) : null;
           return (
             <div
@@ -273,6 +292,9 @@ function PeerGroup({
             </div>
           );
         })}
+        {hidden > 0 && (
+          <div className="text-xs text-gray-400">…另有 {hidden} 只关联标的</div>
+        )}
       </div>
     </div>
   );

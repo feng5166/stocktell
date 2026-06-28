@@ -2,6 +2,7 @@
 // 强 = 有明确供货/直接业务绑定;中 = 对标/国产替代叙事(无直接供货);弱 = 同主题/概念关联。
 // 叠加在 stocks.ts 的 relations 之上,不改那个大数组。未显式标注的边按 A 股端 relationTypes 派生。
 import { STOCK_MAP } from "@/data/stocks";
+import { chainEdge } from "@/data/chainEdges";
 
 export type Strength = "强" | "中" | "弱";
 export interface EdgeInfo {
@@ -49,7 +50,12 @@ export function edgeInfo(codeA: string, codeB: string): EdgeInfo | null {
   const a = STOCK_MAP[codeA];
   const b = STOCK_MAP[codeB];
   if (!a || !b) return null;
-  // 必须是跨市场(美股↔A股)的边
+
+  // 先查产业链真实关联边(方向无关,覆盖 A股↔A股、美股↔美股、双向)
+  const ce = chainEdge(codeA, codeB);
+  if (ce) return { strength: ce.strength, basis: ce.basis };
+
+  // 其次:显式标注的美股↔A股映射边
   const us = a.market === "美股" ? codeA : b.market === "美股" ? codeB : null;
   const cn = a.market === "A股" ? codeA : b.market === "A股" ? codeB : null;
   if (!us || !cn) return null;
