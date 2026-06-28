@@ -159,21 +159,6 @@ function templateDrafts(date: string, movers: Mover[]): NewBriefingItem[] {
     const window = m.cumulative
       ? `假期累计${dir} ${Math.abs(m.change).toFixed(2)}%(${m.sessions ?? "多"}个交易日)`
       : `隔夜${dir} ${Math.abs(m.change).toFixed(2)}%`;
-    const lagging = m.peers.filter(
-      (p) => p.change !== null && m.change - p.change >= 1.5
-    );
-    const peerText = m.peers
-      .map((p) => `${p.name}(${p.change === null ? "未开盘" : (p.change > 0 ? "+" : "") + p.change.toFixed(2) + "%"})`)
-      .join(" · ");
-    const prefix = m.cumulative
-      ? `A 股节后首个交易日,需一次性消化假期内美股的累计变动。${m.name}假期累计${dir} ${Math.abs(m.change).toFixed(2)}%`
-      : `${m.name}${dir} ${m.change.toFixed(2)}%`;
-    const take =
-      lagging.length > 0
-        ? `${prefix},对应 A 股 ${lagging
-            .map((p) => p.name)
-            .join("、")} 还没跟上,存在预期差。注意板块情绪,追高需谨慎。`
-        : `${prefix},对应 A 股标的或同步反应,短期跟随板块情绪波动。`;
     return {
       date,
       impact: impactFromChange(Math.abs(m.change)),
@@ -182,27 +167,66 @@ function templateDrafts(date: string, movers: Mover[]): NewBriefingItem[] {
       triggerName: m.name,
       triggerChange: m.change,
       beneficiaries: m.peers.map((p) => ({ code: p.code, name: p.name })),
-      retailTake: `${take} 受益 A 股:${peerText}。`,
+      retailTake: buildTake(m),
       sourceUrl: null,
     };
   });
 }
 
+// 模板兜底的「散户怎么想」:按方向 + A股相对美股的强弱定性,给"所以呢"+一句真提醒(非买卖)。
+function buildTake(m: Mover): string {
+  const mag = Math.abs(m.change).toFixed(1);
+  const tag = m.cumulative ? "假期累计" : "隔夜";
+  const lead = m.cumulative ? "A股节后首日要一次性消化假期里的变动:" : "";
+  const known = m.peers
+    .filter((p) => p.change !== null)
+    .map((p) => ({ name: p.name, change: p.change as number }));
+  const pick = (arr: { name: string }[]) => arr.slice(0, 2).map((p) => p.name).join("、");
+  const others = pick(m.peers); // 没有实时涨跌时退而用名字
+
+  if (m.change > 0) {
+    const lag = known.filter((p) => m.change - p.change >= 1.5);
+    if (lag.length)
+      return `${lead}海外${m.name}${tag}涨了${mag}%,A股${pick(lag)}却没怎么跟——要么是还没反应过来的补涨机会,要么是它跟这条线没那么相关(海外营收占比低)。先别一开盘就追,看它能不能放量站上去;站不住,这"预期差"多半是假的。`;
+    if (known.length)
+      return `${lead}海外${m.name}${tag}涨${mag}%,A股对应标的基本同步涨上去了,该反应的都写在脸上。这种时候追最容易接在情绪高点,想参与也等回踩、别追高。`;
+    return `${lead}海外${m.name}${tag}涨${mag}%,A股${others}今天还没开盘。开盘看高开后能不能放量走强,高开冲高回落往往是借利好出货,别被一根高开骗进去。`;
+  }
+
+  const over = known.filter((p) => p.change - m.change <= -1.5); // A股跌得比美股更狠
+  if (over.length)
+    return `${lead}海外${m.name}${tag}才跌${mag}%,A股${pick(over)}却跌得更狠——这通常是A股自己的情绪宣泄叠加大盘,不是单纯跟跌。别一看"美股没跌多少"就当错杀冲进去,先看跌势有没有缩量企稳。`;
+  const resil = known.filter((p) => p.change - m.change >= 1.5); // A股相对抗跌
+  if (resil.length)
+    return `${lead}海外${m.name}${tag}跌${mag}%,A股${pick(resil)}反而扛住了——要么有独立逻辑或资金护盘,要么是补跌还没轮到,留意第二天低开补跌的风险。`;
+  if (known.length)
+    return `${lead}海外${m.name}${tag}跌${mag}%,A股对应标的也跟着跌、情绪面承压。越是这种时候越别被恐慌带着走,先看板块整体跌势缓没缓再说。`;
+  return `${lead}海外${m.name}${tag}跌${mag}%,A股${others}还没开盘,大概率低开。低开别急着反应,看是低开企稳还是低开杀跌——前者常是错杀、后者是真承压。`;
+}
+
 /* ---------- LLM 生成 ---------- */
-const SYSTEM_PROMPT = `你是一名资深 A 股产业链分析师,面向看不懂产业链的散户说人话。
-任务:把"今日美股异动 + 对应 A 股标的数据"翻译成简报条目,每条三段式:影响等级 / 标题 / 散户怎么想。
+const SYSTEM_PROMPT = `你是一个天天盯盘、又特别会说人话的"老股民搭子",帮看不懂产业链的散户把一条美股异动翻译成"跟我的票什么关系、我到底该怎么想"。
 
-硬性合规要求(必须遵守):
-- 禁止使用"买入/卖出/建议买/推荐/抄底/满仓"等任何操作指令性措辞。
-- 用"风险提示、历史规律、值得关注、注意"等中性表达。
-- 锋利点放在"美股→A股 的传导映射"和"预期差(美股涨了 A 股还没动)"上,而不是给买卖结论。
-- 不要在条目里写"不构成投资建议 / 历史规律不代表未来"等免责声明(页面底部已有统一声明),正文只专注分析,别重复。
+合规铁律(违反即失败):
+- 禁止"买入/卖出/建议买/推荐/抄底/满仓/加仓/清仓"等任何操作指令性措辞。
+- 可以点透机会与陷阱、提示风险,但绝不下买卖结论。
+- 不要写"不构成投资建议 / 历史规律不代表未来"之类免责声明(页面底部已有,别重复)。
 
-写作要求:
-- title 简短,点明触发事件(如"英伟达隔夜大涨,数据中心需求超预期")。
-- impact 取值仅限 高/中/低:涨跌幅大、链条核心→高;一般→中;影响有限→低。
-- retailTake 用大白话,2-4 句,先讲传导逻辑,再点出预期差或风险。
-- beneficiaryCodes 从给定 peers 的 code 里选,不要编造。`;
+retailTake 怎么写(这是核心,绝不能写成复述行情的废话):
+- 别复述涨跌幅(用户自己看得到),直接给"所以呢"。
+- 先定性,而且方向必须正确——根据"A股相对美股"的强弱分情况:
+  · 美股涨、A股没怎么涨甚至跌 → 可能是补涨"预期差",但要质疑是不是真相关(海外营收占比/业务相关度),并给一个验证信号(如能否放量跟上)。
+  · 美股涨、A股已跟涨到位 → 提醒别追在情绪高点。
+  · 美股跌、A股跌得更多 → 是A股自身情绪宣泄或有自己的雷,别把"美股才跌一点"当成"A股被错杀"想当然冲进去。
+  · 美股跌、A股相对抗跌 → 要么有独立逻辑/资金护盘,要么补跌没轮到,提示补跌风险。
+  · A股逆势(美股跌它涨/美股涨它跌)→ 它有独立逻辑,别硬套映射。
+- 再点一个"具体该盯什么"或"这里最容易踩的坑"(具体到这只票/这个板块,别给放之四海皆准的"注意情绪")。
+- 语气像朋友帮你盯盘:具体、敢有观点、说人话;2-4 句,不堆套话。
+
+其他:
+- title 简短、点明触发事件(如"英伟达隔夜大涨,数据中心需求超预期")。
+- impact 仅限 高/中/低:涨跌幅大、链条核心→高;一般→中;影响有限→低。
+- beneficiaryCodes 只从给定 peers 的 code 里选,不编造。`;
 
 interface LLMItem {
   impact: Impact;
