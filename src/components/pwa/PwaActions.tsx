@@ -203,7 +203,8 @@ export function PwaActions() {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-[90] flex flex-col items-end gap-2">
+      {/* 手机端浮在顶部 nav 下方(避免与底部 TabBar 重叠遮挡);桌面端仍在右下角 */}
+      <div className="fixed right-4 top-[72px] z-[90] flex flex-col items-end gap-2 sm:bottom-4 sm:top-auto">
         {showIOSHint && (
           <div className="max-w-[240px] rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg">
             用 <b>Safari</b> 打开 → 点底部<b>分享</b>按钮 → 选<b>「添加到主屏幕」</b>,即可像 App 一样使用。
