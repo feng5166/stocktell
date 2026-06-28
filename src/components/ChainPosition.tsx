@@ -40,16 +40,21 @@ export function ChainPosition({
                   isCur
                     ? "bg-gray-900 font-medium text-white"
                     : clickable
-                    ? `bg-gray-100 text-gray-600 hover:bg-gray-200 ${
-                        open === p ? "ring-1 ring-gray-400" : ""
+                    ? `bg-blue-50 font-medium text-blue-700 ring-1 ring-inset hover:bg-blue-100 ${
+                        open === p ? "ring-blue-400" : "ring-blue-200"
                       }`
                     : "bg-gray-50 text-gray-300"
                 }`}
               >
                 {isCur ? `你在这 · ${p}` : p}
                 {clickable && (
-                  <span className="ml-1 text-xs text-gray-400">
+                  <span className="ml-1 rounded-full bg-blue-100 px-1.5 text-xs text-blue-600">
                     {list.length}
+                  </span>
+                )}
+                {clickable && (
+                  <span className="ml-1 text-xs text-blue-400">
+                    {open === p ? "▴" : "▾"}
                   </span>
                 )}
               </button>
