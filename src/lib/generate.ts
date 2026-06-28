@@ -260,7 +260,9 @@ async function llmDrafts(
       },
     ],
     },
-    { timeout: 45000 } // 45s 超时:超了抛错 → generateDrafts catch 回退模板,避免被 Hobby 60s 杀
+    // 40s 超时 + 禁用 SDK 自动重试(默认重试2次会叠加到 >60s 撞 Hobby 上限);
+    // 超时抛错 → generateDrafts catch 回退模板,函数总能在限内返回。
+    { timeout: 40000, maxRetries: 0 }
   );
 
   const text = resp.choices[0]?.message?.content ?? "{}";
