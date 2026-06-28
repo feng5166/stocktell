@@ -1,7 +1,7 @@
 import { getPrisma } from "@/lib/prisma";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
-import { buildMorningBrief } from "@/lib/morning-brief";
+import { getMorningBrief } from "@/lib/morning-brief";
 
 const DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
 
@@ -93,7 +93,7 @@ export async function runWeixinPush(): Promise<{
     if (relevant.length === 0) continue;
 
     candidates++;
-    const brief = await buildMorningBrief(u.nickname, relevant);
+    const brief = await getMorningBrief(Array.from(codes), relevant);
     const text = formatMessage(date, relevant, brief);
     if (await sendToClawBot(u.weixinOpenId, text)) sent++;
   }

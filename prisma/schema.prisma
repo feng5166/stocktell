@@ -127,3 +127,12 @@ model WhyCache {
   @@id([code, date])
   @@map("why_cache")
 }
+
+// 个性化早报每日缓存:key = 当天日期 + 自选组合 hash;同自选同一天只生成一次。
+model MorningBriefCache {
+  key       String   @id
+  brief     String
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("morning_brief_cache")
+}

@@ -93,6 +93,14 @@ const T_WHY_CACHE = `CREATE TABLE IF NOT EXISTS "why_cache" (
   CONSTRAINT "why_cache_pkey" PRIMARY KEY ("code","date")
 )`;
 
+// 个性化早报每日缓存表(幂等)
+const T_BRIEF_CACHE = `CREATE TABLE IF NOT EXISTS "morning_brief_cache" (
+  "key" text NOT NULL,
+  "brief" text NOT NULL,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "morning_brief_cache_pkey" PRIMARY KEY ("key")
+)`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -120,6 +128,7 @@ export async function POST(req: NextRequest) {
     await db.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
     await db.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);
     await db.$executeRawUnsafe(T_WHY_CACHE);
+    await db.$executeRawUnsafe(T_BRIEF_CACHE);
     const count = await db.passwordResetToken.count();
     return NextResponse.json({
       ok: true,

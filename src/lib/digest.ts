@@ -5,7 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { sendMail } from "@/lib/mailer";
-import { buildMorningBrief } from "@/lib/morning-brief";
+import { getMorningBrief } from "@/lib/morning-brief";
 
 async function sendDigest(
   to: string,
@@ -94,7 +94,7 @@ export async function runPreOpenDigest(): Promise<{
     );
     if (relevant.length === 0) continue; // 没相关动态就不发,不骚扰
     candidates++;
-    const brief = await buildMorningBrief(u.nickname, relevant);
+    const brief = await getMorningBrief(Array.from(codes), relevant);
     if (await sendDigest(u.email, date, relevant, brief)) sent++;
   }
   return { ok: true, date, candidates, sent };
