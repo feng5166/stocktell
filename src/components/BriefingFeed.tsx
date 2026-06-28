@@ -32,7 +32,7 @@ export function BriefingFeed({
 
   return (
     <div className="space-y-7">
-      <section>
+      <section className="rounded-2xl bg-indigo-50/40 p-3 ring-1 ring-indigo-100 sm:p-4">
         <SectionHead
           title="和我相关"
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
