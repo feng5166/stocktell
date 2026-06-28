@@ -10,6 +10,7 @@ import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
+import { StockTellTake } from "@/components/StockTellTake";
 import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,10 @@ export default async function StockDetail({
   ).filter(
     (it) => it.triggerCode === s.code || it.beneficiaries.some((b) => b.code === s.code)
   );
+
+  // 真实「散户怎么想」:优先取今天提到这只票的简报条目(retailTake 真实、可深读);没有则退回静态文案
+  const newsItem =
+    todayNews.find((it) => it.triggerCode === s.code) ?? todayNews[0] ?? null;
 
   // 统一关联邻居 = 既有 relations(美股用 code、A股用名称)+ 产业链真实关联边
   // (chainEdges,双向、含 A股↔A股/美股↔美股),按代码去重。
@@ -208,9 +213,16 @@ export default async function StockDetail({
         </Section>
 
         <Section title="散户怎么想" highlight>
-          <p className="text-[15px] leading-relaxed text-gray-800">
-            {s.retailTake}
-          </p>
+          {newsItem ? (
+            <StockTellTake itemId={newsItem.id} retailTake={newsItem.retailTake} />
+          ) : (
+            <p className="text-[15px] leading-relaxed text-gray-800">
+              {s.retailTake}
+              <span className="mt-1 block text-xs text-gray-400">
+                今日暂无相关动态,以上为该标的的长期定位参考。
+              </span>
+            </p>
+          )}
         </Section>
 
         <p className="mt-8 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
