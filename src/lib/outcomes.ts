@@ -139,7 +139,8 @@ export async function pageOutcomes(
   if (!db) return { rows: [], hasMore: false };
   const rows = await db.briefingOutcome.findMany({
     where: { isBacktest: backtest },
-    orderBy: [{ date: "desc" }, { impact: "asc" }],
+    // 加 id 唯一兜底键:同日同影响也有稳定次序,跨页不重复/不漏
+    orderBy: [{ date: "desc" }, { impact: "asc" }, { id: "asc" }],
     skip: offset,
     take: limit + 1,
   });
