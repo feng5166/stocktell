@@ -106,9 +106,11 @@ export default function Dashboard() {
       .catch(() => {});
   }, []);
 
-  // 轮询真实行情;拿不到则继续用模拟数据
+  // 轮询真实行情;拿不到则继续用模拟数据。
+  // 仅在标签页可见时轮询:后台标签页不再每 20s 空跑(省电、省请求);切回前台立即刷新一次。
   useEffect(() => {
     let active = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
     async function load() {
       try {
         const r = await fetch("/api/quotes", { cache: "no-store" });
@@ -122,11 +124,29 @@ export default function Dashboard() {
         /* 静默回退到模拟数据 */
       }
     }
+    const start = () => {
+      if (!timer) timer = setInterval(load, 20000);
+    };
+    const stop = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else {
+        load();
+        start();
+      }
+    };
     load();
-    const t = setInterval(load, 20000);
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       active = false;
-      clearInterval(t);
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 

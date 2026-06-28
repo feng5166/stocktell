@@ -148,17 +148,45 @@ export async function pageOutcomes(
   return { rows: rows.slice(0, limit).map(fromRow), hasMore };
 }
 
-// 命中率统计:命中率需全量,但只 select impact/hit 两字段算,不拉全行(快、payload 小)。
+// 命中率统计:用 DB 侧 groupBy(impact,hit) 聚合计数,不再把整张 outcome 表拉进 Node 求和
+// (随记账增长,旧实现每次进战绩页都全表扫两遍 = 实盘 + 回测)。返回形状保持不变。
 export async function statsOutcomes(
   backtest: boolean
 ): Promise<{ stats: HitStats; byImpact: { impact: string; stats: HitStats }[] }> {
   const db = getPrisma();
   if (!db) return { stats: { evaluated: 0, hits: 0, rate: null }, byImpact: [] };
-  const rows = await db.briefingOutcome.findMany({
+  const grouped = await db.briefingOutcome.groupBy({
+    by: ["impact", "hit"],
     where: { isBacktest: backtest },
-    select: { impact: true, hit: true },
+    _count: { _all: true },
   });
-  return { stats: summarize(rows), byImpact: summarizeByImpact(rows) };
+
+  const rate = (e: number, h: number): number | null => (e ? h / e : null);
+  let evaluated = 0;
+  let hits = 0;
+  const byImpactMap = new Map<string, { evaluated: number; hits: number }>();
+  for (const g of grouped) {
+    if (g.hit === null) continue; // 未判定(取不到行情)不计入命中率分母
+    const c = g._count._all;
+    evaluated += c;
+    if (g.hit === true) hits += c;
+    const m = byImpactMap.get(g.impact) ?? { evaluated: 0, hits: 0 };
+    m.evaluated += c;
+    if (g.hit === true) m.hits += c;
+    byImpactMap.set(g.impact, m);
+  }
+
+  const byImpact = (["高", "中", "低"] as const)
+    .map((impact) => {
+      const m = byImpactMap.get(impact) ?? { evaluated: 0, hits: 0 };
+      return {
+        impact,
+        stats: { evaluated: m.evaluated, hits: m.hits, rate: rate(m.evaluated, m.hits) },
+      };
+    })
+    .filter((x) => x.stats.evaluated > 0);
+
+  return { stats: { evaluated, hits, rate: rate(evaluated, hits) }, byImpact };
 }
 
 // 样本低于此数不亮总命中率,只说"样本积累中"——早期几条数据的命中率没意义,亮出来反而误导。
