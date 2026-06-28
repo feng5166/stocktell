@@ -116,11 +116,6 @@ function BriefingCard({
       <div className="mb-1 flex items-center gap-2 text-xs font-medium">
         <span>{meta.emoji}</span>
         <span className="text-gray-500">{meta.label}</span>
-        {mine && (
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-700">
-            你的自选
-          </span>
-        )}
       </div>
       <h2 className="text-[15px] font-semibold text-gray-900">{item.title}</h2>
       {mine && item.triggerCode && (
