@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { STOCK_MAP, resolvePeer, type Position, type Stock } from "@/data/stocks";
+import { STOCKS, STOCK_MAP, resolvePeer, type Position, type Stock } from "@/data/stocks";
+import { ChainPosition } from "@/components/ChainPosition";
 import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
@@ -39,6 +40,16 @@ export default async function StockDetail({
   const usPeers = resolved.filter((r) => r.peer?.market === "美股");
   const aPeers = resolved.filter((r) => r.peer?.market === "A股");
   const otherPeers = resolved.filter((r) => !r.peer);
+
+  // 同板块上中下游标的(供产业链位置图点击识别)
+  const chainLists = Object.fromEntries(
+    CHAIN.map((pos) => [
+      pos,
+      STOCKS.filter(
+        (x) => x.sector === s.sector && x.position === pos && x.code !== s.code
+      ).map((x) => ({ code: x.code, name: x.name, market: x.market })),
+    ])
+  ) as Record<Position, { code: string; name: string; market: string }[]>;
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-[#1a1d24]">
@@ -96,25 +107,11 @@ export default async function StockDetail({
         </Section>
 
         <Section title="在产业链的位置">
-          <div className="flex items-center gap-2">
-            {CHAIN.map((p, i) => (
-              <div key={p} className="flex items-center gap-2">
-                <span
-                  className={`rounded-md px-3 py-1.5 text-sm ${
-                    p === s.position
-                      ? "bg-gray-900 font-medium text-white"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {p === s.position ? `你在这 · ${p}` : p}
-                </span>
-                {i < CHAIN.length - 1 && (
-                  <span className="text-gray-300">→</span>
-                )}
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-gray-400">板块:{s.sector}</p>
+          <ChainPosition
+            current={s.position}
+            sector={s.sector}
+            lists={chainLists}
+          />
         </Section>
 
         <Fundamentals code={s.code} market={s.market} />
