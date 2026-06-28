@@ -486,9 +486,12 @@ function StockTable({
         {mob.hasMore && (
           <div
             ref={mob.setSentinel}
-            className="py-3 text-center text-xs text-gray-400"
+            className="flex flex-col items-center gap-1 py-4 text-gray-400"
           >
-            下拉加载更多 · {mob.shownCount}/{mob.total}
+            <span className="animate-bounce text-base leading-none">↓</span>
+            <span className="text-xs">
+              继续向下滚动,加载更多 · {mob.shownCount}/{mob.total}
+            </span>
           </div>
         )}
         {rows.length === 0 && (
@@ -534,11 +537,13 @@ function StockTable({
             })}
             {desk.hasMore && (
               <tr ref={desk.setSentinel}>
-                <td
-                  colSpan={11}
-                  className="py-3 text-center text-xs text-gray-400"
-                >
-                  下拉加载更多 · {desk.shownCount}/{desk.total}
+                <td colSpan={11} className="py-4 text-center text-gray-400">
+                  <span className="animate-bounce mr-1 inline-block text-base">
+                    ↓
+                  </span>
+                  <span className="text-xs">
+                    继续向下滚动,加载更多 · {desk.shownCount}/{desk.total}
+                  </span>
                 </td>
               </tr>
             )}
