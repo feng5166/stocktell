@@ -12,20 +12,25 @@ import {
 } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
+import { listWatchlist } from "@/lib/watchlist";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
-  const loggedIn = !!session;
+  const userId = session?.user?.id ?? null;
+  const loggedIn = !!userId;
   const date = todayISO();
   let items: BriefingItem[] = [];
   let errored = false;
-  try {
-    items = await listBriefing({ date, status: "published" });
-  } catch {
-    errored = true;
-  }
+  // 并行:简报 + 登录用户的自选。自选服务端预取后注入 BriefingFeed,
+  // 客户端不必再走 session→/api/watchlist 一跳,"和我相关"首屏即按自选切分(P0-2)。
+  const [briefingsRes, initialCodes] = await Promise.all([
+    listBriefing({ date, status: "published" }).catch(() => null),
+    userId ? listWatchlist(userId).catch(() => null) : Promise.resolve(null),
+  ]);
+  if (briefingsRes === null) errored = true;
+  else items = briefingsRes;
 
   // 今天还没生成简报时,回退展示最近一期(0 点清零到次日 07:00 生成之间、以及周末/节假日,
   // 都不该给用户一片空白)。stale=true 时明确标注"今日尚未更新,以下为 X 日"。
@@ -70,7 +75,11 @@ export default async function Home() {
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
-          <BriefingFeed items={items} loggedIn={loggedIn} />
+          <BriefingFeed
+            items={items}
+            loggedIn={loggedIn}
+            initialCodes={initialCodes ?? undefined}
+          />
         )}
 
         <p className="mt-6 text-center text-xs text-gray-400">

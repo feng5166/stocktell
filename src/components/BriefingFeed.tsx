@@ -19,11 +19,13 @@ const FREE_LIMIT = 3;
 export function BriefingFeed({
   items,
   loggedIn,
+  initialCodes,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
+  initialCodes?: string[]; // 服务端预取的登录用户自选,首屏即按它切分,省 /api/watchlist 一跳
 }) {
-  const wl = useWatchlist();
+  const wl = useWatchlist(initialCodes);
   const isMine = (it: BriefingItem) =>
     (it.triggerCode != null && wl.has(it.triggerCode)) ||
     it.beneficiaries.some((b) => wl.has(b.code));

@@ -32,10 +32,14 @@ export interface UseWatchlist {
   toggle: (code: string) => void;
 }
 
-export function useWatchlist(): UseWatchlist {
+// initialCodes:服务端为登录用户预取的自选。提供时首屏即用它渲染(ready=true),
+// 且在无本地待合并的情况下跳过 /api/watchlist 拉取,省掉 session→watchlist 一跳。
+export function useWatchlist(initialCodes?: string[]): UseWatchlist {
   const { status } = useSession();
-  const [codes, setCodes] = useState<Set<string>>(new Set());
-  const [ready, setReady] = useState(false);
+  const [codes, setCodes] = useState<Set<string>>(
+    () => new Set(initialCodes ?? [])
+  );
+  const [ready, setReady] = useState(initialCodes != null);
 
   useEffect(() => {
     let active = true;
@@ -59,6 +63,11 @@ export function useWatchlist(): UseWatchlist {
             return;
           }
         }
+        // 服务端已预取自选且无本地待合并 → 跳过这次 GET(首屏已用 initialCodes 渲染)
+        if (initialCodes != null) {
+          if (active) setReady(true);
+          return;
+        }
         const r = await fetch("/api/watchlist", { cache: "no-store" })
           .then((x) => x.json())
           .catch(() => null);
@@ -78,6 +87,8 @@ export function useWatchlist(): UseWatchlist {
     return () => {
       active = false;
     };
+    // initialCodes 由服务端一次性注入、引用稳定,只需随登录态变化重跑
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const has = useCallback((code: string) => codes.has(code), [codes]);
