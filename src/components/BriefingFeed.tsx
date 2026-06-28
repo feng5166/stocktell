@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { BriefingItem } from "@/lib/briefings";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { useWatchlist } from "@/components/useWatchlist";
+import { FundFlow } from "@/components/FundFlow";
 import { IMPACT_META } from "@/lib/impact";
 
 const FREE_LIMIT = 3;
@@ -51,14 +52,27 @@ export function BriefingFeed({
             </Link>{" "}
             点 ☆ 加自选,以后这儿只给你看跟你票相关的。
           </Hint>
-        ) : mine.length === 0 ? (
-          <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
         ) : (
           <div className="space-y-3">
-            <MorningBrief codes={wl.codes} items={mine} />
-            {mine.map((it) => (
-              <BriefingCard key={it.id} item={it} mine watchedCodes={wl.codes} />
-            ))}
+            {mine.length === 0 ? (
+              <>
+                <FundFlow codes={wl.codes} />
+                <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
+              </>
+            ) : (
+              <>
+                <MorningBrief codes={wl.codes} items={mine} />
+                <FundFlow codes={wl.codes} />
+                {mine.map((it) => (
+                  <BriefingCard
+                    key={it.id}
+                    item={it}
+                    mine
+                    watchedCodes={wl.codes}
+                  />
+                ))}
+              </>
+            )}
           </div>
         )}
       </section>

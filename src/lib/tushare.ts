@@ -134,6 +134,71 @@ function ymdDaysAgo(days: number): string {
   return parts.replace(/-/g, "");
 }
 
+/* ---------- 资金面(P0:你的票·资金面)---------- */
+// 都按"交易日全市场一次取 + 进程内按 ymd 缓存",调用方按自选过滤,省调用。
+
+const mfCache = new Map<string, Map<string, number>>(); // ymd -> (裸code -> 主力净流入 亿元)
+const lhCache = new Map<string, Map<string, LonghuHit>>(); // ymd -> (裸code -> 龙虎榜)
+
+export interface LonghuHit {
+  net: number; // 净买入额(亿元)
+  reason: string;
+}
+
+// 某交易日全市场主力净流入(亿元)。net_mf_amount 单位万元 → /1e4 = 亿元。
+export async function moneyflowByDate(ymd: string): Promise<Map<string, number>> {
+  const hit = mfCache.get(ymd);
+  if (hit) return hit;
+  const out = new Map<string, number>();
+  const d = await tsCall("moneyflow", { trade_date: ymd }, "ts_code,net_mf_amount");
+  if (d) {
+    const ci = d.fields.indexOf("ts_code");
+    const ni = d.fields.indexOf("net_mf_amount");
+    for (const r of d.items) {
+      const code = String(r[ci]).split(".")[0];
+      const v = n(r[ni]);
+      if (v !== null) out.set(code, Math.round((v / 1e4) * 100) / 100);
+    }
+    mfCache.set(ymd, out); // 仅缓存成功结果
+  }
+  return out;
+}
+
+// 某交易日全市场龙虎榜(净买入额亿元 + 上榜原因)。net_amount 单位元 → /1e8 = 亿元。
+export async function longhuByDate(ymd: string): Promise<Map<string, LonghuHit>> {
+  const hit = lhCache.get(ymd);
+  if (hit) return hit;
+  const out = new Map<string, LonghuHit>();
+  const d = await tsCall("top_list", { trade_date: ymd }, "ts_code,net_amount,reason");
+  if (d) {
+    const ci = d.fields.indexOf("ts_code");
+    const ai = d.fields.indexOf("net_amount");
+    const ri = d.fields.indexOf("reason");
+    for (const r of d.items) {
+      const code = String(r[ci]).split(".")[0];
+      const net = (n(r[ai]) ?? 0) / 1e8;
+      const reason = String(r[ri] ?? "").trim();
+      const prev = out.get(code);
+      // 同股多条:净额累加,原因取首条
+      if (prev) prev.net = Math.round((prev.net + net) * 100) / 100;
+      else out.set(code, { net: Math.round(net * 100) / 100, reason });
+    }
+    lhCache.set(ymd, out);
+  }
+  return out;
+}
+
+// 解析"最新有资金面数据的交易日"(ymd):优先今天(收盘后才有),否则上一交易日。
+export async function latestFundYmd(todayISO: string): Promise<string | null> {
+  const todayYmd = todayISO.replace(/-/g, "");
+  if (await isAshareTradingDay(todayISO)) {
+    const mf = await moneyflowByDate(todayYmd);
+    if (mf.size > 0) return todayYmd;
+  }
+  const prev = await prevAshareTradingDay(todayISO);
+  return prev ? prev.replace(/-/g, "") : null;
+}
+
 // 取某只 A 股最近一个交易日的基本面
 export async function fetchFundamental(code: string): Promise<Fundamental | null> {
   const ts = tsCode(code);
