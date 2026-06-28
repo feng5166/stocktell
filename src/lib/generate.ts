@@ -235,25 +235,21 @@ retailTake 怎么写(这是核心,绝不能写成复述行情的废话):
 interface LLMItem {
   impact: Impact;
   title: string;
-  triggerCode: string;
   beneficiaryCodes: string[];
   retailTake: string;
 }
 
-const JSON_SPEC = `只输出一个 JSON 对象,形如:
-{"items":[{"impact":"高|中|低","title":"...","triggerCode":"触发的美股代码","beneficiaryCodes":["A股代码",...],"retailTake":"散户怎么想,2-4句"}]}
-不要输出 JSON 以外的任何文字。每个输入异动对应一条 item。`;
+const JSON_SPEC = `只输出一个 JSON 对象:{"impact":"高|中|低","title":"标题","beneficiaryCodes":["A股代码",...],"retailTake":"散户怎么想,2-4句"}。不要输出 JSON 以外任何文字。`;
 
-async function llmDrafts(
+// 单条 LLM 生成(并行调用的单元)。失败/超时/空内容由调用方按条回退模板。
+async function llmOneItem(
+  client: NonNullable<ReturnType<typeof getLLM>>,
   date: string,
-  movers: Mover[]
-): Promise<NewBriefingItem[]> {
-  const client = getLLM();
-  if (!client) return templateDrafts(date, movers);
-  const cumulative = movers.some((m) => m.cumulative);
-  const payload = movers.map((m) => ({
-    triggerCode: m.code,
+  m: Mover
+): Promise<NewBriefingItem> {
+  const payload = {
     triggerName: m.name,
+    triggerCode: m.code,
     usChangePct: m.change,
     cumulative: !!m.cumulative,
     sessions: m.sessions,
@@ -265,58 +261,61 @@ async function llmDrafts(
       sector: p.sector,
       observation: p.observation,
     })),
-  }));
-
+  };
+  const cumNote = m.cumulative
+    ? '【特别说明】今天是 A 股节后首个交易日,usChangePct 是该美股在 A 股休市期间的【假期累计涨跌】(跨多日)。title 与 retailTake 要点明"假期累计 / 节后需一次性消化",别用"隔夜"。\n\n'
+    : "";
+  // 推理模型较慢,故每条单独并行调用;单条 48s 超时 + 禁重试,留在 60s 函数上限内。
   const resp = await client.chat.completions.create(
     {
-    model: LLM_MODEL,
-    max_tokens: 8000,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: `${SYSTEM_PROMPT}\n\n${JSON_SPEC}` },
-      {
-        role: "user",
-        content: `${
-          cumulative
-            ? "【特别说明】今天是 A 股节后首个交易日,下方 usChangePct 是该美股在 A 股休市期间的【假期累计涨跌】(跨多个交易日,非单日)。title 和 retailTake 必须点明\"假期累计 / A股节后需一次性消化\",不要用\"隔夜\"字样。\n\n"
-            : ""
-        }今日(${date})美股异动与对应 A 股数据如下(JSON)。请为每个异动生成一条简报条目。\n\n${JSON.stringify(
-          payload,
-          null,
-          2
-        )}`,
-      },
-    ],
+      model: LLM_MODEL,
+      max_tokens: 4000,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: `${SYSTEM_PROMPT}\n\n${JSON_SPEC}` },
+        {
+          role: "user",
+          content: `${cumNote}日期 ${date}。这条美股异动与对应 A 股数据(JSON):\n${JSON.stringify(
+            payload
+          )}\n请生成一条简报条目。`,
+        },
+      ],
     },
-    // 40s 超时 + 禁用 SDK 自动重试(默认重试2次会叠加到 >60s 撞 Hobby 上限);
-    // 超时抛错 → generateDrafts catch 回退模板,函数总能在限内返回。
-    { timeout: 40000, maxRetries: 0 }
+    { timeout: 48000, maxRetries: 0 }
   );
+  const it = JSON.parse(resp.choices[0]?.message?.content ?? "{}") as LLMItem;
+  if (!it.retailTake || !it.title) throw new Error("llm_incomplete"); // 空内容 → 调用方回退模板
+  let beneficiaries = (it.beneficiaryCodes ?? [])
+    .map((c) => STOCK_MAP[c])
+    .filter(Boolean)
+    .map((p) => ({ code: p.code, name: p.name }));
+  if (beneficiaries.length === 0)
+    beneficiaries = m.peers.map((p) => ({ code: p.code, name: p.name }));
+  return {
+    date,
+    impact: it.impact ?? impactFromChange(Math.abs(m.change)),
+    title: it.title,
+    triggerCode: m.code,
+    triggerName: m.name,
+    triggerChange: m.change,
+    beneficiaries,
+    retailTake: it.retailTake,
+    sourceUrl: null,
+  };
+}
 
-  const text = resp.choices[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(text) as { items: LLMItem[] };
-
-  // 触发美股的真实涨跌(用于记账判方向),按 mover 代码回查
-  const changeByCode = new Map(movers.map((m) => [m.code, m.change]));
-
-  return (parsed.items ?? []).map((it) => {
-    const beneficiaries = (it.beneficiaryCodes ?? [])
-      .map((c) => STOCK_MAP[c])
-      .filter(Boolean)
-      .map((p) => ({ code: p.code, name: p.name }));
-    const trigger = STOCK_MAP[it.triggerCode];
-    return {
-      date,
-      impact: it.impact,
-      title: it.title,
-      triggerCode: trigger?.code ?? it.triggerCode ?? null,
-      triggerName: trigger?.name ?? null,
-      triggerChange: changeByCode.get(it.triggerCode) ?? null,
-      beneficiaries,
-      retailTake: it.retailTake,
-      sourceUrl: null,
-    };
-  });
+// 并行:每条一个 LLM 调用(总耗时≈最慢一条,不是累加);单条失败/超时回退该条模板。
+async function llmDrafts(
+  date: string,
+  movers: Mover[]
+): Promise<NewBriefingItem[]> {
+  const client = getLLM();
+  if (!client) return templateDrafts(date, movers);
+  return Promise.all(
+    movers.map((m) =>
+      llmOneItem(client, date, m).catch(() => templateDrafts(date, [m])[0])
+    )
+  );
 }
 
 export async function generateDrafts(opts?: {

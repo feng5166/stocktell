@@ -338,21 +338,23 @@ function BriefingCard({
         </div>
       )}
       <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-xs font-medium text-amber-700">散户怎么想</span>
-          {!deepStarted && (
-            <button
-              onClick={loadDeep}
-              className="text-xs font-medium text-amber-700 hover:text-amber-900 hover:underline"
-            >
-              🔍 详细解读
-            </button>
-          )}
-        </div>
+        <div className="mb-1 text-xs font-medium text-amber-700">散户怎么想</div>
         <p className="text-sm leading-relaxed text-gray-800">{item.retailTake}</p>
 
+        {!deepStarted && (
+          <button
+            onClick={loadDeep}
+            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700/90 hover:text-amber-900 hover:underline"
+          >
+            🔍 想更深入?让 StockTell 帮你解读这条 →
+          </button>
+        )}
+
         {deepStarted && (
-          <div className="mt-2 border-t border-amber-200/60 pt-2">
+          <div className="mt-2.5 border-t border-amber-200/60 pt-2.5">
+            <div className="mb-1 flex items-center gap-1 text-xs font-medium text-amber-700">
+              <span>🤖</span> StockTell 解读
+            </div>
             {deepLoading && !deep && (
               <p className="flex items-center gap-1.5 text-xs text-amber-600">
                 <span className="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-amber-500" />
