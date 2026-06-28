@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth/AuthStatus";
 import { Logo } from "@/components/Logo";
+import { MobileTabBar } from "@/components/MobileTabBar";
 
 const NAV = [
   { href: "/", label: "今日简报" },
@@ -26,11 +27,11 @@ export function SiteHeader({
           wide ? "max-w-7xl" : "max-w-3xl"
         } items-center justify-between px-4 py-3 sm:px-6`}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5">
           <Link href="/" aria-label="StockTell 首页">
             <Logo className="h-7 w-auto" />
           </Link>
-          <span className="hidden text-xs text-gray-400 sm:inline">
+          <span className="pl-0.5 text-[11px] leading-none text-gray-400">
             我不懂产业链,你告诉我怎么想
           </span>
         </div>
