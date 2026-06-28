@@ -268,7 +268,7 @@ function BriefingCard({
   const meta = IMPACT_META[item.impact];
   return (
     <article
-      className={`rounded-xl border bg-white p-4 ${meta.ring} ${
+      className={`rounded-xl border border-gray-200 bg-white p-4 ${
         mine ? "border-l-2 border-l-amber-400" : ""
       }`}
     >
