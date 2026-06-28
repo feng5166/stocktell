@@ -1,72 +1,129 @@
-// 临时:icon 配色对比页,选定后删除。
+// 临时:StockTell logo(FateTell 同系列)候选预览,选定后删除。
 export const dynamic = "force-dynamic";
 
-const SCHEMES: { name: string; a: string; b: string }[] = [
-  { name: "经典黑(当前)", a: "#2a2f3a", b: "#0b0d12" },
-  { name: "石墨蓝灰", a: "#334155", b: "#0f172a" },
-  { name: "深海蓝", a: "#1e3a5f", b: "#0a1628" },
-  { name: "宝蓝", a: "#2563eb", b: "#0c2a6b" },
-  { name: "靛蓝", a: "#4338ca", b: "#1e1b4b" },
-  { name: "暗紫", a: "#6d28d9", b: "#3b0764" },
-  { name: "A股红金", a: "#b91c1c", b: "#5e1414" },
-  { name: "墨青", a: "#155e63", b: "#06292b" },
-  { name: "暖棕金", a: "#78350f", b: "#1c1207" },
-  { name: "午夜蓝黑", a: "#172554", b: "#020617" },
-];
+const FONT = "'Avenir Next','Helvetica Neue',Arial,sans-serif";
 
-function Icon({ a, b, id }: { a: string; b: string; id: string }) {
+// 标记:黑色光泽对话气泡 + 内部白色上升箭头。bubble/stroke 颜色可调以适配明/暗底。
+function Mark({
+  id,
+  bubbleA = "#3b414b",
+  bubbleB = "#0c0e13",
+  stroke = "#ffffff",
+}: {
+  id: string;
+  bubbleA?: string;
+  bubbleB?: string;
+  stroke?: string;
+}) {
   return (
-    <svg width="150" height="150" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <g>
       <defs>
-        <linearGradient id={id} x1="80" y1="40" x2="440" y2="480" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor={a} />
-          <stop offset="1" stopColor={b} />
-        </linearGradient>
+        <radialGradient id={id} cx="0.36" cy="0.3" r="0.85">
+          <stop offset="0" stopColor={bubbleA} />
+          <stop offset="1" stopColor={bubbleB} />
+        </radialGradient>
       </defs>
-      <rect width="512" height="512" rx="116" fill={`url(#${id})`} />
+      <circle cx="120" cy="110" r="96" fill={`url(#${id})`} />
+      <path d="M70 170 L40 250 L150 178 Z" fill={`url(#${id})`} />
       <path
-        d="M150 356 L256 312 L354 236"
+        d="M78 150 L112 116 L138 138 L172 92"
         fill="none"
-        stroke="#ffffff"
-        strokeOpacity="0.25"
-        strokeWidth="12"
+        stroke={stroke}
+        strokeWidth="11"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <g strokeLinecap="round">
-        <line x1="158" y1="300" x2="158" y2="382" stroke="#ffffff" strokeWidth="9" />
-        <rect x="138" y="322" width="40" height="46" rx="9" fill="#ffffff" />
-        <line x1="256" y1="258" x2="256" y2="374" stroke="#ffffff" strokeWidth="9" />
-        <rect x="236" y="282" width="40" height="70" rx="9" fill="#ffffff" />
-        <line x1="354" y1="190" x2="354" y2="338" stroke="#fcd34d" strokeWidth="9" />
-        <rect x="334" y="214" width="40" height="92" rx="9" fill="#fbbf24" />
-      </g>
       <path
-        d="M398 120 C402 150 410 158 440 162 C410 166 402 174 398 204 C394 174 386 166 356 162 C386 158 394 150 398 120 Z"
-        fill="#fde68a"
+        d="M150 84 L178 84 L178 112"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="11"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      <circle cx="446" cy="208" r="10" fill="#fde68a" />
-    </svg>
+    </g>
+  );
+}
+
+function Wordmark({ fill }: { fill: string }) {
+  return (
+    <>
+      <text x="380" y="170" fontFamily={FONT} fontWeight="300" fontSize="96" letterSpacing="26" fill={fill}>
+        STOCK
+      </text>
+      <text x="380" y="296" fontFamily={FONT} fontWeight="300" fontSize="96" letterSpacing="26" fill={fill}>
+        TELL
+      </text>
+      <circle cx="690" cy="262" r="13" fill={fill} />
+      <path d="M690 275 Q686 296 668 304" fill="none" stroke={fill} strokeWidth="9" strokeLinecap="round" />
+    </>
+  );
+}
+
+function Card({ title, bg, children }: { title: string; bg: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 p-4">
+      <div className="mb-2 text-xs text-gray-400">{title}</div>
+      <div className="overflow-hidden rounded-xl" style={{ background: bg }}>
+        {children}
+      </div>
+    </div>
   );
 }
 
 export default function IconLab() {
   return (
     <div className="min-h-screen bg-[#f7f8fa] px-6 py-10">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="text-xl font-semibold text-gray-900">StockTell Icon 配色候选</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          选好告诉我编号/名字,我就把正式图标换成那一版(并删掉此页)。
-        </p>
-        <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 md:grid-cols-4">
-          {SCHEMES.map((s, i) => (
-            <div key={s.name} className="flex flex-col items-center gap-2">
-              <Icon a={s.a} b={s.b} id={`g${i}`} />
-              <span className="text-sm font-medium text-gray-700">
-                {i + 1}. {s.name}
-              </span>
-            </div>
-          ))}
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">StockTell Logo 候选(FateTell 同系列)</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            黑色光泽对话气泡 + 内部上升箭头(=「告诉你行情怎么走」)。选好/要调告诉我。
+          </p>
+        </div>
+
+        <Card title="A · 完整 logo(浅底)" bg="#f1f1f2">
+          <svg width="100%" viewBox="0 0 1080 380" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(70,70)">
+              <Mark id="ma" />
+            </g>
+            <Wordmark fill="#454b54" />
+          </svg>
+        </Card>
+
+        <Card title="B · 完整 logo(深底反白)" bg="#0b0d12">
+          <svg width="100%" viewBox="0 0 1080 380" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(70,70)">
+              <Mark id="mb" bubbleA="#e9eef5" bubbleB="#aab4c2" stroke="#0b0d12" />
+            </g>
+            <Wordmark fill="#d6dbe2" />
+          </svg>
+        </Card>
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Card title="C · App 图标(深底)" bg="transparent">
+            <svg width="100%" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+              <rect width="512" height="512" rx="116" fill="#0b0d12" />
+              <g transform="translate(136,150) scale(1.0)">
+                <Mark id="mc" bubbleA="#e9eef5" bubbleB="#b6c0cd" stroke="#0b0d12" />
+              </g>
+            </svg>
+          </Card>
+          <Card title="D · App 图标(浅底)" bg="transparent">
+            <svg width="100%" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+              <rect width="512" height="512" rx="116" fill="#f1f1f2" />
+              <g transform="translate(136,150) scale(1.0)">
+                <Mark id="md" />
+              </g>
+            </svg>
+          </Card>
+          <Card title="E · 纯标记" bg="#f1f1f2">
+            <svg width="100%" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <g transform="translate(28,38)">
+                <Mark id="me" />
+              </g>
+            </svg>
+          </Card>
         </div>
       </div>
     </div>
