@@ -3,7 +3,7 @@
 // 今日简报信息流:把简报按"是否命中我的自选"分成「和我相关」+「其他市场动态」。
 // 和我相关一律不锁(先认我,别拿用户自己的票去设墙);免费墙只作用于其他动态。
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BriefingItem } from "@/lib/briefings";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { useWatchlist } from "@/components/useWatchlist";
@@ -27,14 +27,6 @@ export function BriefingFeed({
 
   const mine = items.filter(isMine);
   const others = items.filter((it) => !isMine(it));
-
-  // 免费墙只作用于"其他动态"
-  let shown = 0;
-  const gate = (it: BriefingItem) => {
-    const free = loggedIn || it.impact === "高" || shown < FREE_LIMIT;
-    if (free) shown++;
-    return free;
-  };
 
   return (
     <div className="space-y-7">
@@ -81,15 +73,11 @@ export function BriefingFeed({
       {others.length > 0 && (
         <section>
           <SectionHead title="其他市场动态" />
-          <div className="space-y-3">
-            {others.map((it) =>
-              gate(it) ? (
-                <BriefingCard key={it.id} item={it} watchedCodes={wl.codes} />
-              ) : (
-                <LockedCard key={it.id} item={it} />
-              )
-            )}
-          </div>
+          <OthersFeed
+            items={others}
+            loggedIn={loggedIn}
+            watchedCodes={wl.codes}
+          />
         </section>
       )}
     </div>
@@ -174,6 +162,60 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
       <p className="text-sm leading-relaxed text-gray-800">
         {linkifyBrief(brief, items)}
       </p>
+    </div>
+  );
+}
+
+// 其他市场动态:瀑布流无限滚动。数据已全在客户端,这里只是渐进渲染,滚到底自动加载更多。
+function OthersFeed({
+  items,
+  loggedIn,
+  watchedCodes,
+}: {
+  items: BriefingItem[];
+  loggedIn: boolean;
+  watchedCodes: Set<string>;
+}) {
+  const STEP = 6;
+  const [visible, setVisible] = useState(STEP);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting)
+          setVisible((v) => Math.min(v + STEP, items.length));
+      },
+      { rootMargin: "300px" } // 提前 300px 预加载,滚动不卡顿
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [items.length]);
+
+  // 免费墙只作用于"其他动态":游客高影响全可见 + 累计前 3 条,其余锁定
+  let shown = 0;
+  const slice = items.slice(0, visible);
+  return (
+    <div className="space-y-3">
+      {slice.map((it) => {
+        const free = loggedIn || it.impact === "高" || shown < FREE_LIMIT;
+        if (free) shown++;
+        return free ? (
+          <BriefingCard key={it.id} item={it} watchedCodes={watchedCodes} />
+        ) : (
+          <LockedCard key={it.id} item={it} />
+        );
+      })}
+      {visible < items.length && (
+        <div
+          ref={sentinelRef}
+          className="py-4 text-center text-xs text-gray-400"
+        >
+          下拉加载更多…
+        </div>
+      )}
     </div>
   );
 }
