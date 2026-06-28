@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
@@ -26,4 +27,11 @@ export async function getAdminEmail(): Promise<string | null> {
 
 export async function isAdminSession(): Promise<boolean> {
   return (await getAdminEmail()) !== null;
+}
+
+// 页面级守卫:非管理员直接 notFound()(返回真 404)。各 /admin server page 调用。
+export async function requireAdmin(): Promise<string> {
+  const email = await getAdminEmail();
+  if (!email) notFound();
+  return email;
 }
