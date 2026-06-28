@@ -3,6 +3,7 @@
 // active 传当前页 label 高亮;wide 用于股票池的宽布局。详情页/后台 header 结构不同,各自保留。
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth/AuthStatus";
+import { Logo } from "@/components/Logo";
 
 const NAV = [
   { href: "/", label: "今日简报" },
@@ -26,8 +27,8 @@ export function SiteHeader({
         } items-center justify-between px-4 py-3 sm:px-6`}
       >
         <div className="flex items-center gap-2">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            StockTell
+          <Link href="/" aria-label="StockTell 首页">
+            <Logo className="h-7 w-auto" />
           </Link>
           <span className="hidden text-xs text-gray-400 sm:inline">
             我不懂产业链,你告诉我怎么想

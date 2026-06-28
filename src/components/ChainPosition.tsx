@@ -62,7 +62,7 @@ export function ChainPosition({
       <div className="flex items-center gap-2">
         <Btn side={sides[0]} />
         <span className="text-gray-300">→</span>
-        <span className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white">
+        <span className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
           你在这 · {pos}
         </span>
         <span className="text-gray-300">→</span>
