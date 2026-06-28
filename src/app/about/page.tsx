@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata = {
