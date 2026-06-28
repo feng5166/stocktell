@@ -56,11 +56,14 @@ function renderRich(text: string): JSX.Element[] {
 
 export function StockTellTake({
   itemId,
+  code,
   retailTake,
 }: {
   itemId?: string | null;
+  code?: string | null; // 无对应简报时,按个股本身深读
   retailTake: string;
 }) {
+  const canDeep = !!(itemId || code);
   const [deep, setDeep] = useState("");
   const [deepLoading, setDeepLoading] = useState(false);
   const [deepStarted, setDeepStarted] = useState(false);
@@ -68,7 +71,7 @@ export function StockTellTake({
   const { open: openAuth } = useAuthModal();
 
   async function loadDeep() {
-    if (!itemId) return;
+    if (!canDeep) return;
     if (status !== "authenticated") {
       openAuth();
       return;
@@ -80,7 +83,7 @@ export function StockTellTake({
       const res = await fetch("/api/briefing/explain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: itemId }),
+        body: JSON.stringify(itemId ? { id: itemId } : { code }),
       });
       if (!res.ok || !res.body) {
         if (res.status === 401) {
@@ -112,7 +115,7 @@ export function StockTellTake({
         {inlineBold(retailTake, "rt-")}
       </p>
 
-      {itemId && !deepStarted && (
+      {canDeep && !deepStarted && (
         <div className="mt-2 text-right">
           <button
             onClick={loadDeep}

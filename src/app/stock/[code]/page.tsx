@@ -213,14 +213,14 @@ export default async function StockDetail({
         </Section>
 
         <Section title="散户怎么想" highlight>
-          {newsItem ? (
-            <StockTellTake itemId={newsItem.id} retailTake={newsItem.retailTake} />
-          ) : (
-            <p className="text-[15px] leading-relaxed text-gray-800">
-              {s.retailTake}
-              <span className="mt-1 block text-xs text-gray-400">
-                今日暂无相关动态,以上为该标的的长期定位参考。
-              </span>
+          <StockTellTake
+            itemId={newsItem?.id}
+            code={s.code}
+            retailTake={newsItem?.retailTake ?? s.retailTake}
+          />
+          {!newsItem && (
+            <p className="mt-1 text-xs text-gray-400">
+              今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
             </p>
           )}
         </Section>
