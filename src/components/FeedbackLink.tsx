@@ -16,7 +16,8 @@ export function FeedbackLink({ className }: { className?: string }) {
         onClick={() => setOpen(true)}
         className={
           className ??
-          "whitespace-nowrap text-sm text-gray-500 hover:text-gray-900"
+          // 默认:标题旁的醒目小药丸(品牌色)。可传 className 覆盖。
+          "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 transition-colors hover:bg-brand-100"
         }
         aria-label="意见反馈"
       >

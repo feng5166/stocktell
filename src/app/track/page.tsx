@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/SiteHeader";
+import { FeedbackLink } from "@/components/FeedbackLink";
 import { OutcomeFeed } from "@/components/OutcomeFeed";
 import {
   pageOutcomes,
@@ -33,7 +34,10 @@ export default async function TrackPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4">
-          <h1 className="text-h1 font-semibold tracking-tight">查账 · 我准不准</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-h1 font-semibold tracking-tight">查账 · 我准不准</h1>
+            <FeedbackLink />
+          </div>
           <p className="mt-1 text-xs text-gray-400">
             每条简报喊的受益 A 股,当日收盘后回填实际表现。喊了就记,记了就敢给你查。
           </p>

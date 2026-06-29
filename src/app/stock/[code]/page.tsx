@@ -7,6 +7,7 @@ import { chainNeighbors } from "@/data/chainEdges";
 import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
+import { FeedbackLink } from "@/components/FeedbackLink";
 import { LiveQuote } from "@/components/LiveQuote";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
@@ -110,6 +111,7 @@ export default async function StockDetail({
             {s.market}
           </span>
           <WatchStar code={s.code} />
+          <FeedbackLink />
           <LiveQuote code={s.code} />
         </div>
 

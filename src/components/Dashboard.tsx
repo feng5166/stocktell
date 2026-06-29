@@ -8,6 +8,7 @@ import { useProgressive } from "@/components/useProgressive";
 import { ChainSwitcher } from "@/components/ChainSwitcher";
 import { EtfBoard } from "@/components/EtfBoard";
 import { EtfStrip } from "@/components/EtfStrip";
+import { FeedbackLink } from "@/components/FeedbackLink";
 import { ETFS } from "@/data/etfs";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
@@ -249,9 +250,12 @@ export default function Dashboard() {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-h1 font-semibold tracking-tight">
-              AI产业链股票池
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-h1 font-semibold tracking-tight">
+                AI产业链股票池
+              </h1>
+              <FeedbackLink />
+            </div>
             <p className="mt-1 text-xs text-gray-400">
               数据来源于研究框架梳理 · 非确认的客户/供应商/持仓关系 ·
               不构成投资建议

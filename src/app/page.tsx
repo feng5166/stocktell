@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { SiteHeader } from "@/components/SiteHeader";
+import { FeedbackLink } from "@/components/FeedbackLink";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import {
@@ -58,7 +59,10 @@ export default async function Home() {
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <h1 className="text-h1 font-semibold tracking-tight">今日简报</h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-h1 font-semibold tracking-tight">今日简报</h1>
+              <FeedbackLink />
+            </div>
             <p className="mt-1 text-xs text-gray-400">
               {shownDate} · AI 产业链动态,跟你的持仓有什么关系
             </p>
