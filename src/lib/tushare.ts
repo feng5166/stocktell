@@ -29,19 +29,28 @@ async function tsCall(
 ) {
   const token = process.env.TUSHARE_TOKEN;
   if (!token) return null;
-  const resp = await fetch("https://api.tushare.pro", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_name: apiName, token, params, fields }),
-    cache: "no-store",
-  });
-  if (!resp.ok) return null;
-  const data = (await resp.json()) as {
-    code: number;
-    data?: { fields: string[]; items: unknown[][] };
-  };
-  if (data.code !== 0 || !data.data) return null;
-  return data.data;
+  // 一次重试:Tushare 偶发限流(code!==0)/网络抖动时,等 1.5s 再试,降低多只票并发时的偶发缺失。
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const resp = await fetch("https://api.tushare.pro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_name: apiName, token, params, fields }),
+        cache: "no-store",
+      });
+      if (resp.ok) {
+        const data = (await resp.json()) as {
+          code: number;
+          data?: { fields: string[]; items: unknown[][] };
+        };
+        if (data.code === 0 && data.data) return data.data;
+      }
+    } catch {
+      /* 网络错,落到重试 */
+    }
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 1500));
+  }
+  return null;
 }
 
 // A 股交易日历缓存(进程内,按 YYYYMMDD,仅缓存权威结果)
