@@ -28,9 +28,29 @@ export function ChainPosition({
     { key: "down", label: "下游", list: down },
   ];
 
+  // 对齐站内「上中下游」配色:上游=sky 蓝(供货端)、下游=amber 琥珀(需求端);
+  // 「你在这」中间锚点保留 brand 紫。三色分明又都是站内已用色。
+  const SCHEME = {
+    up: {
+      box: "bg-sky-50 text-sky-700 hover:bg-sky-100",
+      ring: "ring-sky-200",
+      ringOpen: "ring-sky-400",
+      pill: "bg-sky-100 text-sky-700",
+      chevron: "text-sky-400",
+    },
+    down: {
+      box: "bg-amber-50 text-amber-700 hover:bg-amber-100",
+      ring: "ring-amber-200",
+      ringOpen: "ring-amber-400",
+      pill: "bg-amber-100 text-amber-700",
+      chevron: "text-amber-500",
+    },
+  } as const;
+
   const Btn = ({ side }: { side: { key: "up" | "down"; label: string; list: Peer[] } }) => {
     const clickable = side.list.length > 0;
     const isOpen = open === side.key;
+    const c = SCHEME[side.key];
     return (
       <button
         type="button"
@@ -38,19 +58,17 @@ export function ChainPosition({
         onClick={() => setOpen(isOpen ? null : side.key)}
         className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
           clickable
-            ? `bg-brand-50 font-medium text-brand-700 ring-1 ring-inset hover:bg-brand-100 ${
-                isOpen ? "ring-brand-400" : "ring-brand-200"
-              }`
+            ? `${c.box} font-medium ring-1 ring-inset ${isOpen ? c.ringOpen : c.ring}`
             : "bg-gray-50 text-gray-300"
         }`}
       >
         {side.label}
         {clickable && (
           <>
-            <span className="ml-1 rounded-full bg-brand-100 px-1.5 text-xs text-brand-600">
+            <span className={`ml-1 rounded-full px-1.5 text-xs ${c.pill}`}>
               {side.list.length}
             </span>
-            <span className="ml-1 text-xs text-brand-400">{isOpen ? "▴" : "▾"}</span>
+            <span className={`ml-1 text-xs ${c.chevron}`}>{isOpen ? "▴" : "▾"}</span>
           </>
         )}
       </button>
