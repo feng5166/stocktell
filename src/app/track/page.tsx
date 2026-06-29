@@ -11,7 +11,9 @@ import {
 import { storageBackend, type Impact } from "@/lib/briefings";
 import { IMPACT_META } from "@/lib/impact";
 
-export const dynamic = "force-dynamic";
+// 战绩是全局、非个性化数据(回填随收盘后 cron 更新),无需 force-dynamic 每次跑函数+查库。
+// 改 ISR:走 Vercel 边缘缓存,5 分钟再生成一次 —— 大陆用户更快,DB 压力更小。
+export const revalidate = 300;
 
 const PAGE = 20;
 
