@@ -16,3 +16,7 @@ jobs:
           curl -sS -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
       # Web Push 已关闭(改由邮件 + 微信承载);不再触发 /api/cron/push-web。
+      - name: Check bridge HTTPS cert expiry (alert if <14d)
+        run: |
+          curl -sS -X GET "https://stocktell.vercel.app/api/cron/cert-check" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

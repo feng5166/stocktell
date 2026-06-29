@@ -27,7 +27,7 @@
 | `BOCHA_API_KEY` | 博查 Bocha Search | 「为什么动」真实新闻检索 |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Resend | 发邮件(早报/通知/密码重置/后台群发) |
 | `VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT` | Web Push | 浏览器/PWA 通知 |
-| `CLAWBOT_BASE_URL` / `CLAWBOT_SECRET` | 自建微信桥 | 微信 iLink 推送(VPS 47.84.8.167) |
+| `CLAWBOT_BASE_URL` / `CLAWBOT_SECRET` | 自建微信桥 | 微信 iLink 推送;`https://bridge.stocktell.me`(宝塔 nginx 反代 VPS 47.84.8.167) |
 | `FEISHU_BOT_APP_ID` / `FEISHU_BOT_APP_SECRET` / `FEISHU_USER_OPEN_ID` | 飞书机器人 | 给运营者本人推送简报 |
 | `CRON_SECRET` | Vercel Cron | 定时任务鉴权(Bearer) |
 | `ADMIN_TOKEN` | 后台 | 管理端点鉴权(Bearer);如 init-db |
@@ -107,11 +107,19 @@
 - **关键文件**:`src/app/api/push/subscribe/route.ts`、`src/components/pwa/PwaActions.tsx`(`web-push` 库)。
 - **环境变量**:`VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT`。
 
-### 自建微信桥(ClawBot / iLink)— VPS `47.84.8.167:8787`
+### 自建微信桥(ClawBot / iLink)— `https://bridge.stocktell.me`(VPS 47.84.8.167)
 - **用途**:微信 iLink 推送(扫码绑定 + 盘前/手动推送)。
-- **关键文件**:站点侧 `src/lib/clawbot.ts`;桥侧 `ilink-bridge/server.mjs`(部署在 VPS,systemd 单元 `ilink-bridge`)。
-- **环境变量**:`CLAWBOT_BASE_URL`(如 `http://47.84.8.167:8787`)/ `CLAWBOT_SECRET`(请求头 `x-clawbot-secret`)。
+- **关键文件**:站点侧 `src/lib/clawbot.ts`;桥侧 `ilink-bridge/server.mjs`(部署在 VPS,systemd 单元 `ilink-bridge`,监听本机 `127.0.0.1:8787`)。
+- **环境变量**:`CLAWBOT_BASE_URL=https://bridge.stocktell.me` / `CLAWBOT_SECRET`(请求头 `x-clawbot-secret`,= 桥 `BRIDGE_SECRET`)。
+- **访问链路**:Vercel → `https://bridge.stocktell.me`(443)→ **宝塔 nginx 反向代理** → `127.0.0.1:8787`。8787 不对公网开放。
 - **坑**:`sendmessage` 每条需全局唯一 client_id;context_token 要用户先发消息才拿得到;微信 24h 回复窗口;连续 3 次硬失败自动判失效。详见微信桥相关记忆。
+
+### HTTPS 反向代理 + 证书(宝塔 nginx + Let's Encrypt)— VPS 47.84.8.167
+- **依赖性质**:外部基础设施。`bridge.stocktell.me` 的 TLS 终止在 VPS 上的**宝塔托管 nginx**,反代到桥 `127.0.0.1:8787`。
+- **DNS**:`bridge.stocktell.me` A 记录 → 47.84.8.167(DNS 托管在 **Vercel**,非阿里云)。
+- **证书**:Let's Encrypt(宝塔申请),**90 天有效**;宝塔**默认自动续期**(`/www/server/panel/script/renew_certificate.py`)。
+- **续期监控(安全网)**:`/api/cron/cert-check` 每日(GH Actions `feishu-push` 工作流内)检查剩余天数,**< 14 天发飞书告警**——防自动续期失败无人知。
+- **宝塔面板**:`https://pkhere.com:36540/57fc0c3f`(强制 https + 绑域名 pkhere.com)。
 
 ### 飞书机器人 — `open.feishu.cn`
 - **用途**:给运营者本人推送简报(非面向用户)。
