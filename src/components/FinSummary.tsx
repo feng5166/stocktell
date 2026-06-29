@@ -12,6 +12,7 @@ interface Finding {
 }
 interface Checkup {
   year: string;
+  reportLabel?: string; // 如 "2025 三季报";旧缓存可能没有,回退用 year
   findings: Finding[];
 }
 
@@ -73,7 +74,7 @@ export function FinSummary({ codes }: { codes: Set<string> }) {
                 className="text-sm font-medium text-gray-800 hover:text-brand-600"
               >
                 {STOCK_MAP[c]?.name ?? c}
-                <span className="ml-1 text-meta text-gray-400">{byCode![c].year}年报</span>
+                <span className="ml-1 text-meta text-gray-400">{byCode![c].reportLabel ?? `${byCode![c].year} 年报`}</span>
               </Link>
               <ul className="mt-1 space-y-1">
                 {byCode![c].findings.map((f, i) => (

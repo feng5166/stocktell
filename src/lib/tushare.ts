@@ -448,16 +448,14 @@ export interface AnnualFinancials {
   dedt: number | null; // 扣非净利润(元)
 }
 
-// 取某 api 的最新年报行(end_date 以 1231 结尾、最大者)
-function latestAnnual(d: { fields: string[]; items: unknown[][] } | null) {
+// 取某 api 的最新一期行(end_date 最大者,季报/年报都算——要的就是"最新")
+function latestRow(d: { fields: string[]; items: unknown[][] } | null) {
   if (!d || !d.items.length) return null;
   const ei = d.fields.indexOf("end_date");
-  const ann = d.items.filter((r) => String(r[ei]).endsWith("1231"));
-  const pool = ann.length ? ann : d.items;
-  return [...pool].sort((a, b) => String(b[ei]).localeCompare(String(a[ei])))[0] ?? null;
+  return [...d.items].sort((a, b) => String(b[ei]).localeCompare(String(a[ei])))[0] ?? null;
 }
 
-export async function latestAnnualFinancials(code: string): Promise<AnnualFinancials | null> {
+export async function latestFinancials(code: string): Promise<AnnualFinancials | null> {
   const ts = tsCode(code);
   if (!ts) return null;
   const [inc, bs, cf, fi] = await Promise.all([
@@ -472,7 +470,7 @@ export async function latestAnnualFinancials(code: string): Promise<AnnualFinanc
       () => null
     ),
   ]);
-  const ri = latestAnnual(inc);
+  const ri = latestRow(inc);
   if (!ri) return null;
   const pick = (
     row: unknown[] | null,
@@ -480,9 +478,9 @@ export async function latestAnnualFinancials(code: string): Promise<AnnualFinanc
     key: string
   ): number | null => (row && d ? n(row[d.fields.indexOf(key)]) : null);
 
-  const rb = latestAnnual(bs);
-  const rc = latestAnnual(cf);
-  const rf = latestAnnual(fi);
+  const rb = latestRow(bs);
+  const rc = latestRow(cf);
+  const rf = latestRow(fi);
   const period = String(ri[inc!.fields.indexOf("end_date")]);
   const st = pick(rb, bs, "st_borr");
   const due1y = pick(rb, bs, "non_cur_liab_due_1y");
@@ -501,4 +499,60 @@ export async function latestAnnualFinancials(code: string): Promise<AnnualFinanc
     gross: pick(rf, fi, "grossprofit_margin"),
     dedt: pick(rf, fi, "profit_dedt"),
   };
+}
+
+// 业绩预告(最新一条,按公告日):预增/预减/扭亏 + 净利变动区间 %
+export interface ForecastInfo {
+  period: string; // 报告期 YYYYMMDD
+  type: string; // 预增/预减/扭亏/略增...
+  pctMin: number | null;
+  pctMax: number | null;
+  summary: string | null;
+}
+export async function latestForecast(code: string): Promise<ForecastInfo | null> {
+  const ts = tsCode(code);
+  if (!ts) return null;
+  const d = await tsCall(
+    "forecast",
+    { ts_code: ts },
+    "end_date,ann_date,type,p_change_min,p_change_max,summary"
+  ).catch(() => null);
+  if (!d || !d.items.length) return null;
+  const ai = d.fields.indexOf("ann_date");
+  const row = [...d.items].sort((a, b) => String(b[ai]).localeCompare(String(a[ai])))[0];
+  const get = (k: string) => row[d.fields.indexOf(k)];
+  return {
+    period: String(get("end_date")),
+    type: String(get("type") ?? ""),
+    pctMin: n(get("p_change_min")),
+    pctMax: n(get("p_change_max")),
+    summary: get("summary") ? String(get("summary")) : null,
+  };
+}
+
+// 下次财报预约披露:取尚未实际披露(actual_date 空)、预约日 >= 今天 的最近一条
+export interface DisclosurePlan {
+  period: string; // 报告期 YYYYMMDD
+  preDate: string; // 预约披露日 YYYYMMDD
+}
+export async function nextDisclosure(code: string): Promise<DisclosurePlan | null> {
+  const ts = tsCode(code);
+  if (!ts) return null;
+  const d = await tsCall(
+    "disclosure_date",
+    { ts_code: ts },
+    "end_date,pre_date,actual_date"
+  ).catch(() => null);
+  if (!d || !d.items.length) return null;
+  const ei = d.fields.indexOf("end_date");
+  const pi = d.fields.indexOf("pre_date");
+  const ai = d.fields.indexOf("actual_date");
+  const nowYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" })
+    .format(new Date())
+    .replace(/-/g, "");
+  const upcoming = d.items
+    .filter((r) => !r[ai] && String(r[pi] ?? "") >= nowYmd)
+    .sort((a, b) => String(a[pi]).localeCompare(String(b[pi])))[0];
+  if (!upcoming) return null;
+  return { period: String(upcoming[ei]), preDate: String(upcoming[pi]) };
 }

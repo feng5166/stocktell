@@ -4,16 +4,23 @@
 import { unstable_cache } from "next/cache";
 import { STOCK_MAP } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
-import { latestAnnualFinancials } from "@/lib/tushare";
+import { latestFinancials, latestForecast, nextDisclosure } from "@/lib/tushare";
 
 export interface CheckupFinding {
   text: string;
   severity: "high" | "mid" | "good" | "info";
 }
 export interface Checkup {
-  period: string; // YYYYMMDD
+  period: string; // YYYYMMDD(最新报告期,含季报)
   year: string;
+  reportLabel: string; // 如 "2025 三季报"
   findings: CheckupFinding[];
+}
+
+// 报告期 → 报告类型(YYYYMMDD 末四位判断)
+function reportType(period: string): string {
+  const md = period.slice(4);
+  return md === "0331" ? "一季报" : md === "0630" ? "中报" : md === "0930" ? "三季报" : "年报";
 }
 
 const yi = (v: number | null): number | null => (v === null ? null : Math.round((v / 1e8) * 100) / 100);
@@ -22,7 +29,11 @@ const fmtYi = (v: number): string =>
 
 async function compute(code: string): Promise<Checkup | null> {
   if (STOCK_MAP[code]?.market !== "A股") return null;
-  const f = await latestAnnualFinancials(code);
+  const [f, fc, dp] = await Promise.all([
+    latestFinancials(code),
+    latestForecast(code).catch(() => null),
+    nextDisclosure(code).catch(() => null),
+  ]);
   if (!f || f.revenue === null) return null;
 
   const rev = yi(f.revenue);
@@ -34,15 +45,42 @@ async function compute(code: string): Promise<Checkup | null> {
   const st = yi(f.stDebt);
   const dedt = yi(f.dedt);
   const yr = f.period.slice(0, 4);
+  const rpt = reportType(f.period);
+  const reportLabel = `${yr} ${rpt}`;
+  const cum = rpt === "年报" ? "" : "(累计)"; // 季报营收/净利为年初至今累计
   const findings: CheckupFinding[] = [];
 
-  // 概览一行(营收规模 + 盈利能力)
+  // 概览一行(最新报告期:营收规模 + 盈利能力)
   const ov: string[] = [];
-  if (rev !== null) ov.push(`营收 ${fmtYi(rev)}`);
-  if (ni !== null) ov.push(`归母净利 ${ni < 0 ? "亏 " + fmtYi(Math.abs(ni)) : fmtYi(ni)}`);
+  if (rev !== null) ov.push(`营收 ${fmtYi(rev)}${cum}`);
+  if (ni !== null) ov.push(`归母净利 ${ni < 0 ? "亏 " + fmtYi(Math.abs(ni)) : fmtYi(ni)}${cum}`);
   if (f.roe !== null) ov.push(`ROE ${f.roe.toFixed(1)}%`);
   if (f.gross !== null) ov.push(`毛利率 ${f.gross.toFixed(0)}%`);
-  if (ov.length) findings.push({ text: `📊 ${yr} 年报:${ov.join(" · ")}`, severity: "info" });
+  if (ov.length) findings.push({ text: `📊 ${reportLabel}:${ov.join(" · ")}`, severity: "info" });
+
+  // 业绩预告(前瞻):只展示"报告期晚于已出财报"的预告(真正还没出的那期),
+  // 否则会展示几年前的旧预告,又成古董。
+  if (fc && fc.period > f.period) {
+    const good = /增|盈|扭亏|续盈/.test(fc.type);
+    const bad = /减|亏|损/.test(fc.type);
+    const pct =
+      fc.pctMin !== null && fc.pctMax !== null
+        ? `,净利同比 ${fc.pctMin >= 0 ? "+" : ""}${Math.round(fc.pctMin)}%~${fc.pctMax >= 0 ? "+" : ""}${Math.round(fc.pctMax)}%`
+        : "";
+    findings.push({
+      text: `📈 ${fc.period.slice(0, 4)} ${reportType(fc.period)}业绩预告:${fc.type}${pct}`,
+      severity: good ? "good" : bad ? "high" : "info",
+    });
+  }
+
+  // 下次财报预约披露日
+  if (dp) {
+    const d = `${dp.preDate.slice(4, 6)}/${dp.preDate.slice(6, 8)}`;
+    findings.push({
+      text: `🗓️ 下次财报(${dp.period.slice(0, 4)} ${reportType(dp.period)})预约 ${d} 披露`,
+      severity: "info",
+    });
+  }
 
   // 利润 vs 经营现金流(打架=利润是白条)
   if (ni !== null && ocf !== null) {
@@ -62,7 +100,7 @@ async function compute(code: string): Promise<Checkup | null> {
         severity: "good",
       });
     else if (ni < 0)
-      findings.push({ text: `📉 ${yr} 年报归母净利亏损 ${fmtYi(Math.abs(ni))}`, severity: "high" });
+      findings.push({ text: `📉 ${reportLabel}归母净利亏损 ${fmtYi(Math.abs(ni))}${cum}`, severity: "high" });
   }
 
   // 商誉(占净资产)
@@ -96,7 +134,7 @@ async function compute(code: string): Promise<Checkup | null> {
       severity: "mid",
     });
 
-  return { period: f.period, year: yr, findings };
+  return { period: f.period, year: yr, reportLabel, findings };
 }
 
 export function financialCheckup(code: string): Promise<Checkup | null> {
