@@ -34,6 +34,10 @@ echo "== StockTell 冒烟测试 @ $BASE =="
 echo "[公开接口]"
 curl -s -m 25 "$BASE/api/quotes" | assert_json _ "'quotes' in d" && ok "/api/quotes 正常" || ng "/api/quotes"
 curl -s -m 25 "$BASE/api/etf-quotes" | assert_json _ "'quotes' in d" && ok "/api/etf-quotes 正常" || ng "/api/etf-quotes"
+# 反馈接口:只验校验(空内容应 400),不提交真反馈以免刷飞书
+FB_CODE=$(curl -s -m 15 -o /dev/null -w "%{http_code}" -X POST "$BASE/api/feedback" \
+  -H 'Content-Type: application/json' -d '{"content":""}')
+[ "$FB_CODE" = "400" ] && ok "/api/feedback 校验正常(空内容 400)" || ng "/api/feedback 校验异常(got $FB_CODE)"
 
 # ---------- 登录 ----------
 echo "[登录]"
