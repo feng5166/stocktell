@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useAuthModal } from "@/components/Providers";
+import { track } from "@/lib/analytics";
 
 function inlineBold(s: string, kp: string) {
   return s.split(/(\*\*[^*]+\*\*)/g).map((seg, i) =>
@@ -74,6 +75,9 @@ export function DeepRead({
     setStarted(true);
     setLoading(true);
     setDeep("");
+    track("deep_read", {
+      kind: String(payload.kind ?? (payload.id ? "briefing" : payload.code ? "stock" : "?")),
+    });
     try {
       const res = await fetch("/api/briefing/explain", {
         method: "POST",

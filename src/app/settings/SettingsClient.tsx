@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { track } from "@/lib/analytics";
 
 /* eslint-disable @next/next/no-img-element */
 
@@ -176,7 +177,10 @@ function EmailCard({ hasEmail, email }: { hasEmail: boolean; email: string | nul
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: next }),
       });
-      if (r.ok) setEnabled(next);
+      if (r.ok) {
+        setEnabled(next);
+        if (next) track("bind_push", { channel: "email" }); // 漏斗:绑推送(开邮件)
+      }
     } finally {
       setBusy(false);
     }
@@ -287,6 +291,7 @@ function WeixinCard() {
         } else if (data.state === "activated") {
           setBindState("activated");
           setBound(true);
+          track("bind_push", { channel: "weixin" }); // 漏斗:绑推送
         } else {
           setBindState(data.state);
         }

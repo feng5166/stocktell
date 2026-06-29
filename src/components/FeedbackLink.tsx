@@ -4,6 +4,7 @@
 // 不需要登录(零门槛);登录用户自动带邮箱。提交 → /api/feedback(飞书通知 + 尽力存库)。
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { track } from "@/lib/analytics";
 
 const CATEGORIES = ["问题", "建议", "其他"] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -60,6 +61,7 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
         setSubmitting(false);
         return;
       }
+      track("submit_feedback", { category });
       setDone(true);
     } catch {
       setError("网络异常,稍后再试");

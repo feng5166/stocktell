@@ -4,6 +4,8 @@
 // 登录瞬间若本地有自选,自动合并进库再清本地,别让用户丢自选。
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { track } from "@/lib/analytics";
+import { ETF_CODES } from "@/data/etfs";
 
 const LS_KEY = "stocktell_watchlist";
 
@@ -100,6 +102,8 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
         const adding = !next.has(code);
         if (adding) next.add(code);
         else next.delete(code);
+
+        if (adding) track("add_watchlist", { kind: ETF_CODES.includes(code) ? "etf" : "stock" });
 
         if (status === "authenticated") {
           if (adding) {

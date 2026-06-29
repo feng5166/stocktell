@@ -1,7 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { PWARegister } from "@/components/PWARegister";
+
+// Umami 网页分析(自托管 analytics.stocktell.me)。配了 WEBSITE_ID 才注入,
+// 自动采集 pageview;自定义事件经 lib/analytics 的 track() 上报。
+const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC;
+const UMAMI_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 
 export const metadata: Metadata = {
   title: "StockTell · AI产业链股票池",
@@ -39,6 +45,9 @@ export default function RootLayout({
       <body className="antialiased pb-14 sm:pb-0">
         <Providers>{children}</Providers>
         <PWARegister />
+        {UMAMI_SRC && UMAMI_ID && (
+          <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} strategy="afterInteractive" />
+        )}
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { track } from "@/lib/analytics";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
 // 本设备上次登录用的邮箱(只记邮箱、不记密码),下次自动回填登录框
@@ -45,7 +46,8 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
         })
       ).json();
 
-      if (!check.exists) {
+      const isNew = !check.exists;
+      if (isNew) {
         const reg = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -64,6 +66,8 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
         setLoading(false);
         return;
       }
+      // 埋点:新账号=注册,老账号=登录(漏斗核心步骤)
+      track(isNew ? "signup" : "login", { method: "email" });
       // 登录成功:只记住邮箱供下次回填,密码绝不存
       try {
         localStorage.setItem(LAST_EMAIL_KEY, email.toLowerCase().trim());
