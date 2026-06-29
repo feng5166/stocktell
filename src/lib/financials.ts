@@ -138,7 +138,16 @@ async function compute(code: string): Promise<Checkup | null> {
 }
 
 export function financialCheckup(code: string): Promise<Checkup | null> {
-  return unstable_cache(() => compute(code), ["fin-checkup", code, todayISO()], {
-    revalidate: 43200, // 12h(年报低频)
-  })();
+  // null 不进缓存:compute 拿不到数据(限流/抖动)时抛错,unstable_cache 不缓存抛错,
+  // 下次请求会重算——避免一次偶发失败把空结果毒住 12h。成功结果照常缓存。
+  // 缓存 key 加版本号 v2:清掉旧版本可能毒住的空结果。
+  return unstable_cache(
+    async () => {
+      const r = await compute(code);
+      if (!r) throw new Error("fin-checkup:no-data");
+      return r;
+    },
+    ["fin-checkup", "v2", code, todayISO()],
+    { revalidate: 43200 } // 12h(财报低频)
+  )().catch(() => null);
 }
