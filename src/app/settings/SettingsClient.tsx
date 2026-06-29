@@ -11,11 +11,63 @@ export function SettingsClient({ email }: { email: string | null }) {
     <div className="space-y-4">
       <WeixinCard />
       <IntradayCard />
+      <RiskCard />
       <EmailCard hasEmail={!!email} email={email} />
       <p className="px-1 text-xs leading-relaxed text-gray-400">
         我们只在你的自选有相关动态时才推送,没动静不打扰。各渠道可分别开关。
       </p>
     </div>
+  );
+}
+
+// ---------------- 雷区提醒(解禁/增减持/质押/ST)----------------
+function RiskCard() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/me/risk-pref");
+        if (!r.ok) return;
+        const d = await r.json();
+        setEnabled(!!d.enabled);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/me/risk-pref", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (r.ok) setEnabled(next);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card
+      title="⚠️ 雷区提醒"
+      desc="你的自选有解禁、大股东增减持、高质押、ST 风险等重要事件时,盘前提前提醒(微信优先,否则邮件)。"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-700">
+          {enabled === null
+            ? "读取中…"
+            : enabled
+            ? "已开启:有雷区事件时盘前提醒"
+            : "已关闭:不会再收到雷区提醒"}
+        </span>
+        <Switch checked={!!enabled} disabled={enabled === null || busy} onChange={toggle} />
+      </div>
+    </Card>
   );
 }
 

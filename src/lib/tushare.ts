@@ -312,3 +312,123 @@ export async function fetchFundamental(code: string): Promise<Fundamental | null
     turnover: n(r[idx("turnover_rate")]),
   };
 }
+
+// ===== 雷区雷达:按 ts_code 的原始拉取(阈值/格式化在 risk-radar.ts)=====
+// 调用方按自选小集合逐只调用,结果在 risk-radar 用 unstable_cache 按天缓存。
+
+export interface FloatRow {
+  floatDate: string; // YYYYMMDD 解禁日
+  floatRatio: number | null; // 占比(%)
+  holder: string;
+  shareType: string; // 定增股份 / 首发原股东限售 / 股权激励限售 等
+}
+export async function shareFloatRows(code: string): Promise<FloatRow[]> {
+  const ts = tsCode(code);
+  if (!ts) return [];
+  const d = await tsCall(
+    "share_float",
+    { ts_code: ts },
+    "float_date,float_ratio,holder_name,share_type"
+  ).catch(() => null);
+  if (!d) return [];
+  const i = (k: string) => d.fields.indexOf(k);
+  return d.items
+    .map((r) => ({
+      floatDate: String(r[i("float_date")] ?? ""),
+      floatRatio: n(r[i("float_ratio")]),
+      holder: String(r[i("holder_name")] ?? ""),
+      shareType: String(r[i("share_type")] ?? ""),
+    }))
+    .filter((x) => /^\d{8}$/.test(x.floatDate));
+}
+
+export interface HolderTradeRow {
+  annDate: string; // YYYYMMDD 公告日
+  holder: string;
+  holderType: string; // G高管 P个人 C公司
+  inDe: string; // IN增持 DE减持
+  changeRatio: number | null; // 占流通比(%)
+  avgPrice: number | null;
+}
+export async function holderTradeRows(code: string): Promise<HolderTradeRow[]> {
+  const ts = tsCode(code);
+  if (!ts) return [];
+  const d = await tsCall(
+    "stk_holdertrade",
+    { ts_code: ts },
+    "ann_date,holder_name,holder_type,in_de,change_ratio,avg_price"
+  ).catch(() => null);
+  if (!d) return [];
+  const i = (k: string) => d.fields.indexOf(k);
+  return d.items
+    .map((r) => ({
+      annDate: String(r[i("ann_date")] ?? ""),
+      holder: String(r[i("holder_name")] ?? ""),
+      holderType: String(r[i("holder_type")] ?? ""),
+      inDe: String(r[i("in_de")] ?? ""),
+      changeRatio: n(r[i("change_ratio")]),
+      avgPrice: n(r[i("avg_price")]),
+    }))
+    .filter((x) => /^\d{8}$/.test(x.annDate));
+}
+
+// 最新一期股权质押比例(%)。无数据返回 null。
+export async function pledgeRatioLatest(code: string): Promise<number | null> {
+  const ts = tsCode(code);
+  if (!ts) return null;
+  const d = await tsCall("pledge_stat", { ts_code: ts }, "end_date,pledge_ratio").catch(
+    () => null
+  );
+  if (!d || d.items.length === 0) return null;
+  const di = d.fields.indexOf("end_date");
+  const pi = d.fields.indexOf("pledge_ratio");
+  const latest = [...d.items].sort((a, b) =>
+    String(b[di]).localeCompare(String(a[di]))
+  )[0];
+  return n(latest[pi]);
+}
+
+export interface RepurchaseRow {
+  annDate: string;
+  proc: string; // 进度:董事会预案/股东大会通过/实施/完成
+  amountYi: number | null; // 回购金额(亿元)
+}
+export async function repurchaseRows(code: string): Promise<RepurchaseRow[]> {
+  const ts = tsCode(code);
+  if (!ts) return [];
+  const d = await tsCall("repurchase", { ts_code: ts }, "ann_date,proc,amount").catch(
+    () => null
+  );
+  if (!d) return [];
+  const i = (k: string) => d.fields.indexOf(k);
+  return d.items
+    .map((r) => {
+      const amt = n(r[i("amount")]);
+      return {
+        annDate: String(r[i("ann_date")] ?? ""),
+        proc: String(r[i("proc")] ?? ""),
+        amountYi: amt === null ? null : Math.round((amt / 1e8) * 100) / 100,
+      };
+    })
+    .filter((x) => /^\d{8}$/.test(x.annDate));
+}
+
+// 当前股票名(用于 ST 判定):namechange 里 end_date 为空的那条 = 现用名。
+export async function currentName(code: string): Promise<string | null> {
+  const ts = tsCode(code);
+  if (!ts) return null;
+  const d = await tsCall("namechange", { ts_code: ts }, "name,start_date,end_date").catch(
+    () => null
+  );
+  if (!d || d.items.length === 0) return null;
+  const ni = d.fields.indexOf("name");
+  const ei = d.fields.indexOf("end_date");
+  const si = d.fields.indexOf("start_date");
+  const cur = d.items.find((r) => !r[ei]); // end_date 空 = 现用名
+  if (cur) return String(cur[ni] ?? "");
+  // 兜底:取 start_date 最新的一条
+  const latest = [...d.items].sort((a, b) =>
+    String(b[si]).localeCompare(String(a[si]))
+  )[0];
+  return latest ? String(latest[ni] ?? "") : null;
+}

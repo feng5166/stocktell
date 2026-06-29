@@ -215,6 +215,30 @@ export default async function StockDetail({
 
         <Fundamentals code={s.code} market={s.market} />
 
+        {riskEvents.length > 0 && (
+          <Section title="重要事件 / 雷区">
+            <ul className="space-y-1.5 text-sm">
+              {riskEvents.map((e, i) => (
+                <li
+                  key={i}
+                  className={
+                    e.severity === "high"
+                      ? "text-rose-600"
+                      : e.severity === "info"
+                      ? "text-gray-500"
+                      : "text-amber-700"
+                  }
+                >
+                  {e.text}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">
+              公开信息整理(Tushare),提示风险,不构成投资建议。
+            </p>
+          </Section>
+        )}
+
         <Section title="对应的股票">
           {!hasPeers ? (
             sameSectorPeers.length > 0 ? (

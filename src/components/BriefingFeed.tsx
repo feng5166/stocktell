@@ -11,6 +11,7 @@ import { useAuthModal } from "@/components/Providers";
 import { useWatchlist } from "@/components/useWatchlist";
 import { QuickAddWatch } from "@/components/QuickAddWatch";
 import { FundFlow } from "@/components/FundFlow";
+import { RiskSummary } from "@/components/RiskSummary";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
@@ -62,6 +63,7 @@ export function BriefingFeed({
           <QuickAddWatch wl={wl} />
         ) : (
           <div className="space-y-3">
+            <RiskSummary codes={wl.codes} />
             {mine.length === 0 ? (
               <>
                 <FundFlow codes={wl.codes} />

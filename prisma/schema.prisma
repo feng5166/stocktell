@@ -36,9 +36,24 @@ model User {
   digestOptOut Boolean  @default(false) @map("digest_opt_out")
   // 关闭盘中异动提醒(默认开);仅对已绑微信用户有意义。
   intradayOptOut Boolean @default(false) @map("intraday_opt_out")
+  // 关闭雷区提醒(解禁/增减持/质押/ST,默认开)
+  riskOptOut   Boolean  @default(false) @map("risk_opt_out")
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("users")
+}
+
+// 雷区提醒去重:同一用户·同一事件(eventKey)只推一次。
+model EventAlert {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  eventKey  String   @map("event_key") // 类型:code:关键日 等
+  date      String // 推送日 YYYY-MM-DD(北京)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, eventKey])
+  @@index([userId])
+  @@map("event_alert")
 }
 
 // 盘中异动提醒去重:同一用户·同一票·同一天最多提醒一次。

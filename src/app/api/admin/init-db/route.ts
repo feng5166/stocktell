@@ -85,6 +85,18 @@ const T_INTRADAY_ALERT = `CREATE TABLE IF NOT EXISTS "intraday_alert" (
 )`;
 const IDX_INTRADAY_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "intraday_alert_user_id_code_date_key" ON "intraday_alert" ("user_id", "code", "date")`;
 const IDX_INTRADAY_USER_DATE = `CREATE INDEX IF NOT EXISTS "intraday_alert_user_id_date_idx" ON "intraday_alert" ("user_id", "date")`;
+// 雷区提醒:关闭开关 + 去重表
+const ALTER_USER_RISK_OPTOUT = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "risk_opt_out" boolean NOT NULL DEFAULT false`;
+const T_EVENT_ALERT = `CREATE TABLE IF NOT EXISTS "event_alert" (
+  "id" text NOT NULL,
+  "user_id" text NOT NULL,
+  "event_key" text NOT NULL,
+  "date" text NOT NULL,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "event_alert_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_EVENT_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "event_alert_user_id_event_key_key" ON "event_alert" ("user_id", "event_key")`;
+const IDX_EVENT_USER = `CREATE INDEX IF NOT EXISTS "event_alert_user_id_idx" ON "event_alert" ("user_id")`;
 const T_WEIXIN_BIND = `CREATE TABLE IF NOT EXISTS "weixin_bind_tokens" (
   "id" text NOT NULL,
   "user_id" text NOT NULL,
@@ -193,6 +205,10 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(T_INTRADAY_ALERT);
         await tx.$executeRawUnsafe(IDX_INTRADAY_UNIQUE);
         await tx.$executeRawUnsafe(IDX_INTRADAY_USER_DATE);
+        await tx.$executeRawUnsafe(ALTER_USER_RISK_OPTOUT);
+        await tx.$executeRawUnsafe(T_EVENT_ALERT);
+        await tx.$executeRawUnsafe(IDX_EVENT_UNIQUE);
+        await tx.$executeRawUnsafe(IDX_EVENT_USER);
         await tx.$executeRawUnsafe(T_WEIXIN_BIND);
         await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
         await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);
