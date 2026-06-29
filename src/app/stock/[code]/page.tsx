@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { STOCK_MAP, resolvePeer, type Stock } from "@/data/stocks";
 import { ChainPosition } from "@/components/ChainPosition";
-import { MobileTabBar } from "@/components/MobileTabBar";
+import { SiteHeader } from "@/components/SiteHeader";
 import { chainNeighbors } from "@/data/chainEdges";
 import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
 import { listBriefing } from "@/lib/briefings";
@@ -11,7 +11,6 @@ import { LiveQuote } from "@/components/LiveQuote";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
-import { Logo } from "@/components/Logo";
 import { todayISO } from "@/lib/date";
 
 // 页面本体(定位/关联/上下游)全来自内存静态数据,本可秒出;原本 force-dynamic + SSR
@@ -84,16 +83,8 @@ export default async function StockDetail({
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" aria-label="StockTell 首页">
-            <Logo className="h-6 w-auto" />
-          </Link>
-          <Link href="/stocks" className="text-sm text-gray-500 hover:text-gray-900">
-            ← 返回股票池
-          </Link>
-        </div>
-      </header>
+      {/* 复用全站统一头部(logo + slogan + nav + 移动端底部 TabBar),不再自带专属顶栏 */}
+      <SiteHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         {/* 标题 */}
@@ -185,9 +176,6 @@ export default async function StockDetail({
           免责声明:以上内容为公开信息整理,不构成投资建议。产业链关系为研究框架梳理,非确认的客户/供应商/持仓关系。历史规律不代表未来表现。
         </p>
       </main>
-
-      {/* 移动端底部主导航(与主站一致;详情页自带顶栏故单独挂载) */}
-      <MobileTabBar />
     </div>
   );
 }
