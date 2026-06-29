@@ -7,6 +7,8 @@ import { todayISO } from "@/lib/date";
 import { sendMail } from "@/lib/mailer";
 import { getMorningBrief } from "@/lib/morning-brief";
 import { fundFlowFor, type FundFlowItem } from "@/lib/fund-flow";
+import { riskEventsFor } from "@/lib/risk-radar";
+import { STOCK_MAP } from "@/data/stocks";
 import { unsubUrl } from "@/lib/unsub";
 
 // 邮件页脚:取消推送按钮(HTML)+ 纯文本退订行 + List-Unsubscribe 头(邮件客户端原生一键退订)
@@ -49,34 +51,51 @@ export function fundAlertLine(it: FundFlowItem): string {
   return `${it.name}:${parts.join(" / ")}`;
 }
 
-// 资金面专属推送(无相关简报、但你的票资金面有异动时)。纯事实罗列,不调 LLM、不喊买卖。
-async function sendFundDigest(
+// 「你的票要注意」:雷区(解禁/减持/质押/ST,高优先在前)+ 资金面异动,合并成可读行(emoji 自带)。
+// 微信(push-weixin)与邮件共用,保证两边内容一致。回购/增持等中性信息(severity=info)不挤进来。
+export async function buildWatchAlerts(codes: string[]): Promise<string[]> {
+  const rank: Record<string, number> = { high: 0, mid: 1, info: 2 };
+  const risk: { sev: number; line: string }[] = [];
+  const pairs = await Promise.all(
+    codes.map(async (c) => [c, await riskEventsFor(c).catch(() => [])] as const)
+  );
+  for (const [c, evs] of pairs) {
+    const name = STOCK_MAP[c]?.name ?? c;
+    for (const e of evs) {
+      if (e.severity === "info") continue; // 中性信息(回购/增持)不进"要注意"
+      risk.push({ sev: rank[e.severity] ?? 1, line: `${e.text} · ${name}` });
+    }
+  }
+  risk.sort((a, b) => a.sev - b.sev);
+  const lines = risk.slice(0, 4).map((r) => r.line);
+  try {
+    const ff = await fundFlowFor(codes);
+    for (const it of pickFundAlerts(ff.items).slice(0, 3)) lines.push(`💰 ${fundAlertLine(it)}`);
+  } catch {
+    /* 资金面拿不到不致命 */
+  }
+  return lines.slice(0, 6);
+}
+
+// 无相关简报、但你的持仓有雷区/资金面异动时的提醒邮件。
+async function sendAlertsDigest(
   to: string,
   userId: string,
-  date: string | null,
-  alerts: FundFlowItem[]
+  alertLines: string[]
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
   const unsub = unsubParts(base, userId);
-  const line = fundAlertLine; // 与微信推送共用同一行格式,保证两边内容一致
   const text =
-    `今天没有跟你的票相关的隔夜美股动态,但你的自选资金面有异动${
-      date ? `(截至 ${date})` : ""
-    }:\n\n` +
-    alerts.map((it) => `· ${line(it)}`).join("\n") +
+    `今天没有跟你的票相关的隔夜美股动态,但你的持仓有以下要注意:\n\n` +
+    alertLines.map((l) => `· ${l}`).join("\n") +
     `\n\n打开看详情:${base}/#mine\n\n以上为信息整理,不构成投资建议。` +
     unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
-    <p style="color:#888;font-size:12px;margin:0 0 10px">StockTell 盘前提醒${
-      date ? ` · 资金面截至 ${date}` : ""
-    }</p>
-    <p style="font-size:14px;margin:0 0 12px">今天没有跟你的票相关的隔夜美股动态,但你的自选<b>资金面有异动</b>:</p>
-    ${alerts
+    <p style="color:#888;font-size:12px;margin:0 0 10px">StockTell 盘前提醒</p>
+    <p style="font-size:14px;margin:0 0 12px">今天没有跟你的票相关的隔夜美股动态,但你的持仓有 <b>⚠️ 要注意</b>:</p>
+    ${alertLines
       .map(
-        (it) => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px">
-        <div style="font-weight:600">${it.name}</div>
-        <div style="font-size:12px;color:#555;margin-top:4px">${line(it).split(":")[1] ?? ""}</div>
-      </div>`
+        (l) => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px">${l}</div>`
       )
       .join("")}
     <p><a href="${base}/#mine" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
@@ -86,7 +105,7 @@ async function sendFundDigest(
 
   return sendMail({
     to,
-    subject: `你的自选今天资金面有异动 · StockTell`,
+    subject: `你的持仓今天有 ${alertLines.length} 条要注意 · StockTell`,
     text,
     html,
     headers: unsub.headers,
@@ -109,7 +128,8 @@ async function sendDigest(
   userId: string,
   date: string,
   items: BriefingItem[],
-  brief: string
+  brief: string,
+  alerts: string[]
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
   const unsub = unsubParts(base, userId);
@@ -117,8 +137,18 @@ async function sendDigest(
     const benes = it.beneficiaries.map((b) => b.name).join("、");
     return { impact: it.impact, title: it.title, benes, take: oneLineTake(it.retailTake) };
   });
+  const alertText = alerts.length
+    ? `\n\n⚠️ 你的票要注意\n${alerts.map((l) => `· ${l}`).join("\n")}`
+    : "";
+  const alertHtml = alerts.length
+    ? `<div style="font-size:13px;color:#666;margin:0 0 8px">⚠️ 你的票要注意</div>${alerts
+        .map(
+          (l) => `<div style="border:1px solid #f0d9b5;background:#fffaf0;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px">${l}</div>`
+        )
+        .join("")}`
+    : "";
   const text =
-    `${brief}\n\n—— 跟你票相关 ——\n` +
+    `${brief}${alertText}\n\n—— 跟你票相关 ——\n` +
     rows
       .map(
         (r) =>
@@ -132,6 +162,7 @@ async function sendDigest(
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 6px">${date} · StockTell 盘前早报</p>
     <p style="font-size:14px;line-height:1.75;background:#fffef6;border:1px solid #f0e9c8;border-radius:10px;padding:12px 14px;margin:0 0 14px">${brief}</p>
+    ${alertHtml}
     <div style="font-size:13px;color:#666;margin:0 0 8px">跟你票相关</div>
     ${rows
       .map(
@@ -200,20 +231,21 @@ export async function runPreOpenDigest(): Promise<{
         b.beneficiaries.some((x) => codes.has(x.code))
     );
 
+    // 你的持仓自身要注意的事(雷区 + 资金面),无论有没有隔夜简报都算高信号
+    const alerts = await buildWatchAlerts(Array.from(codes));
+
     if (relevant.length > 0) {
-      // 有相关简报:发个性化早报(早报里已含资金面)
+      // 有相关简报:个性化早报 + 你的票要注意 + 相关动态
       candidates++;
       const brief = await getMorningBrief(Array.from(codes), relevant);
-      if (await sendDigest(u.email, u.id, date, relevant, brief)) sent++;
+      if (await sendDigest(u.email, u.id, date, relevant, brief, alerts)) sent++;
       continue;
     }
 
-    // 无相关简报:看资金面是否有异动,有则单独提醒
-    const ff = await fundFlowFor(Array.from(codes));
-    const alerts = pickFundAlerts(ff.items);
-    if (alerts.length === 0) continue; // 既无简报又无资金面异动 → 不打扰
+    // 无相关简报:只要持仓有雷区/资金面异动就提醒
+    if (alerts.length === 0) continue; // 既无简报又无要注意 → 不打扰
     candidates++;
-    if (await sendFundDigest(u.email, u.id, ff.date, alerts)) sent++;
+    if (await sendAlertsDigest(u.email, u.id, alerts)) sent++;
   }
   return { ok: true, date, candidates, sent };
 }

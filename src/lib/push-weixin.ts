@@ -3,18 +3,33 @@ import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { getMorningBrief } from "@/lib/morning-brief";
 import { clawbot } from "@/lib/clawbot";
-import { fundFlowFor, type FundFlowItem } from "@/lib/fund-flow";
-import { pickFundAlerts, fundAlertLine, oneLineTake } from "@/lib/digest";
+import { buildWatchAlerts, oneLineTake } from "@/lib/digest";
+import { TIER } from "@/data/stocks";
 
 const DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
 
-// 相关简报版:与邮件 sendDigest 内容一致(个性化早报 + 相关动态列表 + 每条"怎么想")
-function formatBriefMessage(date: string, items: BriefingItem[], brief: string): string {
-  const lines = [`📊 StockTell · ${date} 盘前早报`, "", brief, "", "—— 跟你票相关 ——", ""];
+// 受益股名带轻量梯队标签:光迅科技(龙头)
+function nameWithTier(b: { code: string; name: string }): string {
+  const t = TIER[b.code];
+  return t ? `${b.name}(${t})` : b.name;
+}
+
+// 相关简报版:个性化早报 + ⚠️你的票要注意(雷区/资金面)+ 相关动态(每条"怎么想")
+function formatBriefMessage(
+  date: string,
+  items: BriefingItem[],
+  brief: string,
+  alerts: string[]
+): string {
+  const lines = [`📊 StockTell · ${date} 盘前早报`, "", brief, ""];
+  if (alerts.length) {
+    lines.push("⚠️ 你的票要注意", ...alerts.map((a) => `· ${a}`), "");
+  }
+  lines.push("—— 跟你票相关 ——", "");
   for (const it of items) {
     lines.push(`${DOT[it.impact] ?? ""} ${it.title}`);
     if (it.beneficiaries.length) {
-      lines.push(`   涉及你的:${it.beneficiaries.map((b) => b.name).join(" · ")}`);
+      lines.push(`   涉及你的:${it.beneficiaries.map(nameWithTier).join(" · ")}`);
     }
     const take = oneLineTake(it.retailTake);
     if (take) lines.push(`   怎么想:${take}`);
@@ -25,16 +40,18 @@ function formatBriefMessage(date: string, items: BriefingItem[], brief: string):
   return lines.join("\n");
 }
 
-// 资金面异动版:与邮件 sendFundDigest 内容一致(无相关简报、但自选资金面有异动时)
-function formatFundMessage(date: string | null, alerts: FundFlowItem[]): string {
+// 仅"要注意"版:无相关简报、但你的持仓有雷区/资金面异动时
+function formatAlertsMessage(date: string, alerts: string[]): string {
   const lines = [
-    `💰 StockTell 盘前提醒${date ? ` · 资金面截至 ${date}` : ""}`,
+    `📊 StockTell · ${date} 盘前提醒`,
     "",
-    "今天没有跟你的票相关的隔夜美股动态,但你的自选资金面有异动:",
+    "今天没有跟你的票相关的隔夜美股动态,但你的持仓有以下要注意:",
     "",
+    ...alerts.map((a) => `· ${a}`),
+    "",
+    "stocktell.me/#mine 看详情",
+    "以上不构成投资建议",
   ];
-  for (const it of alerts) lines.push(`· ${fundAlertLine(it)}`);
-  lines.push("", "stocktell.me/#mine 看详情", "以上不构成投资建议");
   return lines.join("\n");
 }
 
@@ -92,18 +109,19 @@ export async function runWeixinPush(): Promise<{
         b.beneficiaries.some((x) => codes.has(x.code))
     );
 
+    // 你的持仓自身要注意的事(雷区 + 资金面),与邮件 buildWatchAlerts 共用
+    const alerts = await buildWatchAlerts(Array.from(codes));
+
     let text: string | null = null;
     if (relevant.length > 0) {
-      // 有相关简报:个性化早报(同邮件)
+      // 有相关简报:个性化早报 + 要注意 + 相关动态
       const brief = await getMorningBrief(Array.from(codes), relevant);
-      text = formatBriefMessage(date, relevant, brief);
-    } else {
-      // 无相关简报:看资金面异动,有则单独提醒(同邮件)
-      const ff = await fundFlowFor(Array.from(codes));
-      const alerts = pickFundAlerts(ff.items);
-      if (alerts.length > 0) text = formatFundMessage(ff.date, alerts);
+      text = formatBriefMessage(date, relevant, brief, alerts);
+    } else if (alerts.length > 0) {
+      // 无相关简报:只要持仓有雷区/资金面异动就提醒
+      text = formatAlertsMessage(date, alerts);
     }
-    if (!text) continue; // 既无相关简报又无资金面异动 → 不打扰
+    if (!text) continue; // 既无相关简报又无要注意 → 不打扰
 
     candidates++;
     if (await sendToBridge(u.weixinOpenId, text)) sent++;
