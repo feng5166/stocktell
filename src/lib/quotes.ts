@@ -47,10 +47,13 @@ function parseSina(text: string, codeBySina: Record<string, string>) {
 // 新浪单次请求代码数有限,分批拉取再合并
 const CHUNK = 50;
 
-async function fetchChunk(codes: string[]): Promise<Record<string, Quote>> {
+async function fetchChunk(
+  codes: string[],
+  symbolOf: (code: string) => string
+): Promise<Record<string, Quote>> {
   const codeBySina: Record<string, string> = {};
   const sinaList = codes.map((code) => {
-    const sym = sinaSymbol(STOCK_MAP[code]);
+    const sym = symbolOf(code);
     codeBySina[sym] = code;
     return sym;
   });
@@ -80,7 +83,38 @@ export async function fetchQuotes(
   }
   try {
     const results = await Promise.all(
-      chunks.map((c) => fetchChunk(c).catch(() => ({} as Record<string, Quote>)))
+      chunks.map((c) =>
+        fetchChunk(c, (code) => sinaSymbol(STOCK_MAP[code])).catch(
+          () => ({} as Record<string, Quote>)
+        )
+      )
+    );
+    const quotes: Record<string, Quote> = Object.assign({}, ...results);
+    return { quotes, live: Object.keys(quotes).length > 0 };
+  } catch {
+    return { quotes: {}, live: false };
+  }
+}
+
+// 板块 ETF 行情:ETF 不在 STOCK_MAP 里,按 A 股(market="A股")直接构造 sina 符号
+// (sinaSymbol 已支持 5 开头沪市 ETF)。供「板块ETF」标签页用。
+export async function fetchEtfQuotes(
+  codes: string[]
+): Promise<{ quotes: Record<string, Quote>; live: boolean }> {
+  const valid = Array.from(new Set(codes)).filter((c) => /^\d{6}$/.test(c));
+  if (valid.length === 0) return { quotes: {}, live: false };
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < valid.length; i += CHUNK) {
+    chunks.push(valid.slice(i, i + CHUNK));
+  }
+  try {
+    const results = await Promise.all(
+      chunks.map((c) =>
+        fetchChunk(c, (code) => sinaSymbol({ code, market: "A股" })).catch(
+          () => ({} as Record<string, Quote>)
+        )
+      )
     );
     const quotes: Record<string, Quote> = Object.assign({}, ...results);
     return { quotes, live: Object.keys(quotes).length > 0 };

@@ -352,7 +352,9 @@ export function aSharePeers(us: Stock): Stock[] {
 export function sinaSymbol(s: Pick<Stock, "code" | "market">): string {
   if (s.market === "美股") return `gb_${s.code.toLowerCase()}`;
   const c = s.code;
-  if (c.startsWith("6") || c.startsWith("9")) return `sh${c}`;
+  // 6/9=沪市股票,5=沪市基金/ETF(51x/56x/58x/588 科创),都走 sh
+  if (c.startsWith("6") || c.startsWith("9") || c.startsWith("5")) return `sh${c}`;
   if (c.startsWith("4") || c.startsWith("8")) return `bj${c}`;
+  // 其余:深市股票(0/3)与深市 ETF(15x/16x)走 sz
   return `sz${c}`;
 }

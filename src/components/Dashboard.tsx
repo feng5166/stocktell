@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
 import { useProgressive } from "@/components/useProgressive";
 import { ChainSwitcher } from "@/components/ChainSwitcher";
+import { EtfBoard } from "@/components/EtfBoard";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
 import { DISCLAIMER } from "@/lib/constants";
@@ -19,7 +20,7 @@ import {
   type Stock,
 } from "@/data/stocks";
 
-const TABS = ["股票列表", "关联图谱", "特征矩阵", "主动发现"] as const;
+const TABS = ["股票列表", "板块ETF", "关联图谱", "特征矩阵", "主动发现"] as const;
 type Tab = (typeof TABS)[number];
 
 const MARKETS: ("全部" | Market)[] = ["全部", "美股", "A股"];
@@ -256,7 +257,9 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* 统计面板 */}
+        {/* 统计面板 + 筛选区:对个股列表/图谱有效,ETF 标签页不适用故隐藏 */}
+        {tab !== "板块ETF" && (
+        <>
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard
             label="当前标的"
@@ -362,11 +365,14 @@ export default function Dashboard() {
           </div>
           </div>
         </div>
+        </>
+        )}
 
         {/* 主内容 */}
         {tab === "股票列表" && (
           <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
         )}
+        {tab === "板块ETF" && <EtfBoard />}
         {tab === "关联图谱" && (
           <RelationMap rows={filtered} watchedCodes={wl.codes} />
         )}
