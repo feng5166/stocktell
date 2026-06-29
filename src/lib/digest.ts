@@ -7,6 +7,21 @@ import { todayISO } from "@/lib/date";
 import { sendMail } from "@/lib/mailer";
 import { getMorningBrief } from "@/lib/morning-brief";
 import { fundFlowFor, type FundFlowItem } from "@/lib/fund-flow";
+import { unsubUrl } from "@/lib/unsub";
+
+// 邮件页脚:取消推送按钮(HTML)+ 纯文本退订行 + List-Unsubscribe 头(邮件客户端原生一键退订)
+function unsubParts(base: string, userId: string) {
+  const url = unsubUrl(base, userId);
+  const html = `<p style="margin:16px 0 0;text-align:center">
+      <a href="${url}" style="display:inline-block;color:#999;font-size:12px;text-decoration:none;border:1px solid #e2e2e2;border-radius:8px;padding:7px 14px">取消每日推送</a>
+    </p>`;
+  const text = `\n\n不想再收到每日推送?点此取消:${url}`;
+  const headers = {
+    "List-Unsubscribe": `<${url}>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  };
+  return { html, text, headers };
+}
 
 // 资金面"异动"阈值(绝对额,亿元):达到才单独触发推送,避免日常小波动骚扰
 const NET_MF_ALERT = 3.0; // 主力净流入/流出
@@ -28,10 +43,12 @@ function fmtYi(v: number) {
 // 资金面专属推送(无相关简报、但你的票资金面有异动时)。纯事实罗列,不调 LLM、不喊买卖。
 async function sendFundDigest(
   to: string,
+  userId: string,
   date: string | null,
   alerts: FundFlowItem[]
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
+  const unsub = unsubParts(base, userId);
   const line = (it: FundFlowItem) => {
     const parts: string[] = [];
     if (it.netMf !== null) parts.push(`主力${fmtYi(it.netMf)}`);
@@ -44,7 +61,8 @@ async function sendFundDigest(
       date ? `(截至 ${date})` : ""
     }:\n\n` +
     alerts.map((it) => `· ${line(it)}`).join("\n") +
-    `\n\n打开看详情:${base}\n\n以上为信息整理,不构成投资建议。`;
+    `\n\n打开看详情:${base}\n\n以上为信息整理,不构成投资建议。` +
+    unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 10px">StockTell 盘前提醒${
       date ? ` · 资金面截至 ${date}` : ""
@@ -60,6 +78,7 @@ async function sendFundDigest(
       .join("")}
     <p><a href="${base}" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
     <p style="color:#aaa;font-size:11px">以上为信息整理,不构成投资建议。历史规律不代表未来表现。</p>
+    ${unsub.html}
   </div>`;
 
   return sendMail({
@@ -67,16 +86,19 @@ async function sendFundDigest(
     subject: `你的自选今天资金面有异动 · StockTell`,
     text,
     html,
+    headers: unsub.headers,
   });
 }
 
 async function sendDigest(
   to: string,
+  userId: string,
   date: string,
   items: BriefingItem[],
   brief: string
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
+  const unsub = unsubParts(base, userId);
   const rows = items.map((it) => {
     const benes = it.beneficiaries.map((b) => b.name).join("、");
     return { impact: it.impact, title: it.title, benes };
@@ -86,7 +108,8 @@ async function sendDigest(
     rows
       .map((r) => `· [${r.impact}] ${r.title}${r.benes ? ` — 受益:${r.benes}` : ""}`)
       .join("\n") +
-    `\n\n打开看详情:${base}\n\n以上为信息整理,不构成投资建议。`;
+    `\n\n打开看详情:${base}\n\n以上为信息整理,不构成投资建议。` +
+    unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 6px">${date} · StockTell 盘前早报</p>
     <p style="font-size:14px;line-height:1.75;background:#fffef6;border:1px solid #f0e9c8;border-radius:10px;padding:12px 14px;margin:0 0 14px">${brief}</p>
@@ -102,6 +125,7 @@ async function sendDigest(
       .join("")}
     <p><a href="${base}" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
     <p style="color:#aaa;font-size:11px">以上为信息整理,不构成投资建议。历史规律不代表未来表现。</p>
+    ${unsub.html}
   </div>`;
 
   return sendMail({
@@ -109,6 +133,7 @@ async function sendDigest(
     subject: `你的自选今天有 ${items.length} 条相关动态 · StockTell`,
     text,
     html,
+    headers: unsub.headers,
   });
 }
 
@@ -127,7 +152,7 @@ export async function runPreOpenDigest(): Promise<{
   const briefings = await listBriefing({ date, status: "published" });
 
   const users = await db.user.findMany({
-    where: { email: { not: null } },
+    where: { email: { not: null }, digestOptOut: false }, // 跳过已退订的用户
     select: { id: true, email: true, nickname: true },
   });
   const watches = await db.watchlist.findMany({
@@ -159,7 +184,7 @@ export async function runPreOpenDigest(): Promise<{
       // 有相关简报:发个性化早报(早报里已含资金面)
       candidates++;
       const brief = await getMorningBrief(Array.from(codes), relevant);
-      if (await sendDigest(u.email, date, relevant, brief)) sent++;
+      if (await sendDigest(u.email, u.id, date, relevant, brief)) sent++;
       continue;
     }
 
@@ -168,7 +193,7 @@ export async function runPreOpenDigest(): Promise<{
     const alerts = pickFundAlerts(ff.items);
     if (alerts.length === 0) continue; // 既无简报又无资金面异动 → 不打扰
     candidates++;
-    if (await sendFundDigest(u.email, ff.date, alerts)) sent++;
+    if (await sendFundDigest(u.email, u.id, ff.date, alerts)) sent++;
   }
   return { ok: true, date, candidates, sent };
 }

@@ -32,6 +32,8 @@ model User {
   weixinOpenId String?  @unique @map("weixin_open_id")
   // 扫码了但还没发消息激活的时间戳;激活/解绑时清空。用于站内"还差一步"提醒 + 后台统计。
   weixinPendingScanAt DateTime? @map("weixin_pending_scan_at")
+  // 退订每日邮件推送:邮件里"取消推送"按钮(带签名)点击后置 true,盘前 digest 跳过。
+  digestOptOut Boolean  @default(false) @map("digest_opt_out")
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("users")

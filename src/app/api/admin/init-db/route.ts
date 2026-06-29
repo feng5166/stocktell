@@ -71,6 +71,8 @@ const ALTER_USER_WEIXIN = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "weixin_
 const IDX_USER_WEIXIN = `CREATE UNIQUE INDEX IF NOT EXISTS "users_weixin_open_id_key" ON "users" ("weixin_open_id")`;
 // 扫码未激活的时间戳(站内"还差一步"提醒 + 后台待激活统计)
 const ALTER_USER_WEIXIN_PENDING = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "weixin_pending_scan_at" timestamp(3)`;
+// 退订每日邮件推送标记(邮件"取消推送"按钮)
+const ALTER_USER_DIGEST_OPTOUT = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "digest_opt_out" boolean NOT NULL DEFAULT false`;
 const T_WEIXIN_BIND = `CREATE TABLE IF NOT EXISTS "weixin_bind_tokens" (
   "id" text NOT NULL,
   "user_id" text NOT NULL,
@@ -160,6 +162,7 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(ALTER_USER_WEIXIN);
         await tx.$executeRawUnsafe(IDX_USER_WEIXIN);
         await tx.$executeRawUnsafe(ALTER_USER_WEIXIN_PENDING);
+        await tx.$executeRawUnsafe(ALTER_USER_DIGEST_OPTOUT);
         await tx.$executeRawUnsafe(T_WEIXIN_BIND);
         await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
         await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);

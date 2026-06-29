@@ -6,6 +6,7 @@ export async function sendMail(opts: {
   subject: string;
   text: string;
   html: string;
+  headers?: Record<string, string>; // 如 List-Unsubscribe(邮件客户端原生退订)
 }): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) {
     console.log(`[mail 降级] → ${opts.to}: ${opts.subject}`);
@@ -19,6 +20,7 @@ export async function sendMail(opts: {
     subject: opts.subject,
     text: opts.text,
     html: opts.html,
+    ...(opts.headers ? { headers: opts.headers } : {}),
   });
   if (error) {
     console.error("[mail] resend error:", error);
