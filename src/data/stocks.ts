@@ -1,6 +1,7 @@
 // AI 产业链股票池种子数据
 // 行情(price/change)用基于股票代码的确定性算法生成,模拟"行情已连接"状态,
 // 后续接入真实行情(AKShare / Polygon.io)时替换 withQuote() 即可。
+import { GEN_RETAIL_TAKES } from "./retail-takes.generated";
 
 export type Market = "美股" | "A股";
 export type Position = "上游" | "中游" | "下游";
@@ -141,7 +142,8 @@ export const TIER: Record<string, "龙头" | "二线"> = {
 };
 
 function makeRetailTake(s: StockBase): string {
-  if (RETAIL_TAKES[s.code]) return RETAIL_TAKES[s.code];
+  if (RETAIL_TAKES[s.code]) return RETAIL_TAKES[s.code]; // 手写优先
+  if (GEN_RETAIL_TAKES[s.code]) return GEN_RETAIL_TAKES[s.code]; // 再用 LLM 逐只生成
   const gloss = SECTOR_GLOSS[s.sector];
   const role =
     s.position === "上游"

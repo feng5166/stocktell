@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "data-check": "node scripts/data-check.mjs",
     "enrich": "node scripts/enrich-tushare.mjs",
+    "gen-takes": "node scripts/gen-retail-takes.mjs",
     "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {
