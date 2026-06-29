@@ -134,6 +134,20 @@ const T_DEEP_CACHE = `CREATE TABLE IF NOT EXISTS "deep_analysis_cache" (
   CONSTRAINT "deep_analysis_cache_pkey" PRIMARY KEY ("briefing_id")
 )`;
 
+// 用户反馈表(幂等)
+const T_FEEDBACK = `CREATE TABLE IF NOT EXISTS "feedback" (
+  "id" text NOT NULL,
+  "user_id" text,
+  "email" text,
+  "category" text NOT NULL DEFAULT '其他',
+  "content" text NOT NULL,
+  "path" text,
+  "user_agent" text,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "feedback_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_FEEDBACK_CREATED = `CREATE INDEX IF NOT EXISTS "feedback_created_at_idx" ON "feedback" ("created_at")`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -173,6 +187,8 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(IDX_CHAIN_INTEREST_CHAIN);
         await tx.$executeRawUnsafe(T_QUOTES_CACHE);
         await tx.$executeRawUnsafe(T_DEEP_CACHE);
+        await tx.$executeRawUnsafe(T_FEEDBACK);
+        await tx.$executeRawUnsafe(IDX_FEEDBACK_CREATED);
       },
       { timeout: 30000 }
     );

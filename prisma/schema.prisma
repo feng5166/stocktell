@@ -172,3 +172,18 @@ model QuotesCache {
 
   @@map("quotes_cache")
 }
+
+// 用户反馈(问题/建议/其他)。游客也可提,userId/email 可空。
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  email     String?
+  category  String   @default("其他")
+  content   String
+  path      String? // 提交时所在页面
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("feedback")
+}

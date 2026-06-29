@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AuthStatus } from "@/components/auth/AuthStatus";
 import { Logo } from "@/components/Logo";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { FeedbackLink } from "@/components/FeedbackLink";
 
 const NAV = [
   { href: "/", label: "今日简报" },
@@ -54,6 +55,7 @@ export function SiteHeader({
                 )
               )}
             </div>
+            <FeedbackLink />
             <AuthStatus />
           </nav>
         </div>
