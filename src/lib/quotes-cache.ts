@@ -4,17 +4,18 @@ import { Prisma } from "@prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import type { Quote } from "@/lib/quotes";
 
-const CACHE_ID = "latest";
+const CACHE_ID = "latest"; // 个股池;ETF 用独立键 "etf"
 
 export async function writeQuotesCache(
-  quotes: Record<string, Quote>
+  quotes: Record<string, Quote>,
+  id: string = CACHE_ID
 ): Promise<void> {
   const db = getPrisma();
   if (!db || Object.keys(quotes).length === 0) return;
   try {
     await db.quotesCache.upsert({
-      where: { id: CACHE_ID },
-      create: { id: CACHE_ID, data: quotes as unknown as Prisma.InputJsonValue },
+      where: { id },
+      create: { id, data: quotes as unknown as Prisma.InputJsonValue },
       update: { data: quotes as unknown as Prisma.InputJsonValue },
     });
   } catch {
@@ -22,14 +23,14 @@ export async function writeQuotesCache(
   }
 }
 
-export async function readQuotesCache(): Promise<{
+export async function readQuotesCache(id: string = CACHE_ID): Promise<{
   quotes: Record<string, Quote>;
   asOf: string; // 缓存写入时间 ISO(= 上次行情成功的时刻)
 } | null> {
   const db = getPrisma();
   if (!db) return null;
   try {
-    const row = await db.quotesCache.findUnique({ where: { id: CACHE_ID } });
+    const row = await db.quotesCache.findUnique({ where: { id } });
     if (!row) return null;
     return {
       quotes: row.data as unknown as Record<string, Quote>,

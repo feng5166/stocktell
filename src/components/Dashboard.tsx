@@ -372,7 +372,15 @@ export default function Dashboard() {
         {tab === "股票列表" && (
           <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
         )}
-        {tab === "板块ETF" && <EtfBoard />}
+        {tab === "板块ETF" && (
+          <EtfBoard
+            onPickSector={(s) => {
+              setSector(s);
+              setMarket("全部");
+              setTab("股票列表");
+            }}
+          />
+        )}
         {tab === "关联图谱" && (
           <RelationMap rows={filtered} watchedCodes={wl.codes} />
         )}
