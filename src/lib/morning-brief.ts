@@ -48,15 +48,21 @@ export async function buildMorningBrief(
     龙虎榜: string | null;
   }[] = [];
   try {
-    const ff = await fundFlowFor(codes);
-    fund = ff.items
-      .filter((x) => x.netMf !== null || x.longhu || x.rzChgYi !== null)
-      .map((x) => ({
-        name: x.name,
-        主力净流入亿: x.netMf,
-        融资余额变化亿: x.rzChgYi,
-        龙虎榜: x.longhu ? `净额${x.longhu.net}亿·${x.longhu.reason}` : null,
-      }));
+    // 资金面慢(Tushare 按日大表)就不等了:4s 超时则跳过,早报照常生成(只用简报)。
+    const ff = await Promise.race([
+      fundFlowFor(codes),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+    ]);
+    if (ff) {
+      fund = ff.items
+        .filter((x) => x.netMf !== null || x.longhu || x.rzChgYi !== null)
+        .map((x) => ({
+          name: x.name,
+          主力净流入亿: x.netMf,
+          融资余额变化亿: x.rzChgYi,
+          龙虎榜: x.longhu ? `净额${x.longhu.net}亿·${x.longhu.reason}` : null,
+        }));
+    }
   } catch {
     /* 资金面拿不到就只用简报 */
   }
