@@ -33,6 +33,26 @@ const CONCEPT_OPTIONS = Object.keys(ALL_CONCEPTS).sort(
   (a, b) => ALL_CONCEPTS[b] - ALL_CONCEPTS[a] || a.localeCompare(b)
 );
 
+// 概念 chips(可点 → 跳股票池筛该概念);列表/卡片用
+function ConceptChips({ code, max = 3 }: { code: string; max?: number }) {
+  const cs = (CONCEPTS[code] ?? []).slice(0, max);
+  if (!cs.length) return null;
+  return (
+    <>
+      {cs.map((c) => (
+        <Link
+          key={c}
+          href={`/stocks?concept=${encodeURIComponent(c)}`}
+          onClick={(e) => e.stopPropagation()}
+          className="rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500 hover:bg-brand-50 hover:text-brand-600"
+        >
+          {c}
+        </Link>
+      ))}
+    </>
+  );
+}
+
 // 梯队徽标:龙头=琥珀金、二线=浅蓝;无标签不显示
 function TierTag({ code }: { code: string }) {
   const t = TIER[code];
@@ -129,13 +149,16 @@ export default function Dashboard() {
   const [quotesAsOf, setQuotesAsOf] = useState<string | null>(null); // 缓存截至时间
   const [newsCodes, setNewsCodes] = useState<Set<string>>(new Set());
 
-  // 从早报板块链接进来:?sector=xxx 自动选中该板块,并放开市场到「全部」
+  // 从早报/个股页链接进来:?sector= / ?concept= / ?tier= 自动选中并放开市场到「全部」
   useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get("sector");
-    if (s) {
-      setSector(s);
-      setMarket("全部");
-    }
+    const sp = new URLSearchParams(window.location.search);
+    const sec = sp.get("sector");
+    const con = sp.get("concept");
+    const tr = sp.get("tier");
+    if (sec || con || tr) setMarket("全部");
+    if (sec) setSector(sec);
+    if (con) setConcept(con);
+    if (tr === "龙头" || tr === "二线") setTier(tr);
   }, []);
 
   // 今日简报涉及的标的 = 真实"今日有新消息"
@@ -787,6 +810,11 @@ function StockCard({
         </span>
       </div>
       <p className="mt-1.5 text-xs text-gray-600">{s.positioning}</p>
+      {(CONCEPTS[s.code]?.length ?? 0) > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          <ConceptChips code={s.code} />
+        </div>
+      )}
       <button
         onClick={toggle}
         className="mt-1.5 text-xs text-gray-400 hover:text-gray-600"
@@ -890,7 +918,14 @@ function ReactFragmentRow({
         >
           {liveChange(s)}
         </Td>
-        <Td className="max-w-[260px] text-xs text-gray-600">{s.positioning}</Td>
+        <Td className="max-w-[260px] text-xs text-gray-600">
+          {s.positioning}
+          {(CONCEPTS[s.code]?.length ?? 0) > 0 && (
+            <span className="mt-1 flex flex-wrap gap-1">
+              <ConceptChips code={s.code} />
+            </span>
+          )}
+        </Td>
         <Td>
           <span
             className={`inline-flex whitespace-nowrap rounded px-1.5 py-0.5 text-xs ${

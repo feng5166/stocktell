@@ -12,6 +12,7 @@ import { LiveQuote } from "@/components/LiveQuote";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
+import { riskEventsFor } from "@/lib/risk-radar";
 import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
@@ -42,6 +43,9 @@ export default async function StockDetail({
 }) {
   const s = STOCK_MAP[params.code];
   if (!s) notFound();
+
+  // 雷区事件(解禁/增减持/质押/ST/回购),仅 A 股;按天缓存
+  const riskEvents = s.market === "A股" ? await riskEventsFor(s.code).catch(() => []) : [];
 
   // 基本面增强标签(Tushare:市值档/换手热度),仅 A 股
   const en = s.market === "A股" ? ENRICH[s.code] : undefined;
@@ -131,9 +135,12 @@ export default async function StockDetail({
             {s.market}
           </span>
           {TIER[s.code] && (
-            <span className={`rounded px-1.5 py-0.5 text-xs ${TIER_CLASS[TIER[s.code]]}`}>
+            <Link
+              href={`/stocks?tier=${encodeURIComponent(TIER[s.code])}`}
+              className={`rounded px-1.5 py-0.5 text-xs hover:opacity-80 ${TIER_CLASS[TIER[s.code]]}`}
+            >
               {TIER[s.code]}
-            </span>
+            </Link>
           )}
           {en?.capTier && (
             <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
@@ -164,12 +171,13 @@ export default async function StockDetail({
           <div className="mb-4 flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-gray-400">概念</span>
             {concepts.map((c) => (
-              <span
+              <Link
                 key={c}
-                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                href={`/stocks?concept=${encodeURIComponent(c)}`}
+                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 hover:bg-brand-50 hover:text-brand-600"
               >
                 {c}
-              </span>
+              </Link>
             ))}
           </div>
         )}
