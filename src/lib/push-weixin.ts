@@ -4,18 +4,20 @@ import { todayISO } from "@/lib/date";
 import { getMorningBrief } from "@/lib/morning-brief";
 import { clawbot } from "@/lib/clawbot";
 import { fundFlowFor, type FundFlowItem } from "@/lib/fund-flow";
-import { pickFundAlerts, fundAlertLine } from "@/lib/digest";
+import { pickFundAlerts, fundAlertLine, oneLineTake } from "@/lib/digest";
 
 const DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
 
-// 相关简报版:与邮件 sendDigest 内容一致(个性化早报 + 相关动态列表)
+// 相关简报版:与邮件 sendDigest 内容一致(个性化早报 + 相关动态列表 + 每条"怎么想")
 function formatBriefMessage(date: string, items: BriefingItem[], brief: string): string {
-  const lines = [`📊 StockTell · ${date} 盘前早报`, "", brief, "", "—— 相关动态 ——", ""];
+  const lines = [`📊 StockTell · ${date} 盘前早报`, "", brief, "", "—— 跟你票相关 ——", ""];
   for (const it of items) {
     lines.push(`${DOT[it.impact] ?? ""} ${it.title}`);
     if (it.beneficiaries.length) {
-      lines.push(`   → ${it.beneficiaries.map((b) => b.name).join(" · ")}`);
+      lines.push(`   涉及你的:${it.beneficiaries.map((b) => b.name).join(" · ")}`);
     }
+    const take = oneLineTake(it.retailTake);
+    if (take) lines.push(`   怎么想:${take}`);
     lines.push("");
   }
   lines.push("stocktell.me/#mine 看完整简报");

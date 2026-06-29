@@ -93,6 +93,17 @@ async function sendFundDigest(
   });
 }
 
+// 把「散户怎么想」压成推送里的一句话:取前 1-2 句、去掉免责尾巴、封顶 ~60 字。
+// 微信(push-weixin)与邮件共用,保证两边一致。
+export function oneLineTake(take: string | null | undefined): string {
+  if (!take) return "";
+  let t = take.replace(/[（(][^）)]*不构成投资建议[^）)]*[）)]/g, "").trim();
+  const m = t.match(/^[^。!?！?]*[。!?！?]?[^。!?！?]*[。!?！?]?/);
+  t = (m?.[0] || t).trim();
+  if (t.length > 60) t = t.slice(0, 58) + "…";
+  return t;
+}
+
 async function sendDigest(
   to: string,
   userId: string,
@@ -104,25 +115,31 @@ async function sendDigest(
   const unsub = unsubParts(base, userId);
   const rows = items.map((it) => {
     const benes = it.beneficiaries.map((b) => b.name).join("、");
-    return { impact: it.impact, title: it.title, benes };
+    return { impact: it.impact, title: it.title, benes, take: oneLineTake(it.retailTake) };
   });
   const text =
-    `${brief}\n\n—— 相关动态 ——\n` +
+    `${brief}\n\n—— 跟你票相关 ——\n` +
     rows
-      .map((r) => `· [${r.impact}] ${r.title}${r.benes ? ` — 受益:${r.benes}` : ""}`)
+      .map(
+        (r) =>
+          `· [${r.impact}] ${r.title}${r.benes ? ` — 涉及你的:${r.benes}` : ""}${
+            r.take ? `\n  怎么想:${r.take}` : ""
+          }`
+      )
       .join("\n") +
     `\n\n打开看详情:${base}/#mine\n\n以上为信息整理,不构成投资建议。` +
     unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 6px">${date} · StockTell 盘前早报</p>
     <p style="font-size:14px;line-height:1.75;background:#fffef6;border:1px solid #f0e9c8;border-radius:10px;padding:12px 14px;margin:0 0 14px">${brief}</p>
-    <div style="font-size:13px;color:#666;margin:0 0 8px">相关动态</div>
+    <div style="font-size:13px;color:#666;margin:0 0 8px">跟你票相关</div>
     ${rows
       .map(
         (r) => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px">
         <div style="font-size:12px;color:#888">${r.impact}影响</div>
         <div style="font-weight:600">${r.title}</div>
-        ${r.benes ? `<div style="font-size:12px;color:#555;margin-top:4px">受益:${r.benes}</div>` : ""}
+        ${r.benes ? `<div style="font-size:12px;color:#555;margin-top:4px">涉及你的:${r.benes}</div>` : ""}
+        ${r.take ? `<div style="font-size:13px;color:#1a1d24;margin-top:6px">怎么想:${r.take}</div>` : ""}
       </div>`
       )
       .join("")}
