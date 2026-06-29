@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
 import { useProgressive } from "@/components/useProgressive";
@@ -81,6 +81,14 @@ export default function Dashboard() {
   const [onlyWatch, setOnlyWatch] = useState(false);
   const [filterOpen, setFilterOpen] = useState(true); // 手机筛选区:默认展开(可手动收起)
   const wl = useWatchlist();
+  // 新手在本页第一次加自选 → 显示"已加,回首页看相关"的闭环提示(只对本次从 0 起步的用户)
+  const [addedHint, setAddedHint] = useState(false);
+  const prevWatchSize = useRef<number | null>(null);
+  useEffect(() => {
+    if (!wl.ready) return;
+    if (prevWatchSize.current === 0 && wl.codes.size > 0) setAddedHint(true);
+    prevWatchSize.current = wl.codes.size;
+  }, [wl.ready, wl.codes.size]);
   // 统计卡点击后,股票列表按此视图收窄(all/live/up/down)
   const [statView, setStatView] = useState<"all" | "live" | "up" | "down">("all");
 
@@ -257,10 +265,28 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* 新手引导:还没自选时,一句话告诉他在这儿干嘛(加完自选自动消失,不打扰老用户) */}
+        {/* 新手引导:还没自选时一句话教他干嘛;本页第一次加完自选后变成"回首页看相关"的闭环提示 */}
         {tab === "股票列表" && wl.ready && wl.codes.size === 0 && (
           <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-sm text-gray-700">
             👋 第一次来?在下方<b>搜你拿的票</b>,点 <b>☆</b> 加自选 —— 首页「和我相关」就只给你看跟你票相关的动态。
+          </div>
+        )}
+        {tab === "股票列表" && wl.ready && wl.codes.size > 0 && addedHint && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <span className="flex-1">
+              ✓ 已加 {wl.codes.size} 只自选!回首页看{" "}
+              <Link href="/#mine" className="font-medium underline hover:text-emerald-900">
+                「和我相关」
+              </Link>{" "}
+              就只给你看跟你票相关的动态。
+            </span>
+            <button
+              onClick={() => setAddedHint(false)}
+              className="shrink-0 text-emerald-400 hover:text-emerald-600"
+              aria-label="关闭"
+            >
+              ✕
+            </button>
           </div>
         )}
 
