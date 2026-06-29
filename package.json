@@ -10,6 +10,7 @@
     "typecheck": "prisma generate && tsc --noEmit",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
+    "data-check": "node scripts/data-check.mjs",
     "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {

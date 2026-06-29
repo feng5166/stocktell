@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { STOCK_MAP, resolvePeer, type Stock } from "@/data/stocks";
+import { STOCK_MAP, STOCKS, resolvePeer, type Stock } from "@/data/stocks";
 import { ChainPosition } from "@/components/ChainPosition";
 import { SiteHeader } from "@/components/SiteHeader";
 import { chainNeighbors } from "@/data/chainEdges";
@@ -70,6 +70,15 @@ export default async function StockDetail({
   );
   const otherPeers = otherTokens.map((t) => ({ token: t, peer: null as Stock | null }));
 
+  // 兜底:既无映射也无产业链边的"孤儿"标的,不让详情页变成"暂无关联"的死胡同。
+  // 退回展示同板块的同类标的(诚实标注:这是同类参考,不是确认的供货/对标关系)。
+  const hasPeers = usPeers.length > 0 || aPeers.length > 0 || otherPeers.length > 0;
+  const sameSectorPeers = hasPeers
+    ? []
+    : STOCKS.filter((p) => p.sector === s.sector && p.code !== s.code)
+        .slice(0, 8)
+        .map((p) => ({ token: p.code, peer: p }));
+
   // 产业链上下游导航:按边的真实方向分(up=供货给本股的上游;down=采购本股的下游),
   // 而非按全局位置——否则同为「上游」的供应商会落进「你在这」被隐藏。已按强度降序。
   const upPeers: { code: string; name: string; market: string }[] = [];
@@ -138,10 +147,17 @@ export default async function StockDetail({
         <Fundamentals code={s.code} market={s.market} />
 
         <Section title="对应的股票">
-          {usPeers.length === 0 &&
-          aPeers.length === 0 &&
-          otherPeers.length === 0 ? (
-            <p className="text-sm text-gray-400">暂无关联标的</p>
+          {!hasPeers ? (
+            sameSectorPeers.length > 0 ? (
+              <div className="space-y-2 text-sm">
+                <PeerGroup label={`同板块标的 · ${s.sector}`} items={sameSectorPeers} />
+                <p className="text-meta leading-relaxed text-gray-400">
+                  这只暂无明确的供货/对标关系,以上为同属「{s.sector}」的标的,可作同类参考(非确认的产业链关系)。
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">暂无关联标的</p>
+            )
           ) : (
             <div className="space-y-3 text-sm">
               {usPeers.length > 0 && (

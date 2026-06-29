@@ -30,6 +30,10 @@ assert_json() { python3 -c "import sys,json;d=json.load(sys.stdin);assert ($2)" 
 
 echo "== StockTell 冒烟测试 @ $BASE =="
 
+# ---------- 数据自检(静态,不依赖网络) ----------
+echo "[数据自检]"
+if node "$(dirname "$0")/data-check.mjs"; then ok "AI产业链数据自检通过(无硬错误)"; else ng "AI产业链数据自检有硬错误"; fi
+
 # ---------- 公开接口 ----------
 echo "[公开接口]"
 curl -s -m 25 "$BASE/api/quotes" | assert_json _ "'quotes' in d" && ok "/api/quotes 正常" || ng "/api/quotes"
