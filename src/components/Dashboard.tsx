@@ -23,6 +23,15 @@ import {
   type Position,
   type Stock,
 } from "@/data/stocks";
+import { CONCEPTS } from "@/data/concepts.generated";
+
+// 全部概念(按出现频次降序),给筛选下拉用
+const ALL_CONCEPTS = Object.values(CONCEPTS)
+  .flat()
+  .reduce<Record<string, number>>((acc, c) => ((acc[c] = (acc[c] || 0) + 1), acc), {});
+const CONCEPT_OPTIONS = Object.keys(ALL_CONCEPTS).sort(
+  (a, b) => ALL_CONCEPTS[b] - ALL_CONCEPTS[a] || a.localeCompare(b)
+);
 
 // 梯队徽标:龙头=琥珀金、二线=浅蓝;无标签不显示
 function TierTag({ code }: { code: string }) {
@@ -95,6 +104,8 @@ export default function Dashboard() {
   const [market, setMarket] = useState<(typeof MARKETS)[number]>("A股");
   const [position, setPosition] = useState<(typeof POSITIONS)[number]>("全部");
   const [sector, setSector] = useState<string>("全部");
+  const [tier, setTier] = useState<"全部" | "龙头" | "二线">("全部");
+  const [concept, setConcept] = useState<string>("全部");
   const [relation, setRelation] = useState<string>("全部关系");
   const [query, setQuery] = useState("");
   const [onlyWatch, setOnlyWatch] = useState(false);
@@ -198,6 +209,8 @@ export default function Dashboard() {
       if (market !== "全部" && s.market !== market) return false;
       if (position !== "全部" && s.position !== position) return false;
       if (sector !== "全部" && s.sector !== sector) return false;
+      if (tier !== "全部" && TIER[s.code] !== tier) return false;
+      if (concept !== "全部" && !(CONCEPTS[s.code] ?? []).includes(concept)) return false;
       if (
         relation !== "全部关系" &&
         !(s.relationTypes as readonly string[]).includes(relation)
@@ -206,12 +219,12 @@ export default function Dashboard() {
       if (query.trim()) {
         const q = query.trim().toLowerCase();
         const hay =
-          `${s.code} ${s.name} ${s.positioning} ${s.sector}`.toLowerCase();
+          `${s.code} ${s.name} ${s.positioning} ${s.sector} ${(CONCEPTS[s.code] ?? []).join(" ")}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [rows, market, position, sector, relation, query, onlyWatch, wl.codes]);
+  }, [rows, market, position, sector, tier, concept, relation, query, onlyWatch, wl.codes]);
 
   const stats = useMemo(() => {
     const coverage = filtered.filter((s) => s.live).length;
@@ -406,6 +419,13 @@ export default function Dashboard() {
               </Chip>
             ))}
           </FilterGroup>
+          <FilterGroup label="梯队">
+            {(["全部", "龙头", "二线"] as const).map((t) => (
+              <Chip key={t} active={tier === t} onClick={() => setTier(t)}>
+                {t}
+              </Chip>
+            ))}
+          </FilterGroup>
           <FilterGroup label="关系">
             <Chip
               active={relation === "全部关系"}
@@ -431,6 +451,21 @@ export default function Dashboard() {
                 {SECTORS.map((s) => (
                   <option key={s} value={s}>
                     {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-8 shrink-0 text-xs text-gray-400">概念</span>
+              <select
+                value={concept}
+                onChange={(e) => setConcept(e.target.value)}
+                className="max-w-[180px] rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-gray-900"
+              >
+                <option value="全部">全部概念({CONCEPT_OPTIONS.length})</option>
+                {CONCEPT_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}({ALL_CONCEPTS[c]})
                   </option>
                 ))}
               </select>
