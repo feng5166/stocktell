@@ -13,6 +13,7 @@ import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
 import { riskEventsFor } from "@/lib/risk-radar";
+import { financialCheckup } from "@/lib/financials";
 import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
@@ -46,6 +47,8 @@ export default async function StockDetail({
 
   // 雷区事件(解禁/增减持/质押/ST/回购),仅 A 股;按天缓存
   const riskEvents = s.market === "A股" ? await riskEventsFor(s.code).catch(() => []) : [];
+  // 财报体检卡(三大报表翻人话),仅 A 股;按天缓存
+  const checkup = s.market === "A股" ? await financialCheckup(s.code).catch(() => null) : null;
 
   // 基本面增强标签(Tushare:市值档/换手热度),仅 A 股
   const en = s.market === "A股" ? ENRICH[s.code] : undefined;
@@ -235,6 +238,32 @@ export default async function StockDetail({
             </ul>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
               公开信息整理(Tushare),提示风险,不构成投资建议。
+            </p>
+          </Section>
+        )}
+
+        {checkup && checkup.findings.length > 0 && (
+          <Section title="财报体检 · 一句话看懂">
+            <ul className="space-y-1.5 text-sm">
+              {checkup.findings.map((f, i) => (
+                <li
+                  key={i}
+                  className={
+                    f.severity === "high"
+                      ? "text-rose-600"
+                      : f.severity === "mid"
+                      ? "text-amber-700"
+                      : f.severity === "good"
+                      ? "text-emerald-600"
+                      : "text-gray-500"
+                  }
+                >
+                  {f.text}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">
+              基于 {checkup.year} 年报(Tushare),信息整理、提示风险,不构成投资建议。
             </p>
           </Section>
         )}

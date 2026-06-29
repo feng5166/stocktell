@@ -432,3 +432,73 @@ export async function currentName(code: string): Promise<string | null> {
   )[0];
   return latest ? String(latest[ni] ?? "") : null;
 }
+
+// ===== 财报体检卡:最新年报三大报表 + 财务指标(financials.ts 做规则/人话)=====
+export interface AnnualFinancials {
+  period: string; // YYYYMMDD(年报)
+  revenue: number | null; // 营业收入(元)
+  niAttr: number | null; // 归母净利润(元)
+  ocf: number | null; // 经营活动现金流净额(元)
+  equity: number | null; // 归母净资产(元)
+  goodwill: number | null; // 商誉(元)
+  cash: number | null; // 货币资金(元)
+  stDebt: number | null; // 短期有息负债 ≈ 短期借款 + 一年内到期非流动负债(元)
+  roe: number | null; // %
+  gross: number | null; // 毛利率 %
+  dedt: number | null; // 扣非净利润(元)
+}
+
+// 取某 api 的最新年报行(end_date 以 1231 结尾、最大者)
+function latestAnnual(d: { fields: string[]; items: unknown[][] } | null) {
+  if (!d || !d.items.length) return null;
+  const ei = d.fields.indexOf("end_date");
+  const ann = d.items.filter((r) => String(r[ei]).endsWith("1231"));
+  const pool = ann.length ? ann : d.items;
+  return [...pool].sort((a, b) => String(b[ei]).localeCompare(String(a[ei])))[0] ?? null;
+}
+
+export async function latestAnnualFinancials(code: string): Promise<AnnualFinancials | null> {
+  const ts = tsCode(code);
+  if (!ts) return null;
+  const [inc, bs, cf, fi] = await Promise.all([
+    tsCall("income", { ts_code: ts }, "end_date,revenue,n_income_attr_p").catch(() => null),
+    tsCall(
+      "balancesheet",
+      { ts_code: ts },
+      "end_date,total_hldr_eqy_exc_min_int,goodwill,money_cap,st_borr,non_cur_liab_due_1y"
+    ).catch(() => null),
+    tsCall("cashflow", { ts_code: ts }, "end_date,n_cashflow_act").catch(() => null),
+    tsCall("fina_indicator", { ts_code: ts }, "end_date,roe,grossprofit_margin,profit_dedt").catch(
+      () => null
+    ),
+  ]);
+  const ri = latestAnnual(inc);
+  if (!ri) return null;
+  const pick = (
+    row: unknown[] | null,
+    d: { fields: string[] } | null,
+    key: string
+  ): number | null => (row && d ? n(row[d.fields.indexOf(key)]) : null);
+
+  const rb = latestAnnual(bs);
+  const rc = latestAnnual(cf);
+  const rf = latestAnnual(fi);
+  const period = String(ri[inc!.fields.indexOf("end_date")]);
+  const st = pick(rb, bs, "st_borr");
+  const due1y = pick(rb, bs, "non_cur_liab_due_1y");
+  const stDebt = st === null && due1y === null ? null : (st ?? 0) + (due1y ?? 0);
+
+  return {
+    period,
+    revenue: pick(ri, inc, "revenue"),
+    niAttr: pick(ri, inc, "n_income_attr_p"),
+    ocf: pick(rc, cf, "n_cashflow_act"),
+    equity: pick(rb, bs, "total_hldr_eqy_exc_min_int"),
+    goodwill: pick(rb, bs, "goodwill"),
+    cash: pick(rb, bs, "money_cap"),
+    stDebt,
+    roe: pick(rf, fi, "roe"),
+    gross: pick(rf, fi, "grossprofit_margin"),
+    dedt: pick(rf, fi, "profit_dedt"),
+  };
+}
