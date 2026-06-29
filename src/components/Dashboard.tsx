@@ -7,6 +7,8 @@ import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
 import { useProgressive } from "@/components/useProgressive";
 import { ChainSwitcher } from "@/components/ChainSwitcher";
 import { EtfBoard } from "@/components/EtfBoard";
+import { EtfStrip } from "@/components/EtfStrip";
+import { ETFS } from "@/data/etfs";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
 import { DISCLAIMER } from "@/lib/constants";
@@ -93,6 +95,7 @@ export default function Dashboard() {
   const [statView, setStatView] = useState<"all" | "live" | "up" | "down">("all");
 
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
+  const [etfQuotes, setEtfQuotes] = useState<Record<string, Quote>>({}); // 板块 ETF 行情(给顶部 ETF 条)
   const [live, setLive] = useState(false);
   const [cached, setCached] = useState(false); // 行情未连接时显示的是缓存数据
   const [quotesAsOf, setQuotesAsOf] = useState<string | null>(null); // 缓存截至时间
@@ -122,6 +125,11 @@ export default function Dashboard() {
     let timer: ReturnType<typeof setInterval> | null = null;
     async function load() {
       try {
+        // ETF 行情与个股一起拉(失败各自静默,不互相拖累)
+        fetch("/api/etf-quotes", { cache: "no-store" })
+          .then((x) => x.json())
+          .then((d) => active && setEtfQuotes(d.quotes ?? {}))
+          .catch(() => {});
         const r = await fetch("/api/quotes", { cache: "no-store" });
         const data = await r.json();
         if (!active) return;
@@ -209,6 +217,24 @@ export default function Dashboard() {
     if (watched.length === 0 || watched.length === base.length) return base;
     return [...watched, ...base.filter((s) => !wl.codes.has(s.code))];
   }, [filtered, statView, wl.codes]);
+
+  // 「股票列表」顶部相关板块 ETF:自选的 / 搜索命中的 / 当前板块的 才露出,自选置顶。
+  // ETF 无位置/关系字段,故位置或关系一旦收窄(非"全部")就不显示;美股市场也不显示(ETF 是 A 股)。
+  const listEtfs = useMemo(() => {
+    if (market === "美股") return [];
+    if (position !== "全部" || relation !== "全部关系") return [];
+    const q = query.trim().toLowerCase();
+    const matched = ETFS.filter((e) => {
+      if (wl.codes.has(e.code)) return true;
+      if (q && `${e.code} ${e.name} ${e.theme} ${e.covers.join(" ")}`.toLowerCase().includes(q))
+        return true;
+      if (sector !== "全部" && e.covers.includes(sector)) return true;
+      return false;
+    });
+    const watched = matched.filter((e) => wl.codes.has(e.code));
+    const rest = matched.filter((e) => !wl.codes.has(e.code));
+    return [...watched, ...rest];
+  }, [market, position, relation, sector, query, wl.codes]);
 
   // 点统计卡:切到股票列表 + 设视图;再点同一个则取消回全部
   const pickStat = (v: "all" | "live" | "up" | "down") => {
@@ -403,7 +429,10 @@ export default function Dashboard() {
 
         {/* 主内容 */}
         {tab === "股票列表" && (
-          <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
+          <>
+            <EtfStrip etfs={listEtfs} quotes={etfQuotes} wl={wl} />
+            <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
+          </>
         )}
         {tab === "板块ETF" && (
           <EtfBoard
