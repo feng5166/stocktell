@@ -195,15 +195,20 @@ ${lines}
   const client = getLLM();
   if (!client) return new Response("LLM 未配置", { status: 503 });
 
-  const llmStream = await client.chat.completions.create({
-    model: LLM_MODEL,
-    stream: true,
-    max_tokens: 8000,
-    messages: [
-      { role: "system", content: SYS },
-      { role: "user", content: userMsg },
-    ],
-  });
+  let llmStream;
+  try {
+    llmStream = await client.chat.completions.create({
+      model: LLM_MODEL,
+      stream: true,
+      max_tokens: 8000,
+      messages: [
+        { role: "system", content: SYS },
+        { role: "user", content: userMsg },
+      ],
+    });
+  } catch (e) {
+    return new Response("LLM_ERR: " + String(e).slice(0, 400), { status: 500 });
+  }
 
   let full = "";
   const rs = new ReadableStream({
