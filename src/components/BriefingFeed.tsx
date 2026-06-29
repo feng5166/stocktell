@@ -9,6 +9,7 @@ import type { BriefingItem } from "@/lib/briefings";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { useAuthModal } from "@/components/Providers";
 import { useWatchlist } from "@/components/useWatchlist";
+import { QuickAddWatch } from "@/components/QuickAddWatch";
 import { FundFlow } from "@/components/FundFlow";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
@@ -49,13 +50,7 @@ export function BriefingFeed({
         {!wl.ready ? (
           <Hint>加载你的自选…</Hint>
         ) : wl.codes.size === 0 ? (
-          <Hint>
-            还没告诉我你拿哪些票。去{" "}
-            <Link href="/stocks" className="text-brand-600 hover:underline">
-              股票池
-            </Link>{" "}
-            点 ☆ 加自选,以后这儿只给你看跟你票相关的。
-          </Hint>
+          <QuickAddWatch wl={wl} />
         ) : (
           <div className="space-y-3">
             {mine.length === 0 ? (
