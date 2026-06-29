@@ -13,6 +13,7 @@ import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
 import { ENRICH } from "@/data/enrichment.generated";
+import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
 
@@ -44,6 +45,7 @@ export default async function StockDetail({
 
   // 基本面增强标签(Tushare:市值档/换手热度),仅 A 股
   const en = s.market === "A股" ? ENRICH[s.code] : undefined;
+  const concepts = CONCEPTS[s.code] ?? []; // 概念多标签(同花顺概念,题材叠加)
 
   // 今天的简报里是否提到这只(真实"今日有新消息")
   const todayNews = (
@@ -157,6 +159,20 @@ export default async function StockDetail({
           <FeedbackLink />
           <LiveQuote code={s.code} />
         </div>
+
+        {concepts.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-gray-400">概念</span>
+            {concepts.map((c) => (
+              <span
+                key={c}
+                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        )}
 
         <Section title="它是干什么的">
           <p className="text-title leading-relaxed text-gray-800">

@@ -140,7 +140,9 @@
 ## 数据脚本(AI 产业链股票池)
 
 - `npm run data-check`(`scripts/data-check.mjs`)— 数据自检:重复 code / 非法 sector / relations 引用 / chainEdges 两端 / 孤儿统计;硬错误退出非零。已接入 `scripts/smoke.sh`。
-- `npm run enrich`(`scripts/enrich-tushare.mjs`)— 用 Tushare `daily_basic` 拉 流通市值/换手/PE,派生 市值档+热度,生成 `src/data/enrichment.generated.ts`(静态、运行时零外部调用)。换数据/定期刷新时重跑。
+- `npm run enrich`(`scripts/enrich-tushare.mjs`)— 用 Tushare `daily_basic` 拉 流通市值/换手(近5日均)/PE,派生 市值档+热度,生成 `src/data/enrichment.generated.ts`(静态、运行时零外部调用)。换数据/定期刷新时重跑。
+- `npm run enrich-concepts`(`scripts/enrich-concepts.mjs`)— 用 Tushare 同花顺概念 `ths_index`/`ths_member`(**需 6000 积分**)给 A 股打"概念归属"多标签(AI产业链主题白名单过滤),生成 `src/data/concepts.generated.ts`。
+- `npm run gen-takes`(`scripts/gen-retail-takes.mjs`)— LLM(deepseek-v4-flash)并发逐只生成"散户怎么想"人话结论,生成 `src/data/retail-takes.generated.ts`。
 - 股票池数据源:`src/data/stocks.ts`(标的+canonical sector,`SECTORS`/`SECTOR_GLOSS`)、`src/data/chainEdges.ts`(产业链边)、`src/data/relations.ts`(美股→A股映射)。
 
 ## 暂未接入(评估记录)
