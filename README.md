@@ -1,5 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 项目文档
+
+- [外部服务清单 `docs/EXTERNAL_SERVICES.md`](docs/EXTERNAL_SERVICES.md) — 所有第三方/自建服务、环境变量总表、关键文件与坑。
+  **新增任何外部服务前先查阅、接入后立即更新本文档。**
+
 ## Getting Started
 
 First, run the development server:
