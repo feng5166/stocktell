@@ -51,9 +51,11 @@ export async function POST(req: NextRequest) {
   }
 
   // 飞书通知:第一时间看到
+  // 注意:飞书文本消息里别用 BMP 外的 emoji(如 💬 U+1F4AC 会显示成 💬 乱码);
+  // 用 BMP 内的 Dingbats(如 ✉ U+2709 / ✅ U+2705)才正常。
   await sendFeishu(
     [
-      "💬 StockTell 用户反馈",
+      "✉ StockTell 用户反馈",
       `类型:${category}`,
       `内容:${content}`,
       `联系:${email || "(未留)"}`,

@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unescaped-entities */
 import { SiteHeader } from "@/components/SiteHeader";
+import { FeedbackLink } from "@/components/FeedbackLink";
 
 export const metadata = {
   title: "关于我们 · StockTell",
@@ -92,6 +93,15 @@ export default function AboutPage() {
           <p>
             更重要的是,我们坚持<b>优先提供情感价值,而不是制造焦虑与恐慌</b>。盯盘最怕被情绪牵着走,所以 StockTell 更像一个懂行、靠谱、会说人话的搭子:主动陪你、提醒你别踩坑,而不是冷冰冰地报涨跌、或用"暴跌""崩盘"吓你。为此我们打磨了 AI 的语言风格与界面体验,并持续打造更自然的对话式解读与场景化能力。
           </p>
+        </Section>
+
+        <Section title="联系我们">
+          <p>
+            有任何问题、建议,或者就想吐个槽,欢迎随时反馈 —— 每一条我们都会认真看。
+          </p>
+          <div>
+            <FeedbackLink className="inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700" />
+          </div>
         </Section>
 
         <p className="mt-10 border-t border-gray-100 pt-4 text-meta text-gray-400">

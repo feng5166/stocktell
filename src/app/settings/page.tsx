@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { FeedbackLink } from "@/components/FeedbackLink";
 import { SettingsClient } from "./SettingsClient";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,17 @@ export default async function SettingsPage() {
             </p>
           </div>
         )}
+
+        {/* 意见反馈入口 */}
+        <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4">
+          <div>
+            <div className="text-sm font-medium text-gray-900">意见反馈</div>
+            <div className="mt-0.5 text-xs text-gray-400">
+              用着哪里不顺、想要什么功能、或想吐个槽,直接告诉我们
+            </div>
+          </div>
+          <FeedbackLink className="shrink-0 whitespace-nowrap rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700" />
+        </div>
       </main>
       <MobileTabBar />
     </div>
