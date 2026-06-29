@@ -119,10 +119,13 @@ async function computeRiskEvents(code: string): Promise<RiskEvent[]> {
     });
   }
 
-  // 回购:近 30 天公告、有金额(利多,中性陈述)
+  // 回购:近 30 天公告、有金额(利多,中性陈述)。只展示 预案/实施/完成,
+  // 过滤"停止/终止/未通过/股东大会通过"等非进行态(避免把已停止的回购当利多)。
   for (const r of repurch) {
     const du = daysFromToday(r.annDate, todayY);
+    const proc = r.proc || "";
     if (du < -30 || !r.amountYi) continue;
+    if (!/预案|实施|完成/.test(proc) || /停止|终止|未通过/.test(proc)) continue;
     ev.push({
       kind: "回购",
       severity: "info",
