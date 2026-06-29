@@ -7,6 +7,7 @@ import { Logo } from "@/components/Logo";
 const TABS = [
   { href: "/admin/users", label: "用户" },
   { href: "/admin/push", label: "微信推送" },
+  { href: "/admin/email", label: "邮件推送" },
   { href: "/admin/briefing", label: "简报审发" },
 ];
 

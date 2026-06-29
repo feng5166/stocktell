@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
       email: true,
       nickname: true,
       weixinOpenId: true,
+      digestOptOut: true,
       createdAt: true,
     },
     orderBy: { createdAt: "desc" },
@@ -32,12 +33,14 @@ export async function GET(req: NextRequest) {
     createdAt: u.createdAt,
     weixinBound: !!u.weixinOpenId,
     openId: u.weixinOpenId,
+    digestOptOut: u.digestOptOut, // 已退订每日邮件
   }));
 
   return NextResponse.json({
     ok: true,
     total: list.length,
     bound: list.filter((u) => u.weixinBound).length,
+    withEmail: list.filter((u) => !!u.email).length,
     users: list,
   });
 }
