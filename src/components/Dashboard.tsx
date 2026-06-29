@@ -257,6 +257,13 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* 新手引导:还没自选时,一句话告诉他在这儿干嘛(加完自选自动消失,不打扰老用户) */}
+        {tab === "股票列表" && wl.ready && wl.codes.size === 0 && (
+          <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-sm text-gray-700">
+            👋 第一次来?在下方<b>搜你拿的票</b>,点 <b>☆</b> 加自选 —— 首页「和我相关」就只给你看跟你票相关的动态。
+          </div>
+        )}
+
         {/* 统计面板 + 筛选区:对个股列表/图谱有效,ETF 标签页不适用故隐藏 */}
         {tab !== "板块ETF" && (
         <>
