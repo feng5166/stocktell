@@ -65,23 +65,19 @@ export function BriefingFeed({
         ) : (
           <div className="space-y-3">
             <RiskSummary codes={wl.codes} />
+            {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
+            <FundFlow codes={wl.codes} />
+            {/* 财报体检紧跟资金面之下 */}
             <FinSummary codes={wl.codes} />
             {mine.length === 0 ? (
-              <>
-                <FundFlow codes={wl.codes} />
-                <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
-              </>
+              <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
             ) : (
-              <>
-                <MorningBrief codes={wl.codes} items={mine} />
-                <FundFlow codes={wl.codes} />
-                <CardFeed
-                  items={mine}
-                  loggedIn={loggedIn}
-                  watchedCodes={wl.codes}
-                  mine
-                />
-              </>
+              <CardFeed
+                items={mine}
+                loggedIn={loggedIn}
+                watchedCodes={wl.codes}
+                mine
+              />
             )}
           </div>
         )}

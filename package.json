@@ -14,6 +14,7 @@
     "enrich": "node scripts/enrich-tushare.mjs",
     "gen-takes": "node scripts/gen-retail-takes.mjs",
     "enrich-concepts": "node scripts/enrich-concepts.mjs",
+    "concept-coverage": "node scripts/concept-coverage.mjs",
     "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {
