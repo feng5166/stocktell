@@ -80,7 +80,7 @@
 |---|---|---|---|
 | **新浪行情** `hq.sinajs.cn` / `finance.sina.com.cn` | A股/美股实时行情 | `src/lib/quotes.ts` | 免 key;失败读 `quotes_cache` |
 | **东方财富** `push2his.eastmoney.com` / `quote.eastmoney.com` | 美股历史日线、A股资金面 | `src/lib/history.ts`、`src/lib/us-history.ts` | 免 key;**会封 Vercel IP**(美股历史改用 Yahoo) |
-| **Tushare** `api.tushare.pro` | 交易日历(trade_cal)/ 基本面(daily_basic)/ 资金面(moneyflow/top_list/margin)/ **雷区雷达**(share_float 解禁、stk_holdertrade 增减持、pledge_stat 质押、repurchase 回购、namechange ST 判定) | `src/lib/tushare.ts`、`src/lib/risk-radar.ts` | 需 `TUSHARE_TOKEN`(6000积分);雷区数据按 ts_code 拉、按天 `unstable_cache` |
+| **Tushare** `api.tushare.pro` | 交易日历(trade_cal)/ 基本面(daily_basic)/ 资金面(moneyflow/top_list/margin)/ **雷区雷达**(share_float 解禁、stk_holdertrade 增减持、pledge_stat 质押、repurchase 回购、namechange ST 判定)/ **财报体检**(income/balancesheet/cashflow/fina_indicator) | `src/lib/tushare.ts`、`src/lib/risk-radar.ts`、`src/lib/financials.ts` | 需 `TUSHARE_TOKEN`(6000积分);雷区/财报按 ts_code 拉、按天 `unstable_cache` |
 | **Yahoo Finance** `query1.finance.yahoo.com` | 美股历史日线(相似性用) | `src/lib/yahoo.ts` | 免 key;Tushare us_daily 要付费 + 东财封 IP,故走 Yahoo |
 
 ---
