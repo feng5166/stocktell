@@ -67,6 +67,7 @@ export function StockTellTake({
   const [deep, setDeep] = useState("");
   const [deepLoading, setDeepLoading] = useState(false);
   const [deepStarted, setDeepStarted] = useState(false);
+  const [deepErrored, setDeepErrored] = useState(false);
   const { status } = useSession();
   const { open: openAuth } = useAuthModal();
 
@@ -78,6 +79,7 @@ export function StockTellTake({
     }
     setDeepStarted(true);
     setDeepLoading(true);
+    setDeepErrored(false);
     setDeep("");
     try {
       const res = await fetch("/api/briefing/explain", {
@@ -91,19 +93,23 @@ export function StockTellTake({
           setDeepStarted(false);
           return;
         }
-        setDeep("解读暂时不可用,稍后再试。");
+        setDeepErrored(true);
         setDeepLoading(false);
         return;
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let acc = "";
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        setDeep((prev) => prev + decoder.decode(value, { stream: true }));
+        const t = decoder.decode(value, { stream: true });
+        acc += t;
+        setDeep((prev) => prev + t);
       }
+      if (!acc.trim()) setDeepErrored(true);
     } catch {
-      setDeep("解读出错了,稍后再点一次试试。");
+      setDeepErrored(true);
     } finally {
       setDeepLoading(false);
     }
@@ -137,11 +143,23 @@ export function StockTellTake({
               StockTell 助手正在为你解读这条信息,请稍候…
             </p>
           )}
-          {deep && (
-            <div>
-              {renderRich(deep)}
-              {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
-            </div>
+          {deepErrored ? (
+            <p className="text-xs text-gray-500">
+              解读暂时没出来(服务繁忙)。
+              <button
+                onClick={loadDeep}
+                className="ml-1 font-medium text-brand-600 hover:underline"
+              >
+                🔄 重试
+              </button>
+            </p>
+          ) : (
+            deep && (
+              <div>
+                {renderRich(deep)}
+                {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
+              </div>
+            )
           )}
         </div>
       )}

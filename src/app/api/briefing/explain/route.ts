@@ -195,9 +195,9 @@ ${lines}
   const client = getLLM();
   if (!client) return new Response("LLM 未配置", { status: 503 });
 
-  let llmStream;
-  try {
-    llmStream = await client.chat.completions.create({
+  // LLM 服务偶发抖动:create() 失败先重试一次,仍失败返回干净 503(前端显示「重试」按钮)。
+  const createStream = () =>
+    client.chat.completions.create({
       model: LLM_MODEL,
       stream: true,
       max_tokens: 8000,
@@ -206,8 +206,16 @@ ${lines}
         { role: "user", content: userMsg },
       ],
     });
-  } catch (e) {
-    return new Response("LLM_ERR: " + String(e).slice(0, 400), { status: 500 });
+  let llmStream;
+  try {
+    llmStream = await createStream();
+  } catch {
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      llmStream = await createStream();
+    } catch {
+      return new Response("解读暂时不可用,请重试", { status: 503 });
+    }
   }
 
   let full = "";
