@@ -73,6 +73,18 @@ const IDX_USER_WEIXIN = `CREATE UNIQUE INDEX IF NOT EXISTS "users_weixin_open_id
 const ALTER_USER_WEIXIN_PENDING = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "weixin_pending_scan_at" timestamp(3)`;
 // 退订每日邮件推送标记(邮件"取消推送"按钮)
 const ALTER_USER_DIGEST_OPTOUT = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "digest_opt_out" boolean NOT NULL DEFAULT false`;
+// 关闭盘中异动提醒标记(默认开)+ 盘中异动去重表
+const ALTER_USER_INTRADAY_OPTOUT = `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "intraday_opt_out" boolean NOT NULL DEFAULT false`;
+const T_INTRADAY_ALERT = `CREATE TABLE IF NOT EXISTS "intraday_alert" (
+  "id" text NOT NULL,
+  "user_id" text NOT NULL,
+  "code" text NOT NULL,
+  "date" text NOT NULL,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "intraday_alert_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_INTRADAY_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "intraday_alert_user_id_code_date_key" ON "intraday_alert" ("user_id", "code", "date")`;
+const IDX_INTRADAY_USER_DATE = `CREATE INDEX IF NOT EXISTS "intraday_alert_user_id_date_idx" ON "intraday_alert" ("user_id", "date")`;
 const T_WEIXIN_BIND = `CREATE TABLE IF NOT EXISTS "weixin_bind_tokens" (
   "id" text NOT NULL,
   "user_id" text NOT NULL,
@@ -177,6 +189,10 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(IDX_USER_WEIXIN);
         await tx.$executeRawUnsafe(ALTER_USER_WEIXIN_PENDING);
         await tx.$executeRawUnsafe(ALTER_USER_DIGEST_OPTOUT);
+        await tx.$executeRawUnsafe(ALTER_USER_INTRADAY_OPTOUT);
+        await tx.$executeRawUnsafe(T_INTRADAY_ALERT);
+        await tx.$executeRawUnsafe(IDX_INTRADAY_UNIQUE);
+        await tx.$executeRawUnsafe(IDX_INTRADAY_USER_DATE);
         await tx.$executeRawUnsafe(T_WEIXIN_BIND);
         await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_TOKEN);
         await tx.$executeRawUnsafe(IDX_WEIXIN_BIND_USER);

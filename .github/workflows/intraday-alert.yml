@@ -1,0 +1,18 @@
+name: Intraday Move Alert
+
+# 每 10 分钟触发盘中异动检查(UTC 01:00–07:50 = 北京 09:00–15:50,覆盖 A 股交易时段)。
+# 端点内部再卡精确窗口(09:30–11:30 / 13:00–15:00)+ 交易日,非时段直接跳过。
+# 需 GitHub 仓库 Secret CRON_SECRET(与 Vercel 同值)。
+on:
+  schedule:
+    - cron: "*/10 1-7 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger intraday alert
+        run: |
+          curl -sS -X GET "https://stocktell.vercel.app/api/cron/intraday-alert" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

@@ -10,11 +10,71 @@ export function SettingsClient({ email }: { email: string | null }) {
   return (
     <div className="space-y-4">
       <WeixinCard />
+      <IntradayCard />
       <EmailCard hasEmail={!!email} email={email} />
       <p className="px-1 text-xs leading-relaxed text-gray-400">
-        我们只在你的自选有相关动态时才推送,没动静不打扰。两个渠道可分别开关。
+        我们只在你的自选有相关动态时才推送,没动静不打扰。各渠道可分别开关。
       </p>
     </div>
+  );
+}
+
+// ---------------- 盘中异动提醒(微信渠道)----------------
+function IntradayCard() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [bound, setBound] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/me/intraday-pref");
+        if (!r.ok) return;
+        const d = await r.json();
+        setEnabled(!!d.enabled);
+        setBound(!!d.bound);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/me/intraday-pref", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (r.ok) setEnabled(next);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card
+      title="⚡ 盘中异动提醒"
+      desc="交易时段你的自选个股大涨/大跌(±7%)时推到微信,需先绑定微信。"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-700">
+          {enabled === null
+            ? "读取中…"
+            : !bound
+            ? "未绑定微信:绑定后该提醒才会生效"
+            : enabled
+            ? "已开启:盘中异动时推微信(每天最多 3 只)"
+            : "已关闭:不会再收到盘中异动提醒"}
+        </span>
+        <Switch
+          checked={!!enabled}
+          disabled={!bound || enabled === null || busy}
+          onChange={toggle}
+        />
+      </div>
+    </Card>
   );
 }
 
