@@ -34,6 +34,15 @@ export function BriefingFeed({
   const mine = items.filter(isMine);
   const others = items.filter((it) => !isMine(it));
 
+  // 从推送(微信/邮件/Web 通知,链接带 #mine)点进来时,自动滚到「和我相关」,直达"你的票今天"。
+  // 内容是客户端水合的,等 wl.ready 后再滚才滚得准。
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location.hash !== "#mine") return;
+    if (!wl.ready) return;
+    const el = document.getElementById("mine");
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [wl.ready]);
+
   // 批量"为什么动":一次取回所有命中自选触发标的的解读(替代每卡各发一次)
   const mineTriggers = mine
     .filter((it) => it.triggerCode)
@@ -42,7 +51,7 @@ export function BriefingFeed({
   return (
     <WhyProvider triggers={mineTriggers}>
     <div className="space-y-7">
-      <section className="rounded-2xl bg-brand-50/40 p-3 sm:p-4">
+      <section id="mine" className="scroll-mt-20 rounded-2xl bg-brand-50/40 p-3 sm:p-4">
         <SectionHead
           title="和我相关"
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}

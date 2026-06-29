@@ -61,7 +61,7 @@ async function sendFundDigest(
       date ? `(截至 ${date})` : ""
     }:\n\n` +
     alerts.map((it) => `· ${line(it)}`).join("\n") +
-    `\n\n打开看详情:${base}\n\n以上为信息整理,不构成投资建议。` +
+    `\n\n打开看详情:${base}/#mine\n\n以上为信息整理,不构成投资建议。` +
     unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 10px">StockTell 盘前提醒${
@@ -76,7 +76,7 @@ async function sendFundDigest(
       </div>`
       )
       .join("")}
-    <p><a href="${base}" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
+    <p><a href="${base}/#mine" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
     <p style="color:#aaa;font-size:11px">以上为信息整理,不构成投资建议。历史规律不代表未来表现。</p>
     ${unsub.html}
   </div>`;
@@ -108,7 +108,7 @@ async function sendDigest(
     rows
       .map((r) => `· [${r.impact}] ${r.title}${r.benes ? ` — 受益:${r.benes}` : ""}`)
       .join("\n") +
-    `\n\n打开看详情:${base}\n\n以上为信息整理,不构成投资建议。` +
+    `\n\n打开看详情:${base}/#mine\n\n以上为信息整理,不构成投资建议。` +
     unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 6px">${date} · StockTell 盘前早报</p>
@@ -123,7 +123,7 @@ async function sendDigest(
       </div>`
       )
       .join("")}
-    <p><a href="${base}" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
+    <p><a href="${base}/#mine" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
     <p style="color:#aaa;font-size:11px">以上为信息整理,不构成投资建议。历史规律不代表未来表现。</p>
     ${unsub.html}
   </div>`;

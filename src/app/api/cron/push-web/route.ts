@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const payload = {
       title: `StockTell 今日简报 · ${items.length} 条`,
       body: lead.length > 60 ? lead.slice(0, 57) + "…" : lead,
-      url: "/",
+      url: "/#mine", // 落地直达「和我相关」
     };
 
     const subs = await db.pushSubscription.findMany();
