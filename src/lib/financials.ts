@@ -66,8 +66,14 @@ async function compute(code: string): Promise<Checkup | null> {
   if (f.gross !== null) ov.push(`毛利率 ${f.gross.toFixed(0)}%`);
   if (ov.length) findings.push({ text: `📊 ${reportLabel}:${ov.join(" · ")}`, severity: "info" });
 
-  // 业绩预告(前瞻):只展示"报告期晚于已出财报"的预告(真正还没出的那期),
-  // 否则会展示几年前的旧预告,又成古董。
+  // 负增长红色警示(同比下滑单独标红,比染色子串更醒目)
+  if (f.niYoy !== null && f.niYoy < 0)
+    findings.push({ text: `📉 净利同比 ${Math.round(f.niYoy)}%——盈利同比下滑`, severity: "high" });
+  if (f.revYoy !== null && f.revYoy < 0)
+    findings.push({ text: `📉 营收同比 ${Math.round(f.revYoy)}%——收入同比下滑`, severity: "mid" });
+
+  // 业绩预告(前瞻):只展示"报告期晚于已出财报"的预告(真正还没出的那期),否则会翻出几年前的旧预告。
+  // 没有则占位,让用户知道是"暂无"而非漏了。
   if (fc && fc.period > f.period) {
     const good = /增|盈|扭亏|续盈/.test(fc.type);
     const bad = /减|亏|损/.test(fc.type);
@@ -79,6 +85,8 @@ async function compute(code: string): Promise<Checkup | null> {
       text: `📈 ${fc.period.slice(0, 4)} ${reportType(fc.period)}业绩预告:${fc.type}${pct}`,
       severity: good ? "good" : bad ? "high" : "info",
     });
+  } else {
+    findings.push({ text: `📈 暂无业绩预告`, severity: "info" });
   }
 
   // 下次财报预约披露日
@@ -155,7 +163,7 @@ export function financialCheckup(code: string): Promise<Checkup | null> {
       if (!r) throw new Error("fin-checkup:no-data");
       return r;
     },
-    ["fin-checkup", "v3", code, todayISO()],
+    ["fin-checkup", "v4", code, todayISO()],
     { revalidate: 43200 } // 12h(财报低频)
   )().catch(() => null);
 }
