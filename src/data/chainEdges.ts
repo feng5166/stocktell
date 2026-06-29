@@ -269,6 +269,43 @@ export const CHAIN_EDGES: ChainEdge[] = [
   { from: "600875", to: "003816", strength: "强", basis: "东方电气汽轮发电机供中广核机组" },
   { from: "002179", to: "688297", strength: "中", basis: "中航光电军工连接器供无人机整机" },
   { from: "002179", to: "002389", strength: "中", basis: "中航光电连接器供彩虹无人机" },
+  // ===== P2 新增标的的产业链边 =====
+  // 铜连接/高速互连
+  { from: "002130", to: "NVDA", strength: "强", basis: "沃尔核材高速铜缆/铜背板,绑英伟达 GB200" },
+  { from: "002130", to: "CRDO", strength: "中", basis: "高速铜连接对标 Credo" },
+  { from: "300679", to: "NVDA", strength: "中", basis: "电连技术高速铜缆/连接器受益 GB200" },
+  { from: "300679", to: "CRDO", strength: "中", basis: "高速铜缆/AEC 对标 Credo" },
+  { from: "300563", to: "002130", strength: "中", basis: "神宇高速线缆配套,跟随沃尔铜连接主线" },
+  // 国产 GPU / 服务器
+  { from: "300474", to: "NVDA", strength: "中", basis: "景嘉微国产 GPU 对标英伟达替代" },
+  { from: "688041", to: "603019", strength: "强", basis: "海光 DCU/CPU 供曙光整机" },
+  { from: "603019", to: "NVDA", strength: "中", basis: "国产算力整机对标英伟达体系" },
+  // 封测
+  { from: "600584", to: "688256", strength: "中", basis: "长电封测产能配套国产 AI 芯片" },
+  { from: "600584", to: "TSM", strength: "中", basis: "封测对标台积电 OSAT/CoWoS" },
+  { from: "002185", to: "TSM", strength: "中", basis: "华天封测国产替代对标台积电" },
+  { from: "688362", to: "600584", strength: "中", basis: "甬矽先进封装二线,跟随长电" },
+  // 存储 / HBM
+  { from: "300475", to: "MU", strength: "中", basis: "香农芯创存储代理,对标美光 HBM 链" },
+  { from: "600667", to: "MU", strength: "中", basis: "太极实业海力士无锡封测,HBM 后道" },
+  // 交换芯片
+  { from: "688702", to: "AVGO", strength: "中", basis: "盛科国产交换芯片对标博通 Tomahawk" },
+  { from: "688702", to: "000063", strength: "强", basis: "盛科交换芯片供中兴设备" },
+  // 电源 / HVDC
+  { from: "300693", to: "VRT", strength: "中", basis: "盛弘数据中心 HVDC 对标 Vertiv 电力侧" },
+  { from: "002518", to: "VRT", strength: "中", basis: "科士达数据中心 UPS/供配电对标 Vertiv" },
+  // 半导体设备
+  { from: "688082", to: "688981", strength: "强", basis: "盛美清洗设备供中芯国际" },
+  { from: "688037", to: "688981", strength: "强", basis: "芯源微涂胶显影设备供中芯国际" },
+  { from: "688082", to: "AMAT", strength: "中", basis: "盛美清洗设备对标应用材料" },
+  // 光 / CPO
+  { from: "300620", to: "COHR", strength: "中", basis: "光库薄膜铌酸锂光器件对标 Coherent" },
+  { from: "688313", to: "300308", strength: "强", basis: "仕佳光分路器/MPO 供光模块旭创" },
+  // 机器人 执行器
+  { from: "002472", to: "TSLA", strength: "中", basis: "双环减速器/丝杠供特斯拉 Optimus" },
+  { from: "603667", to: "TSLA", strength: "中", basis: "五洲新春行星滚柱丝杠,Optimus 供应链" },
+  { from: "603728", to: "TSLA", strength: "中", basis: "鸣志空心杯电机供人形机器人" },
+  { from: "003021", to: "TSLA", strength: "中", basis: "兆威微型传动/灵巧手配套机器人" },
 ];
 
 const KEY = (a: string, b: string) => `${a}->${b}`;
