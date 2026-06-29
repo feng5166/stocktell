@@ -12,12 +12,10 @@ interface Peer {
 }
 
 export function ChainPosition({
-  pos,
   sector,
   up,
   down,
 }: {
-  pos: string;
   sector: string;
   up: Peer[];
   down: Peer[];
@@ -81,8 +79,9 @@ export function ChainPosition({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
         <Btn side={sides[0]} />
         <span className="text-gray-300">→</span>
-        <span className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
-          你在这 · {pos}
+        {/* 中间锚点:柔和的浅 indigo + 描边,不再实心扎眼;不重复全局位置,避免与左侧「上游」撞词 */}
+        <span className="rounded-md bg-brand-100 px-3 py-1.5 text-sm font-medium text-brand-700 ring-1 ring-inset ring-brand-300">
+          你在这
         </span>
         <span className="text-gray-300">→</span>
         <Btn side={sides[1]} />

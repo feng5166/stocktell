@@ -149,7 +149,6 @@ export default async function StockDetail({
 
         <Section title="在产业链的位置">
           <ChainPosition
-            pos={s.position}
             sector={s.sector}
             up={upPeers}
             down={downPeers}
