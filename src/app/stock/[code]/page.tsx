@@ -14,6 +14,7 @@ import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
 import { riskEventsFor } from "@/lib/risk-radar";
 import { financialCheckup } from "@/lib/financials";
+import { fundFlowFor } from "@/lib/fund-flow";
 import { ETF_HOLDINGS } from "@/data/etf-holdings.generated";
 import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
@@ -50,6 +51,9 @@ export default async function StockDetail({
   const riskEvents = s.market === "A股" ? await riskEventsFor(s.code).catch(() => []) : [];
   // 财报体检卡(三大报表翻人话),仅 A 股;按天缓存
   const checkup = s.market === "A股" ? await financialCheckup(s.code).catch(() => null) : null;
+  // 资金面(主力净流入/融资/龙虎榜),仅 A 股;按天缓存
+  const fund = s.market === "A股" ? await fundFlowFor([s.code]).catch(() => null) : null;
+  const fundItem = fund?.items[0];
   // 相关 ETF(重仓本股的主题 ETF,静态生成、零运行时调用),仅 A 股
   const etfs = s.market === "A股" ? ETF_HOLDINGS[s.code] ?? [] : [];
 
@@ -270,6 +274,35 @@ export default async function StockDetail({
             </p>
           </Section>
         )}
+
+        {fundItem &&
+          (fundItem.netMf !== null || fundItem.rzChgYi !== null || fundItem.longhu) && (
+            <Section title="资金面">
+              <ul className="space-y-1.5 text-sm">
+                {fundItem.netMf !== null && (
+                  <li className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}>
+                    💰 主力{fundItem.netMf >= 0 ? "净流入" : "净流出"}{" "}
+                    {Math.abs(fundItem.netMf).toFixed(1)} 亿
+                  </li>
+                )}
+                {fundItem.rzChgYi !== null && (
+                  <li className="text-gray-700">
+                    🏦 融资余额{fundItem.rzChgYi >= 0 ? "增加" : "减少"}{" "}
+                    {Math.abs(fundItem.rzChgYi).toFixed(1)} 亿
+                  </li>
+                )}
+                {fundItem.longhu && (
+                  <li className="text-amber-700">
+                    🐯 上龙虎榜:净额 {fundItem.longhu.net >= 0 ? "+" : ""}
+                    {fundItem.longhu.net.toFixed(1)} 亿 · {fundItem.longhu.reason}
+                  </li>
+                )}
+              </ul>
+              <p className="mt-2 text-meta leading-relaxed text-gray-400">
+                截至 {fund?.date ?? "—"}(Tushare),信息整理,不构成投资建议。
+              </p>
+            </Section>
+          )}
 
         {etfs.length > 0 && (
           <Section title="相关 ETF · 一篮子参与">
