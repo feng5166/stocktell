@@ -5,7 +5,8 @@
 // 支持:加自选(★,与个股同一套自选)、覆盖板块标签可点→跳回个股列表按该板块筛选。
 import { useEffect, useMemo, useState } from "react";
 import { ETFS } from "@/data/etfs";
-import { SECTORS } from "@/data/stocks";
+import { SECTORS, STOCK_MAP } from "@/data/stocks";
+import { ETF_HOLDINGS } from "@/data/etf-holdings.generated";
 import { useWatchlist } from "@/components/useWatchlist";
 import { changeClass, fmtChange } from "@/lib/format";
 
@@ -87,6 +88,19 @@ export function EtfBoard({
 
   const covered = Object.keys(quotes).length;
 
+  // ETF → 它重仓的池内个股(反转 ETF_HOLDINGS 反查索引),用于"覆盖你 N 只自选"
+  const etfMembers = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const [code, arr] of Object.entries(ETF_HOLDINGS)) {
+      for (const e of arr) {
+        const list = m.get(e.code) ?? [];
+        list.push(code);
+        m.set(e.code, list);
+      }
+    }
+    return m;
+  }, []);
+
   // 自选 ETF 置顶(与股票池一致),内部各自保持原顺序
   const ordered = useMemo(() => {
     const starred = ETFS.filter((e) => wl.codes.has(e.code));
@@ -118,6 +132,7 @@ export function EtfBoard({
         {ordered.map((e) => {
           const q = quotes[e.code];
           const on = wl.has(e.code);
+          const mineCovered = (etfMembers.get(e.code) ?? []).filter((c) => wl.codes.has(c));
           return (
             <div key={e.code} className="rounded-xl bg-white p-4 shadow-sm">
               <div className="flex items-baseline gap-2">
@@ -155,6 +170,18 @@ export function EtfBoard({
               <div className="mt-1 text-xs text-gray-500">
                 {e.theme} · 跟踪 {e.tracksIndex} · 规模 ~{e.scaleYi}亿
               </div>
+
+              {mineCovered.length > 0 && (
+                <div className="mt-1.5 text-xs">
+                  <span className="rounded bg-brand-50 px-1.5 py-0.5 font-medium text-brand-600">
+                    🧺 覆盖你 {mineCovered.length} 只自选
+                  </span>
+                  <span className="ml-1 text-gray-500">
+                    {mineCovered.slice(0, 4).map((c) => STOCK_MAP[c]?.name ?? c).join("、")}
+                    {mineCovered.length > 4 ? ` 等${mineCovered.length}只` : ""}
+                  </span>
+                </div>
+              )}
 
               <div className="mt-2 flex flex-wrap gap-1">
                 {e.covers.map((c) => {
