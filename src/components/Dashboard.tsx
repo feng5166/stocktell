@@ -18,10 +18,26 @@ import {
   aSharePeers,
   SECTORS,
   RELATION_TYPES,
+  TIER,
   type Market,
   type Position,
   type Stock,
 } from "@/data/stocks";
+
+// 梯队徽标:龙头=琥珀金、二线=浅蓝;无标签不显示
+function TierTag({ code }: { code: string }) {
+  const t = TIER[code];
+  if (!t) return null;
+  return (
+    <span
+      className={`ml-1 shrink-0 rounded px-1 py-0.5 text-[10px] ${
+        t === "龙头" ? "bg-amber-100 font-medium text-amber-700" : "bg-sky-50 text-sky-600"
+      }`}
+    >
+      {t}
+    </span>
+  );
+}
 
 const TABS = ["股票列表", "板块ETF", "关联图谱", "特征矩阵", "主动发现"] as const;
 type Tab = (typeof TABS)[number];
@@ -698,7 +714,8 @@ function StockCard({
           {watched ? "★" : "☆"}
         </button>
         <Link href={`/stock/${s.code}`} className="min-w-0 flex-1">
-          <span className="font-medium text-gray-900">{s.name}</span>{" "}
+          <span className="font-medium text-gray-900">{s.name}</span>
+          <TierTag code={s.code} />{" "}
           <span className="font-mono text-xs text-gray-400">{s.code}</span>
         </Link>
         <div
@@ -809,6 +826,7 @@ function ReactFragmentRow({
           >
             {s.name}
           </Link>
+          <TierTag code={s.code} />
         </Td>
         <Td>
           <span

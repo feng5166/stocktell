@@ -13,7 +13,13 @@ import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
 import { ENRICH } from "@/data/enrichment.generated";
+import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
+
+const TIER_CLASS: Record<string, string> = {
+  龙头: "bg-amber-100 text-amber-700 font-medium",
+  二线: "bg-sky-50 text-sky-600",
+};
 
 // 热度配色:极热=红、活跃=橙,其余中性
 const HEAT_CLASS: Record<string, string> = {
@@ -122,6 +128,11 @@ export default async function StockDetail({
           >
             {s.market}
           </span>
+          {TIER[s.code] && (
+            <span className={`rounded px-1.5 py-0.5 text-xs ${TIER_CLASS[TIER[s.code]]}`}>
+              {TIER[s.code]}
+            </span>
+          )}
           {en?.capTier && (
             <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
               {en.capTier}
