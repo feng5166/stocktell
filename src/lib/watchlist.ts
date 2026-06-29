@@ -1,7 +1,12 @@
 // 自选/持仓数据层(服务端):仅登录用户落库。游客的本地自选在客户端 localStorage。
-// 只存 code,且写入前用 STOCK_MAP 校验,挡掉脏数据。
+// 只存 code,且写入前校验是"已知代码"(个股 ∪ 板块ETF),挡掉脏数据。
 import { getPrisma } from "@/lib/prisma";
 import { STOCK_MAP } from "@/data/stocks";
+import { ETF_CODES } from "@/data/etfs";
+
+const ETF_SET = new Set<string>(ETF_CODES);
+// 个股或板块 ETF 都算合法自选代码(ETF 不在 STOCK_MAP,需单独认)
+const isKnownCode = (code: string): boolean => !!STOCK_MAP[code] || ETF_SET.has(code);
 
 export async function listWatchlist(userId: string): Promise<string[]> {
   const db = getPrisma();
@@ -11,11 +16,11 @@ export async function listWatchlist(userId: string): Promise<string[]> {
     orderBy: { createdAt: "asc" },
     select: { code: true },
   });
-  return rows.map((r) => r.code).filter((c) => STOCK_MAP[c]);
+  return rows.map((r) => r.code).filter(isKnownCode);
 }
 
 export async function addWatch(userId: string, code: string): Promise<void> {
-  if (!STOCK_MAP[code]) return;
+  if (!isKnownCode(code)) return;
   const db = getPrisma();
   if (!db) return;
   await db.watchlist.upsert({
@@ -36,7 +41,7 @@ export async function mergeWatchlist(
   userId: string,
   codes: string[]
 ): Promise<string[]> {
-  const valid = Array.from(new Set(codes.filter((c) => STOCK_MAP[c])));
+  const valid = Array.from(new Set(codes.filter(isKnownCode)));
   const db = getPrisma();
   if (!db) return [];
   if (valid.length) {
