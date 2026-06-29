@@ -129,6 +129,12 @@
 
 ---
 
+## 数据脚本(AI 产业链股票池)
+
+- `npm run data-check`(`scripts/data-check.mjs`)— 数据自检:重复 code / 非法 sector / relations 引用 / chainEdges 两端 / 孤儿统计;硬错误退出非零。已接入 `scripts/smoke.sh`。
+- `npm run enrich`(`scripts/enrich-tushare.mjs`)— 用 Tushare `daily_basic` 拉 流通市值/换手/PE,派生 市值档+热度,生成 `src/data/enrichment.generated.ts`(静态、运行时零外部调用)。换数据/定期刷新时重跑。
+- 股票池数据源:`src/data/stocks.ts`(标的+canonical sector,`SECTORS`/`SECTOR_GLOSS`)、`src/data/chainEdges.ts`(产业链边)、`src/data/relations.ts`(美股→A股映射)。
+
 ## 暂未接入(评估记录)
 
 - **短网址服务**:目前**未接**,微信/邮件里都是完整 `stocktell.me/...`。若要做,优先考虑**站内 `stocktell.me/s/<code>`**(复用 Vercel+Postgres,同域名被微信信任,免新基建);其次才是 VPS 自建。
