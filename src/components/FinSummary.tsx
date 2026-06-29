@@ -86,7 +86,7 @@ export function FinSummary({ codes }: { codes: Set<string> }) {
             </div>
           ))}
           {stocks.length > 0 && (
-            <p className="text-meta text-gray-300">基于最新年报(Tushare),信息整理,不构成投资建议。</p>
+            <p className="text-meta text-gray-300">基于最新财报(Tushare),信息整理,不构成投资建议。</p>
           )}
         </div>
       )}
