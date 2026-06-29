@@ -143,7 +143,8 @@
 - `npm run enrich`(`scripts/enrich-tushare.mjs`)— 用 Tushare `daily_basic` 拉 流通市值/换手(近5日均)/PE,派生 市值档+热度,生成 `src/data/enrichment.generated.ts`(静态、运行时零外部调用)。换数据/定期刷新时重跑。
 - `npm run enrich-concepts`(`scripts/enrich-concepts.mjs`)— 用 Tushare 同花顺概念 `ths_index`/`ths_member`(**需 6000 积分**)给 A 股打"概念归属"多标签(AI产业链主题白名单过滤),生成 `src/data/concepts.generated.ts`。
 - `npm run gen-takes`(`scripts/gen-retail-takes.mjs`)— LLM(deepseek-v4-flash)并发逐只生成"散户怎么想"人话结论,生成 `src/data/retail-takes.generated.ts`。
-- 股票池数据源:`src/data/stocks.ts`(标的+canonical sector,`SECTORS`/`SECTOR_GLOSS`)、`src/data/chainEdges.ts`(产业链边)、`src/data/relations.ts`(美股→A股映射)。
+- 股票池数据源:`src/data/stocks.ts`(标的+canonical sector,`SECTORS`/`SECTOR_GLOSS`/`TIER`)、`src/data/chainEdges.ts`(产业链边)、`src/data/relations.ts`(美股→A股映射)。
+- **定时刷新**:`.github/workflows/refresh-data.yml` 每周六 17:00(北京)跑 `enrich` + `enrich-concepts`,重生成 `*.generated.ts` 并提交回 main → 触发 Vercel 部署。需在 **GitHub 仓库 Secrets** 加 `TUSHARE_TOKEN`(与 Vercel 同值)。脚本已支持从 `process.env.TUSHARE_TOKEN`(CI)或 `.env.local`(本地)读 token。
 
 ## 暂未接入(评估记录)
 
