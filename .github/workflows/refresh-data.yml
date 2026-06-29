@@ -31,14 +31,16 @@ jobs:
           node scripts/enrich-tushare.mjs
           node scripts/enrich-concepts.mjs
           node scripts/concept-coverage.mjs
+          node scripts/gen-etf-holdings.mjs
       - name: Commit if changed
         run: |
-          if git diff --quiet -- src/data/enrichment.generated.ts src/data/concepts.generated.ts docs/concept-coverage.generated.md; then
+          FILES="src/data/enrichment.generated.ts src/data/concepts.generated.ts docs/concept-coverage.generated.md src/data/etf-holdings.generated.ts"
+          if git diff --quiet -- $FILES; then
             echo "无变化,跳过提交"
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add src/data/enrichment.generated.ts src/data/concepts.generated.ts docs/concept-coverage.generated.md
-            git commit -m "chore(data): 周更 Tushare 增强(市值/换手/热度 + 概念 + 覆盖体检) [skip ci]"
+            git add $FILES
+            git commit -m "chore(data): 周更 Tushare 增强(市值/换手/热度 + 概念 + 覆盖 + ETF持仓) [skip ci]"
             git push
           fi

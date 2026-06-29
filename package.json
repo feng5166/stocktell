@@ -15,6 +15,7 @@
     "gen-takes": "node scripts/gen-retail-takes.mjs",
     "enrich-concepts": "node scripts/enrich-concepts.mjs",
     "concept-coverage": "node scripts/concept-coverage.mjs",
+    "gen-etf-holdings": "node scripts/gen-etf-holdings.mjs",
     "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {

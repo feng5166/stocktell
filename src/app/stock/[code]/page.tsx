@@ -14,6 +14,7 @@ import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
 import { riskEventsFor } from "@/lib/risk-radar";
 import { financialCheckup } from "@/lib/financials";
+import { ETF_HOLDINGS } from "@/data/etf-holdings.generated";
 import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
@@ -49,6 +50,8 @@ export default async function StockDetail({
   const riskEvents = s.market === "A股" ? await riskEventsFor(s.code).catch(() => []) : [];
   // 财报体检卡(三大报表翻人话),仅 A 股;按天缓存
   const checkup = s.market === "A股" ? await financialCheckup(s.code).catch(() => null) : null;
+  // 相关 ETF(重仓本股的主题 ETF,静态生成、零运行时调用),仅 A 股
+  const etfs = s.market === "A股" ? ETF_HOLDINGS[s.code] ?? [] : [];
 
   // 基本面增强标签(Tushare:市值档/换手热度),仅 A 股
   const en = s.market === "A股" ? ENRICH[s.code] : undefined;
@@ -263,7 +266,26 @@ export default async function StockDetail({
               ))}
             </ul>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              基于 {checkup.year} 年报(Tushare),信息整理、提示风险,不构成投资建议。
+              基于 {checkup.reportLabel ?? `${checkup.year} 年报`}(Tushare),信息整理、提示风险,不构成投资建议。
+            </p>
+          </Section>
+        )}
+
+        {etfs.length > 0 && (
+          <Section title="相关 ETF · 一篮子参与">
+            <div className="space-y-1.5 text-sm">
+              {etfs.map((e) => (
+                <div key={e.code} className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-gray-400">{e.code}</span>
+                  <span className="font-medium text-gray-800">{e.name}</span>
+                  <span className="ml-auto text-xs text-gray-500">
+                    {s.name}占 {e.ratio}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">
+              看好这个方向又不想押单只,可考虑重仓它的 ETF 一篮子参与。基金季报持仓(Tushare),不构成投资建议。
             </p>
           </Section>
         )}
