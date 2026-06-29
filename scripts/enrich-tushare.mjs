@@ -44,32 +44,48 @@ function ymd(d) {
 }
 
 const main = async () => {
-  // 找最近有数据的交易日(往回试 10 天)
-  let rows = [];
-  let usedDate = "";
-  for (let i = 0; i < 10; i++) {
+  // 拉最近 5 个有数据的交易日(往回试 ~16 天),换手取 5 日均值更稳、抗单日噪声;
+  // 市值/PE 用最新交易日。
+  const days = []; // [{date, rows}]
+  let latestDate = "";
+  for (let i = 0; i < 16 && days.length < 5; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const date = ymd(d);
-    rows = await tushare("daily_basic", { trade_date: date }, "ts_code,circ_mv,turnover_rate,pe");
+    const rows = await tushare("daily_basic", { trade_date: date }, "ts_code,circ_mv,turnover_rate,pe");
     if (rows.length > 0) {
-      usedDate = date;
-      break;
+      if (!latestDate) latestDate = date;
+      days.push({ date, rows });
     }
   }
-  if (!rows.length) throw new Error("daily_basic 连续 10 天无数据");
-  console.log(`daily_basic @ ${usedDate}: 全市场 ${rows.length} 条`);
+  if (!days.length) throw new Error("daily_basic 连续 16 天无数据");
+  console.log(`daily_basic 取 ${days.length} 个交易日(最新 ${latestDate}),全市场约 ${days[0].rows.length} 条/日`);
 
   const capTier = (yi) => (yi >= 1000 ? "大盘" : yi >= 100 ? "中盘" : "小盘");
-  const heat = (t) => (t == null ? null : t >= 20 ? "极热" : t >= 10 ? "活跃" : t >= 4 ? "正常" : "清淡");
+  const heat = (t) => (t == null ? null : t >= 15 ? "极热" : t >= 8 ? "活跃" : t >= 3 ? "正常" : "清淡");
+
+  // 最新日:市值/PE;5 日:换手均值
+  const latest = new Map(days[0].rows.map((r) => [String(r.ts_code).slice(0, 6), r]));
+  const turnSum = new Map(); // code -> {sum,n}
+  for (const { rows } of days) {
+    for (const r of rows) {
+      const code = String(r.ts_code).slice(0, 6);
+      if (!aCodes.has(code) || r.turnover_rate == null) continue;
+      const cur = turnSum.get(code) || { sum: 0, n: 0 };
+      cur.sum += r.turnover_rate;
+      cur.n += 1;
+      turnSum.set(code, cur);
+    }
+  }
 
   const enrich = {};
   let hit = 0;
-  for (const row of rows) {
-    const code = String(row.ts_code).slice(0, 6);
-    if (!aCodes.has(code)) continue;
+  for (const code of aCodes) {
+    const row = latest.get(code);
+    if (!row) continue;
     const circYi = row.circ_mv != null ? Math.round((row.circ_mv / 10000) * 10) / 10 : null; // 万元→亿
-    const turnover = row.turnover_rate != null ? Math.round(row.turnover_rate * 100) / 100 : null;
+    const ts = turnSum.get(code);
+    const turnover = ts && ts.n ? Math.round((ts.sum / ts.n) * 100) / 100 : null; // 近5日均换手
     const pe = row.pe != null ? Math.round(row.pe * 10) / 10 : null;
     enrich[code] = {
       circMvYi: circYi,
@@ -80,12 +96,13 @@ const main = async () => {
     };
     hit++;
   }
+  const usedDate = latestDate;
   console.log(`命中池内 A股: ${hit}/${aCodes.size}`);
   const missing = [...aCodes].filter((c) => !enrich[c]);
   if (missing.length) console.log("未取到(停牌/退市/代码异常):", missing.join("、"));
 
   const out =
-    `// 自动生成,勿手改。来源 Tushare daily_basic @ ${usedDate}。\n` +
+    `// 自动生成,勿手改。来源 Tushare daily_basic @ ${usedDate}(换手=近5日均值)。\n` +
     `// 重新生成:node scripts/enrich-tushare.mjs\n` +
     `export interface Enrich { circMvYi: number | null; turnover: number | null; pe: number | null; capTier: string | null; heat: string | null; }\n` +
     `export const ENRICH_AS_OF = "${usedDate}";\n` +
