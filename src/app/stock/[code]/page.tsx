@@ -157,8 +157,8 @@ export default async function StockDetail({
           )}
           {(usPeers.length > 0 || aPeers.length > 0) && (
             <p className="mt-3 text-meta leading-relaxed text-gray-400">
-              强 = 有明确供货/直接业务绑定;中 = 对标/国产替代(无直接供货);弱 =
-              同主题、蹭概念。关系为研究框架梳理,非确认的客户/供应商关系。
+              强 = 有明确供货/直接业务绑定;中 = 对标/国产替代(同类对手,无直接供货);弱
+              = 同主题、蹭概念(跟着热度涨跌)。关系为研究框架梳理,非确认的客户/供应商关系。
             </p>
           )}
         </Section>

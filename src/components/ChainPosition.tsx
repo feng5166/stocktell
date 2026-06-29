@@ -107,7 +107,12 @@ export function ChainPosition({
         </div>
       )}
 
-      <p className="mt-2 text-xs text-gray-400">板块:{sector}</p>
+      <p className="mt-2 text-xs text-gray-400">
+        {(up.length > 0 || down.length > 0) && (
+          <span>上游 = 给它供货的 · 下游 = 买它产品/服务的 · </span>
+        )}
+        板块:{sector}
+      </p>
     </div>
   );
 }
