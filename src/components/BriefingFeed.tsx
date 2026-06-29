@@ -13,6 +13,7 @@ import { QuickAddWatch } from "@/components/QuickAddWatch";
 import { FundFlow } from "@/components/FundFlow";
 import { RiskSummary } from "@/components/RiskSummary";
 import { FinSummary } from "@/components/FinSummary";
+import { EtfCoverage } from "@/components/EtfCoverage";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
@@ -69,6 +70,7 @@ export function BriefingFeed({
             <FundFlow codes={wl.codes} />
             {/* 财报体检紧跟资金面之下 */}
             <FinSummary codes={wl.codes} />
+            <EtfCoverage codes={wl.codes} />
             {mine.length === 0 ? (
               <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
             ) : (
