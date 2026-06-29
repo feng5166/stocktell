@@ -25,10 +25,11 @@ function fallback(items: BriefingItem[]): string {
 }
 
 // 纯生成(无缓存)。调用方一般用 getMorningBrief 走每日缓存。
+// 返回 LLM 早报正文;LLM 失败/为空返回 null(让调用方走"不缓存的模板回退",下次重试)。
 export async function buildMorningBrief(
   codes: string[],
   items: BriefingItem[]
-): Promise<string> {
+): Promise<string | null> {
   if (items.length === 0) return fallback(items);
   const client = getLLM();
   if (!client) return fallback(items);
@@ -89,14 +90,14 @@ export async function buildMorningBrief(
           { role: "user", content: userContent },
         ],
       },
-      // SDK 默认重试 2 次,LLM 抖动时会叠成 20-30s 把整个函数拖到超时。
-      // 这里关掉 SDK 重试 + 18s 硬超时,失败快速回退到规则模板(非空),早报不再卡死/消失。
-      { maxRetries: 0, timeout: 18000 }
+      // SDK 默认重试 2 次会叠成 30s 拖超时;这里只重试 1 次 + 每次 10s 硬超时
+      // (最坏约 22s,函数 maxDuration 30s 内),既能扛住单次抖动、又不卡死。
+      { maxRetries: 1, timeout: 10000 }
     );
     const txt = resp.choices[0]?.message?.content?.trim();
-    return txt && txt.length > 0 ? txt : fallback(items);
+    return txt && txt.length > 0 ? txt : null; // 空 → null,不缓存,下次重试
   } catch {
-    return fallback(items);
+    return null; // LLM 失败 → null,不缓存,下次重试
   }
 }
 
@@ -109,7 +110,7 @@ export async function getMorningBrief(
   const date = todayISO();
   const sig = Array.from(new Set(codes)).sort().join(",");
   const hash = crypto.createHash("sha256").update(sig).digest("hex").slice(0, 24);
-  const key = `v2:${date}:${hash}`; // v2:换 flash 模型 + 更完整文案,绕过旧截断缓存
+  const key = `v3:${date}:${hash}`; // v3:不缓存模板回退,清掉之前误缓存的简版
 
   const db = getPrisma();
   if (db) {
@@ -121,18 +122,21 @@ export async function getMorningBrief(
     }
   }
 
-  const brief = await buildMorningBrief(codes, items);
+  const built = await buildMorningBrief(codes, items);
+
+  // LLM 没出来(null):返回模板兜底,但不缓存——下次请求自动重试 LLM,自愈成完整早报。
+  if (built == null) return fallback(items);
 
   if (db) {
     try {
       await db.morningBriefCache.upsert({
         where: { key },
-        create: { key, brief },
-        update: { brief, updatedAt: new Date() },
+        create: { key, brief: built },
+        update: { brief: built, updatedAt: new Date() },
       });
     } catch {
       /* 写缓存失败不致命 */
     }
   }
-  return brief;
+  return built;
 }
