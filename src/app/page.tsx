@@ -91,22 +91,21 @@ export default async function Home() {
         <p className="mt-6 text-center text-xs text-gray-400">
           {DISCLAIMER}
         </p>
-        <p className="mt-2 text-center text-meta text-gray-300">
-          <a
-            href="https://analytics.stocktell.me"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-gray-500"
-          >
-            数据看板
-          </a>
-        </p>
         {isAdmin && (
           <p className="mt-2 text-center text-meta text-gray-300">
             存储:{storageBackend() === "postgres" ? "Vercel Postgres" : "本地(未连数据库)"} ·{" "}
             <Link href="/admin/briefing" className="hover:text-gray-500">
               后台
-            </Link>
+            </Link>{" "}
+            ·{" "}
+            <a
+              href="https://analytics.stocktell.me"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-gray-500"
+            >
+              数据看板
+            </a>
           </p>
         )}
       </main>
