@@ -11,6 +11,7 @@ import { useAuthModal } from "@/components/Providers";
 import { useWatchlist } from "@/components/useWatchlist";
 import { QuickAddWatch } from "@/components/QuickAddWatch";
 import { RiskSummary } from "@/components/RiskSummary";
+import { WatchOverview } from "@/components/WatchOverview";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
@@ -65,7 +66,10 @@ export function BriefingFeed({
             <RiskSummary codes={wl.codes} />
             {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
             {mine.length === 0 ? (
-              <Hint>今天你的自选没有相关动态,安心上班 ☕</Hint>
+              <>
+                <WatchOverview codes={wl.codes} />
+                <Hint>今天你的票没有 AI 产业链相关动态,安心上班 ☕</Hint>
+              </>
             ) : (
               <CardFeed
                 items={mine}
@@ -497,6 +501,33 @@ function BriefingCard({
   );
 }
 
+// 把文本里的涨跌百分比染色:涨/+ 红,跌/- 绿(A股习惯);方向不明的裸百分比不染色。
+function colorizePct(text: string): React.ReactNode[] {
+  const re =
+    /(暴涨|暴跌|大涨|大跌|急跌|重挫|跳水|拉升|上涨|下跌|下挫|反弹|回升|回落|涨幅|跌幅|收涨|收跌|涨|跌)?\s*([+-]?\d+(?:\.\d+)?%)/g;
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const word = m[1] ?? "";
+    const num = m[2];
+    const down = num.startsWith("-") || (!num.startsWith("+") && /跌|挫|跳水|回落/.test(word));
+    const up = num.startsWith("+") || (!num.startsWith("-") && /涨|升|反弹|拉升/.test(word));
+    const cls = down ? "text-emerald-600 font-medium" : up ? "text-rose-600 font-medium" : undefined;
+    out.push(
+      <span key={i++} className={cls}>
+        {word}
+        {num}
+      </span>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
 // 为什么动:仅「和我相关」卡片按需拉;后端没开联网检索就返回空,这里啥也不显示(不编因果)。
 function WhyLine({ code }: { code: string }) {
   const map = useContext(WhyCtx);
@@ -513,7 +544,7 @@ function WhyLine({ code }: { code: string }) {
   const hasInSite = !!(sourceTitle || sourceSummary);
   return (
     <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
-      <span className="font-medium text-gray-600">为什么动</span>:{reason}
+      <span className="font-medium text-gray-600">为什么动</span>:{colorizePct(reason)}
       {asOf && <span className="text-gray-400"> ·{asOf}</span>}
       {hasInSite ? (
         <button
@@ -566,7 +597,7 @@ function WhyLine({ code }: { code: string }) {
             </div>
             {sourceSummary && (
               <p className="mt-3 max-h-72 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-gray-700">
-                {sourceSummary}
+                {colorizePct(sourceSummary)}
               </p>
             )}
             {sourceUrl && (
