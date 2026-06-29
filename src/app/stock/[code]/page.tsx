@@ -156,7 +156,9 @@ export default async function StockDetail({
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-gray-400">暂无关联标的</p>
+              <p className="text-sm leading-relaxed text-gray-500">
+                这只比较独立,属于「{s.sector}」({s.position}环节),暂无明确的同类或上下游标的。
+              </p>
             )
           ) : (
             <div className="space-y-3 text-sm">
