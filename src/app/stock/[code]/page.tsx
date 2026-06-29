@@ -12,6 +12,7 @@ import { LiveQuote } from "@/components/LiveQuote";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
+import { riskEventsFor } from "@/lib/risk-radar";
 import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
@@ -42,6 +43,9 @@ export default async function StockDetail({
 }) {
   const s = STOCK_MAP[params.code];
   if (!s) notFound();
+
+  // 雷区事件(解禁/增减持/质押/ST/回购),仅 A 股;按天缓存
+  const riskEvents = s.market === "A股" ? await riskEventsFor(s.code).catch(() => []) : [];
 
   // 基本面增强标签(Tushare:市值档/换手热度),仅 A 股
   const en = s.market === "A股" ? ENRICH[s.code] : undefined;
@@ -210,6 +214,30 @@ export default async function StockDetail({
         </Section>
 
         <Fundamentals code={s.code} market={s.market} />
+
+        {riskEvents.length > 0 && (
+          <Section title="重要事件 / 雷区">
+            <ul className="space-y-1.5 text-sm">
+              {riskEvents.map((e, i) => (
+                <li
+                  key={i}
+                  className={
+                    e.severity === "high"
+                      ? "text-rose-600"
+                      : e.severity === "info"
+                      ? "text-gray-500"
+                      : "text-amber-700"
+                  }
+                >
+                  {e.text}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">
+              公开信息整理(Tushare),提示风险,不构成投资建议。
+            </p>
+          </Section>
+        )}
 
         <Section title="对应的股票">
           {!hasPeers ? (
