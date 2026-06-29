@@ -27,7 +27,7 @@ function unsubParts(base: string, userId: string) {
 const NET_MF_ALERT = 3.0; // 主力净流入/流出
 const RZ_ALERT = 2.0; // 融资余额变化
 
-function pickFundAlerts(items: FundFlowItem[]): FundFlowItem[] {
+export function pickFundAlerts(items: FundFlowItem[]): FundFlowItem[] {
   return items.filter(
     (it) =>
       (it.netMf !== null && Math.abs(it.netMf) >= NET_MF_ALERT) ||
@@ -36,8 +36,17 @@ function pickFundAlerts(items: FundFlowItem[]): FundFlowItem[] {
   );
 }
 
-function fmtYi(v: number) {
+export function fmtYi(v: number) {
   return `${v > 0 ? "+" : ""}${v.toFixed(1)}亿`;
+}
+
+// 资金面异动一行文本(微信/邮件纯文本通用):「兆易创新:主力+3.2亿 / 融资+2.1亿 / 上龙虎榜+1.5亿」
+export function fundAlertLine(it: FundFlowItem): string {
+  const parts: string[] = [];
+  if (it.netMf !== null) parts.push(`主力${fmtYi(it.netMf)}`);
+  if (it.rzChgYi !== null) parts.push(`融资${fmtYi(it.rzChgYi)}`);
+  if (it.longhu) parts.push(`上龙虎榜${fmtYi(it.longhu.net)}`);
+  return `${it.name}:${parts.join(" / ")}`;
 }
 
 // 资金面专属推送(无相关简报、但你的票资金面有异动时)。纯事实罗列,不调 LLM、不喊买卖。
@@ -49,13 +58,7 @@ async function sendFundDigest(
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
   const unsub = unsubParts(base, userId);
-  const line = (it: FundFlowItem) => {
-    const parts: string[] = [];
-    if (it.netMf !== null) parts.push(`主力${fmtYi(it.netMf)}`);
-    if (it.rzChgYi !== null) parts.push(`融资${fmtYi(it.rzChgYi)}`);
-    if (it.longhu) parts.push(`上龙虎榜${fmtYi(it.longhu.net)}`);
-    return `${it.name}:${parts.join(" / ")}`;
-  };
+  const line = fundAlertLine; // 与微信推送共用同一行格式,保证两边内容一致
   const text =
     `今天没有跟你的票相关的隔夜美股动态,但你的自选资金面有异动${
       date ? `(截至 ${date})` : ""

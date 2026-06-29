@@ -15,7 +15,4 @@ jobs:
         run: |
           curl -sS -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
-      - name: Push today's briefing to Web Push subscribers
-        run: |
-          curl -sS -X GET "https://stocktell.vercel.app/api/cron/push-web" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+      # Web Push 已关闭(改由邮件 + 微信承载);不再触发 /api/cron/push-web。

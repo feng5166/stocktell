@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/push-weixin",
-      "schedule": "0 0 * * *"
+      "schedule": "10 23 * * *"
     }
   ]
 }

@@ -67,10 +67,12 @@ export async function GET(req: NextRequest) {
       bridgeMissing: !b,
     };
   });
+  // 超 24h 窗口 = 已绑但 inWindow===false(微信推不进,需用户重新给 bot 发消息激活窗口)
+  const outWindow = list.filter((u) => u.inWindow === false).length;
   return NextResponse.json({
     ok: true,
     users: list,
     pending,
-    stats: { bound: list.length, pending: pending.length },
+    stats: { bound: list.length, pending: pending.length, outWindow },
   });
 }

@@ -10,11 +10,16 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// Web Push 已关闭(产品决定改由邮件 + 微信承载)。端点保留但直接短路,不再推送;
+// 日后要恢复:删掉下面这行 + 恢复 GitHub Actions 里的触发步骤即可。
+const WEB_PUSH_DISABLED = true;
+
 // 把当天已发布简报作为 Web Push 推给所有订阅者(CRON_SECRET 鉴权)
 export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
+  if (WEB_PUSH_DISABLED) return NextResponse.json({ ok: true, skipped: "web-push-disabled" });
   if (!pushEnabled()) return NextResponse.json({ ok: true, skipped: "push-disabled" });
   const db = getPrisma();
   if (!db) return NextResponse.json({ ok: true, skipped: "no-database" });

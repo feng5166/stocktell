@@ -29,7 +29,7 @@ function fmtWindow(sec: number | null): string {
   if (sec < 60) return `${sec}秒前`;
   if (sec < 3600) return `${Math.floor(sec / 60)}分钟前`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}小时前`;
-  return `${Math.floor(sec / 86400)}天前(超窗)`;
+  return `${Math.floor(sec / 86400)}天前 · 超24h推不进`;
 }
 
 function fmtAgo(iso: string | null): string {
@@ -44,7 +44,11 @@ function fmtAgo(iso: string | null): string {
 export default function AdminPushClient() {
   const [users, setUsers] = useState<WxUser[]>([]);
   const [pending, setPending] = useState<PendingUser[]>([]);
-  const [stats, setStats] = useState<{ bound: number; pending: number }>({ bound: 0, pending: 0 });
+  const [stats, setStats] = useState<{ bound: number; pending: number; outWindow: number }>({
+    bound: 0,
+    pending: 0,
+    outWindow: 0,
+  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
@@ -59,7 +63,7 @@ export default function AdminPushClient() {
       if (d.ok) {
         setUsers(d.users);
         setPending(d.pending ?? []);
-        setStats(d.stats ?? { bound: (d.users ?? []).length, pending: 0 });
+        setStats(d.stats ?? { bound: (d.users ?? []).length, pending: 0, outWindow: 0 });
       } else setMsg(`加载失败:${d.error}`);
     } catch (e) {
       setMsg(`加载出错:${String(e)}`);
@@ -125,7 +129,7 @@ export default function AdminPushClient() {
       {msg && <div className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{msg}</div>}
 
       {/* 绑定状态总览 */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-3 gap-3">
         <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
           <div className="text-xs text-gray-400">已绑微信</div>
           <div className="mt-1 text-display font-semibold tabular-nums text-gray-900">{stats.bound}</div>
@@ -133,6 +137,10 @@ export default function AdminPushClient() {
         <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
           <div className="text-xs text-gray-400">待激活(扫了没发消息)</div>
           <div className="mt-1 text-display font-semibold tabular-nums text-amber-600">{stats.pending}</div>
+        </div>
+        <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
+          <div className="text-xs text-gray-400">超24h窗口(推不进)</div>
+          <div className="mt-1 text-display font-semibold tabular-nums text-red-500">{stats.outWindow}</div>
         </div>
       </div>
 
