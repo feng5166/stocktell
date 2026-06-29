@@ -110,6 +110,31 @@ export default async function StockDetail({
           </p>
         </Section>
 
+        {/* 先给"发生了什么 + 该怎么想"的人话结论,术语类研究信息往后放 */}
+        <Section title="最近发生了什么">
+          <ul className="space-y-1.5 text-sm text-gray-700">
+            {todayNews.map((it) => (
+              <li key={it.id} className="text-rose-600">
+                • 今日简报:{it.title}
+              </li>
+            ))}
+            <li>• {s.observation}</li>
+          </ul>
+        </Section>
+
+        <Section title="散户怎么想" highlight>
+          <StockTellTake
+            itemId={newsItem?.id}
+            code={s.code}
+            retailTake={newsItem?.retailTake ?? s.retailTake}
+          />
+          {!newsItem && (
+            <p className="mt-1 text-xs text-gray-400">
+              今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
+            </p>
+          )}
+        </Section>
+
         <Fundamentals code={s.code} market={s.market} />
 
         <Section title="对应的股票">
@@ -147,30 +172,6 @@ export default async function StockDetail({
         </Section>
 
         {s.market === "A股" && <Similarity code={s.code} />}
-
-        <Section title="最近发生了什么">
-          <ul className="space-y-1.5 text-sm text-gray-700">
-            {todayNews.map((it) => (
-              <li key={it.id} className="text-rose-600">
-                • 今日简报:{it.title}
-              </li>
-            ))}
-            <li>• {s.observation}</li>
-          </ul>
-        </Section>
-
-        <Section title="散户怎么想" highlight>
-          <StockTellTake
-            itemId={newsItem?.id}
-            code={s.code}
-            retailTake={newsItem?.retailTake ?? s.retailTake}
-          />
-          {!newsItem && (
-            <p className="mt-1 text-xs text-gray-400">
-              今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
-            </p>
-          )}
-        </Section>
 
         <p className="mt-8 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
           免责声明:以上内容为公开信息整理,不构成投资建议。产业链关系为研究框架梳理,非确认的客户/供应商/持仓关系。历史规律不代表未来表现。
