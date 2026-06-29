@@ -67,6 +67,11 @@ export function FundFlow({ codes }: { codes: Set<string> }) {
           <span className="text-[10px]">{open ? "▲" : "▾"}</span>
         </span>
       </button>
+      {date && (
+        <p className="-mt-1 px-4 pb-2.5 text-meta leading-snug text-gray-400">
+          当日资金面于收盘后晚间更新,白天看到的是上一交易日数据
+        </p>
+      )}
       {open && (
         <div className="border-t border-gray-100 px-4 py-3">
           <div className="space-y-1.5">
