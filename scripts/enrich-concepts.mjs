@@ -9,9 +9,18 @@ import { fileURLToPath } from "url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
-const env = read(".env.local");
-const TOKEN = (env.match(/TUSHARE_TOKEN=([^\s"']+)/) || [])[1];
-if (!TOKEN) { console.error("缺 TUSHARE_TOKEN"); process.exit(1); }
+// token:CI 用 process.env;本地从 .env.local 读
+function readToken() {
+  if (process.env.TUSHARE_TOKEN) return process.env.TUSHARE_TOKEN.trim().replace(/^["']|["']$/g, "");
+  try {
+    const env = fs.readFileSync(path.join(ROOT, ".env.local"), "utf8");
+    return (env.match(/TUSHARE_TOKEN=([^\s"']+)/) || [])[1];
+  } catch {
+    return null;
+  }
+}
+const TOKEN = readToken();
+if (!TOKEN) { console.error("缺 TUSHARE_TOKEN(env 或 .env.local)"); process.exit(1); }
 
 const stocksSrc = read("src/data/stocks.ts");
 const aCodes = [];

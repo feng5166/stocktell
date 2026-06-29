@@ -1,0 +1,43 @@
+name: Refresh Stock Pool Data
+
+# 每周刷新 AI 产业链股票池的 Tushare 增强数据(市值/换手/热度 + 概念归属),
+# 重新生成 src/data/*.generated.ts 并提交回 main → 触发 Vercel 自动部署。
+# 周六 17:00 北京时间(= 09:00 UTC)。也可在 Actions 页手动触发。
+#
+# 需在 GitHub 仓库 Settings → Secrets and variables → Actions 添加:
+#   TUSHARE_TOKEN(与 Vercel 同值,6000 积分账号)
+on:
+  schedule:
+    - cron: "0 9 * * 6"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: Enrich (市值/换手/热度) + 概念归属
+        env:
+          TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+        run: |
+          node scripts/enrich-tushare.mjs
+          node scripts/enrich-concepts.mjs
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- src/data/enrichment.generated.ts src/data/concepts.generated.ts; then
+            echo "无变化,跳过提交"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src/data/enrichment.generated.ts src/data/concepts.generated.ts
+            git commit -m "chore(data): 周更 Tushare 增强(市值/换手/热度 + 概念) [skip ci]"
+            git push
+          fi
