@@ -73,6 +73,19 @@ curl -s -m 15 -b "$JAR" "$BASE/api/watchlist" |
   assert_json _ "'159995' not in d['codes'] and '300308' not in d['codes']" &&
   ok "删除自选生效(已清理)" || ng "删除自选未生效"
 
+# ---------- 登录态:邮件推送偏好(/settings 邮件开关 + 邮件退订共用 digest_opt_out) ----------
+echo "[邮件推送偏好]"
+curl -s -m 15 -b "$JAR" "$BASE/api/me/digest-pref" |
+  assert_json _ "isinstance(d.get('enabled'), bool)" && ok "读取邮件偏好正常" || ng "读取邮件偏好失败"
+curl -s -m 15 -b "$JAR" -X POST "$BASE/api/me/digest-pref" \
+  -H 'Content-Type: application/json' -d '{"enabled":false}' |
+  assert_json _ "d['enabled'] is False" && ok "关闭邮件推送生效" || ng "关闭邮件推送失败"
+curl -s -m 15 -b "$JAR" "$BASE/api/me/digest-pref" |
+  assert_json _ "d['enabled'] is False" && ok "关闭状态已落库" || ng "关闭状态未落库"
+curl -s -m 15 -b "$JAR" -X POST "$BASE/api/me/digest-pref" \
+  -H 'Content-Type: application/json' -d '{"enabled":true}' |
+  assert_json _ "d['enabled'] is True" && ok "重新开启生效(已还原)" || ng "重新开启失败"
+
 # ---------- 登录态:深读(早报/资金面/个股 explain 流式) ----------
 echo "[StockTell 深读]"
 DEEP=$(curl -s -m 60 -b "$JAR" -X POST "$BASE/api/briefing/explain" \
