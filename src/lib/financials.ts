@@ -50,10 +50,18 @@ async function compute(code: string): Promise<Checkup | null> {
   const cum = rpt === "年报" ? "" : "(累计)"; // 季报营收/净利为年初至今累计
   const findings: CheckupFinding[] = [];
 
-  // 概览一行(最新报告期:营收规模 + 盈利能力)
+  // 概览一行(最新报告期:营收/净利 + 同比 + 盈利能力)
+  // 括号合并:季报标"累计"、有同比标"同比±X%",如 营收 13.3亿(累计·同比+41%)
+  const tag = (yoyVal: number | null): string => {
+    const parts: string[] = [];
+    if (rpt !== "年报") parts.push("累计");
+    if (yoyVal !== null) parts.push(`同比${yoyVal >= 0 ? "+" : ""}${Math.round(yoyVal)}%`);
+    return parts.length ? `(${parts.join("·")})` : "";
+  };
   const ov: string[] = [];
-  if (rev !== null) ov.push(`营收 ${fmtYi(rev)}${cum}`);
-  if (ni !== null) ov.push(`归母净利 ${ni < 0 ? "亏 " + fmtYi(Math.abs(ni)) : fmtYi(ni)}${cum}`);
+  if (rev !== null) ov.push(`营收 ${fmtYi(rev)}${tag(f.revYoy)}`);
+  if (ni !== null)
+    ov.push(`归母净利 ${ni < 0 ? "亏 " + fmtYi(Math.abs(ni)) : fmtYi(ni)}${tag(f.niYoy)}`);
   if (f.roe !== null) ov.push(`ROE ${f.roe.toFixed(1)}%`);
   if (f.gross !== null) ov.push(`毛利率 ${f.gross.toFixed(0)}%`);
   if (ov.length) findings.push({ text: `📊 ${reportLabel}:${ov.join(" · ")}`, severity: "info" });
@@ -147,7 +155,7 @@ export function financialCheckup(code: string): Promise<Checkup | null> {
       if (!r) throw new Error("fin-checkup:no-data");
       return r;
     },
-    ["fin-checkup", "v2", code, todayISO()],
+    ["fin-checkup", "v3", code, todayISO()],
     { revalidate: 43200 } // 12h(财报低频)
   )().catch(() => null);
 }

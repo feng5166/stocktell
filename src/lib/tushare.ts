@@ -455,6 +455,8 @@ export interface AnnualFinancials {
   roe: number | null; // %
   gross: number | null; // 毛利率 %
   dedt: number | null; // 扣非净利润(元)
+  revYoy: number | null; // 营收同比增长率 %
+  niYoy: number | null; // 归母净利同比增长率 %
 }
 
 // 取某 api 的最新一期行(end_date 最大者,季报/年报都算——要的就是"最新")
@@ -475,9 +477,11 @@ export async function latestFinancials(code: string): Promise<AnnualFinancials |
       "end_date,total_hldr_eqy_exc_min_int,goodwill,money_cap,st_borr,non_cur_liab_due_1y"
     ).catch(() => null),
     tsCall("cashflow", { ts_code: ts }, "end_date,n_cashflow_act").catch(() => null),
-    tsCall("fina_indicator", { ts_code: ts }, "end_date,roe,grossprofit_margin,profit_dedt").catch(
-      () => null
-    ),
+    tsCall(
+      "fina_indicator",
+      { ts_code: ts },
+      "end_date,roe,grossprofit_margin,profit_dedt,or_yoy,netprofit_yoy"
+    ).catch(() => null),
   ]);
   const ri = latestRow(inc);
   if (!ri) return null;
@@ -507,6 +511,8 @@ export async function latestFinancials(code: string): Promise<AnnualFinancials |
     roe: pick(rf, fi, "roe"),
     gross: pick(rf, fi, "grossprofit_margin"),
     dedt: pick(rf, fi, "profit_dedt"),
+    revYoy: pick(rf, fi, "or_yoy"),
+    niYoy: pick(rf, fi, "netprofit_yoy"),
   };
 }
 
