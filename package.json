@@ -11,6 +11,7 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "data-check": "node scripts/data-check.mjs",
+    "enrich": "node scripts/enrich-tushare.mjs",
     "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {

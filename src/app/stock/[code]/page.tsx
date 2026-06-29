@@ -12,7 +12,16 @@ import { LiveQuote } from "@/components/LiveQuote";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
+import { ENRICH } from "@/data/enrichment.generated";
 import { todayISO } from "@/lib/date";
+
+// 热度配色:极热=红、活跃=橙,其余中性
+const HEAT_CLASS: Record<string, string> = {
+  极热: "bg-rose-50 text-rose-600",
+  活跃: "bg-amber-50 text-amber-700",
+  正常: "bg-gray-100 text-gray-500",
+  清淡: "bg-gray-100 text-gray-400",
+};
 
 // 页面本体(定位/关联/上下游)全来自内存静态数据,本可秒出;原本 force-dynamic + SSR
 // 串行等新浪行情 + DB,整页被慢请求卡住。改 ISR:静态外壳走缓存,实时行情交给 <LiveQuote>
@@ -26,6 +35,9 @@ export default async function StockDetail({
 }) {
   const s = STOCK_MAP[params.code];
   if (!s) notFound();
+
+  // 基本面增强标签(Tushare:市值档/换手热度),仅 A 股
+  const en = s.market === "A股" ? ENRICH[s.code] : undefined;
 
   // 今天的简报里是否提到这只(真实"今日有新消息")
   const todayNews = (
@@ -110,6 +122,26 @@ export default async function StockDetail({
           >
             {s.market}
           </span>
+          {en?.capTier && (
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
+              {en.capTier}
+              {en.circMvYi != null && (
+                <span className="ml-1 text-gray-400">
+                  {en.circMvYi >= 10000
+                    ? `${(en.circMvYi / 10000).toFixed(2)}万亿`
+                    : `${Math.round(en.circMvYi)}亿`}
+                </span>
+              )}
+            </span>
+          )}
+          {en?.heat && (
+            <span
+              className={`rounded px-1.5 py-0.5 text-xs ${HEAT_CLASS[en.heat] ?? "bg-gray-100 text-gray-500"}`}
+              title={en.turnover != null ? `换手率 ${en.turnover}%` : undefined}
+            >
+              {en.heat}
+            </span>
+          )}
           <WatchStar code={s.code} />
           <FeedbackLink />
           <LiveQuote code={s.code} />
