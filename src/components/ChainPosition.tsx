@@ -4,6 +4,7 @@
 // 方向来自 chainEdges 的真实关联边(供货/对标/映射,均有公开依据),非按板块硬凑。
 import { useState } from "react";
 import Link from "next/link";
+import { SECTOR_GLOSS } from "@/data/stocks";
 
 interface Peer {
   code: string;
@@ -112,6 +113,9 @@ export function ChainPosition({
           <span>上游 = 给它供货的 · 下游 = 买它产品/服务的 · </span>
         )}
         板块:{sector}
+        {SECTOR_GLOSS[sector] && (
+          <span className="text-gray-400">({SECTOR_GLOSS[sector]})</span>
+        )}
       </p>
     </div>
   );
