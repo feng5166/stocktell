@@ -79,15 +79,20 @@ export async function buildMorningBrief(
     `\n\n请写这段早报。`;
 
   try {
-    const resp = await client.chat.completions.create({
-      // 早报是短文本,用非推理的 flash:快、且不会被 reasoning 吃掉 token 截断正文。
-      model: process.env.BRIEF_LLM_MODEL || "deepseek-v4-flash",
-      max_tokens: 700,
-      messages: [
-        { role: "system", content: BRIEF_PROMPT },
-        { role: "user", content: userContent },
-      ],
-    });
+    const resp = await client.chat.completions.create(
+      {
+        // 早报是短文本,用非推理的 flash:快、且不会被 reasoning 吃掉 token 截断正文。
+        model: process.env.BRIEF_LLM_MODEL || "deepseek-v4-flash",
+        max_tokens: 700,
+        messages: [
+          { role: "system", content: BRIEF_PROMPT },
+          { role: "user", content: userContent },
+        ],
+      },
+      // SDK 默认重试 2 次,LLM 抖动时会叠成 20-30s 把整个函数拖到超时。
+      // 这里关掉 SDK 重试 + 18s 硬超时,失败快速回退到规则模板(非空),早报不再卡死/消失。
+      { maxRetries: 0, timeout: 18000 }
+    );
     const txt = resp.choices[0]?.message?.content?.trim();
     return txt && txt.length > 0 ? txt : fallback(items);
   } catch {
