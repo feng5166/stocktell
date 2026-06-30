@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateDrafts } from "@/lib/generate";
 import { insertDrafts, listBriefing } from "@/lib/briefings";
 import { runPreOpenDigest } from "@/lib/digest";
+import { runWebPush } from "@/lib/push-web";
 import { todayISO } from "@/lib/date";
 import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
@@ -59,12 +60,15 @@ export async function GET(req: NextRequest) {
     }
     // 盘前推送:发布后,给有自选+有相关动态的用户推一条(同一 cron 内做,省一个 cron 额度)
     const digest = await runPreOpenDigest().catch(() => null);
+    // Web Push:发布后给所有浏览器订阅者推一条通用提醒(点击落地 /#mine)。失败不影响主流程。
+    const webpush = await runWebPush().catch(() => null);
     return NextResponse.json({
       ok: true,
       date,
       engine,
       published: created.length,
       digest,
+      webpush,
     });
   } catch (e) {
     await alertCron("briefing(简报生成)", e);

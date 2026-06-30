@@ -3,21 +3,128 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { track } from "@/lib/analytics";
+import {
+  pushSupported,
+  getPushSubscription,
+  enablePush,
+  disablePush,
+} from "@/lib/web-push-client";
 
 /* eslint-disable @next/next/no-img-element */
 
-// 个人设置:推送渠道管理(微信 + 邮件)。
+// 个人设置:推送渠道管理。邮件 + 浏览器通知是稳定主通道(不受微信窗口限制),排在最前。
 export function SettingsClient({ email }: { email: string | null }) {
   return (
     <div className="space-y-4">
-      <WeixinCard />
-      <IntradayCard />
-      <RiskCard />
       <EmailCard hasEmail={!!email} email={email} />
+      <BrowserPushCard />
+      <RiskCard />
+      <IntradayCard />
+      <WeixinCard />
       <p className="px-1 text-xs leading-relaxed text-gray-400">
         我们只在你的自选有相关动态时才推送,没动静不打扰。各渠道可分别开关。
+        推荐至少开启<b>邮件</b>或<b>浏览器通知</b>——这两条最稳,不会因微信会话过期而收不到。
       </p>
     </div>
+  );
+}
+
+// ---------------- 浏览器通知(Web Push)----------------
+// 状态机:loading / unsupported / ios-install(iOS 未加主屏)/ denied(被拦截)/ on / off
+function BrowserPushCard() {
+  const [state, setState] = useState<
+    "loading" | "unsupported" | "ios-install" | "denied" | "on" | "off"
+  >("loading");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const ua = navigator.userAgent;
+      const isIOS = /iphone|ipad|ipod/i.test(ua);
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (navigator as any).standalone === true;
+      if (!pushSupported()) {
+        // iOS 仅在「添加到主屏幕」后才有 PushManager;否则引导先装到主屏
+        setState(isIOS && !standalone ? "ios-install" : "unsupported");
+        return;
+      }
+      if (Notification.permission === "denied") {
+        setState("denied");
+        return;
+      }
+      const sub = await getPushSubscription();
+      setState(sub ? "on" : "off");
+    })().catch(() => setState("unsupported"));
+  }, []);
+
+  async function enable() {
+    setBusy(true);
+    try {
+      const r = await enablePush();
+      if (r.ok) {
+        setState("on");
+        track("bind_push", { channel: "webpush" }); // 漏斗:绑推送(开浏览器通知)
+      } else if (r.reason === "denied") {
+        setState("denied");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disable() {
+    setBusy(true);
+    try {
+      await disablePush();
+      setState("off");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card
+      title="🔔 浏览器通知"
+      desc="盘前简报发布后,直接弹到你的电脑/手机桌面,点开直达「和我相关」。不依赖微信,不受会话窗口限制。"
+    >
+      {state === "loading" && <span className="text-sm text-gray-400">读取中…</span>}
+
+      {state === "unsupported" && (
+        <span className="text-sm text-gray-500">
+          当前浏览器不支持桌面通知。建议用 Chrome / Edge,或把本站「安装到桌面」后再开启。
+        </span>
+      )}
+
+      {state === "ios-install" && (
+        <span className="text-sm text-gray-500">
+          iPhone / iPad 需先用 <b>Safari</b> 打开 → 分享 → <b>「添加到主屏幕」</b>,
+          再从主屏图标打开本页即可开启通知。
+        </span>
+      )}
+
+      {state === "denied" && (
+        <span className="text-sm text-gray-500">
+          通知已被浏览器拦截。请在浏览器「网站设置 → 通知」里把本站改为<b>允许</b>,再回来开启。
+        </span>
+      )}
+
+      {(state === "on" || state === "off") && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-700">
+            {state === "on"
+              ? "已开启:简报发布后弹桌面通知"
+              : "已关闭:不会收到桌面通知"}
+          </span>
+          <Switch
+            checked={state === "on"}
+            disabled={busy}
+            onChange={(next) => (next ? enable() : disable())}
+          />
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -191,7 +298,7 @@ function EmailCard({ hasEmail, email }: { hasEmail: boolean; email: string | nul
       title="📧 邮件推送"
       desc={
         hasEmail
-          ? `盘前早报会发到 ${email}`
+          ? `交易日盘前,只在你的自选有相关动态时发到 ${email}(没动静不打扰),最稳的一条通道。`
           : "你的账号没有邮箱,无法接收邮件推送"
       }
     >
