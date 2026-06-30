@@ -17,6 +17,7 @@ interface US {
   down: number;
   avgPct: number;
   covered: number;
+  indices?: { name: string; change: number }[];
 }
 interface Data {
   date: string | null;
@@ -106,13 +107,34 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
             }
           />
         )}
-        {d.us && (
-          <MoodRow
-            label="隔夜美股"
-            up={d.us.up}
-            down={d.us.down}
-            avgPct={d.us.avgPct}
-          />
+        {d.us && (d.us.covered > 0 || (d.us.indices?.length ?? 0) > 0) && (
+          <div className="space-y-1">
+            {d.us.covered > 0 && (
+              <MoodRow
+                label="隔夜美股"
+                up={d.us.up}
+                down={d.us.down}
+                avgPct={d.us.avgPct}
+              />
+            )}
+            {d.us.indices && d.us.indices.length > 0 && (
+              <div className="flex items-center gap-3 text-xs">
+                <span className="w-14 shrink-0 text-gray-400">
+                  {d.us.covered > 0 ? "大盘" : "隔夜美股"}
+                </span>
+                <span className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-gray-500">
+                  {d.us.indices.map((ix) => (
+                    <span key={ix.name} className="whitespace-nowrap">
+                      {ix.name}{" "}
+                      <span className={`tabular-nums ${changeClass(ix.change)}`}>
+                        {fmtPct(ix.change)}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

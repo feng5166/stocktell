@@ -14,7 +14,7 @@ const CHUNK = 50;
 // ===== 新浪源 =====
 function parseSina(text: string, codeBySym: Record<string, string>) {
   const out: Record<string, Quote> = {};
-  const re = /var hq_str_([a-z0-9_]+)="([^"]*)";/g;
+  const re = /var hq_str_([a-z0-9_$]+)="([^"]*)";/g; // $ 用于美股指数符号 gb_$ixic 等
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     const sym = m[1];
@@ -158,6 +158,43 @@ export async function fetchQuotes(
     (code) => sinaSymbol(STOCK_MAP[code]),
     (code) => tencentSymbol(STOCK_MAP[code])
   );
+}
+
+// 隔夜美股大盘 context:纳指/标普500/费城半导体(SOX)。给情绪仪表盘做"beta vs 产业 alpha"参照——
+// 看 NVDA+3% 时,同时看到纳指/费半,才知道是普涨还是产业超额。新浪 gb_$ 与美股个股同格式;
+// 腾讯仅作整体回落(SOX 在腾讯无 usSOX,回落时该项缺失,可接受)。
+const US_INDICES = [
+  { key: "IXIC", name: "纳指", sina: "gb_$ixic", tencent: "usIXIC" },
+  { key: "INX", name: "标普", sina: "gb_$inx", tencent: "usINX" },
+  { key: "SOX", name: "费半", sina: "gb_$sox", tencent: "usSOX" },
+] as const;
+
+export interface IndexQuote {
+  name: string;
+  change: number; // 日涨跌 %
+  asOf?: string;
+}
+
+export async function fetchUsIndices(): Promise<IndexQuote[]> {
+  const sMap: Record<string, string> = {};
+  const tMap: Record<string, string> = {};
+  for (const i of US_INDICES) {
+    sMap[i.key] = i.sina;
+    tMap[i.key] = i.tencent;
+  }
+  const { quotes } = await fetchWithFallback(
+    US_INDICES.map((i) => i.key),
+    (code) => sMap[code],
+    (code) => tMap[code]
+  );
+  const out: IndexQuote[] = [];
+  for (const i of US_INDICES) {
+    const q = quotes[i.key];
+    if (q && Number.isFinite(q.change)) {
+      out.push({ name: i.name, change: q.change, asOf: q.asOf });
+    }
+  }
+  return out;
 }
 
 // 板块 ETF 行情:ETF 不在 STOCK_MAP 里,按 A 股直接构造符号(sina/腾讯都支持 5 开头沪市 ETF)。

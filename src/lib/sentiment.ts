@@ -8,7 +8,7 @@ import { todayISO } from "@/lib/date";
 import { dailyByDate, latestFundYmd } from "@/lib/tushare";
 import { getFundBundle } from "@/lib/fund-flow";
 import { getPrisma } from "@/lib/prisma";
-import { fetchQuotes } from "@/lib/quotes";
+import { fetchQuotes, fetchUsIndices } from "@/lib/quotes";
 
 export interface ChainSentiment {
   date: string | null; // A 股数据交易日
@@ -20,7 +20,13 @@ export interface ChainSentiment {
     netMfYi: number; // 主力净流入合计(亿元)
     covered: number;
   } | null;
-  us: { up: number; down: number; avgPct: number; covered: number } | null;
+  us: {
+    up: number;
+    down: number;
+    avgPct: number;
+    covered: number;
+    indices?: { name: string; change: number }[]; // 隔夜大盘 context:纳指/标普/费半
+  } | null;
 }
 
 let cache: { at: number; data: ChainSentiment } | null = null;
@@ -81,19 +87,32 @@ async function computeSentiment(): Promise<ChainSentiment> {
     };
   })().catch(() => ({ a: null, date: null } as { a: ChainSentiment["a"]; date: string | null }));
 
-  // 隔夜美股(新浪实时):单独加超时,慢/挂就只给 A 股
-  const usTask = withTimeout(fetchQuotes(usCodes), 6000)
-    .then(({ quotes }) => {
-      const ch = usCodes
-        .map((c) => quotes[c]?.change)
-        .filter((v): v is number => v !== undefined && v !== null);
-      if (!ch.length) return null;
-      const up = ch.filter((v) => v > 0).length;
-      const down = ch.filter((v) => v < 0).length;
-      const avg = ch.reduce((s, v) => s + v, 0) / ch.length;
-      return { up, down, avgPct: Math.round(avg * 100) / 100, covered: ch.length };
-    })
-    .catch(() => null as ChainSentiment["us"]);
+  // 隔夜美股(新浪实时):自选美股池涨跌 + 大盘指数 context(纳指/标普/费半)并行,各自加超时。
+  // 即便自选池取数失败,只要指数拿到也展示(给"普涨还是产业超额"的参照)。
+  const usTask = (async (): Promise<ChainSentiment["us"]> => {
+    const [poolRes, indices] = await Promise.all([
+      withTimeout(fetchQuotes(usCodes), 6000).catch(() => null),
+      withTimeout(fetchUsIndices(), 6000).catch(
+        () => [] as Awaited<ReturnType<typeof fetchUsIndices>>
+      ),
+    ]);
+    const quotes = poolRes?.quotes ?? {};
+    const ch = usCodes
+      .map((c) => quotes[c]?.change)
+      .filter((v): v is number => v !== undefined && v !== null);
+    const idx = indices.map((i) => ({ name: i.name, change: i.change }));
+    if (!ch.length && idx.length === 0) return null;
+    const up = ch.filter((v) => v > 0).length;
+    const down = ch.filter((v) => v < 0).length;
+    const avg = ch.length ? ch.reduce((s, v) => s + v, 0) / ch.length : 0;
+    return {
+      up,
+      down,
+      avgPct: Math.round(avg * 100) / 100,
+      covered: ch.length,
+      indices: idx,
+    };
+  })();
 
   const [aRes, us] = await Promise.all([aTask, usTask]);
   return { date: aRes.date, a: aRes.a, us };
