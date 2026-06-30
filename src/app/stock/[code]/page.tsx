@@ -223,8 +223,7 @@ export default async function StockDetail({
           )}
         </Section>
 
-        <Fundamentals code={s.code} market={s.market} />
-
+        {/* 散户心态:结论之后先看「有没有坑(雷区)」「钱在怎么流(资金面)」,再看赚不赚钱(财报/估值) */}
         {riskEvents.length > 0 && (
           <Section title="重要事件 / 雷区">
             <ul className="space-y-1.5 text-sm">
@@ -245,32 +244,6 @@ export default async function StockDetail({
             </ul>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
               公开信息整理(Tushare),提示风险,不构成投资建议。
-            </p>
-          </Section>
-        )}
-
-        {checkup && checkup.findings.length > 0 && (
-          <Section title="财报体检 · 一句话看懂">
-            <ul className="space-y-1.5 text-sm">
-              {checkup.findings.map((f, i) => (
-                <li
-                  key={i}
-                  className={
-                    f.severity === "high"
-                      ? "text-rose-600"
-                      : f.severity === "mid"
-                      ? "text-amber-700"
-                      : f.severity === "good"
-                      ? "text-emerald-600"
-                      : "text-gray-500"
-                  }
-                >
-                  {f.text}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              基于 {checkup.reportLabel ?? `${checkup.year} 年报`}(Tushare),信息整理、提示风险,不构成投资建议。
             </p>
           </Section>
         )}
@@ -304,24 +277,33 @@ export default async function StockDetail({
             </Section>
           )}
 
-        {etfs.length > 0 && (
-          <Section title="相关 ETF · 一篮子参与">
-            <div className="space-y-1.5 text-sm">
-              {etfs.map((e) => (
-                <div key={e.code} className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-gray-400">{e.code}</span>
-                  <span className="font-medium text-gray-800">{e.name}</span>
-                  <span className="ml-auto text-xs text-gray-500">
-                    {s.name}占 {e.ratio}%
-                  </span>
-                </div>
+        {checkup && checkup.findings.length > 0 && (
+          <Section title="财报体检 · 一句话看懂">
+            <ul className="space-y-1.5 text-sm">
+              {checkup.findings.map((f, i) => (
+                <li
+                  key={i}
+                  className={
+                    f.severity === "high"
+                      ? "text-rose-600"
+                      : f.severity === "mid"
+                      ? "text-amber-700"
+                      : f.severity === "good"
+                      ? "text-emerald-600"
+                      : "text-gray-500"
+                  }
+                >
+                  {f.text}
+                </li>
               ))}
-            </div>
+            </ul>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              看好这个方向又不想押单只,可考虑重仓它的 ETF 一篮子参与。基金季报持仓(Tushare),不构成投资建议。
+              基于 {checkup.reportLabel ?? `${checkup.year} 年报`}(Tushare),信息整理、提示风险,不构成投资建议。
             </p>
           </Section>
         )}
+
+        <Fundamentals code={s.code} market={s.market} />
 
         <Section title="对应的股票">
           {!hasPeers ? (
@@ -365,6 +347,25 @@ export default async function StockDetail({
             down={downPeers}
           />
         </Section>
+
+        {etfs.length > 0 && (
+          <Section title="相关 ETF · 一篮子参与">
+            <div className="space-y-1.5 text-sm">
+              {etfs.map((e) => (
+                <div key={e.code} className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-gray-400">{e.code}</span>
+                  <span className="font-medium text-gray-800">{e.name}</span>
+                  <span className="ml-auto text-xs text-gray-500">
+                    {s.name}占 {e.ratio}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">
+              看好这个方向又不想押单只,可考虑重仓它的 ETF 一篮子参与。基金季报持仓(Tushare),不构成投资建议。
+            </p>
+          </Section>
+        )}
 
         {s.market === "A股" && <Similarity code={s.code} />}
 
