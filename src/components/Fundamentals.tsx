@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { InfoHint } from "@/components/InfoHint";
 
 interface Fundamental {
   tradeDate: string;
@@ -69,9 +70,9 @@ function Metric({
   hint?: string;
 }) {
   return (
-    <span title={hint} className={hint ? "cursor-help" : undefined}>
+    <span className="inline-flex items-center">
       {label}
-      {hint ? <span className="text-gray-300"> ⓘ</span> : null}{" "}
+      {hint ? <InfoHint text={hint} className="mx-0.5" /> : null}{" "}
       <b className="font-mono font-semibold tabular-nums text-gray-800">{value}</b>
     </span>
   );

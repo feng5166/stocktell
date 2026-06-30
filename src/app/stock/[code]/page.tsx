@@ -12,6 +12,7 @@ import { LiveQuote } from "@/components/LiveQuote";
 import { Fundamentals } from "@/components/Fundamentals";
 import { Similarity } from "@/components/Similarity";
 import { StockTellTake } from "@/components/StockTellTake";
+import { InfoHint } from "@/components/InfoHint";
 import { riskEventsFor } from "@/lib/risk-radar";
 import { financialCheckup } from "@/lib/financials";
 import { fundFlowFor } from "@/lib/fund-flow";
@@ -229,30 +230,24 @@ export default async function StockDetail({
             <li>• {s.observation}</li>
             {/* 资金面并入:今天主力/融资/龙虎榜动向 */}
             {fundItem?.netMf != null && (
-              <li
-                className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}
-                title="主力=大单资金;净流入指今天大单买得比卖得多(净流出反之)"
-              >
+              <li className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}>
                 💰 主力{fundItem.netMf >= 0 ? "净流入" : "净流出"}{" "}
                 {Math.abs(fundItem.netMf).toFixed(1)} 亿
+                <InfoHint text="主力=大单资金;净流入指今天大单买得比卖得多(净流出反之)" />
               </li>
             )}
             {fundItem?.rzChgYi != null && (
-              <li
-                className="text-gray-700"
-                title="融资余额=借钱买这只股的总额;增加说明加杠杆看多的人变多(减少反之)"
-              >
+              <li className="text-gray-700">
                 🏦 融资余额{fundItem.rzChgYi >= 0 ? "增加" : "减少"}{" "}
                 {Math.abs(fundItem.rzChgYi).toFixed(1)} 亿
+                <InfoHint text="融资余额=借钱买这只股的总额;增加说明加杠杆看多的人变多(减少反之)" />
               </li>
             )}
             {fundItem?.longhu && (
-              <li
-                className="text-amber-700"
-                title="龙虎榜=当天买卖最猛的营业部公开名单;上榜说明资金博弈激烈"
-              >
+              <li className="text-amber-700">
                 🐯 上龙虎榜:净额 {fundItem.longhu.net >= 0 ? "+" : ""}
                 {fundItem.longhu.net.toFixed(1)} 亿 · {fundItem.longhu.reason}
+                <InfoHint text="龙虎榜=当天买卖最猛的营业部公开名单;上榜说明资金博弈激烈" />
               </li>
             )}
           </ul>
