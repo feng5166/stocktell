@@ -163,9 +163,11 @@ export function AuthModal({
                 type="button"
                 onClick={() => setShowPwd((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                aria-label="显示密码"
+                aria-label={showPwd ? "隐藏密码" : "显示密码"}
+                aria-pressed={showPwd}
+                title={showPwd ? "隐藏密码" : "显示密码"}
               >
-                {showPwd ? "🙈" : "👁"}
+                {showPwd ? "👁️" : "🙈"}
               </button>
             </div>
           </div>
