@@ -245,7 +245,8 @@ export default function Dashboard() {
   const filtered = useMemo(() => {
     return rows.filter((s) => {
       if (onlyWatch && !wl.codes.has(s.code)) return false;
-      if (market !== "全部" && s.market !== market) return false;
+      // 搜索时放开市场过滤:否则默认锁「A股」会让搜美股(英伟达/NVDA)直接 0 结果、像"本站没有"
+      if (!query.trim() && market !== "全部" && s.market !== market) return false;
       if (position !== "全部" && s.position !== position) return false;
       if (sector !== "全部" && s.sector !== sector) return false;
       if (tier !== "全部" && TIER[s.code] !== tier) return false;

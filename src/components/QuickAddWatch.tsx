@@ -31,15 +31,18 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="如 600519 / 贵州茅台 / 英伟达"
+        placeholder="如 中际旭创 / 300308 / 英伟达"
         className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
       />
 
       {q.trim() && (
         <div className="mt-2 divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-100">
           {matches.length === 0 ? (
-            <div className="px-3 py-3 text-center text-xs text-gray-400">
-              没找到「{q.trim()}」。试试代码或公司简称。
+            <div className="px-3 py-3 text-center text-xs leading-relaxed text-gray-500">
+              {/^\d{6}$/.test(q.trim())
+                ? `「${q.trim()}」暂未纳入。`
+                : `没找到「${q.trim()}」。`}
+              StockTell 目前专盯 AI 产业链(约 {STOCKS.length} 只),其它板块还在路上——换 AI 链上的票试试。
             </div>
           ) : (
             matches.map((s) => {
