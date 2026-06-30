@@ -195,7 +195,7 @@ export default function Dashboard() {
   const [relation, setRelation] = useState<string>("全部关系");
   const [query, setQuery] = useState("");
   const [onlyWatch, setOnlyWatch] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(true); // 手机筛选区:默认展开(可手动收起)
+  const [filterOpen, setFilterOpen] = useState(false); // 手机筛选区:默认折叠(桌面恒 sm:block 不受影响),首屏让位给股票列表
   const wl = useWatchlist();
   // 新手在本页第一次加自选 → 显示"已加,回首页看相关"的闭环提示(只对本次从 0 起步的用户)
   const [addedHint, setAddedHint] = useState(false);
@@ -406,8 +406,8 @@ export default function Dashboard() {
         {/* 产业链切换:AI 当前,其他「开发中」可投「我想要」 */}
         <ChainSwitcher />
 
-        {/* Tab 导航 */}
-        <div className="mb-4 flex gap-1 overflow-x-auto border-b border-gray-200">
+        {/* Tab 导航:手机吸顶(长列表里随时切视图)+ 换行全露(不再横向溢出把「主动发现」切到屏外)*/}
+        <div className="sticky top-0 z-20 -mx-4 mb-4 flex flex-wrap gap-1 border-b border-gray-200 bg-canvas px-4 sm:static sm:mx-0 sm:flex-nowrap sm:overflow-x-auto sm:px-0">
           {TABS.map((t) => (
             <button
               key={t}
@@ -482,13 +482,20 @@ export default function Dashboard() {
 
         {/* 筛选区 */}
         <div className="mb-4 space-y-3 rounded-xl bg-white shadow-sm p-4">
-          {/* 手机:折叠开关(桌面隐藏) */}
+          {/* 搜索:始终常驻——手机折叠筛选时也能直接搜票加自选(新手引导"在下方搜你拿的票"的落点)*/}
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜代码 / 公司 / 定位,点 ☆ 加自选"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-900"
+          />
+          {/* 手机:筛选折叠开关(桌面隐藏) */}
           <button
             type="button"
             onClick={() => setFilterOpen((v) => !v)}
             className="flex w-full items-center justify-between text-sm text-gray-500 sm:hidden"
           >
-            <span>筛选 / 搜索</span>
+            <span>筛选</span>
             <span>{filterOpen ? "收起 ▲" : "展开 ▾"}</span>
           </button>
           {/* 内容:手机折叠,桌面 sm:block 始终展开、布局不变 */}
@@ -569,12 +576,6 @@ export default function Dashboard() {
                 ))}
               </select>
             </div>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索代码 / 公司 / 定位"
-              className="min-w-[160px] flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-gray-900"
-            />
           </div>
           </div>
         </div>
