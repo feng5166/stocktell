@@ -9,11 +9,7 @@ export const metadata = {
 };
 
 const TIMELINE = [
-  ["2023.09", "Google 开发者大会 · 码力黑客松,优秀奖团队"],
-  ["2023.10", "百川智能 × 亚马逊云科技 AI 黑客松,Awesome Star 特别奖"],
-  ["2024.04", "钉钉(阿里)AI 助力大赛 高校 / 生活赛道,一等奖"],
-  ["2025.04", "小红书首届独立开发大赛,最佳 AI 项目入围"],
-  ["2025.07", "Adventure X(中国最大黑客松),评委及合作方"],
+  ["2026.06", "StockTell 正式上线 —— 面向 A 股散户的「AI 盯盘搭子」"],
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
