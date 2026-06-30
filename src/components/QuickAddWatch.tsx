@@ -7,6 +7,9 @@ import Link from "next/link";
 import { STOCKS } from "@/data/stocks";
 import type { UseWatchlist } from "@/components/useWatchlist";
 
+// 覆盖口径:对 A股 散户只强调可交易的 A股 只数,美股是用来联动的"锚点"(单列说明,不混入只数)
+const A_SHARE_COUNT = STOCKS.filter((s) => s.market === "A股").length;
+
 export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
   const [q, setQ] = useState("");
 
@@ -42,7 +45,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
               {/^\d{6}$/.test(q.trim())
                 ? `「${q.trim()}」暂未纳入。`
                 : `没找到「${q.trim()}」。`}
-              StockTell 目前专盯 AI 产业链(约 {STOCKS.length} 只),其它板块还在路上——换 AI 链上的票试试。
+              StockTell 目前专盯 AI 产业链(覆盖 A 股约 {A_SHARE_COUNT} 只 + 美股锚点),其它板块还在路上——换 AI 链上的票试试。
             </div>
           ) : (
             matches.map((s) => {
