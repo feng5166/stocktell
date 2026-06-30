@@ -91,11 +91,11 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
   return (
     <>
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-sm rounded-2xl bg-[#F4F1EA] p-7 shadow-xl"
+        className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl bg-[#F4F1EA] p-7 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
