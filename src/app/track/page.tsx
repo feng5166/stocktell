@@ -45,10 +45,32 @@ export default async function TrackPage() {
           </p>
         </div>
 
-        {/* 规则透明 */}
+        {/* 规则透明 + 三态图例(和明细表/统计卡的用词、颜色一一对应) */}
         <div className="mb-5 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
-          判定规则(透明):触发美股涨 → 预期对应 A 股涨,跌 → 预期跌;当日同向且涨跌幅
-          ≥ {HIT_THRESHOLD}% 记一次「有效联动」。早期样本少,联动有效率会波动,仅为历史复盘、不构成投资建议。
+          <p>
+            判定规则(透明):触发美股涨 → 预期对应 A 股涨,跌 → 预期跌。每只关联股当日收盘后,落到下面三种状态之一:
+          </p>
+          <ul className="mt-2 space-y-1">
+            <li>
+              <Dot className="bg-rose-500" />
+              <b className="text-rose-600">有效</b>:实际按预期方向走、且当日涨跌幅 ≥{" "}
+              {HIT_THRESHOLD}%(联动成立)
+            </li>
+            <li>
+              <Dot className="bg-gray-400" />
+              <b className="text-gray-600">未联动</b>:已判定,但没达到上面的标准(方向不对或幅度不够)
+            </li>
+            <li>
+              <Dot className="bg-gray-300" />
+              <b className="text-gray-500">未判定</b>:当日行情还没取到,暂时算不了,不计入有效率
+            </li>
+          </ul>
+          <p className="mt-2">
+            <b className="text-gray-600">
+              联动有效率 = 有效 ÷ 已判定(已判定 = 有效 + 未联动)
+            </b>
+            。早期样本少会波动,仅为历史复盘、不构成投资建议。
+          </p>
         </div>
 
         {/* 实盘记录 */}
@@ -104,6 +126,15 @@ export default async function TrackPage() {
 
 function emptyStats(): HitStats {
   return { evaluated: 0, hits: 0, rate: null };
+}
+
+// 图例小圆点:颜色与明细表的有效/未联动/未判定一一对应
+function Dot({ className }: { className: string }) {
+  return (
+    <span
+      className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${className}`}
+    />
+  );
 }
 
 function Overview({
