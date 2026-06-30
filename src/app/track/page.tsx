@@ -45,10 +45,35 @@ export default async function TrackPage() {
           </p>
         </div>
 
-        {/* 规则透明 + 三态图例(和明细表/统计卡的用词、颜色一一对应) */}
-        <div className="mb-5 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
-          <p>
-            判定规则(透明):触发美股涨 → 预期对应 A 股涨,跌 → 预期跌。每只关联股当日收盘后,落到下面三种状态之一:
+        {/* 规则 + 三态图例:默认折叠,点 ⓘ 展开(原生 details,无需客户端 JS) */}
+        <details className="group mb-5 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 text-gray-500 transition-colors hover:text-gray-700">
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4 shrink-0 text-gray-400"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 9a1 1 0 012 0v4a1 1 0 11-2 0V9zm1-4.25a1.1 1.1 0 100 2.2 1.1 1.1 0 000-2.2z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="font-medium">
+              判定规则 · 有效 / 未联动 / 未判定 怎么算的
+            </span>
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              className="ml-auto h-4 w-4 shrink-0 text-gray-300 transition-transform group-open:rotate-180"
+            >
+              <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <p className="mt-3">
+            触发美股涨 → 预期对应 A 股涨,跌 → 预期跌。每只关联股当日收盘后,落到下面三种状态之一:
           </p>
           <ul className="mt-2 space-y-1">
             <li>
@@ -71,7 +96,7 @@ export default async function TrackPage() {
             </b>
             。早期样本少会波动,仅为历史复盘、不构成投资建议。
           </p>
-        </div>
+        </details>
 
         {/* 实盘记录 */}
         <section className="mb-8">
