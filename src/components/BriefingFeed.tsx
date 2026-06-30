@@ -67,8 +67,8 @@ export function BriefingFeed({
             {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
             {mine.length === 0 ? (
               <>
+                <QuietMorningBrief />
                 <WatchOverview codes={wl.codes} />
-                <QuietWatchHint />
               </>
             ) : (
               <CardFeed
@@ -350,13 +350,19 @@ const QUIET_COPY: Record<MarketPhase, string> = {
   post: "今天收工 —— 你的票没踩 AI 产业链的雷,也没错过风口,明天我接着盯 👀",
   weekend: "周末休市 —— 你的票本周没有产业链异动,周一开盘我继续盯 👀",
 };
-function QuietWatchHint() {
-  // 默认用通用守望文案(SSR/水合前);挂载后按真实北京时段切换,避免服务端/客户端不一致
+// 没异动时的「今日早报」:沿用早报卡片样式(始终在场,不因没动态整块消失),
+// 正文用时段感知的守望文案。默认通用文案(SSR/水合前),挂载后按北京时段切换。
+function QuietMorningBrief() {
   const [copy, setCopy] = useState(QUIET_COPY.open);
   useEffect(() => {
     setCopy(QUIET_COPY[marketPhase(new Date())]);
   }, []);
-  return <Hint>{copy}</Hint>;
+  return (
+    <div className="rounded-xl bg-amber-50 px-4 py-3">
+      <div className="mb-1 text-xs font-medium text-amber-700">☀️ 你的今日早报</div>
+      <p className="text-sm leading-relaxed text-gray-800">{copy}</p>
+    </div>
+  );
 }
 
 // 行内加粗:把 **xxx** 渲染成 <strong>(快读/解读里都用)

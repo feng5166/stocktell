@@ -29,18 +29,37 @@ const fmtYi = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}亿`;
 
 export function ChainSentiment() {
   const [d, setD] = useState<Data | null>(null);
+  const [errored, setErrored] = useState(false);
   useEffect(() => {
     let active = true;
     fetch("/api/chain-sentiment", { cache: "no-store" })
       .then((r) => r.json())
       .then((x) => active && setD(x))
-      .catch(() => {});
+      .catch(() => active && setErrored(true));
     return () => {
       active = false;
     };
   }, []);
 
-  if (!d || (!d.a && !d.us)) return null;
+  // 加载中:占位骨架,别让模块"凭空消失"(首页每天打开的理由,要稳定在场)
+  if (!d && !errored) {
+    return (
+      <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
+        <div className="text-sm font-semibold text-gray-800">AI链今日情绪</div>
+        <div className="mt-2.5 h-3 w-2/3 animate-pulse rounded bg-gray-100" />
+        <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-gray-100" />
+      </div>
+    );
+  }
+  // 拿不到数据(数据生成中/接口异常):给静默占位,不整块消失
+  if (errored || !d || (!d.a && !d.us)) {
+    return (
+      <div className="mb-4 rounded-xl bg-white px-4 py-3 text-sm text-gray-400 shadow-sm">
+        <span className="font-semibold text-gray-800">AI链今日情绪</span>
+        <span className="ml-2">数据生成中,稍后刷新看看</span>
+      </div>
+    );
+  }
   const a = d.a;
 
   let mood: { t: string; c: string } | null = null;
