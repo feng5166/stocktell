@@ -207,7 +207,7 @@ export default async function StockDetail({
         {/* 资金面置顶:进来先看今天聪明钱在怎么流 */}
         {fundItem &&
           (fundItem.netMf !== null || fundItem.rzChgYi !== null || fundItem.longhu) && (
-            <Section title="资金面">
+            <Section icon="📊" title="资金面">
               <ul className="space-y-1.5 text-sm">
                 {fundItem.netMf !== null && (
                   <li className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}>
@@ -234,13 +234,13 @@ export default async function StockDetail({
             </Section>
           )}
 
-        <Section title="它是干什么的">
+        <Section icon="🏷️" title="它是干什么的">
           <p className="text-title leading-relaxed text-gray-800">
             {s.positioning}
           </p>
         </Section>
 
-        <Section title="在产业链的位置">
+        <Section icon="🧭" title="在产业链的位置">
           <ChainPosition
             sector={s.sector}
             up={upPeers}
@@ -248,7 +248,7 @@ export default async function StockDetail({
           />
         </Section>
 
-        <Section title="最近发生了什么">
+        <Section icon="📰" title="最近发生了什么">
           <ul className="space-y-1.5 text-sm text-gray-700">
             {todayNews.map((it) => (
               <li key={it.id} className="text-rose-600">
@@ -259,7 +259,7 @@ export default async function StockDetail({
           </ul>
         </Section>
 
-        <Section title="散户怎么想" highlight>
+        <Section icon="💭" title="散户怎么想" highlight>
           <StockTellTake
             itemId={newsItem?.id}
             code={s.code}
@@ -274,7 +274,7 @@ export default async function StockDetail({
 
         {/* 散户心态:结论之后看「有没有坑(雷区)」「赚不赚钱(财报)」 */}
         {riskEvents.length > 0 && (
-          <Section title="重要事件 / 雷区">
+          <Section icon="⚠️" title="重要事件 / 雷区">
             <ul className="space-y-1.5 text-sm">
               {riskEvents.map((e, i) => (
                 <li
@@ -298,7 +298,7 @@ export default async function StockDetail({
         )}
 
         {checkup && checkup.findings.length > 0 && (
-          <Section collapsible title="财报体检 · 一句话看懂">
+          <Section collapsible icon="📋" title="财报体检 · 一句话看懂">
             <ul className="space-y-1.5 text-sm">
               {checkup.findings.map((f, i) => (
                 <li
@@ -323,7 +323,7 @@ export default async function StockDetail({
           </Section>
         )}
 
-        <Section collapsible title="对应的股票">
+        <Section collapsible icon="🔗" title="对应的股票">
           {!hasPeers ? (
             sameSectorPeers.length > 0 ? (
               <div className="space-y-2 text-sm">
@@ -359,7 +359,7 @@ export default async function StockDetail({
         </Section>
 
         {etfs.length > 0 && (
-          <Section title="相关 ETF · 一篮子参与">
+          <Section icon="🧺" title="相关 ETF · 一篮子参与">
             <div className="space-y-1 text-sm">
               {etfs.map((e) => (
                 <a
@@ -406,21 +406,41 @@ function Section({
   children,
   highlight,
   collapsible,
+  icon,
 }: {
   title: string;
   children: React.ReactNode;
   highlight?: boolean;
   collapsible?: boolean;
+  icon?: string;
 }) {
-  const cls = `mb-4 rounded-xl border p-4 ${
-    highlight ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"
+  const cls = `mb-3 rounded-xl border p-4 sm:p-5 ${
+    highlight ? "border-amber-200 bg-amber-50" : "border-gray-200/80 bg-white"
   }`;
+  // 区块标题:左侧色条 + 图标 + 深色加粗,强化层次、可扫读
+  const head = (
+    <>
+      <span
+        className={`h-3.5 w-1 shrink-0 rounded-full ${
+          highlight ? "bg-amber-400" : "bg-brand-400"
+        }`}
+      />
+      {icon && <span className="text-sm leading-none">{icon}</span>}
+      <span
+        className={`text-sm font-semibold tracking-tight ${
+          highlight ? "text-amber-800" : "text-gray-800"
+        }`}
+      >
+        {title}
+      </span>
+    </>
+  );
   // 折叠用原生 <details>(无需客户端 JS),默认收起
   if (collapsible) {
     return (
       <details className={`group ${cls}`}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-gray-400 transition-colors hover:text-gray-600">
-          <span>{title}</span>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 transition-opacity hover:opacity-80">
+          <span className="flex items-center gap-2">{head}</span>
           <svg
             viewBox="0 0 20 20"
             fill="none"
@@ -437,9 +457,7 @@ function Section({
   }
   return (
     <section className={cls}>
-      <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
-        {title}
-      </h2>
+      <h2 className="mb-2.5 flex items-center gap-2">{head}</h2>
       {children}
     </section>
   );
