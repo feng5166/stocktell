@@ -72,7 +72,7 @@ export interface Stock extends StockBase {
 // 散户怎么想:核心标的的人工结论(没命中则按板块模板生成)
 const RETAIL_TAKES: Record<string, string> = {
   NVDA: "全球算力的总开关。它一动,A股光模块、服务器、PCB 第二天大概率跟着波动,是看 A股 AI 行情最重要的风向标。",
-  "688041": "国产算力禁令下关联最直接的标的,情绪来时弹性大。但 PE 高、波动剧烈,追高需谨慎,适合等回调而非追板。",
+  "688041": "国产算力禁令下关联度最高的标的,情绪来时弹性大。但 PE 高、波动剧烈,追高需谨慎,适合等回调而非追板。",
   "688256": "纯国产 AI 芯片标的,题材一来涨得猛、跌得也狠。属于高 beta 情绪票,仓位要控制,别当压舱石拿。",
   "300308": "光模块全球龙头,跟英伟达/海外云厂资本开支高度绑定。海外财报超预期时它最先反应,但已连涨时追高要小心。",
   "300502": "光模块第二极,弹性比龙头更大。海外订单占比高,美股科技股大跌时它也容易被错杀,可逢回调关注。",
@@ -98,7 +98,7 @@ const RETAIL_TAKES: Record<string, string> = {
   "300054": "给芯片厂抛光晶圆用的耗材商(抛光垫、抛光液),国产替代有空间。属于二线弹性票,关键看耗材放量和利润能不能兑现,别只盯短期波动。",
   "688300": "做芯片和高端电路板里用的粉体材料,在 AI 链上游算二线弹性。靠先进封装和高端板材的需求吃饭,关键看产能和高端产品放量。",
   "688535": "做先进封装材料(把多颗芯片封在一起那种),是 AI 上游的弹性选手。关键看大客户验证和毛利率能不能起来,题材热但业绩兑现要时间。",
-  WDC: "美国存储大厂,主卖数据中心用的大容量硬盘。AI 数据越堆越多、存储需求水涨船高时它跟着走,但本质是有周期的硬件生意,跟着存储涨价和数据中心订单走。",
+  WDC: "美国存储大厂,主卖数据中心用的大容量硬盘。AI 数据越堆越多、存储需求水涨船高时它也吃得到,但本质是有周期的硬件生意,跟着存储涨价和数据中心订单走。",
   LNG: "美国最大的液化天然气出口商,沾 AI 是因为数据中心耗电猛、天然气发电需求被带起来。但它本质是能源股,价格看长期供货合同和欧亚需求,跟 AI 只是间接关系,别当纯 AI 票炒。",
   LMT: "美国军工巨头,跟 AI 产业链关系不大,更多是国防开支和海外订单的逻辑。放在这里是产业链的边缘参考,别按 AI 概念给它估值。",
   RKLB: "美国商业航天公司,造火箭和卫星。属于太空题材的高波动票,业绩要看新火箭首飞和订单,跟 AI 是远房亲戚,情绪来时弹性大、风险也大。",
@@ -197,7 +197,7 @@ const STOCKS_BASE: StockBase[] = [
   { code: "DLR", name: "Digital Realty", market: "美股", position: "中游", sector: "数据中心/IDC", positioning: "全球数据中心 REIT", observation: "IDC 上架率与电力供给", status: "长期观察", relationTypes: ["电力映射"], relations: [] },
 
   // ===== A股 =====
-  { code: "688041", name: "海光信息", market: "A股", position: "上游", sector: "AI芯片/GPU", positioning: "国产 CPU/DCU,英伟达在华替代", observation: "国产算力禁令下关联最直接,估值偏高", status: "今日有新消息", relationTypes: ["A股映射", "主题关联"], relations: ["NVDA", "AMD", "INTC"] },
+  { code: "688041", name: "海光信息", market: "A股", position: "上游", sector: "AI芯片/GPU", positioning: "国产 CPU/DCU,英伟达在华替代", observation: "国产算力禁令下关联度最高,估值偏高", status: "今日有新消息", relationTypes: ["A股映射", "主题关联"], relations: ["NVDA", "AMD", "INTC"] },
   { code: "688256", name: "寒武纪", market: "A股", position: "上游", sector: "AI芯片/GPU", positioning: "国产 AI 芯片纯标的", observation: "订单放量验证国产替代,波动极大", status: "今日有新消息", relationTypes: ["A股映射", "主题关联"], relations: ["NVDA", "AMD"] },
   { code: "000977", name: "浪潮信息", market: "A股", position: "中游", sector: "服务器/算力", positioning: "国产 AI 服务器龙头", observation: "对标超微/戴尔,算力扩容核心", status: "行情覆盖", relationTypes: ["A股映射", "资本开支"], relations: ["SMCI", "DELL"] },
   { code: "601138", name: "工业富联", market: "A股", position: "中游", sector: "服务器/算力", positioning: "全球 AI 服务器代工龙头", observation: "绑定英伟达/云厂,出货量风向标", status: "今日有新消息", relationTypes: ["A股映射", "产业链"], relations: ["NVDA", "GOOGL"] },
