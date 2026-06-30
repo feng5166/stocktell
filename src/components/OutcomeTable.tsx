@@ -1,132 +1,106 @@
 "use client";
 
-// 战绩明细表(实盘/回测复用),纯展示给定 rows。分页/加载交给 OutcomeFeed。
+// 战绩明细(实盘/回测复用)。按「简报」分组:一条简报喊多只受益股,标题只显示一次作组头,
+// 下面挂紧凑的个股小行(名称·期待·实际·结果)。消除原扁平表里简报标题被重复 N 遍的问题。
 import Link from "next/link";
 import type { OutcomeRow } from "@/lib/outcomes";
 import type { Impact } from "@/lib/briefings";
 import { changeClass, fmtChange } from "@/lib/format";
 import { IMPACT_META } from "@/lib/impact";
-import { Th, Td } from "@/components/Table";
 
-export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
-  return (
-    <>
-      {/* 手机:卡片(桌面隐藏) */}
-      <div className="space-y-2 sm:hidden">
-        {rows.map((r) => (
-          <OutcomeCard key={r.id} r={r} />
-        ))}
-      </div>
-
-      {/* 桌面:表格(手机隐藏) */}
-      <div className="hidden overflow-hidden rounded-xl bg-white shadow-sm sm:block">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
-                <Th>日期</Th>
-                <Th>简报</Th>
-                <Th>受益股</Th>
-                <Th className="text-center">期待</Th>
-                <Th className="text-right">实际</Th>
-                <Th className="text-center">结果</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100 last:border-0">
-                  <Td className="whitespace-nowrap font-mono text-xs text-gray-500">
-                    {r.date.slice(5)}
-                  </Td>
-                  <Td className="max-w-[220px] text-xs text-gray-700">
-                    <span className="mr-1">
-                      {IMPACT_META[r.impact as Impact]?.emoji ?? ""}
-                    </span>
-                    {r.title}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <Link
-                      href={`/stock/${r.code}`}
-                      className="font-medium text-gray-900 hover:text-brand-600"
-                    >
-                      {r.name}
-                    </Link>
-                  </Td>
-                  <Td className="text-center text-xs text-gray-500">
-                    {r.expected}
-                  </Td>
-                  <Td className="text-right font-mono tabular-nums">
-                    {r.change === null ? (
-                      <span className="text-gray-300">—</span>
-                    ) : (
-                      <span className={changeClass(r.change)}>
-                        {fmtChange(r.change)}
-                      </span>
-                    )}
-                  </Td>
-                  <Td className="text-center">
-                    {r.hit === null ? (
-                      <span className="text-xs text-gray-300">未判定</span>
-                    ) : r.hit ? (
-                      <span className="text-xs font-medium text-rose-600">
-                        跟上 ✓
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">没跟上</span>
-                    )}
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
-  );
+interface Group {
+  key: string;
+  date: string;
+  title: string;
+  impact: string;
+  rows: OutcomeRow[];
+  hits: number;
+  evaluated: number;
 }
 
-function OutcomeCard({ r }: { r: OutcomeRow }) {
+// 按出现顺序(已按日期降序)把相邻同简报的行聚到一组。跨分页累积时重新聚合会自动愈合。
+function groupByBriefing(rows: OutcomeRow[]): Group[] {
+  const out: Group[] = [];
+  const idx = new Map<string, Group>();
+  for (const r of rows) {
+    const key = `${r.date}|${r.impact}|${r.title}`;
+    let g = idx.get(key);
+    if (!g) {
+      g = { key, date: r.date, title: r.title, impact: r.impact, rows: [], hits: 0, evaluated: 0 };
+      idx.set(key, g);
+      out.push(g);
+    }
+    g.rows.push(r);
+    if (r.hit !== null) {
+      g.evaluated += 1;
+      if (r.hit) g.hits += 1;
+    }
+  }
+  return out;
+}
+
+export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
+  const groups = groupByBriefing(rows);
   return (
-    <div className="rounded-xl bg-white shadow-sm p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 text-sm text-gray-800">
-          <span className="mr-1">
-            {IMPACT_META[r.impact as Impact]?.emoji ?? ""}
-          </span>
-          {r.title}
-        </div>
-        <span className="shrink-0 font-mono text-xs text-gray-400">
-          {r.date.slice(5)}
-        </span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
-        <Link
-          href={`/stock/${r.code}`}
-          className="font-medium text-gray-900 hover:text-brand-600"
-        >
-          {r.name}
-        </Link>
-        <span>期待{r.expected}</span>
-        <span className="text-gray-300">·</span>
-        <span className="inline-flex items-center gap-1">
-          实际
-          {r.change === null ? (
-            <span className="text-gray-300">—</span>
-          ) : (
-            <span className={`font-mono ${changeClass(r.change)}`}>
-              {fmtChange(r.change)}
+    <div className="space-y-3">
+      {groups.map((g) => (
+        <div key={g.key} className="overflow-hidden rounded-xl bg-white shadow-sm">
+          {/* 组头:简报标题只出现一次 + 日期 + 跟上小结 */}
+          <div className="flex items-start gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
+            <span className="mt-0.5 shrink-0 text-sm leading-none">
+              {IMPACT_META[g.impact as Impact]?.emoji ?? ""}
             </span>
-          )}
-        </span>
-        <span className="text-gray-300">·</span>
-        {r.hit === null ? (
-          <span className="text-gray-300">未判定</span>
-        ) : r.hit ? (
-          <span className="font-medium text-rose-600">跟上 ✓</span>
-        ) : (
-          <span className="text-gray-400">没跟上</span>
-        )}
-      </div>
+            <p className="min-w-0 flex-1 text-xs font-medium leading-snug text-gray-700">
+              {g.title}
+            </p>
+            <span className="shrink-0 font-mono text-[11px] leading-5 text-gray-400">
+              {g.date.slice(5)}
+            </span>
+            {g.evaluated > 0 && (
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium leading-4 ${
+                  g.hits * 2 >= g.evaluated
+                    ? "bg-rose-50 text-rose-600"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                跟上 {g.hits}/{g.evaluated}
+              </span>
+            )}
+          </div>
+
+          {/* 受益股小行:名称 · 期待 · 实际 · 结果 */}
+          <div className="divide-y divide-gray-50">
+            {g.rows.map((r) => (
+              <div key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                <Link
+                  href={`/stock/${r.code}`}
+                  className="min-w-0 flex-1 truncate font-medium text-gray-900 hover:text-brand-600"
+                >
+                  {r.name}
+                </Link>
+                <span className="shrink-0 text-xs text-gray-400">期待{r.expected}</span>
+                <span className="w-16 shrink-0 text-right font-mono tabular-nums">
+                  {r.change === null ? (
+                    <span className="text-gray-300">—</span>
+                  ) : (
+                    <span className={changeClass(r.change)}>{fmtChange(r.change)}</span>
+                  )}
+                </span>
+                <span className="w-16 shrink-0 text-right text-xs">
+                  {r.hit === null ? (
+                    <span className="text-gray-300">未判定</span>
+                  ) : r.hit ? (
+                    <span className="font-medium text-rose-600">跟上 ✓</span>
+                  ) : (
+                    <span className="text-gray-400">没跟上</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
