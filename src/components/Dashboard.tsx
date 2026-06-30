@@ -1190,13 +1190,13 @@ function ActiveDiscovery({
 
   if (signals.length === 0)
     return (
-      <Empty text="今日暂未发现明显预期差(美股涨、对应 A 股已同步反应或行情未连接)" />
+      <Empty text="今日暂未发现明显联动差异(美股涨、对应 A 股已同步反应或行情未连接)" />
     );
 
   return (
     <div className="space-y-3">
       <div className="rounded-lg bg-amber-50 px-4 py-2 text-xs text-amber-700">
-        ⚡ 预期差:美股已上涨、对应 A 股标的涨幅明显落后的情况。注:历史规律不代表未来表现,仅供参考。
+        ⚡ 联动差异:今天美股已涨、对应 A 股涨幅暂时落后的现象,仅供观察对比。注:历史规律不代表未来表现,不意味 A 股一定会补涨。
       </div>
       {signals.map(({ us, lagging }) => (
         <div
@@ -1217,7 +1217,7 @@ function ActiveDiscovery({
             </span>
           </div>
           <div className="mb-1 text-xs text-gray-400">
-            对应 A 股还没跟上的标的:
+            对应 A 股今日涨幅暂时落后的(仅供观察):
           </div>
           <div className="flex flex-wrap gap-2">
             {lagging.map((p) => {
