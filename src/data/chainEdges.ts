@@ -306,6 +306,86 @@ export const CHAIN_EDGES: ChainEdge[] = [
   { from: "603667", to: "TSLA", strength: "中", basis: "五洲新春行星滚柱丝杠,Optimus 供应链" },
   { from: "603728", to: "TSLA", strength: "中", basis: "鸣志空心杯电机供人形机器人" },
   { from: "003021", to: "TSLA", strength: "中", basis: "兆威微型传动/灵巧手配套机器人" },
+
+  // ===== 补边:消除孤儿标的(详情页"暂无关联")。多源研究核验,纯主题映射用"弱"。=====
+  // 模拟 / 射频 / 消费电子
+  { from: "300661", to: "603501", strength: "弱", basis: "圣邦国产模拟芯片龙头,与韦尔同受消费电子/手机回暖驱动" },
+  { from: "300661", to: "300782", strength: "弱", basis: "国产模拟+射频,消费电子去库存周期共振" },
+  { from: "300782", to: "002475", strength: "中", basis: "卓胜微射频前端模组用于智能手机,立讯为终端组装" },
+  { from: "300782", to: "603501", strength: "弱", basis: "国产手机芯片(射频+CIS),消费电子周期共振" },
+  // 大模型 / 应用
+  { from: "300033", to: "002230", strength: "弱", basis: "同花顺金融AI,与科大讯飞同属国产大模型应用" },
+  { from: "688041", to: "300033", strength: "弱", basis: "国产AI应用受益国产算力(海光)生态" },
+  { from: "AMZN", to: "SNOW", strength: "中", basis: "Snowflake 数据云构建于 AWS/Azure/GCP 之上" },
+  { from: "PLTR", to: "SNOW", strength: "弱", basis: "企业级 AI/数据软件同主题" },
+  { from: "PLTR", to: "NOW", strength: "弱", basis: "企业级 AI 软件同主题" },
+  { from: "MSFT", to: "NOW", strength: "弱", basis: "ServiceNow 运行于云,AI Copilot 集成" },
+  // 智能车
+  { from: "XPEV", to: "LI", strength: "弱", basis: "造车新势力对标,智能驾驶/AI 座舱" },
+  { from: "300496", to: "LI", strength: "中", basis: "中科创达智能座舱操作系统/方案供应车厂" },
+  { from: "300496", to: "XPEV", strength: "中", basis: "中科创达智能座舱方案,供应新势力" },
+  { from: "603501", to: "XPEV", strength: "弱", basis: "韦尔车载 CIS 摄像头芯片供应" },
+  { from: "603501", to: "LI", strength: "弱", basis: "韦尔车载 CIS 摄像头芯片供应" },
+  { from: "TSLA", to: "LI", strength: "弱", basis: "电动车/自动驾驶对标" },
+  // 加密 / 区块链
+  { from: "CRCL", to: "COIN", strength: "强", basis: "USDC 稳定币与 Coinbase 深度分成绑定" },
+  { from: "COIN", to: "GLXY", strength: "弱", basis: "加密金融服务同业" },
+  { from: "RIOT", to: "IREN", strength: "弱", basis: "比特币矿企同业,算力转 AI 主题" },
+  { from: "BTDR", to: "IREN", strength: "弱", basis: "矿企/算力同业,AI 算力转型" },
+  { from: "NVDA", to: "BTDR", strength: "弱", basis: "Bitdeer 采购 GPU 拓展 AI 算力业务" },
+  // 国防 / 卫星
+  { from: "RKLB", to: "ASTS", strength: "中", basis: "Rocket Lab 火箭发射/卫星制造服务卫星运营商" },
+  { from: "RKLB", to: "PL", strength: "弱", basis: "商业航天发射服务遥感卫星" },
+  { from: "PL", to: "ASTS", strength: "弱", basis: "商业卫星(遥感/通信)同主题" },
+  { from: "LMT", to: "RTX", strength: "弱", basis: "美国防主承包商对标" },
+  { from: "AVAV", to: "688297", strength: "弱", basis: "军用无人机国内外对标" },
+  { from: "AVAV", to: "002389", strength: "弱", basis: "无人机/察打一体对标" },
+  { from: "PL", to: "002389", strength: "弱", basis: "遥感/侦察主题映射" },
+  { from: "RKLB", to: "688297", strength: "弱", basis: "商业航天/军工主题映射" },
+  // 精密计时(SiTime)
+  { from: "SITM", to: "ANET", strength: "中", basis: "SiTime MEMS 精密计时供应高速数据中心交换" },
+  { from: "SITM", to: "AVGO", strength: "中", basis: "MEMS 时钟器件供应网络/数通芯片体系" },
+  { from: "SITM", to: "NVDA", strength: "弱", basis: "AI 服务器/网络计时器件" },
+  // 存储 / 封测(深科技)
+  { from: "MU", to: "000021", strength: "弱", basis: "深科技(沛顿)DRAM 封测,美光颗粒下游" },
+  { from: "000021", to: "301308", strength: "弱", basis: "存储模组/封测产业链" },
+  { from: "000021", to: "600667", strength: "中", basis: "存储封测同业(沛顿/海太)" },
+  // 机器人 3D 视觉(奥比中光)
+  { from: "688322", to: "002747", strength: "弱", basis: "奥比中光 3D 视觉传感供应工业机器人" },
+  { from: "688322", to: "TSLA", strength: "弱", basis: "人形机器人 3D 视觉感知主题(Optimus)" },
+  { from: "002415", to: "688322", strength: "弱", basis: "海康/奥比机器视觉/3D 感知同业" },
+  // 能源 / 核电
+  { from: "UUUU", to: "SMR", strength: "中", basis: "Energy Fuels 铀燃料供应小型核电(NuScale)" },
+  { from: "UUUU", to: "OKLO", strength: "中", basis: "铀矿/核燃料供应先进核反应堆(Oklo)" },
+  { from: "SMR", to: "OKLO", strength: "弱", basis: "小型模块化核电对标(SMR vs 先进堆)" },
+  { from: "SMR", to: "CRWV", strength: "弱", basis: "SMR 小堆为 AI 数据中心供电主题" },
+  { from: "OKLO", to: "ORCL", strength: "弱", basis: "先进核电为 AI 数据中心供电主题" },
+  { from: "601985", to: "SMR", strength: "弱", basis: "中国核电与海外核电对标" },
+  { from: "003816", to: "OKLO", strength: "弱", basis: "中国广核与先进核电对标" },
+  { from: "LNG", to: "AES", strength: "中", basis: "Cheniere LNG/天然气供应发电运营商" },
+  { from: "CVX", to: "LNG", strength: "弱", basis: "油气能源,AI 电力需求主题" },
+  { from: "AES", to: "MSFT", strength: "弱", basis: "AES 为数据中心供应清洁电力(PPA)" },
+  { from: "AES", to: "AMZN", strength: "弱", basis: "数据中心清洁电力采购对手方" },
+  { from: "FLNC", to: "AES", strength: "中", basis: "Fluence 储能系统配套电网/电力运营" },
+  { from: "FLNC", to: "GEV", strength: "弱", basis: "储能/电网设备同主题" },
+  { from: "002028", to: "688676", strength: "弱", basis: "思源输配电设备(开关/变压器),数据中心供电扩容受益" },
+  { from: "002028", to: "600875", strength: "弱", basis: "思源电气电力设备/输配电板块" },
+  { from: "002028", to: "601985", strength: "弱", basis: "电力设备供应核电/电网主题" },
+  // 战略材料 / 资源
+  { from: "600111", to: "002050", strength: "弱", basis: "北方稀土永磁,机器人执行器/电机上游" },
+  { from: "600111", to: "688017", strength: "弱", basis: "稀土永磁,谐波减速器/伺服电机主题" },
+  { from: "600111", to: "000657", strength: "弱", basis: "战略小金属/资源管制同主题" },
+  { from: "000657", to: "300666", strength: "弱", basis: "中钨高新钨材料,半导体/刀具上游" },
+  { from: "000657", to: "000962", strength: "弱", basis: "战略小金属(钨/钽)同主题" },
+  { from: "000962", to: "300666", strength: "弱", basis: "东方钽业钽材料,半导体溅射靶材上游" },
+  { from: "000962", to: "002428", strength: "弱", basis: "稀有金属(钽/锗)资源管制主题" },
+  { from: "002428", to: "600206", strength: "弱", basis: "云南锗业锗/红外材料,半导体与光器件上游" },
+  // 特种气体(九丰能源)
+  { from: "605090", to: "688268", strength: "弱", basis: "九丰氦气等特种气体,半导体材料供应主题" },
+  { from: "605090", to: "688106", strength: "弱", basis: "工业气体同业(氦气/特气)" },
+  // 工业激光(IPG)
+  { from: "300620", to: "IPGP", strength: "中", basis: "光库光纤激光器件,IPG 为标杆/对标客户" },
+  { from: "IPGP", to: "000988", strength: "弱", basis: "工业激光对标(华工激光)" },
 ];
 
 const KEY = (a: string, b: string) => `${a}->${b}`;
