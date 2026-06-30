@@ -5,6 +5,38 @@ export interface UsBar {
   pct: number; // 当日涨跌 %
 }
 
+// 轻量探针:独立第三源(Yahoo,与新浪/腾讯不同基础设施)判"美股最近有数据的交易日"。
+// 仅用于地板健康检查——主源(新浪+腾讯)双挂返回空时,区分"真休市/无异动"与"源故障"。
+export async function usLatestTradingDay(ticker = "AAPL"): Promise<string | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    ticker
+  )}?range=5d&interval=1d`;
+  try {
+    const r = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      cache: "no-store",
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const res = j?.chart?.result?.[0];
+    const ts: number[] = res?.timestamp ?? [];
+    const closes: (number | null)[] = res?.indicators?.quote?.[0]?.close ?? [];
+    const fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    // 取有收盘价的最后一根 bar 的日期(美东)
+    for (let i = ts.length - 1; i >= 0; i--) {
+      if (closes[i] != null) return fmt.format(new Date(ts[i] * 1000));
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function usDailyHistory(
   ticker: string,
   range = "2y"

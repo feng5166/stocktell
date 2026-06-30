@@ -8,6 +8,8 @@ import type { Impact, NewBriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { prevAshareTradingDay } from "@/lib/tushare";
 import { usCumulativeChange } from "@/lib/us-history";
+import { usLatestTradingDay } from "@/lib/yahoo";
+import { sendFeishu } from "@/lib/feishu";
 
 const MOVER_THRESHOLD = 2; // 美股 |涨跌| ≥ 2% 视为异动
 const MAX_MOVERS = 8; // 异动条数封顶(控 LLM 时长,让 LLM 在 40s 内更可能跑完;深度解读走按需流式)
@@ -73,6 +75,31 @@ async function findMovers(
   const expected = mostRecentUSWeekday(new Date());
   // 能确定新鲜度(拿到 asOf)且最新行情落后于应有交易日 → 美股休市
   const usMarketClosed = Boolean(freshestUS && expected && freshestUS < expected);
+
+  // 地板健康检查(影子模式):主源(新浪+腾讯)双挂 → 美股报价全空时,freshestUS=undefined、
+  // usMarketClosed=false,但下面 movers 会全空 → 0 条简报的静默失败(2026-06-29 出过)。
+  // 用独立 Yahoo 探针区分"真休市/无异动"与"源故障":探针显示应有交易日有数据却取不到 → 源故障告警。
+  // 仅告警、不改 movers/usMarketClosed —— 生成行为完全不变,跑稳后再用于驱动重试/缓存回退。
+  const usQuoteCount = STOCKS.filter(
+    (s) => s.market === "美股" && q(s.code) !== undefined
+  ).length;
+  if (usQuoteCount === 0) {
+    try {
+      const probeDay = await usLatestTradingDay();
+      if (probeDay && expected && probeDay >= expected) {
+        await sendFeishu(
+          `[告警] 美股主源(新浪+腾讯)双挂:报价全空,但独立 Yahoo 探针显示 ${probeDay} 有数据` +
+            `(应有交易日 ${expected})。简报可能误判为「0 条」静默失败,请检查行情源/IP 封禁。`
+        ).catch(() => {});
+      } else {
+        console.log(
+          `[us-health] 主源空,探针最新交易日=${probeDay ?? "null"}(应有 ${expected})→ 判定真休市/无异动,不告警`
+        );
+      }
+    } catch {
+      /* 探针失败不影响生成 */
+    }
+  }
 
   if (usMarketClosed) return { movers: [], usMarketClosed: true };
 
