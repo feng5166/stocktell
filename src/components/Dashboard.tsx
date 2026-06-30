@@ -24,6 +24,7 @@ import {
   type Stock,
 } from "@/data/stocks";
 import { CONCEPTS } from "@/data/concepts.generated";
+import { edgeInfo, STRENGTH_BADGE, type Strength } from "@/data/relations";
 
 // 全部概念(按出现频次降序),给筛选下拉用
 const ALL_CONCEPTS = Object.values(CONCEPTS)
@@ -87,6 +88,22 @@ function WatchDot({ status }: { status: string }) {
       title="长期观察:外围标的,长期叙事为主,关注度较低"
       className="ml-1.5 inline-block h-1 w-1 shrink-0 rounded-full bg-gray-300 align-middle"
     />
+  );
+}
+
+// 关联强弱标:强=真供货 中=对标/替代 弱=蹭概念;悬停看依据(basis)。
+// 让散户在浏览"美股→A股"映射时一眼分清"真关联"和"蹭概念",别被弱关联割。
+const STRENGTH_RANK: Record<Strength, number> = { 强: 0, 中: 1, 弱: 2 };
+function StrengthTag({ usCode, aCode }: { usCode: string; aCode: string }) {
+  const info = edgeInfo(usCode, aCode);
+  if (!info) return null;
+  return (
+    <span
+      title={`${info.strength}:${info.basis}`}
+      className={`shrink-0 rounded px-1 py-0.5 text-[10px] leading-none ${STRENGTH_BADGE[info.strength]}`}
+    >
+      {info.strength}
+    </span>
   );
 }
 
@@ -1027,76 +1044,116 @@ function RelationMap({
   rows: Stock[];
   watchedCodes: Set<string>;
 }) {
+  const [strongOnly, setStrongOnly] = useState(false);
   const codes = new Set(rows.map((r) => r.code));
   const byCode = new Map(rows.map((r) => [r.code, r]));
   const live = (s: Stock) => byCode.get(s.code) ?? s;
+  // 每条 美股→A股 边带上强弱,按 强→中→弱 排序(真供货排前,蹭概念沉底)
   const anchors = STOCKS.filter((s) => s.market === "美股").map((us) => ({
     us: live(us),
-    peers: aSharePeers(us).map(live),
+    peers: aSharePeers(us)
+      .map((p) => ({
+        p: live(p),
+        strength: (edgeInfo(us.code, p.code)?.strength ?? "弱") as Strength,
+      }))
+      .sort((a, b) => STRENGTH_RANK[a.strength] - STRENGTH_RANK[b.strength]),
   }));
   const visible = anchors.filter(
-    (a) => codes.has(a.us.code) || a.peers.some((p) => codes.has(p.code))
+    (a) => codes.has(a.us.code) || a.peers.some((x) => codes.has(x.p.code))
   );
-
-  if (visible.length === 0)
-    return <Empty text="当前筛选下没有可展示的关联关系" />;
+  // 仅看强关联:把每个锚点的 peer 过滤到只剩"强",并丢掉过滤后为空的锚点
+  const cards = visible
+    .map(({ us, peers }) => ({
+      us,
+      peers: strongOnly ? peers.filter((x) => x.strength === "强") : peers,
+    }))
+    .filter((a) => a.peers.length > 0);
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {visible
-        .filter((a) => a.peers.length > 0)
-        .map(({ us, peers }) => (
-          <div
-            key={us.code}
-            className="rounded-xl bg-white shadow-sm p-4"
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <span className="rounded bg-brand-50 px-1.5 py-0.5 text-xs text-brand-600">
-                美股
-              </span>
-              <Link
-                href={`/stock/${us.code}`}
-                className="font-medium text-gray-900 hover:text-brand-600"
-              >
-                {us.name}
-              </Link>
-              <span className="font-mono text-xs text-gray-400">{us.code}</span>
-              <span
-                className={`ml-auto font-mono text-sm tabular-nums ${liveChangeClass(us)}`}
-              >
-                {liveChange(us)}
-              </span>
-            </div>
-            <div className="mb-2 text-xs text-gray-400">↓ 关联 A股</div>
-            <div className="flex flex-wrap gap-2">
-              {peers.map((p) => {
-                const watched = watchedCodes.has(p.code);
-                return (
-                  <Link
-                    key={p.code}
-                    href={`/stock/${p.code}`}
-                    title={watched ? "你的自选" : undefined}
-                    className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-sm ${
-                      watched
-                        ? "border-amber-300 bg-amber-50 hover:border-amber-400"
-                        : "border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    <span className="font-medium text-gray-800">
-                      {watched && <span className="text-amber-500">★</span>}
-                      {p.name}
-                    </span>
-                    <span
-                      className={`font-mono text-xs tabular-nums ${liveChangeClass(p)}`}
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+        <button
+          onClick={() => setStrongOnly((v) => !v)}
+          className={`rounded-full px-2.5 py-1 font-medium ${
+            strongOnly
+              ? "bg-rose-600 text-white"
+              : "bg-white text-gray-500 shadow-sm hover:text-gray-800"
+          }`}
+        >
+          {strongOnly ? "✓ 仅看强关联" : "仅看强关联"}
+        </button>
+        <span className="text-gray-400">
+          <span className="text-rose-600">强</span>=真供货 ·
+          <span className="text-amber-600"> 中</span>=对标/替代 ·
+          <span className="text-gray-400"> 弱</span>=蹭概念(悬停看依据)
+        </span>
+      </div>
+      {cards.length === 0 ? (
+        <Empty
+          text={
+            strongOnly
+              ? "当前筛选下没有强关联关系,试试关掉「仅看强关联」"
+              : "当前筛选下没有可展示的关联关系"
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {cards.map(({ us, peers }) => (
+            <div key={us.code} className="rounded-xl bg-white shadow-sm p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="rounded bg-brand-50 px-1.5 py-0.5 text-xs text-brand-600">
+                  美股
+                </span>
+                <Link
+                  href={`/stock/${us.code}`}
+                  className="font-medium text-gray-900 hover:text-brand-600"
+                >
+                  {us.name}
+                </Link>
+                <span className="font-mono text-xs text-gray-400">{us.code}</span>
+                <span
+                  className={`ml-auto font-mono text-sm tabular-nums ${liveChangeClass(us)}`}
+                >
+                  {liveChange(us)}
+                </span>
+              </div>
+              <div className="mb-2 text-xs text-gray-400">↓ 关联 A股</div>
+              <div className="flex flex-wrap gap-2">
+                {peers.map(({ p, strength }) => {
+                  const watched = watchedCodes.has(p.code);
+                  return (
+                    <Link
+                      key={p.code}
+                      href={`/stock/${p.code}`}
+                      title={edgeInfo(us.code, p.code)?.basis ?? undefined}
+                      className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-sm ${
+                        watched
+                          ? "border-amber-300 bg-amber-50 hover:border-amber-400"
+                          : "border-gray-200 hover:border-gray-400"
+                      }`}
                     >
-                      {liveChange(p)}
-                    </span>
-                  </Link>
-                );
-              })}
+                      <span
+                        className={`shrink-0 rounded px-1 py-0.5 text-[10px] leading-none ${STRENGTH_BADGE[strength]}`}
+                      >
+                        {strength}
+                      </span>
+                      <span className="font-medium text-gray-800">
+                        {watched && <span className="text-amber-500">★</span>}
+                        {p.name}
+                      </span>
+                      <span
+                        className={`font-mono text-xs tabular-nums ${liveChangeClass(p)}`}
+                      >
+                        {liveChange(p)}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1243,6 +1300,7 @@ function ActiveDiscovery({
                       : "border-amber-200 hover:border-amber-400"
                   }`}
                 >
+                  <StrengthTag usCode={us.code} aCode={p.code} />
                   <span className="font-medium text-gray-800">
                     {watched && <span className="text-amber-500">★</span>}
                     {p.name}
