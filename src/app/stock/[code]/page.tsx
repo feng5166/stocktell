@@ -223,21 +223,39 @@ export default async function StockDetail({
         {fundItem &&
           (fundItem.netMf !== null || fundItem.rzChgYi !== null || fundItem.longhu) && (
             <Section icon="📊" title="资金面">
+              {fundItem.netMf !== null && (
+                <p className="mb-1.5 text-xs text-gray-500">
+                  简单说:今天大资金整体在
+                  <b className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}>
+                    {fundItem.netMf >= 0 ? "买" : "卖"}
+                  </b>
+                  这只票。
+                </p>
+              )}
               <ul className="space-y-1.5 text-sm">
                 {fundItem.netMf !== null && (
-                  <li className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}>
+                  <li
+                    className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}
+                    title="主力=大单资金;净流入指今天大单买得比卖得多(净流出反之)"
+                  >
                     💰 主力{fundItem.netMf >= 0 ? "净流入" : "净流出"}{" "}
                     {Math.abs(fundItem.netMf).toFixed(1)} 亿
                   </li>
                 )}
                 {fundItem.rzChgYi !== null && (
-                  <li className="text-gray-700">
+                  <li
+                    className="text-gray-700"
+                    title="融资余额=借钱买这只股的总额;增加说明加杠杆看多的人变多(减少反之)"
+                  >
                     🏦 融资余额{fundItem.rzChgYi >= 0 ? "增加" : "减少"}{" "}
                     {Math.abs(fundItem.rzChgYi).toFixed(1)} 亿
                   </li>
                 )}
                 {fundItem.longhu && (
-                  <li className="text-amber-700">
+                  <li
+                    className="text-amber-700"
+                    title="龙虎榜=当天买卖最猛的营业部公开名单;上榜说明资金博弈激烈"
+                  >
                     🐯 上龙虎榜:净额 {fundItem.longhu.net >= 0 ? "+" : ""}
                     {fundItem.longhu.net.toFixed(1)} 亿 · {fundItem.longhu.reason}
                   </li>
@@ -332,7 +350,7 @@ export default async function StockDetail({
           </Section>
         )}
 
-        <Section collapsible icon="🔗" title="对应的股票">
+        <Section icon="🔗" title="对应的股票">
           {!hasPeers ? (
             sameSectorPeers.length > 0 ? (
               <div className="space-y-2 text-sm">
