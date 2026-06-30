@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { STOCKS, aSharePeers } from "@/data/stocks";
 import { edgeInfo, STRENGTH_BADGE, type Strength } from "@/data/relations";
 import { useWatchlist } from "@/components/useWatchlist";
+import { TapBadge } from "@/components/TapBadge";
 import { fmtChange, changeClass } from "@/lib/format";
 import { track } from "@/lib/analytics";
 
@@ -23,21 +24,19 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
   if (!stat) return null;
   if (stat.events < LINKAGE_MIN)
     return (
-      <span
-        title={`样本仅 ${stat.events} 次,统计不足,仅供参考(联动有效率·非预测)`}
-        className="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[10px] leading-none text-gray-400"
-      >
-        样本{stat.events}
-      </span>
+      <TapBadge
+        label={`样本${stat.events}`}
+        cls="bg-gray-100 text-gray-500"
+        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。联动有效率·非预测,历史不代表未来。`}
+      />
     );
   const pct = Math.round(stat.rate * 100);
   return (
-    <span
-      title={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
-      className="shrink-0 rounded bg-sky-50 px-1 py-0.5 text-[10px] leading-none text-sky-600"
-    >
-      联动{pct}%
-    </span>
+    <TapBadge
+      label={`联动${pct}%`}
+      cls="bg-sky-50 text-sky-600"
+      detail={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
+    />
   );
 }
 
@@ -195,7 +194,6 @@ export function OvernightRadar() {
                   <Link
                     key={l.code}
                     href={`/stock/${l.code}`}
-                    title={info?.basis ?? undefined}
                     onClick={() =>
                       track("overnight_radar_click", {
                         us: s.code,
@@ -210,11 +208,11 @@ export function OvernightRadar() {
                         : "border-gray-200 hover:border-gray-400"
                     }`}
                   >
-                    <span
-                      className={`shrink-0 rounded px-1 py-0.5 text-[10px] leading-none ${STRENGTH_BADGE[l.strength]}`}
-                    >
-                      {l.strength}
-                    </span>
+                    <TapBadge
+                      label={l.strength}
+                      cls={STRENGTH_BADGE[l.strength]}
+                      detail={`${l.strength}关联:${info?.basis ?? "—"}`}
+                    />
                     <LinkageBadge stat={linkage[`${s.code}:${l.code}`]} />
                     <span className="font-medium text-gray-800">
                       {watched && <span className="text-amber-500">★</span>}

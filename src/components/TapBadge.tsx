@@ -1,11 +1,19 @@
 "use client";
 
-// 触屏可用的「ⓘ 说明」:点一下弹出释义,点外面关闭。
-// 替代只在桌面 hover 才显示的 title——手机用户 100% 看不到 title,这是移动端硬伤。
-// 命中区 ≥36px(-m-2 不撑乱布局),点击阻止冒泡以免触发外层行/链接跳转。
+// 可点徽章:点一下弹出依据/合规说明(替代手机看不到的 title),点外面关闭。
+// 命中即弹,阻止冒泡+默认(放在 <Link> 内点徽章也不会触发跳转)。
+// 弹层按锚点位置左/右对齐,避免靠右徽章弹出时溢出屏幕。
 import { useEffect, useRef, useState } from "react";
 
-export function InfoHint({ text, className = "" }: { text: string; className?: string }) {
+export function TapBadge({
+  label,
+  cls,
+  detail,
+}: {
+  label: string;
+  cls: string;
+  detail: string;
+}) {
   const [open, setOpen] = useState(false);
   const [alignRight, setAlignRight] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
@@ -21,11 +29,10 @@ export function InfoHint({ text, className = "" }: { text: string; className?: s
   }, [open]);
 
   return (
-    <span ref={ref} className={`relative inline-flex align-middle ${className}`}>
+    <span ref={ref} className="relative inline-flex">
       <button
         ref={btnRef}
         type="button"
-        aria-label="说明"
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
@@ -33,17 +40,17 @@ export function InfoHint({ text, className = "" }: { text: string; className?: s
           if (r) setAlignRight(r.left > window.innerWidth * 0.55);
           setOpen((v) => !v);
         }}
-        className="-m-2 inline-flex h-9 w-9 items-center justify-center text-gray-400 active:text-gray-600"
+        className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] leading-none ${cls}`}
       >
-        <span className="text-xs leading-none">ⓘ</span>
+        {label}
       </button>
       {open && (
         <span
-          className={`absolute top-7 z-40 w-56 max-w-[72vw] whitespace-normal rounded-lg bg-gray-900 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-lg ${
+          className={`absolute top-6 z-40 w-52 max-w-[72vw] whitespace-normal rounded-lg bg-gray-900 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-lg ${
             alignRight ? "right-0" : "left-0"
           }`}
         >
-          {text}
+          {detail}
         </span>
       )}
     </span>

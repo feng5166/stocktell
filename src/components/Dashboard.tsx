@@ -9,6 +9,7 @@ import { ChainSwitcher } from "@/components/ChainSwitcher";
 import { EtfBoard } from "@/components/EtfBoard";
 import { EtfStrip } from "@/components/EtfStrip";
 import { FeedbackLink } from "@/components/FeedbackLink";
+import { TapBadge } from "@/components/TapBadge";
 import { ETFS } from "@/data/etfs";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
@@ -134,40 +135,6 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
       cls="bg-sky-50 text-sky-600"
       detail={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
     />
-  );
-}
-
-// 可点徽章:点一下弹依据/合规说明(替代手机看不到的 title),点外关闭、阻止冒泡。
-function TapBadge({ label, cls, detail }: { label: string; cls: string; detail: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("click", onDoc);
-    return () => document.removeEventListener("click", onDoc);
-  }, [open]);
-  return (
-    <span ref={ref} className="relative inline-flex">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          setOpen((v) => !v);
-        }}
-        className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] leading-none ${cls}`}
-      >
-        {label}
-      </button>
-      {open && (
-        <span className="absolute left-0 top-6 z-40 w-52 max-w-[70vw] whitespace-normal rounded-lg bg-gray-900 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-lg">
-          {detail}
-        </span>
-      )}
-    </span>
   );
 }
 
@@ -1198,18 +1165,17 @@ function RelationMap({
                     <Link
                       key={p.code}
                       href={`/stock/${p.code}`}
-                      title={edgeInfo(us.code, p.code)?.basis ?? undefined}
                       className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-sm ${
                         watched
                           ? "border-amber-300 bg-amber-50 hover:border-amber-400"
                           : "border-gray-200 hover:border-gray-400"
                       }`}
                     >
-                      <span
-                        className={`shrink-0 rounded px-1 py-0.5 text-[10px] leading-none ${STRENGTH_BADGE[strength]}`}
-                      >
-                        {strength}
-                      </span>
+                      <TapBadge
+                        label={strength}
+                        cls={STRENGTH_BADGE[strength]}
+                        detail={`${strength}关联:${edgeInfo(us.code, p.code)?.basis ?? "—"}`}
+                      />
                       <span className="font-medium text-gray-800">
                         {watched && <span className="text-amber-500">★</span>}
                         {p.name}
