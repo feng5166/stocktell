@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { PWARegister } from "@/components/PWARegister";
+import { SiteFooter } from "@/components/SiteFooter";
 
 // Umami 网页分析(自托管 analytics.stocktell.me)。配了 WEBSITE_ID 才注入,
 // 自动采集 pageview;自定义事件经 lib/analytics 的 track() 上报。
@@ -42,8 +43,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased pb-14 sm:pb-0">
+      <body className="antialiased pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
         <Providers>{children}</Providers>
+        <SiteFooter />
         <PWARegister />
         {UMAMI_SRC && UMAMI_ID && (
           <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} strategy="afterInteractive" />
