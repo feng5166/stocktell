@@ -68,7 +68,9 @@ export function BriefingFeed({
             {mine.length === 0 ? (
               <>
                 <WatchOverview codes={wl.codes} />
-                <Hint>今天你的票没有 AI 产业链相关动态,安心上班 ☕</Hint>
+                <Hint>
+                  你的票今天没有 AI 产业链异动 —— 我盯着呢,有风吹草动第一时间告诉你 👀
+                </Hint>
               </>
             ) : (
               <CardFeed
