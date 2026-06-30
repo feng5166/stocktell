@@ -5,7 +5,7 @@ import { FeedbackLink } from "@/components/FeedbackLink";
 export const metadata = {
   title: "关于我们 · StockTell",
   description:
-    "StockTell:用 AI 把复杂的市场与产业链信息,翻译成普通散户能懂的解读。香港灵境智能科技(AuraAI Limited)出品。",
+    "StockTell:用 AI 把复杂的市场与产业链信息,翻译成普通散户能懂的解读。香港极光智能科技(AuroraAI Limited)出品。",
 };
 
 const TIMELINE = [
@@ -40,7 +40,7 @@ export default function AboutPage() {
         <Section title="公司简介">
           <p>
             我们的旅程缘起于 2023 年的黑客松比赛,并于 2024 年正式成立
-            <b>香港灵境智能科技有限公司(AuraAI Limited)</b>。作为一家创新的人工智能公司,我们一直在做同一件事:
+            <b>香港极光智能科技有限公司(AuroraAI Limited)</b>。作为一家创新的人工智能公司,我们一直在做同一件事:
             <b>用大型语言模型(LLM),把专业、复杂、零散的信息,翻译成普通人能听懂、用得上的解读。</b>
           </p>
           <p>
