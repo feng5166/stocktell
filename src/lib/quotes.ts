@@ -10,6 +10,19 @@ export interface Quote {
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const CHUNK = 50;
+const FETCH_TIMEOUT_MS = Number(process.env.QUOTES_FETCH_TIMEOUT_MS ?? 6000);
+
+// 带超时的 fetch:行情源(新浪/腾讯)从机房 IP 抓取偶发被限流/卡死,无超时会一直挂到平台上限
+// (已踩:/api/quotes 71s)。超时即 abort,由上层 catch 成空 → 回落另一源 / 读缓存。
+async function fetchWithTimeout(url: string, opts: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
 
 // ===== 新浪源 =====
 function parseSina(text: string, codeBySym: Record<string, string>) {
@@ -51,7 +64,7 @@ async function fetchSinaChunk(
     codeBySym[sym] = code;
     return sym;
   });
-  const resp = await fetch(`https://hq.sinajs.cn/list=${list.join(",")}`, {
+  const resp = await fetchWithTimeout(`https://hq.sinajs.cn/list=${list.join(",")}`, {
     headers: {
       Referer: "https://finance.sina.com.cn",
       "User-Agent":
@@ -108,7 +121,7 @@ async function fetchTencentChunk(
     codeBySym[sym] = code;
     return sym;
   });
-  const resp = await fetch(`https://qt.gtimg.cn/q=${list.join(",")}`, {
+  const resp = await fetchWithTimeout(`https://qt.gtimg.cn/q=${list.join(",")}`, {
     headers: {
       Referer: "https://gu.qq.com",
       "User-Agent":
