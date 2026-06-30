@@ -216,13 +216,80 @@ export default async function StockDetail({
           </div>
         )}
 
-        {/* 基本面真实数据并入标题区(紧凑一行) */}
+        {/* 基本面真实数据并入标题区(紧凑一行)。下方按散户心态重排:先结论/关系,资金面等支撑细节折叠靠后 */}
         <Fundamentals code={s.code} market={s.market} />
 
-        {/* 资金面置顶:进来先看今天聪明钱在怎么流 */}
+        <Section icon="📰" title="最近发生了什么">
+          <ul className="space-y-1.5 text-sm text-gray-700">
+            {todayNews.map((it) => (
+              <li key={it.id} className="text-rose-600">
+                • 今日简报:{it.title}
+              </li>
+            ))}
+            <li>• {s.observation}</li>
+          </ul>
+        </Section>
+
+        <Section icon="💭" title="散户怎么想" highlight>
+          <StockTellTake
+            itemId={newsItem?.id}
+            code={s.code}
+            retailTake={newsItem?.retailTake ?? s.retailTake}
+          />
+          {!newsItem && (
+            <p className="mt-1 text-xs text-gray-400">
+              今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
+            </p>
+          )}
+        </Section>
+
+        <Section icon="🧭" title="在产业链的位置">
+          <ChainPosition
+            sector={s.sector}
+            up={upPeers}
+            down={downPeers}
+          />
+        </Section>
+
+        <Section icon="🔗" title="对应的股票">
+          {!hasPeers ? (
+            sameSectorPeers.length > 0 ? (
+              <div className="space-y-2 text-sm">
+                <PeerGroup label={`同板块标的 · ${s.sector}`} items={sameSectorPeers} />
+                <p className="text-meta leading-relaxed text-gray-400">
+                  这只暂无明确的供货/对标关系,以上为同属「{s.sector}」的标的,可作同类参考(非确认的产业链关系)。
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-gray-500">
+                这只比较独立,属于「{s.sector}」({s.position}环节),暂无明确的同类或上下游标的。
+              </p>
+            )
+          ) : (
+            <div className="space-y-3 text-sm">
+              {usPeers.length > 0 && (
+                <PeerGroup label="对应美股" anchor={s} items={usPeers} />
+              )}
+              {aPeers.length > 0 && (
+                <PeerGroup label="对应 A 股" anchor={s} items={aPeers} />
+              )}
+              {otherPeers.length > 0 && (
+                <PeerGroup label="相关" items={otherPeers} />
+              )}
+            </div>
+          )}
+          {(usPeers.length > 0 || aPeers.length > 0) && (
+            <p className="mt-3 text-meta leading-relaxed text-gray-400">
+              强 = 有明确供货/直接业务绑定;中 = 对标/国产替代(同类对手,无直接供货);弱
+              = 同主题、蹭概念(跟着热度涨跌)。关系为研究框架梳理,非确认的客户/供应商关系。
+            </p>
+          )}
+        </Section>
+
+        {/* 资金面(术语较重,降为支撑细节、默认折叠)*/}
         {fundItem &&
           (fundItem.netMf !== null || fundItem.rzChgYi !== null || fundItem.longhu) && (
-            <Section icon="📊" title="资金面">
+            <Section collapsible icon="📊" title="资金面">
               {fundItem.netMf !== null && (
                 <p className="mb-1.5 text-xs text-gray-500">
                   简单说:今天大资金整体在
@@ -267,63 +334,6 @@ export default async function StockDetail({
             </Section>
           )}
 
-        <Section icon="🧭" title="在产业链的位置">
-          <ChainPosition
-            sector={s.sector}
-            up={upPeers}
-            down={downPeers}
-          />
-        </Section>
-
-        <Section icon="📰" title="最近发生了什么">
-          <ul className="space-y-1.5 text-sm text-gray-700">
-            {todayNews.map((it) => (
-              <li key={it.id} className="text-rose-600">
-                • 今日简报:{it.title}
-              </li>
-            ))}
-            <li>• {s.observation}</li>
-          </ul>
-        </Section>
-
-        <Section icon="💭" title="散户怎么想" highlight>
-          <StockTellTake
-            itemId={newsItem?.id}
-            code={s.code}
-            retailTake={newsItem?.retailTake ?? s.retailTake}
-          />
-          {!newsItem && (
-            <p className="mt-1 text-xs text-gray-400">
-              今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
-            </p>
-          )}
-        </Section>
-
-        {/* 散户心态:结论之后看「有没有坑(雷区)」「赚不赚钱(财报)」 */}
-        {riskEvents.length > 0 && (
-          <Section icon="⚠️" title="重要事件 / 雷区">
-            <ul className="space-y-1.5 text-sm">
-              {riskEvents.map((e, i) => (
-                <li
-                  key={i}
-                  className={
-                    e.severity === "high"
-                      ? "text-rose-600"
-                      : e.severity === "info"
-                      ? "text-gray-500"
-                      : "text-amber-700"
-                  }
-                >
-                  {e.text}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              公开信息整理(Tushare),提示风险,不构成投资建议。
-            </p>
-          </Section>
-        )}
-
         {checkup && checkup.findings.length > 0 && (
           <Section collapsible icon="📋" title="财报体检 · 一句话看懂">
             <ul className="space-y-1.5 text-sm">
@@ -350,40 +360,29 @@ export default async function StockDetail({
           </Section>
         )}
 
-        <Section icon="🔗" title="对应的股票">
-          {!hasPeers ? (
-            sameSectorPeers.length > 0 ? (
-              <div className="space-y-2 text-sm">
-                <PeerGroup label={`同板块标的 · ${s.sector}`} items={sameSectorPeers} />
-                <p className="text-meta leading-relaxed text-gray-400">
-                  这只暂无明确的供货/对标关系,以上为同属「{s.sector}」的标的,可作同类参考(非确认的产业链关系)。
-                </p>
-              </div>
-            ) : (
-              <p className="text-sm leading-relaxed text-gray-500">
-                这只比较独立,属于「{s.sector}」({s.position}环节),暂无明确的同类或上下游标的。
-              </p>
-            )
-          ) : (
-            <div className="space-y-3 text-sm">
-              {usPeers.length > 0 && (
-                <PeerGroup label="对应美股" anchor={s} items={usPeers} />
-              )}
-              {aPeers.length > 0 && (
-                <PeerGroup label="对应 A 股" anchor={s} items={aPeers} />
-              )}
-              {otherPeers.length > 0 && (
-                <PeerGroup label="相关" items={otherPeers} />
-              )}
-            </div>
-          )}
-          {(usPeers.length > 0 || aPeers.length > 0) && (
-            <p className="mt-3 text-meta leading-relaxed text-gray-400">
-              强 = 有明确供货/直接业务绑定;中 = 对标/国产替代(同类对手,无直接供货);弱
-              = 同主题、蹭概念(跟着热度涨跌)。关系为研究框架梳理,非确认的客户/供应商关系。
+        {riskEvents.length > 0 && (
+          <Section icon="⚠️" title="重要事件 / 雷区">
+            <ul className="space-y-1.5 text-sm">
+              {riskEvents.map((e, i) => (
+                <li
+                  key={i}
+                  className={
+                    e.severity === "high"
+                      ? "text-rose-600"
+                      : e.severity === "info"
+                      ? "text-gray-500"
+                      : "text-amber-700"
+                  }
+                >
+                  {e.text}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">
+              公开信息整理(Tushare),提示风险,不构成投资建议。
             </p>
-          )}
-        </Section>
+          </Section>
+        )}
 
         {etfs.length > 0 && (
           <Section icon="🧺" title="相关 ETF · 一篮子参与">
