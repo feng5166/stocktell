@@ -1,12 +1,19 @@
 export function Th({
   children,
   className = "",
+  onClick,
 }: {
   children?: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }) {
   return (
-    <th className={`whitespace-nowrap px-3 py-2 font-medium ${className}`}>
+    <th
+      onClick={onClick}
+      className={`whitespace-nowrap px-3 py-2 font-medium ${
+        onClick ? "cursor-pointer select-none hover:text-gray-700" : ""
+      } ${className}`}
+    >
       {children}
     </th>
   );

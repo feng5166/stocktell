@@ -638,9 +638,44 @@ function StockTable({
       return next;
     });
 
+  // 点表头排序:数值列(价格/日涨跌)默认降序,文本列默认升序;非实时行情(live=false)沉底。
+  const [sortKey, setSortKey] = useState<
+    null | "code" | "name" | "market" | "position" | "sector" | "price" | "change"
+  >(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const toggleSort = (k: NonNullable<typeof sortKey>) => {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(k);
+      setSortDir(k === "price" || k === "change" ? "desc" : "asc");
+    }
+  };
+  const sortedRows = useMemo(() => {
+    if (!sortKey) return rows;
+    const isNum = sortKey === "price" || sortKey === "change";
+    const numVal = (s: Stock) => (s.live ? (s[sortKey as "price" | "change"] as number) : null);
+    const arr = [...rows];
+    arr.sort((a, b) => {
+      if (isNum) {
+        const va = numVal(a);
+        const vb = numVal(b);
+        if (va === null && vb === null) return 0;
+        if (va === null) return 1; // 无实时行情永远沉底
+        if (vb === null) return -1;
+        return sortDir === "asc" ? va - vb : vb - va;
+      }
+      const c = String(a[sortKey]).localeCompare(String(b[sortKey]), "zh");
+      return sortDir === "asc" ? c : -c;
+    });
+    return arr;
+  }, [rows, sortKey, sortDir]);
+
+  const arrow = (k: NonNullable<typeof sortKey>) =>
+    sortKey === k ? (sortDir === "asc" ? " ▲" : " ▼") : " ↕";
+
   // 长列表渐进加载:手机/桌面各一份(同时只显示一个视图)
-  const mob = useProgressive(rows, 12);
-  const desk = useProgressive(rows, 20);
+  const mob = useProgressive(sortedRows, 12);
+  const desk = useProgressive(sortedRows, 20);
 
   return (
     <>
@@ -679,13 +714,17 @@ function StockTable({
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
               <Th></Th>
-              <Th>代码</Th>
-              <Th>公司</Th>
-              <Th>市场</Th>
-              <Th>位置</Th>
-              <Th>板块</Th>
-              <Th className="text-right">价格</Th>
-              <Th className="text-right">日涨跌</Th>
+              <Th onClick={() => toggleSort("code")}>代码{arrow("code")}</Th>
+              <Th onClick={() => toggleSort("name")}>公司{arrow("name")}</Th>
+              <Th onClick={() => toggleSort("market")}>市场{arrow("market")}</Th>
+              <Th onClick={() => toggleSort("position")}>位置{arrow("position")}</Th>
+              <Th onClick={() => toggleSort("sector")}>板块{arrow("sector")}</Th>
+              <Th className="text-right" onClick={() => toggleSort("price")}>
+                价格{arrow("price")}
+              </Th>
+              <Th className="text-right" onClick={() => toggleSort("change")}>
+                日涨跌{arrow("change")}
+              </Th>
               <Th>核心定位</Th>
               <Th>状态</Th>
               <Th></Th>
