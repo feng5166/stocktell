@@ -5,8 +5,10 @@ import { track } from "@/lib/analytics";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // 浮动入口:「安装到桌面」+ 安装结果反馈。
-// 成功以 `appinstalled` 事件为准(最可靠,含浏览器菜单安装路径);取消看 userChoice。
-// iOS Safari 无 beforeinstallprompt:只能引导"添加到主屏幕",成功靠下次以 standalone 打开来确认。
+// 成功以 `appinstalled` 事件为准;取消看 userChoice;iOS 走「添加到主屏幕」引导。
+// 安卓坑:大陆网络下 Chrome 装 PWA 需联 Google 的 WebAPK 铸包服务,常失败 → 退化成
+// 普通快捷方式、下次仍提示安装。检测到"装过又被提示"就引导用菜单更稳。
+const TRIED_KEY = "pwa_install_tried";
 type Toast = { ok: boolean; text: string } | null;
 
 export function PwaActions() {
@@ -14,11 +16,12 @@ export function PwaActions() {
   const [standalone, setStandalone] = useState(true);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSHint, setShowIOSHint] = useState(false);
+  const [reprompt, setReprompt] = useState(false); // 之前装过却又被提示 = 上次没真正装上
   const [toast, setToast] = useState<Toast>(null);
 
   const flash = useCallback((t: NonNullable<Toast>) => {
     setToast(t);
-    window.setTimeout(() => setToast(null), 3000);
+    window.setTimeout(() => setToast(null), 4000);
   }, []);
 
   useEffect(() => {
@@ -29,13 +32,23 @@ export function PwaActions() {
     const onBIP = (e: any) => {
       e.preventDefault();
       setDeferred(e);
+      // 上次尝试过安装、现在又能提示 = 上次没装上(安卓 WebAPK 失败常见)
+      try {
+        if (localStorage.getItem(TRIED_KEY)) setReprompt(true);
+      } catch {
+        /* ignore */
+      }
     };
-    // 安装真正落地(任何路径,包括浏览器三点菜单)
     const onInstalled = () => {
       setDeferred(null);
       setStandalone(true);
       setShowIOSHint(false);
-      flash({ ok: true, text: "✅ 已添加到桌面,下次从图标直接打开" });
+      try {
+        localStorage.setItem(TRIED_KEY, "1");
+      } catch {
+        /* ignore */
+      }
+      flash({ ok: true, text: "✅ 安装已发起 · 去桌面或应用列表找 StockTell 图标" });
       track("pwa_installed");
     };
     const onModeChange = (e: MediaQueryListEvent) => setStandalone(e.matches);
@@ -55,8 +68,13 @@ export function PwaActions() {
       deferred.prompt();
       try {
         const { outcome } = await deferred.userChoice;
-        // accepted 不在这里报成功:真正落地以 appinstalled 为准(系统弹窗可能再被取消)
-        if (outcome === "dismissed") {
+        if (outcome === "accepted") {
+          try {
+            localStorage.setItem(TRIED_KEY, "1");
+          } catch {
+            /* ignore */
+          }
+        } else if (outcome === "dismissed") {
           flash({ ok: false, text: "已取消安装,可随时再点此添加" });
           track("pwa_install_dismissed");
         }
@@ -83,6 +101,12 @@ export function PwaActions() {
           }`}
         >
           {toast.text}
+        </div>
+      )}
+      {/* 安卓:上次没装上又被提示 → 引导用浏览器菜单(更稳,不依赖 WebAPK) */}
+      {reprompt && !isIOS && (
+        <div className="max-w-[240px] rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg">
+          上次似乎没装上?改用浏览器右上角 <b>⋮ 菜单 →「添加到主屏幕」</b> 更稳。
         </div>
       )}
       {showIOSHint && (
