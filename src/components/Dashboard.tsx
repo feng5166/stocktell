@@ -242,11 +242,11 @@ export default function Dashboard() {
     });
   }, [quotes]);
 
-  const filtered = useMemo(() => {
+  // 除「市场」外的所有过滤(自选/环节/板块/梯队/概念/关系/搜索)。
+  // 关联图谱、特征矩阵天生是美股↔A股对照,应吃这份"不按市场切"的数据,否则选 A股 时美股列全是"—"。
+  const crossMarketRows = useMemo(() => {
     return rows.filter((s) => {
       if (onlyWatch && !wl.codes.has(s.code)) return false;
-      // 搜索时放开市场过滤:否则默认锁「A股」会让搜美股(英伟达/NVDA)直接 0 结果、像"本站没有"
-      if (!query.trim() && market !== "全部" && s.market !== market) return false;
       if (position !== "全部" && s.position !== position) return false;
       if (sector !== "全部" && s.sector !== sector) return false;
       if (tier !== "全部" && TIER[s.code] !== tier) return false;
@@ -264,7 +264,16 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [rows, market, position, sector, tier, concept, relation, query, onlyWatch, wl.codes]);
+  }, [rows, position, sector, tier, concept, relation, query, onlyWatch, wl.codes]);
+
+  // 股票列表用的最终集 = 跨市场集再叠加市场过滤。搜索时放开市场(否则默认锁 A股 搜美股=0 结果)。
+  const filtered = useMemo(
+    () =>
+      crossMarketRows.filter(
+        (s) => !!query.trim() || market === "全部" || s.market === market
+      ),
+    [crossMarketRows, market, query]
+  );
 
   const stats = useMemo(() => {
     const coverage = filtered.filter((s) => s.live).length;
@@ -539,9 +548,9 @@ export default function Dashboard() {
           />
         )}
         {tab === "关联图谱" && (
-          <RelationMap rows={filtered} watchedCodes={wl.codes} />
+          <RelationMap rows={crossMarketRows} watchedCodes={wl.codes} />
         )}
-        {tab === "特征矩阵" && <FeatureMatrix rows={filtered} />}
+        {tab === "特征矩阵" && <FeatureMatrix rows={crossMarketRows} />}
         {tab === "主动发现" && (
           <ActiveDiscovery rows={rows} watchedCodes={wl.codes} />
         )}
