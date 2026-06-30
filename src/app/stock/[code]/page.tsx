@@ -369,14 +369,18 @@ export default async function StockDetail({
                   }${e.code}.html`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="-mx-2 flex flex-wrap items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50"
+                  className="group/etf -mx-2 flex flex-wrap items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-brand-50/60"
                 >
                   <span className="font-mono text-xs text-gray-400">{e.code}</span>
-                  <span className="font-medium text-blue-700 hover:underline">
+                  <span className="font-medium text-gray-800 group-hover/etf:text-brand-600">
                     {e.name}
+                    <span className="ml-0.5 text-gray-300 group-hover/etf:text-brand-400">
+                      ↗
+                    </span>
                   </span>
-                  <span className="ml-auto text-xs text-gray-500">
-                    {s.name}占 {e.ratio}%
+                  <span className="ml-auto text-xs text-gray-400">
+                    {s.name}占{" "}
+                    <b className="font-medium text-gray-600">{e.ratio}%</b>
                   </span>
                 </a>
               ))}
@@ -415,11 +419,19 @@ function Section({
   if (collapsible) {
     return (
       <details className={`group ${cls}`}>
-        <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-400">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-gray-400 transition-colors hover:text-gray-600">
           <span>{title}</span>
-          <span className="text-gray-300 transition-transform group-open:rotate-180">▾</span>
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            className="h-4 w-4 shrink-0 text-gray-300 transition-transform group-open:rotate-180 group-hover:text-gray-500"
+          >
+            <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </summary>
-        <div className="mt-2">{children}</div>
+        <div className="mt-3">{children}</div>
       </details>
     );
   }
