@@ -70,7 +70,7 @@ export function DeepRead({
 
   async function load() {
     if (status !== "authenticated") {
-      openAuth();
+      openAuth("登录后,StockTell 用大白话帮你拆这条对你手里的票意味着什么 —— 免费,不喊单。");
       return;
     }
     setStarted(true);
@@ -88,7 +88,7 @@ export function DeepRead({
       });
       if (!res.ok || !res.body) {
         if (res.status === 401) {
-          openAuth();
+          openAuth("登录后,StockTell 用大白话帮你拆这条对你手里的票意味着什么 —— 免费,不喊单。");
           setStarted(false);
           return;
         }

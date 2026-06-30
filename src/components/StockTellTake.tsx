@@ -74,7 +74,7 @@ export function StockTellTake({
   async function loadDeep() {
     if (!canDeep) return;
     if (status !== "authenticated") {
-      openAuth();
+      openAuth("登录后,StockTell 用大白话帮你拆这条对你手里的票意味着什么 —— 免费,不喊单。");
       return;
     }
     setDeepStarted(true);
@@ -89,7 +89,7 @@ export function StockTellTake({
       });
       if (!res.ok || !res.body) {
         if (res.status === 401) {
-          openAuth();
+          openAuth("登录后,StockTell 用大白话帮你拆这条对你手里的票意味着什么 —— 免费,不喊单。");
           setDeepStarted(false);
           return;
         }

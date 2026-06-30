@@ -11,7 +11,7 @@ export function AuthButton({
 }) {
   const { open } = useAuthModal();
   return (
-    <button className={className} onClick={open}>
+    <button className={className} onClick={() => open()}>
       {children}
     </button>
   );

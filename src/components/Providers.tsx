@@ -10,7 +10,10 @@ import { PwaActions } from "@/components/pwa/PwaActions";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { ToastProvider } from "@/components/Toast";
 
-const AuthModalCtx = createContext<{ open: () => void; close: () => void }>({
+const AuthModalCtx = createContext<{
+  open: (reason?: string) => void;
+  close: () => void;
+}>({
   open: () => {},
   close: () => {},
 });
@@ -21,17 +24,27 @@ export function useAuthModal() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  // 登录弹窗的情境理由(如从"深读"触发时,说清"登录能得到什么"),没有则用默认副标题
+  const [authReason, setAuthReason] = useState<string | undefined>(undefined);
   return (
     <SessionProvider>
       <ConfirmProvider>
         <ToastProvider>
           <AuthModalCtx.Provider
-            value={{ open: () => setIsOpen(true), close: () => setIsOpen(false) }}
+            value={{
+              open: (reason?: string) => {
+                setAuthReason(reason);
+                setIsOpen(true);
+              },
+              close: () => setIsOpen(false),
+            }}
           >
             <OfflineBanner />
             {/* <WeixinActivateBanner /> */}
             {children}
-            {isOpen && <AuthModal onClose={() => setIsOpen(false)} />}
+            {isOpen && (
+              <AuthModal onClose={() => setIsOpen(false)} reason={authReason} />
+            )}
             <PwaActions />
           </AuthModalCtx.Provider>
         </ToastProvider>

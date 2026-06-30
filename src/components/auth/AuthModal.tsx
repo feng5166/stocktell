@@ -9,7 +9,13 @@ const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
 // 本设备上次登录用的邮箱(只记邮箱、不记密码),下次自动回填登录框
 const LAST_EMAIL_KEY = "stocktell:last-email";
 
-export function AuthModal({ onClose }: { onClose: () => void }) {
+export function AuthModal({
+  onClose,
+  reason,
+}: {
+  onClose: () => void;
+  reason?: string;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -108,7 +114,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
 
         <h2 className="text-center text-h1 font-bold text-ink">登录 / 注册</h2>
         <p className="mt-1 text-center text-sm text-gray-500">
-          登录或创建账号以继续使用
+          {reason ?? "登录或创建账号以继续使用"}
         </p>
 
         <button

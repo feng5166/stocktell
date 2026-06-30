@@ -432,7 +432,7 @@ function BriefingCard({
   async function loadDeep() {
     // 未登录:弹登录框 + 友好提示,不打接口
     if (status !== "authenticated") {
-      openAuth();
+      openAuth("登录后,StockTell 用大白话帮你拆这条对你手里的票意味着什么 —— 免费,不喊单。");
       return;
     }
     setDeepStarted(true);
@@ -447,7 +447,7 @@ function BriefingCard({
       if (!res.ok || !res.body) {
         if (res.status === 401) {
           // 会话过期:弹登录框,收起解读区
-          openAuth();
+          openAuth("登录后,StockTell 用大白话帮你拆这条对你手里的票意味着什么 —— 免费,不喊单。");
           setDeepStarted(false);
           return;
         }

@@ -43,7 +43,7 @@ export function AuthStatus() {
   if (status !== "authenticated") {
     return (
       <button
-        onClick={open}
+        onClick={() => open()}
         className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
       >
         登录
