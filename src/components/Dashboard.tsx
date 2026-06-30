@@ -137,7 +137,7 @@ interface Quote {
 
 export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("股票列表");
-  const [market, setMarket] = useState<(typeof MARKETS)[number]>("A股");
+  const [market, setMarket] = useState<(typeof MARKETS)[number]>("全部");
   const [position, setPosition] = useState<(typeof POSITIONS)[number]>("全部");
   const [sector, setSector] = useState<string>("全部");
   const [tier, setTier] = useState<"全部" | "龙头" | "二线">("全部");
