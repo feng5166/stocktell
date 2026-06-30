@@ -37,24 +37,24 @@ export default async function TrackPage() {
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-h1 font-semibold tracking-tight">查账 · 我准不准</h1>
+            <h1 className="text-h1 font-semibold tracking-tight">信号复盘 · 联动有效率</h1>
             <FeedbackLink />
           </div>
           <p className="mt-1 text-xs text-gray-400">
-            每条简报喊的受益 A 股,当日收盘后回填实际表现。喊了就记,记了就敢给你查。
+            每条简报关联的 A 股,当日收盘后回填实际表现,复盘这类联动过去大致的有效程度。记了就敢给你查。
           </p>
         </div>
 
         {/* 规则透明 */}
         <div className="mb-5 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
-          判定规则(透明):触发美股涨 → 期待对应 A 股涨,跌 → 期待跌;当日同向且涨跌幅
-          ≥ {HIT_THRESHOLD}% 记一次「跟上」。早期样本少,命中率会波动,仅供参考,不构成投资建议。
+          判定规则(透明):触发美股涨 → 预期对应 A 股涨,跌 → 预期跌;当日同向且涨跌幅
+          ≥ {HIT_THRESHOLD}% 记一次「有效联动」。早期样本少,联动有效率会波动,仅为历史复盘、不构成投资建议。
         </div>
 
-        {/* 实盘喊单 */}
+        {/* 实盘记录 */}
         <section className="mb-8">
           <h2 className="mb-2 text-sm font-semibold text-gray-700">
-            实盘喊单 · 自动记账起
+            实盘记录 · 自动记账起
           </h2>
           <Overview stats={liveStats} byImpact={liveByImpact} />
           {liveFirst.rows.length === 0 ? (
@@ -79,11 +79,11 @@ export default async function TrackPage() {
         {btFirst.rows.length > 0 && (
           <section className="mb-2">
             <h2 className="mb-2 text-sm font-semibold text-gray-700">
-              历史回测 · 非实盘喊单
+              历史回测 · 非实盘信号
             </h2>
             <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
-              ⚠️ 以下为用历史行情回放同一套信号的复盘结果,<b>不是实盘喊单</b>,
-              仅用于看这类信号过去大致的规律。实盘战绩只看上面那一栏。
+              ⚠️ 以下为用历史行情回放同一套信号的复盘结果,<b>不是实盘信号</b>,
+              仅用于看这类联动过去大致的规律。实盘记录只看上面那一栏。
             </div>
             <Overview stats={btStats} byImpact={btByImpact} />
             <OutcomeFeed
@@ -113,28 +113,57 @@ function Overview({
   stats: HitStats;
   byImpact: { impact: string; stats: HitStats }[];
 }) {
-  // 样本不足不亮命中率,避免几条数据的虚高/虚低误导
+  // 样本不足不亮有效率,避免几条数据的虚高/虚低误导
   const enough = stats.evaluated >= MIN_SAMPLE;
+  const pct =
+    enough && stats.rate !== null ? Math.round(stats.rate * 100) : null;
   return (
-    <div className="mb-3">
-      <div className="grid grid-cols-3 gap-3">
-        <Stat
-          label="命中率"
-          value={
-            !enough || stats.rate === null
-              ? "—"
-              : `${Math.round(stats.rate * 100)}%`
-          }
-          sub={!enough ? `样本积累中 ${stats.evaluated}/${MIN_SAMPLE}` : undefined}
-        />
-        <Stat label="已判定" value={String(stats.evaluated)} />
-        <Stat label="跟上了" value={String(stats.hits)} />
+    <div className="mb-3 rounded-xl bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-end justify-between gap-4">
+        {/* 主视觉:联动有效率(大数字) */}
+        <div className="min-w-0">
+          <div className="text-xs text-gray-400">联动有效率</div>
+          <div className="mt-0.5 text-4xl font-semibold leading-none tabular-nums text-gray-900">
+            {pct === null ? "—" : `${pct}%`}
+          </div>
+          {!enough && (
+            <div className="mt-1 text-meta text-gray-400">
+              样本积累中 {stats.evaluated}/{MIN_SAMPLE}
+            </div>
+          )}
+        </div>
+        {/* 旁注:已判定 / 有效联动 */}
+        <div className="shrink-0 space-y-1 text-right text-xs text-gray-500">
+          <div>
+            已判定{" "}
+            <b className="font-semibold tabular-nums text-gray-800">
+              {stats.evaluated}
+            </b>
+          </div>
+          <div>
+            有效联动{" "}
+            <b className="font-semibold tabular-nums text-rose-600">
+              {stats.hits}
+            </b>
+          </div>
+        </div>
       </div>
+
+      {/* 进度条:有效率可视化 */}
+      {pct !== null && (
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <div
+            className="h-full rounded-full bg-rose-400"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+
       {byImpact.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500">
           {byImpact.map(({ impact, stats: s }) => (
             <span key={impact}>
-              {IMPACT_META[impact as Impact]?.emoji} {impact}影响{" "}
+              {IMPACT_META[impact as Impact]?.emoji} {impact}联动{" "}
               {s.rate === null ? "—" : `${Math.round(s.rate * 100)}%`}{" "}
               <span className="text-gray-400">
                 ({s.hits}/{s.evaluated})
@@ -143,26 +172,6 @@ function Overview({
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <div className="rounded-xl bg-white shadow-sm px-4 py-3 text-center">
-      <div className="text-xs text-gray-400">{label}</div>
-      <div className="mt-1 text-display font-semibold tabular-nums text-gray-900">
-        {value}
-      </div>
-      {sub && <div className="mt-0.5 text-meta text-gray-400">{sub}</div>}
     </div>
   );
 }

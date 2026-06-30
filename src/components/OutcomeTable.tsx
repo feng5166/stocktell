@@ -64,7 +64,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                     : "bg-gray-100 text-gray-500"
                 }`}
               >
-                跟上 {g.hits}/{g.evaluated}
+                有效 {g.hits}/{g.evaluated}
               </span>
             )}
           </div>
@@ -91,9 +91,9 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                   {r.hit === null ? (
                     <span className="text-gray-300">未判定</span>
                   ) : r.hit ? (
-                    <span className="font-medium text-rose-600">跟上 ✓</span>
+                    <span className="font-medium text-rose-600">有效 ✓</span>
                   ) : (
-                    <span className="text-gray-400">没跟上</span>
+                    <span className="text-gray-400">未联动</span>
                   )}
                 </span>
               </div>
