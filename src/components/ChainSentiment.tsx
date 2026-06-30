@@ -27,10 +27,13 @@ interface Data {
 const fmtPct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
 const fmtYi = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}亿`;
 
-export function ChainSentiment() {
-  const [d, setD] = useState<Data | null>(null);
+// initial 由首页 ISR 服务端算好直接传入 → 首屏即出、零客户端请求(原来是挂载后再跨境拉一次,很慢)。
+// 不传 initial 时(其它复用场景)仍回退到客户端拉取。
+export function ChainSentiment({ initial }: { initial?: Data }) {
+  const [d, setD] = useState<Data | null>(initial ?? null);
   const [errored, setErrored] = useState(false);
   useEffect(() => {
+    if (initial) return; // 服务端已注入,无需再拉
     let active = true;
     fetch("/api/chain-sentiment", { cache: "no-store" })
       .then((r) => r.json())
@@ -39,7 +42,7 @@ export function ChainSentiment() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initial]);
 
   // 加载中:占位骨架,别让模块"凭空消失"(首页每天打开的理由,要稳定在场)
   if (!d && !errored) {

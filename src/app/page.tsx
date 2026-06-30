@@ -4,6 +4,7 @@ import { FeedbackLink } from "@/components/FeedbackLink";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
+import { chainSentiment } from "@/lib/sentiment";
 import {
   listBriefing,
   latestBriefing,
@@ -21,7 +22,11 @@ export default async function Home() {
   const date = todayISO();
   let items: BriefingItem[] = [];
   let errored = false;
-  const briefingsRes = await listBriefing({ date, status: "published" }).catch(() => null);
+  // 简报 + AI链情绪并行算(情绪是全局数据,ISR 时烘进 HTML,客户端零请求)
+  const [briefingsRes, sentiment] = await Promise.all([
+    listBriefing({ date, status: "published" }).catch(() => null),
+    chainSentiment().catch(() => ({ date: null, a: null, us: null })),
+  ]);
   if (briefingsRes === null) errored = true;
   else items = briefingsRes;
 
@@ -66,7 +71,7 @@ export default async function Home() {
         )}
 
         {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目) */}
-        <ChainSentiment />
+        <ChainSentiment initial={sentiment} />
 
         {items.length === 0 ? (
           <EmptyState errored={errored} />
