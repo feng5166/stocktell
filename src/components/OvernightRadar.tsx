@@ -11,7 +11,7 @@ import { useWatchlist } from "@/components/useWatchlist";
 import { fmtChange, changeClass } from "@/lib/format";
 import { track } from "@/lib/analytics";
 
-type Quote = { price: number; change: number };
+type Quote = { price: number; change: number; asOf?: string };
 type LinkageStat = { events: number; rate: number };
 const STRENGTH_RANK: Record<Strength, number> = { 强: 0, 中: 1, 弱: 2 };
 const GAP = 1.5; // 美股领先 A 股 ≥1.5 个点才算预期差
@@ -114,12 +114,25 @@ export function OvernightRadar() {
 
   if (signals.length === 0) return null;
 
+  // 隔夜数据"截至"日期 = 信号里最新的美股交易日(美东),让用户清楚这是哪天的隔夜行情
+  const usAsOf = signals
+    .map((s) => quotes[s.code]?.asOf)
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .at(-1);
+  const asOfMD = usAsOf ? `${+usAsOf.slice(5, 7)}/${+usAsOf.slice(8, 10)}` : null;
+
   return (
     <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
       <div className="mb-1 flex items-center gap-2">
         <span className="text-sm font-semibold text-gray-800">
           ⚡ 隔夜美股 · 跟你 A 股的联动
         </span>
+        {asOfMD && (
+          <span className="ml-auto shrink-0 text-meta text-gray-400">
+            截至 {asOfMD} 美东
+          </span>
+        )}
       </div>
       <p className="mb-2.5 text-xs text-gray-400">
         美股已涨、对应 A 股今日涨幅暂时落后的(仅供观察对比)
