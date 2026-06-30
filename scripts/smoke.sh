@@ -38,6 +38,9 @@ if node "$(dirname "$0")/data-check.mjs"; then ok "AI产业链数据自检通过
 echo "[公开接口]"
 curl -s -m 25 "$BASE/api/quotes" | assert_json _ "'quotes' in d" && ok "/api/quotes 正常" || ng "/api/quotes"
 curl -s -m 25 "$BASE/api/etf-quotes" | assert_json _ "'quotes' in d" && ok "/api/etf-quotes 正常" || ng "/api/etf-quotes"
+# AI链今日情绪(首页模块数据源):至少 A 股或美股有数据,否则首页落"数据生成中"占位
+curl -s -m 30 "$BASE/api/chain-sentiment" | assert_json _ "d.get('a') or d.get('us')" \
+  && ok "/api/chain-sentiment 有数据(AI链情绪不空)" || ng "/api/chain-sentiment 无数据(首页将显占位)"
 # 反馈接口:只验校验(空内容应 400),不提交真反馈以免刷飞书
 FB_CODE=$(curl -s -m 15 -o /dev/null -w "%{http_code}" -X POST "$BASE/api/feedback" \
   -H 'Content-Type: application/json' -d '{"content":""}')
@@ -99,6 +102,21 @@ echo "[StockTell 深读]"
 DEEP=$(curl -s -m 60 -b "$JAR" -X POST "$BASE/api/briefing/explain" \
   -H 'Content-Type: application/json' -d '{"code":"300308"}')
 [ "${#DEEP}" -gt 50 ] && ok "个股深读返回内容(${#DEEP} 字)" || ng "个股深读无内容"
+
+# ---------- 登录态:今日早报(没异动空态契约 + 有异动生成) ----------
+echo "[今日早报]"
+# 没异动(items 为空):后端返回 brief:null,前端据此渲染常驻「守望」早报卡片
+curl -s -m 20 -b "$JAR" -X POST "$BASE/api/morning-brief" \
+  -H 'Content-Type: application/json' -d '{"codes":["300308"],"items":[]}' |
+  assert_json _ "d.get('brief') is None and d.get('count') == 0" \
+  && ok "空态契约正常(brief=null → 前端走守望早报)" || ng "空态契约异常"
+# 有异动:传一条相关条目,应生成非空早报(LLM 命中/兜底都为字符串)
+MB=$(curl -s -m 30 -b "$JAR" -X POST "$BASE/api/morning-brief" \
+  -H 'Content-Type: application/json' \
+  -d '{"codes":["300308"],"items":[{"id":"smoke-1","title":"算力需求超预期(冒烟测试)","impact":"利好","beneficiaries":[{"name":"中际旭创"}],"retailTake":"测试占位"}]}')
+echo "$MB" | assert_json _ "isinstance(d.get('brief'), str) and len(d['brief']) > 0" \
+  && ok "有异动生成早报($(echo "$MB" | python3 -c "import sys,json;print(len(json.load(sys.stdin).get('brief') or ''))" 2>/dev/null) 字)" \
+  || ng "有异动早报为空"
 
 echo
 echo "== 结果:$PASS_N 过 / $FAIL_N 败 =="
