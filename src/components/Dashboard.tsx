@@ -821,7 +821,8 @@ function StockCard({
         <button
           onClick={onToggleWatch}
           aria-label={watched ? "取消自选" : "加入自选"}
-          className={`-m-2.5 inline-flex h-11 w-11 items-center justify-center text-lg leading-none ${
+          title={watched ? "取消自选" : "加入自选"}
+          className={`-m-2.5 inline-flex h-11 w-11 shrink-0 items-center justify-center text-lg leading-none ${
             watched ? "text-amber-400" : "text-gray-300"
           }`}
         >
