@@ -99,12 +99,11 @@ function StrengthTag({ usCode, aCode }: { usCode: string; aCode: string }) {
   const info = edgeInfo(usCode, aCode);
   if (!info) return null;
   return (
-    <span
-      title={`${info.strength}:${info.basis}`}
-      className={`shrink-0 rounded px-1 py-0.5 text-[10px] leading-none ${STRENGTH_BADGE[info.strength]}`}
-    >
-      {info.strength}
-    </span>
+    <TapBadge
+      label={info.strength}
+      cls={STRENGTH_BADGE[info.strength]}
+      detail={`${info.strength}关联:${info.basis}`}
+    />
   );
 }
 
@@ -122,20 +121,52 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
   if (!stat) return null;
   if (stat.events < LINKAGE_MIN)
     return (
-      <span
-        title={`样本仅 ${stat.events} 次,统计不足,仅供参考(联动有效率·非预测)`}
-        className="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[10px] leading-none text-gray-400"
-      >
-        样本{stat.events}
-      </span>
+      <TapBadge
+        label={`样本${stat.events}`}
+        cls="bg-gray-100 text-gray-500"
+        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。联动有效率·非预测,历史不代表未来。`}
+      />
     );
   const pct = Math.round(stat.rate * 100);
   return (
-    <span
-      title={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
-      className="shrink-0 rounded bg-sky-50 px-1 py-0.5 text-[10px] leading-none text-sky-600"
-    >
-      联动{pct}%
+    <TapBadge
+      label={`联动${pct}%`}
+      cls="bg-sky-50 text-sky-600"
+      detail={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
+    />
+  );
+}
+
+// 可点徽章:点一下弹依据/合规说明(替代手机看不到的 title),点外关闭、阻止冒泡。
+function TapBadge({ label, cls, detail }: { label: string; cls: string; detail: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("click", onDoc);
+    return () => document.removeEventListener("click", onDoc);
+  }, [open]);
+  return (
+    <span ref={ref} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setOpen((v) => !v);
+        }}
+        className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] leading-none ${cls}`}
+      >
+        {label}
+      </button>
+      {open && (
+        <span className="absolute left-0 top-6 z-40 w-52 max-w-[70vw] whitespace-normal rounded-lg bg-gray-900 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-lg">
+          {detail}
+        </span>
+      )}
     </span>
   );
 }
@@ -1121,10 +1152,13 @@ function RelationMap({
         >
           {strongOnly ? "✓ 仅看强关联" : "仅看强关联"}
         </button>
-        <span className="text-gray-400">
+        <span className="text-gray-500">
           <span className="text-rose-600">强</span>=真供货 ·
           <span className="text-amber-600"> 中</span>=对标/替代 ·
-          <span className="text-gray-400"> 弱</span>=蹭概念(悬停看依据)
+          <span className="text-gray-500"> 弱</span>=蹭概念(点徽章看依据)
+        </span>
+        <span className="basis-full text-meta leading-relaxed text-gray-400">
+          「联动率」=过去 2 年该美股异动、次日 A 股同向的复盘比例,仅统计、非预测,历史不代表未来。
         </span>
       </div>
       {cards.length === 0 ? (
