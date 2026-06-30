@@ -39,6 +39,14 @@ const HEAT_CLASS: Record<string, string> = {
 // 客户端按需拉,今日简报标记随每 5 分钟再生成刷新。
 export const revalidate = 300;
 
+// 单项取数加超时 + 失败兜底:Tushare 慢/挂时返回 fb,不拖垮整页 SSR。
+function cap<T>(p: Promise<T>, ms: number, fb: T): Promise<T> {
+  return Promise.race([
+    p.catch(() => fb),
+    new Promise<T>((r) => setTimeout(() => r(fb), ms)),
+  ]);
+}
+
 export default async function StockDetail({
   params,
 }: {
@@ -47,24 +55,25 @@ export default async function StockDetail({
   const s = STOCK_MAP[params.code];
   if (!s) notFound();
 
-  // 雷区事件(解禁/增减持/质押/ST/回购),仅 A 股;按天缓存
-  const riskEvents = s.market === "A股" ? await riskEventsFor(s.code).catch(() => []) : [];
-  // 财报体检卡(三大报表翻人话),仅 A 股;按天缓存
-  const checkup = s.market === "A股" ? await financialCheckup(s.code).catch(() => null) : null;
-  // 资金面(主力净流入/融资/龙虎榜),仅 A 股;按天缓存
-  const fund = s.market === "A股" ? await fundFlowFor([s.code]).catch(() => null) : null;
+  // 服务端取数全部并行 + 单项 8s 超时:Tushare 慢时不再串行叠加到 20s+,
+  // 超时就按原有优雅降级(该块不渲染),页面最差 ~8s 出框架。
+  const isA = s.market === "A股";
+  const [riskEvents, checkup, fund, todayBriefs] = await Promise.all([
+    isA ? cap(riskEventsFor(s.code), 8000, []) : Promise.resolve([]),
+    isA ? cap(financialCheckup(s.code), 8000, null) : Promise.resolve(null),
+    isA ? cap(fundFlowFor([s.code]), 8000, null) : Promise.resolve(null),
+    cap(listBriefing({ date: todayISO(), status: "published" }), 8000, []),
+  ]);
   const fundItem = fund?.items[0];
   // 相关 ETF(重仓本股的主题 ETF,静态生成、零运行时调用),仅 A 股
-  const etfs = s.market === "A股" ? ETF_HOLDINGS[s.code] ?? [] : [];
+  const etfs = isA ? ETF_HOLDINGS[s.code] ?? [] : [];
 
   // 基本面增强标签(Tushare:市值档/换手热度),仅 A 股
-  const en = s.market === "A股" ? ENRICH[s.code] : undefined;
+  const en = isA ? ENRICH[s.code] : undefined;
   const concepts = CONCEPTS[s.code] ?? []; // 概念多标签(同花顺概念,题材叠加)
 
   // 今天的简报里是否提到这只(真实"今日有新消息")
-  const todayNews = (
-    await listBriefing({ date: todayISO(), status: "published" }).catch(() => [])
-  ).filter(
+  const todayNews = todayBriefs.filter(
     (it) => it.triggerCode === s.code || it.beneficiaries.some((b) => b.code === s.code)
   );
 
