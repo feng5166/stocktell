@@ -15,3 +15,13 @@ body {
     text-wrap: balance;
   }
 }
+
+/* 手机端表单控件强制 ≥16px:iOS Safari 对 <16px 的输入框聚焦时会自动放大整页,
+   踩在最高频的"搜票"动作上,体验很差。统一兜底,视觉上 16px 与 text-sm 差异极小。 */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
