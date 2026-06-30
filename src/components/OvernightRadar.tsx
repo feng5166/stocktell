@@ -4,11 +4,12 @@
 // 每条挂 强/中/弱 关联标 + 联动有效率徽章;自选 A 股高亮。无 live 信号时整卡自隐藏(不堆砌首页)。
 // 纯观察对比口径,不喊补涨/买卖,守合规。
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STOCKS, aSharePeers } from "@/data/stocks";
 import { edgeInfo, STRENGTH_BADGE, type Strength } from "@/data/relations";
 import { useWatchlist } from "@/components/useWatchlist";
 import { fmtChange, changeClass } from "@/lib/format";
+import { track } from "@/lib/analytics";
 
 type Quote = { price: number; change: number };
 type LinkageStat = { events: number; rate: number };
@@ -102,6 +103,15 @@ export function OvernightRadar() {
     };
   }, [pairsKey]);
 
+  // 雷达曝光:本次挂载首次出现信号时上报一次(衡量"桥"多频繁地浮现给用户)
+  const viewedRef = useRef(false);
+  useEffect(() => {
+    if (signals.length > 0 && !viewedRef.current) {
+      viewedRef.current = true;
+      track("overnight_radar_view", { signals: signals.length });
+    }
+  }, [signals.length]);
+
   if (signals.length === 0) return null;
 
   return (
@@ -137,6 +147,14 @@ export function OvernightRadar() {
                     key={l.code}
                     href={`/stock/${l.code}`}
                     title={info?.basis ?? undefined}
+                    onClick={() =>
+                      track("overnight_radar_click", {
+                        us: s.code,
+                        a: l.code,
+                        strength: l.strength,
+                        linkage: linkage[`${s.code}:${l.code}`]?.rate ?? -1,
+                      })
+                    }
                     className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${
                       watched
                         ? "border-amber-300 bg-amber-50 hover:border-amber-400"

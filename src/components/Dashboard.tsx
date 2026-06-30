@@ -25,6 +25,7 @@ import {
 } from "@/data/stocks";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { edgeInfo, STRENGTH_BADGE, type Strength } from "@/data/relations";
+import { track } from "@/lib/analytics";
 
 // 全部概念(按出现频次降序),给筛选下拉用
 const ALL_CONCEPTS = Object.values(CONCEPTS)
@@ -1105,7 +1106,12 @@ function RelationMap({
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
         <button
-          onClick={() => setStrongOnly((v) => !v)}
+          onClick={() =>
+            setStrongOnly((v) => {
+              if (!v) track("relation_strong_only");
+              return !v;
+            })
+          }
           className={`rounded-full px-2.5 py-1 font-medium ${
             strongOnly
               ? "bg-rose-600 text-white"
@@ -1344,6 +1350,13 @@ function ActiveDiscovery({
                   key={p.code}
                   href={`/stock/${p.code}`}
                   title={watched ? "你的自选" : undefined}
+                  onClick={() =>
+                    track("predict_diff_click", {
+                      us: us.code,
+                      a: p.code,
+                      strength: edgeInfo(us.code, p.code)?.strength ?? "弱",
+                    })
+                  }
                   className={`flex items-center gap-1.5 rounded-lg border bg-amber-50 px-2 py-1 text-sm ${
                     watched
                       ? "border-amber-400 ring-1 ring-amber-300 hover:border-amber-500"
