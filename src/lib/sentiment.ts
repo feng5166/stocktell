@@ -54,6 +54,30 @@ async function latestYmd(): Promise<string | null> {
   return latestFundYmd(todayISO());
 }
 
+// 池内 A 股当日涨跌幅(pct)按交易日落 DB 缓存:全市场日线大表只在当天首个冷算拉一次,
+// 之后跨实例秒回。这是原冷算 ~19s 的主要瓶颈(dailyByDate 全市场、仅进程内缓存、不跨实例)。
+async function getAsharePct(ymd: string, aCodes: string[]): Promise<Map<string, number>> {
+  const db = getPrisma();
+  const id = `apct:${ymd}`;
+  if (db) {
+    const row = await db.quotesCache.findUnique({ where: { id } }).catch(() => null);
+    if (row?.data) return new Map(Object.entries(row.data as Record<string, number>));
+  }
+  const full = await dailyByDate(ymd); // 全市场(慢),只取池内
+  const sub: Record<string, number> = {};
+  for (const c of aCodes) {
+    const v = full.get(c);
+    if (v !== undefined) sub[c] = v;
+  }
+  if (db && Object.keys(sub).length) {
+    const data = sub as unknown as Prisma.InputJsonValue;
+    await db.quotesCache
+      .upsert({ where: { id }, create: { id, data }, update: { data } })
+      .catch(() => {});
+  }
+  return new Map(Object.entries(sub));
+}
+
 async function computeSentiment(): Promise<ChainSentiment> {
   const aCodes = STOCKS.filter((s) => s.market === "A股").map((s) => s.code);
   const usCodes = STOCKS.filter((s) => s.market === "美股").map((s) => s.code);
@@ -62,7 +86,10 @@ async function computeSentiment(): Promise<ChainSentiment> {
   const aTask = (async (): Promise<{ a: ChainSentiment["a"]; date: string | null }> => {
     const ymd = await latestYmd();
     if (!ymd) return { a: null, date: null };
-    const [pctMap, bundle] = await Promise.all([dailyByDate(ymd), getFundBundle(ymd)]);
+    const [pctMap, bundle] = await Promise.all([
+      getAsharePct(ymd, aCodes),
+      getFundBundle(ymd),
+    ]);
     const pcts = aCodes
       .map((c) => pctMap.get(c))
       .filter((v): v is number => v !== undefined);

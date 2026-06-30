@@ -31,10 +31,14 @@ const fmtYi = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}亿`;
 // initial 由首页 ISR 服务端算好直接传入 → 首屏即出、零客户端请求(原来是挂载后再跨境拉一次,很慢)。
 // 不传 initial 时(其它复用场景)仍回退到客户端拉取。
 export function ChainSentiment({ initial }: { initial?: Data }) {
-  const [d, setD] = useState<Data | null>(initial ?? null);
+  // 只把"有实际数据"的 initial 当作可用;服务端那次冷算超时返回的空 initial 不算,
+  // 否则会卡在"数据生成中"且不再客户端兜底(空态自愈不了)。
+  const initialOk = !!(initial && (initial.a || initial.us));
+  const [d, setD] = useState<Data | null>(initialOk ? (initial as Data) : null);
   const [errored, setErrored] = useState(false);
   useEffect(() => {
-    if (initial) return; // 服务端已注入,无需再拉
+    if (initialOk) return; // 服务端已注入有效数据,无需再拉
+    // 空 initial / 复用场景:客户端拉(此时 DB 缓存多已热,秒回真数据)
     let active = true;
     fetch("/api/chain-sentiment", { cache: "no-store" })
       .then((r) => r.json())
@@ -43,7 +47,7 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
     return () => {
       active = false;
     };
-  }, [initial]);
+  }, [initialOk]);
 
   // 加载中:占位骨架,别让模块"凭空消失"(首页每天打开的理由,要稳定在场)
   if (!d && !errored) {
