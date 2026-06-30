@@ -3,7 +3,7 @@ import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { getMorningBrief } from "@/lib/morning-brief";
 import { clawbot } from "@/lib/clawbot";
-import { buildWatchAlerts, oneLineTake } from "@/lib/digest";
+import { buildWatchAlerts, oneLineTake, headlineTrigger, fmtSignedPct } from "@/lib/digest";
 import { TIER } from "@/data/stocks";
 
 const DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
@@ -21,7 +21,12 @@ function formatBriefMessage(
   brief: string,
   alerts: string[]
 ): string {
-  const lines = [`📊 StockTell · ${date} 盘前早报`, "", brief, ""];
+  // 首行置顶触发美股(信号来源、非持仓),聊天列表第一眼就懂"为什么有这条"
+  const head = headlineTrigger(items);
+  const title = head
+    ? `📊 ${head.name}隔夜${fmtSignedPct(head.change)} · StockTell ${date}`
+    : `📊 StockTell · ${date} 盘前早报`;
+  const lines = [title, "", brief, ""];
   if (alerts.length) {
     lines.push("⚠️ 你的票要注意", ...alerts.map((a) => `· ${a}`), "");
   }

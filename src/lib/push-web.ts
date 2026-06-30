@@ -5,6 +5,7 @@ import { listBriefing } from "@/lib/briefings";
 import { getPrisma } from "@/lib/prisma";
 import { sendPush, pushEnabled } from "@/lib/push";
 import { todayISO } from "@/lib/date";
+import { headlineTrigger, fmtSignedPct } from "@/lib/digest";
 
 export async function runWebPush(): Promise<{
   ok: boolean;
@@ -24,8 +25,13 @@ export async function runWebPush(): Promise<{
 
   const highs = items.filter((i) => i.impact === "高");
   const lead = (highs[0] ?? items[0]).title;
+  // 广播式提醒:标题置顶当天最大触发美股(信号来源,非持仓),只陈述事实涨跌
+  const head = headlineTrigger(items);
+  const title = head
+    ? `${head.name}隔夜${fmtSignedPct(head.change)} · 关联 A股 ${items.length} 条`
+    : `StockTell 今日简报 · ${items.length} 条`;
   const payload = {
-    title: `StockTell 今日简报 · ${items.length} 条`,
+    title,
     body: lead.length > 60 ? lead.slice(0, 57) + "…" : lead,
     url: "/#mine", // 落地直达「和我相关」
   };

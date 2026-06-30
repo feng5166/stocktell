@@ -123,6 +123,26 @@ export function oneLineTake(take: string | null | undefined): string {
   return t;
 }
 
+// 选当天最有信号的触发美股(|涨跌|最大)用于推送标题置顶。触发美股=隔夜异动的"信号来源",
+// 非用户持仓;标题只陈述事实(隔夜涨跌幅)+ 关联条数,不含任何操作暗示,守保守合规口径。
+export function headlineTrigger(
+  items: BriefingItem[]
+): { name: string; change: number } | null {
+  let best: { name: string; change: number } | null = null;
+  for (const it of items) {
+    if (it.triggerName && typeof it.triggerChange === "number") {
+      if (!best || Math.abs(it.triggerChange) > Math.abs(best.change)) {
+        best = { name: it.triggerName, change: it.triggerChange };
+      }
+    }
+  }
+  return best;
+}
+
+export function fmtSignedPct(v: number): string {
+  return `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
+}
+
 async function sendDigest(
   to: string,
   userId: string,
@@ -179,9 +199,15 @@ async function sendDigest(
     ${unsub.html}
   </div>`;
 
+  // 标题置顶触发美股,让用户在收件箱第一眼就懂"为什么今天有这封"
+  const head = headlineTrigger(items);
+  const subject = head
+    ? `${head.name}隔夜${fmtSignedPct(head.change)},你的自选 ${items.length} 条相关 · StockTell`
+    : `你的自选今天有 ${items.length} 条相关动态 · StockTell`;
+
   return sendMail({
     to,
-    subject: `你的自选今天有 ${items.length} 条相关动态 · StockTell`,
+    subject,
     text,
     html,
     headers: unsub.headers,
