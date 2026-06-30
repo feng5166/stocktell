@@ -73,7 +73,7 @@ export function MobileTabBar() {
               href={t.href}
               aria-current={active ? "page" : undefined}
               className={`flex min-w-[64px] flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 ${
-                active ? "text-gray-900" : "text-gray-400"
+                active ? "text-gray-900" : "text-gray-500"
               }`}
             >
               {t.icon(active)}

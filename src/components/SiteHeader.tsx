@@ -36,7 +36,7 @@ export function SiteHeader({
               </Link>
               <InstalledBadge />
             </div>
-            <span className="pl-0.5 text-meta leading-none text-gray-400">
+            <span className="pl-0.5 text-meta leading-snug text-gray-600">
               我不懂产业链,你告诉我怎么想
             </span>
           </div>
