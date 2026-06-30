@@ -140,51 +140,66 @@ export default async function StockDetail({
       <SiteHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        {/* 标题 */}
-        <div className="mb-6 flex flex-wrap items-baseline gap-3">
-          <h1 className="text-h1 font-semibold tracking-tight">{s.name}</h1>
-          <span className="font-mono text-sm text-gray-400">{s.code}</span>
-          <span
-            className={`rounded px-1.5 py-0.5 text-xs ${
-              s.market === "美股"
-                ? "bg-brand-50 text-brand-600"
-                : "bg-red-50 text-red-600"
-            }`}
-          >
-            {s.market}
-          </span>
-          {TIER[s.code] && (
-            <Link
-              href={`/stocks?tier=${encodeURIComponent(TIER[s.code])}`}
-              className={`rounded px-1.5 py-0.5 text-xs hover:opacity-80 ${TIER_CLASS[TIER[s.code]]}`}
-            >
-              {TIER[s.code]}
-            </Link>
-          )}
-          {en?.capTier && (
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
-              {en.capTier}
-              {en.circMvYi != null && (
-                <span className="ml-1 text-gray-400">
-                  {en.circMvYi >= 10000
-                    ? `${(en.circMvYi / 10000).toFixed(2)}万亿`
-                    : `${Math.round(en.circMvYi)}亿`}
-                </span>
-              )}
-            </span>
-          )}
-          {en?.heat && (
+        {/* 标题区:主行(名称/代码 + 价格)→ 副标题(定位,原「它是干什么的」)→ 元信息行 */}
+        <header className="mb-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <div className="flex items-baseline gap-2.5">
+              <h1 className="text-h1 font-semibold tracking-tight">{s.name}</h1>
+              <span className="font-mono text-sm text-gray-400">{s.code}</span>
+            </div>
+            <LiveQuote code={s.code} />
+          </div>
+
+          {/* 一句话定位:从独立卡片上提为副标题,顶部更紧凑、不留空卡 */}
+          <p className="mt-2 text-title leading-relaxed text-gray-600">
+            {s.positioning}
+          </p>
+
+          {/* 元信息行:身份标签靠左(弱化),自选/反馈靠右 */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <span
-              className={`rounded px-1.5 py-0.5 text-xs ${HEAT_CLASS[en.heat] ?? "bg-gray-100 text-gray-500"}`}
-              title={en.turnover != null ? `换手率 ${en.turnover}%` : undefined}
+              className={`rounded px-1.5 py-0.5 text-xs ${
+                s.market === "美股"
+                  ? "bg-brand-50 text-brand-600"
+                  : "bg-red-50 text-red-600"
+              }`}
             >
-              {en.heat}
+              {s.market}
             </span>
-          )}
-          <WatchStar code={s.code} />
-          <FeedbackLink />
-          <LiveQuote code={s.code} />
-        </div>
+            {TIER[s.code] && (
+              <Link
+                href={`/stocks?tier=${encodeURIComponent(TIER[s.code])}`}
+                className={`rounded px-1.5 py-0.5 text-xs hover:opacity-80 ${TIER_CLASS[TIER[s.code]]}`}
+              >
+                {TIER[s.code]}
+              </Link>
+            )}
+            {en?.capTier && (
+              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
+                {en.capTier}
+                {en.circMvYi != null && (
+                  <span className="ml-1 text-gray-400">
+                    {en.circMvYi >= 10000
+                      ? `${(en.circMvYi / 10000).toFixed(2)}万亿`
+                      : `${Math.round(en.circMvYi)}亿`}
+                  </span>
+                )}
+              </span>
+            )}
+            {en?.heat && (
+              <span
+                className={`rounded px-1.5 py-0.5 text-xs ${HEAT_CLASS[en.heat] ?? "bg-gray-100 text-gray-500"}`}
+                title={en.turnover != null ? `换手率 ${en.turnover}%` : undefined}
+              >
+                {en.heat}
+              </span>
+            )}
+            <span className="ml-auto flex items-center gap-3">
+              <WatchStar code={s.code} />
+              <FeedbackLink />
+            </span>
+          </div>
+        </header>
 
         {concepts.length > 0 && (
           <div className="mb-4 flex flex-wrap items-center gap-1.5">
@@ -233,12 +248,6 @@ export default async function StockDetail({
               </p>
             </Section>
           )}
-
-        <Section icon="🏷️" title="它是干什么的">
-          <p className="text-title leading-relaxed text-gray-800">
-            {s.positioning}
-          </p>
-        </Section>
 
         <Section icon="🧭" title="在产业链的位置">
           <ChainPosition
