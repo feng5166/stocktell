@@ -8,6 +8,7 @@ import { PwaActions } from "@/components/pwa/PwaActions";
 // 微信入口暂隐藏(iLink 24h 窗口保活无解,改以邮件+浏览器通知为主)。恢复:取消下面两处注释。
 // import { WeixinActivateBanner } from "@/components/pwa/WeixinActivateBanner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { ToastProvider } from "@/components/Toast";
 
 const AuthModalCtx = createContext<{ open: () => void; close: () => void }>({
   open: () => {},
@@ -23,15 +24,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <ConfirmProvider>
-        <AuthModalCtx.Provider
-          value={{ open: () => setIsOpen(true), close: () => setIsOpen(false) }}
-        >
-          <OfflineBanner />
-          {/* <WeixinActivateBanner /> */}
-          {children}
-          {isOpen && <AuthModal onClose={() => setIsOpen(false)} />}
-          <PwaActions />
-        </AuthModalCtx.Provider>
+        <ToastProvider>
+          <AuthModalCtx.Provider
+            value={{ open: () => setIsOpen(true), close: () => setIsOpen(false) }}
+          >
+            <OfflineBanner />
+            {/* <WeixinActivateBanner /> */}
+            {children}
+            {isOpen && <AuthModal onClose={() => setIsOpen(false)} />}
+            <PwaActions />
+          </AuthModalCtx.Provider>
+        </ToastProvider>
       </ConfirmProvider>
     </SessionProvider>
   );

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { track } from "@/lib/analytics";
+import { useToast } from "@/components/Toast";
 import { ETF_CODES } from "@/data/etfs";
 
 const LS_KEY = "stocktell_watchlist";
@@ -38,6 +39,7 @@ export interface UseWatchlist {
 // 且在无本地待合并的情况下跳过 /api/watchlist 拉取,省掉 session→watchlist 一跳。
 export function useWatchlist(initialCodes?: string[]): UseWatchlist {
   const { status } = useSession();
+  const toast = useToast();
   const [codes, setCodes] = useState<Set<string>>(
     () => new Set(initialCodes ?? [])
   );
@@ -97,33 +99,48 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
 
   const toggle = useCallback(
     (code: string) => {
-      setCodes((prev) => {
-        const next = new Set(prev);
-        const adding = !next.has(code);
-        if (adding) next.add(code);
-        else next.delete(code);
+      const adding = !codes.has(code);
+      const next = new Set(codes);
+      if (adding) next.add(code);
+      else next.delete(code);
+      setCodes(next); // 乐观更新:先点亮/熄灭
 
-        if (adding) track("add_watchlist", { kind: ETF_CODES.includes(code) ? "etf" : "stock" });
+      if (adding) track("add_watchlist", { kind: ETF_CODES.includes(code) ? "etf" : "stock" });
 
-        if (status === "authenticated") {
-          if (adding) {
-            fetch("/api/watchlist", {
+      const ADDED_MSG = "已加入自选 · 首页「和我相关」会给你看相关动态";
+      // 失败回滚 + 提示:不再静默吞掉(旧版 .catch(()=>{}) 会让用户以为加了、刷新却没了)
+      const rollback = () => {
+        setCodes((prev) => {
+          const n = new Set(prev);
+          if (adding) n.delete(code);
+          else n.add(code);
+          return n;
+        });
+        toast(adding ? "加自选没成功,请重试" : "取消自选没成功,请重试", { error: true });
+      };
+
+      if (status === "authenticated") {
+        const req = adding
+          ? fetch("/api/watchlist", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ code }),
-            }).catch(() => {});
-          } else {
-            fetch(`/api/watchlist?code=${encodeURIComponent(code)}`, {
+            })
+          : fetch(`/api/watchlist?code=${encodeURIComponent(code)}`, {
               method: "DELETE",
-            }).catch(() => {});
-          }
-        } else {
-          writeLocal(Array.from(next));
-        }
-        return next;
-      });
+            });
+        req
+          .then((r) => {
+            if (!r.ok) rollback();
+            else if (adding) toast(ADDED_MSG);
+          })
+          .catch(rollback);
+      } else {
+        writeLocal(Array.from(next)); // 游客:写 localStorage(内部已兜异常)
+        if (adding) toast(ADDED_MSG);
+      }
     },
-    [status]
+    [codes, status, toast]
   );
 
   return { codes, ready, loggedIn: status === "authenticated", has, toggle };
