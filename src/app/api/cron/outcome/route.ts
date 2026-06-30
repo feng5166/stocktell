@@ -23,6 +23,14 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await recordOutcomes(date);
+    // 交易日却没简报可记 = 当天早盘简报没发出来(已知静默失败模式)。
+    // 这是第二道网:15:30 再喊一次,提醒去查/补当天简报 + 事后 backfill-outcomes。
+    if (res.skipped === "no-briefing") {
+      await alertCron(
+        "outcome(记账)",
+        `交易日 ${date} 收盘记账时无已发布简报 —— 当天早盘简报很可能没发出来,需补发并用 /api/admin/backfill-outcomes?date=${date} 补回查账`
+      );
+    }
     return NextResponse.json({ date, ...res });
   } catch (e) {
     await alertCron("outcome(记账)", e);
