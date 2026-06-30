@@ -68,6 +68,28 @@ function TierTag({ code }: { code: string }) {
   );
 }
 
+// 状态标做减法:只保留有信号的「今日有新消息」红标;「行情覆盖」不挂标(满屏灰标=噪音),
+// 「长期观察」改名字旁一个极轻的小灰点示意外围标的,不再用色块徽标。
+function StatusBadge({ status, className = "" }: { status: string; className?: string }) {
+  if (status !== "今日有新消息") return null;
+  return (
+    <span
+      className={`inline-flex whitespace-nowrap rounded bg-rose-50 px-1.5 py-0.5 text-xs text-rose-600 ${className}`}
+    >
+      今日有新消息
+    </span>
+  );
+}
+function WatchDot({ status }: { status: string }) {
+  if (status !== "长期观察") return null;
+  return (
+    <span
+      title="长期观察:外围标的,长期叙事为主,关注度较低"
+      className="ml-1.5 inline-block h-1 w-1 shrink-0 rounded-full bg-gray-300 align-middle"
+    />
+  );
+}
+
 const TABS = ["股票列表", "板块ETF", "关联图谱", "特征矩阵", "主动发现"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -106,12 +128,6 @@ const POSITION_BADGE: Record<Position, string> = {
   上游: "bg-sky-50 text-sky-700",
   中游: "bg-violet-50 text-violet-700",
   下游: "bg-amber-50 text-amber-700",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  今日有新消息: "bg-rose-50 text-rose-600",
-  行情覆盖: "bg-gray-100 text-gray-600",
-  长期观察: "bg-gray-50 text-gray-400",
 };
 
 interface Quote {
@@ -812,7 +828,8 @@ function StockCard({
         </button>
         <Link href={`/stock/${s.code}`} className="min-w-0 flex-1">
           <span className="font-medium text-gray-900">{s.name}</span>
-          <TierTag code={s.code} />{" "}
+          <TierTag code={s.code} />
+          <WatchDot status={status} />{" "}
           <span className="font-mono text-xs text-gray-400">{s.code}</span>
         </Link>
         <div
@@ -840,13 +857,7 @@ function StockCard({
           {s.position}
         </span>
         <span className="text-gray-500">{s.sector}</span>
-        <span
-          className={`ml-auto inline-flex whitespace-nowrap rounded px-1.5 py-0.5 ${
-            STATUS_BADGE[status] ?? STATUS_BADGE["长期观察"]
-          }`}
-        >
-          {status}
-        </span>
+        <StatusBadge status={status} className="ml-auto" />
       </div>
       <p className="mt-1.5 text-xs text-gray-600">{s.positioning}</p>
       {(CONCEPTS[s.code]?.length ?? 0) > 0 && (
@@ -929,6 +940,7 @@ function ReactFragmentRow({
             {s.name}
           </Link>
           <TierTag code={s.code} />
+          <WatchDot status={status} />
         </Td>
         <Td>
           <span
@@ -966,13 +978,7 @@ function ReactFragmentRow({
           )}
         </Td>
         <Td>
-          <span
-            className={`inline-flex whitespace-nowrap rounded px-1.5 py-0.5 text-xs ${
-              STATUS_BADGE[status] ?? STATUS_BADGE["长期观察"]
-            }`}
-          >
-            {status}
-          </span>
+          <StatusBadge status={status} />
         </Td>
         <Td className="whitespace-nowrap text-xs text-gray-400">
           {isOpen ? "收起 ▲" : "散户怎么想 ▾"}
