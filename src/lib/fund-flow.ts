@@ -17,12 +17,12 @@ import {
 // 某交易日全市场资金面整包(主力净流入/龙虎榜/融资余额),按日落 DB 缓存。
 // 每天首个请求拉一次 Tushare 大表 → 写库;之后任何实例直接读库(秒回),
 // 解决原 unstable_cache 不跨 serverless 实例持久、每次冷启动重打 31s 的问题。
-interface FundBundle {
+export interface FundBundle {
   mf: Record<string, number>; // 裸code -> 主力净流入(亿)
   lh: Record<string, LonghuHit>; // 裸code -> 龙虎榜
   mg: Record<string, number>; // 裸code -> 融资余额(亿)
 }
-async function getFundBundle(ymd: string): Promise<FundBundle> {
+export async function getFundBundle(ymd: string): Promise<FundBundle> {
   const db = getPrisma();
   if (db) {
     const row = await db.fundDayCache.findUnique({ where: { ymd } }).catch(() => null);
