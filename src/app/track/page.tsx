@@ -162,6 +162,9 @@ function Dot({ className }: { className: string }) {
   );
 }
 
+// 分项(高/中/低联动)亮百分比的最低样本——比总体 MIN_SAMPLE 宽松,但仍挡掉 1/1 这种虚高
+const SUB_MIN_SAMPLE = 5;
+
 function Overview({
   stats,
   byImpact,
@@ -205,6 +208,11 @@ function Overview({
         </div>
       </div>
 
+      {/* 常驻口径说明(不折叠):防止大数字被读成"荐股胜率/买入能赚" */}
+      <p className="mt-2 text-meta leading-relaxed text-gray-500">
+        指「美股异动 → A 股」这类联动过去大致的成立比例,不是荐股胜率,也不预示你买入的收益。
+      </p>
+
       {/* 进度条:有效率可视化 */}
       {pct !== null && (
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
@@ -217,15 +225,19 @@ function Overview({
 
       {byImpact.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500">
-          {byImpact.map(({ impact, stats: s }) => (
-            <span key={impact}>
-              {IMPACT_META[impact as Impact]?.emoji} {impact}联动{" "}
-              {s.rate === null ? "—" : `${Math.round(s.rate * 100)}%`}{" "}
-              <span className="text-gray-400">
-                ({s.hits}/{s.evaluated})
+          {byImpact.map(({ impact, stats: s }) => {
+            // 分项样本太少不亮百分比(避免 100%(1/1) 这种虚高,与上方"样本积累中"自相矛盾)
+            const showPct = s.evaluated >= SUB_MIN_SAMPLE && s.rate !== null;
+            return (
+              <span key={impact}>
+                {IMPACT_META[impact as Impact]?.emoji} {impact}联动{" "}
+                {showPct ? `${Math.round(s.rate! * 100)}% ` : ""}
+                <span className="text-gray-400">
+                  ({s.hits}/{s.evaluated})
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

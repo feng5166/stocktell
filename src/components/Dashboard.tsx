@@ -1050,7 +1050,7 @@ function RelationMap({
                 {liveChange(us)}
               </span>
             </div>
-            <div className="mb-2 text-xs text-gray-400">↓ A股受益标的</div>
+            <div className="mb-2 text-xs text-gray-400">↓ 关联 A股</div>
             <div className="flex flex-wrap gap-2">
               {peers.map((p) => {
                 const watched = watchedCodes.has(p.code);

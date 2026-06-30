@@ -486,7 +486,7 @@ function BriefingCard({
       {mine && item.triggerCode && <WhyLine code={item.triggerCode} />}
       {item.beneficiaries.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-gray-400">受益 A 股</span>
+          <span className="text-xs text-gray-400">关联 A 股</span>
           {item.beneficiaries.map((b) => {
             const watched = watchedCodes?.has(b.code);
             return (
@@ -537,6 +537,11 @@ function BriefingCard({
               <div>
                 {renderRich(deep)}
                 {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
+                {!deepLoading && (
+                  <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+                    以上为 AI 对公开信息的整理与解读,不构成投资建议。
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -676,7 +681,7 @@ function LockedCard({ item }: { item: BriefingItem }) {
         </div>
         <h2 className="text-title font-semibold text-gray-900">{item.title}</h2>
         <p className="mt-3 text-sm text-gray-500">
-          登录后查看完整分析与受益标的……
+          登录后查看完整分析与关联标的……
         </p>
       </div>
       <div className="absolute inset-0 flex items-center justify-center">

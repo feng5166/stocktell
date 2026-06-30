@@ -158,6 +158,11 @@ export function StockTellTake({
               <div>
                 {renderRich(deep)}
                 {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
+                {!deepLoading && (
+                  <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+                    以上为 AI 对公开信息的整理与解读,不构成投资建议。
+                  </p>
+                )}
               </div>
             )
           )}

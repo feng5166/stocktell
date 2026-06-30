@@ -60,11 +60,11 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium leading-4 ${
                   g.hits * 2 >= g.evaluated
-                    ? "bg-rose-50 text-rose-600"
+                    ? "bg-brand-50 text-brand-600"
                     : "bg-gray-100 text-gray-500"
                 }`}
               >
-                有效 {g.hits}/{g.evaluated}
+联动 {g.hits}/{g.evaluated}
               </span>
             )}
           </div>
@@ -91,7 +91,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                   {r.hit === null ? (
                     <span className="text-gray-300">未判定</span>
                   ) : r.hit ? (
-                    <span className="font-medium text-rose-600">有效 ✓</span>
+                    <span className="font-medium text-brand-600">联动成立</span>
                   ) : (
                     <span className="text-gray-400">未联动</span>
                   )}
