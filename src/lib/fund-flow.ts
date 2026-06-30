@@ -1,7 +1,9 @@
 // 你的票·资金面:聚合某用户自选(A 股)的主力净流入 + 龙虎榜 + 融资余额变化。
 // 共享给 /api/fund-flow(网页卡片)和 morning-brief(早报/邮件/微信),口径一致、各自缓存复用。
 import { unstable_cache } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { STOCK_MAP } from "@/data/stocks";
+import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
 import {
   moneyflowByDate,
@@ -11,6 +13,40 @@ import {
   prevAshareTradingDay,
   type LonghuHit,
 } from "@/lib/tushare";
+
+// 某交易日全市场资金面整包(主力净流入/龙虎榜/融资余额),按日落 DB 缓存。
+// 每天首个请求拉一次 Tushare 大表 → 写库;之后任何实例直接读库(秒回),
+// 解决原 unstable_cache 不跨 serverless 实例持久、每次冷启动重打 31s 的问题。
+interface FundBundle {
+  mf: Record<string, number>; // 裸code -> 主力净流入(亿)
+  lh: Record<string, LonghuHit>; // 裸code -> 龙虎榜
+  mg: Record<string, number>; // 裸code -> 融资余额(亿)
+}
+async function getFundBundle(ymd: string): Promise<FundBundle> {
+  const db = getPrisma();
+  if (db) {
+    const row = await db.fundDayCache.findUnique({ where: { ymd } }).catch(() => null);
+    if (row?.data) return row.data as unknown as FundBundle;
+  }
+  const [mf, lh, mg] = await Promise.all([
+    moneyflowByDate(ymd),
+    longhuByDate(ymd),
+    marginByDate(ymd),
+  ]);
+  const bundle: FundBundle = {
+    mf: Object.fromEntries(mf),
+    lh: Object.fromEntries(lh),
+    mg: Object.fromEntries(mg),
+  };
+  // 只在确有数据时落库(避免把"当天数据还没出"的空包缓存住)
+  if (db && (mf.size > 0 || mg.size > 0)) {
+    const data = bundle as unknown as Prisma.InputJsonValue;
+    await db.fundDayCache
+      .upsert({ where: { ymd }, create: { ymd, data }, update: { data } })
+      .catch(() => {});
+  }
+  return bundle;
+}
 
 export interface FundFlowItem {
   code: string;
@@ -38,16 +74,15 @@ async function computeFundFlow(codes: string[]): Promise<FundFlowResult> {
   const prevIso = await prevAshareTradingDay(ymdToISO(ymd));
   const prevYmd = prevIso ? prevIso.replace(/-/g, "") : null;
 
-  const [mf, lh, mg, mgPrev] = await Promise.all([
-    moneyflowByDate(ymd),
-    longhuByDate(ymd),
-    marginByDate(ymd),
-    prevYmd ? marginByDate(prevYmd) : Promise.resolve(new Map<string, number>()),
+  // 按日 DB 缓存:当天 + 上一交易日(算融资余额变化)各取一次整包
+  const [bundle, prevBundle] = await Promise.all([
+    getFundBundle(ymd),
+    prevYmd ? getFundBundle(prevYmd) : Promise.resolve(null as FundBundle | null),
   ]);
 
   const items: FundFlowItem[] = aCodes.map((code) => {
-    const rz = mg.get(code);
-    const rzPrev = mgPrev.get(code);
+    const rz = bundle.mg[code];
+    const rzPrev = prevBundle?.mg[code];
     const rzChgYi =
       rz !== undefined && rzPrev !== undefined
         ? Math.round((rz - rzPrev) * 100) / 100
@@ -55,8 +90,8 @@ async function computeFundFlow(codes: string[]): Promise<FundFlowResult> {
     return {
       code,
       name: STOCK_MAP[code].name,
-      netMf: mf.get(code) ?? null,
-      longhu: lh.get(code) ?? null,
+      netMf: bundle.mf[code] ?? null,
+      longhu: bundle.lh[code] ?? null,
       rzChgYi,
     };
   });

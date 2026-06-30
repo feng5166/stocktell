@@ -158,6 +158,14 @@ const T_DEEP_CACHE = `CREATE TABLE IF NOT EXISTS "deep_analysis_cache" (
   CONSTRAINT "deep_analysis_cache_pkey" PRIMARY KEY ("briefing_id")
 )`;
 
+// 资金面按日缓存表(幂等)
+const T_FUND_DAY = `CREATE TABLE IF NOT EXISTS "fund_day_cache" (
+  "ymd" text NOT NULL,
+  "data" jsonb NOT NULL,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "fund_day_cache_pkey" PRIMARY KEY ("ymd")
+)`;
+
 // 用户反馈表(幂等)
 const T_FEEDBACK = `CREATE TABLE IF NOT EXISTS "feedback" (
   "id" text NOT NULL,
@@ -219,6 +227,7 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(IDX_CHAIN_INTEREST_CHAIN);
         await tx.$executeRawUnsafe(T_QUOTES_CACHE);
         await tx.$executeRawUnsafe(T_DEEP_CACHE);
+        await tx.$executeRawUnsafe(T_FUND_DAY);
         await tx.$executeRawUnsafe(T_FEEDBACK);
         await tx.$executeRawUnsafe(IDX_FEEDBACK_CREATED);
       },

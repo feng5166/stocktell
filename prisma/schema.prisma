@@ -173,6 +173,16 @@ model DeepAnalysisCache {
   @@map("deep_analysis_cache")
 }
 
+// 资金面按日缓存:某交易日全市场 主力净流入/龙虎榜/融资余额 的整包(data),
+// 每天首个请求拉一次 Tushare 大表落库,之后跨实例秒回(原 unstable_cache 不跨实例持久)。
+model FundDayCache {
+  ymd       String   @id // 交易日 YYYYMMDD
+  data      Json // { mf: {code:净流入亿}, lh: {code:{net,reason}}, mg: {code:融资余额亿} }
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("fund_day_cache")
+}
+
 // 个性化早报每日缓存:key = 当天日期 + 自选组合 hash;同自选同一天只生成一次。
 model MorningBriefCache {
   key       String   @id
