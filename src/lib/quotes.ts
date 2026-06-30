@@ -10,15 +10,27 @@ export interface Quote {
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const CHUNK = 50;
-const FETCH_TIMEOUT_MS = Number(process.env.QUOTES_FETCH_TIMEOUT_MS ?? 6000);
+// 超时阈值:env 解析失败(空串/非数字 → NaN,?? 不挡)时回退 6000,
+// 否则 setTimeout(abort, 0|NaN) 会"每次秒 abort",整站行情静默归零。
+const parsedTimeout = Number(process.env.QUOTES_FETCH_TIMEOUT_MS);
+const FETCH_TIMEOUT_MS =
+  Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 6000;
 
-// 带超时的 fetch:行情源(新浪/腾讯)从机房 IP 抓取偶发被限流/卡死,无超时会一直挂到平台上限
-// (已踩:/api/quotes 71s)。超时即 abort,由上层 catch 成空 → 回落另一源 / 读缓存。
-async function fetchWithTimeout(url: string, opts: RequestInit): Promise<Response> {
+// 带超时的抓取「并读完 body」:行情源从机房 IP 偶发被限流/卡死。计时器覆盖 fetch + body 读完整,
+// abort 信号贯穿——"头快体卡"也能被打断(原实现只盖到响应头,body 仍会挂到平台上限,已踩 71s)。
+// 超时(AbortError)记一条 warn 便于定位,再交由上层 catch 成空 → 回落另一源 / 读缓存。
+async function fetchTextGbk(url: string, opts: RequestInit): Promise<string> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
-    return await fetch(url, { ...opts, signal: ctrl.signal });
+    const resp = await fetch(url, { ...opts, signal: ctrl.signal });
+    if (!resp.ok) throw new Error(`http ${resp.status}`);
+    const buf = await resp.arrayBuffer(); // 在同一计时器/abort 下读体
+    return new TextDecoder("gbk").decode(buf);
+  } catch (e) {
+    if ((e as { name?: string })?.name === "AbortError")
+      console.warn(`[quotes] 抓取超时 ${FETCH_TIMEOUT_MS}ms abort: ${url.slice(0, 80)}`);
+    throw e;
   } finally {
     clearTimeout(t);
   }
@@ -64,7 +76,7 @@ async function fetchSinaChunk(
     codeBySym[sym] = code;
     return sym;
   });
-  const resp = await fetchWithTimeout(`https://hq.sinajs.cn/list=${list.join(",")}`, {
+  const text = await fetchTextGbk(`https://hq.sinajs.cn/list=${list.join(",")}`, {
     headers: {
       Referer: "https://finance.sina.com.cn",
       "User-Agent":
@@ -72,9 +84,7 @@ async function fetchSinaChunk(
     },
     cache: "no-store",
   });
-  if (!resp.ok) throw new Error(`sina ${resp.status}`);
-  const buf = await resp.arrayBuffer();
-  return parseSina(new TextDecoder("gbk").decode(buf), codeBySym);
+  return parseSina(text, codeBySym);
 }
 
 // ===== 腾讯源(后备)。gtimg 字段:[3]现价 [4]昨收 [30]时间(A股 14位 / 美股带横杠);A股美股一致。=====
@@ -121,7 +131,7 @@ async function fetchTencentChunk(
     codeBySym[sym] = code;
     return sym;
   });
-  const resp = await fetchWithTimeout(`https://qt.gtimg.cn/q=${list.join(",")}`, {
+  const text = await fetchTextGbk(`https://qt.gtimg.cn/q=${list.join(",")}`, {
     headers: {
       Referer: "https://gu.qq.com",
       "User-Agent":
@@ -129,35 +139,38 @@ async function fetchTencentChunk(
     },
     cache: "no-store",
   });
-  if (!resp.ok) throw new Error(`tencent ${resp.status}`);
-  const buf = await resp.arrayBuffer();
-  return parseTencent(new TextDecoder("gbk").decode(buf), codeBySym);
+  return parseTencent(text, codeBySym);
 }
 
-// 主源新浪 → 全空(机房 IP 被封 / 源故障)时整体回落腾讯。两源符号映射不同,各传一个。
+// 主源新浪 → 只对"缺失/超时的那批"用腾讯补齐(而非"Sina 全空才整体回落")。两源符号映射不同。
+// 为什么是补缺而非全空回落:每批 6s 超时后"部分成功"是常态;若只在全空时回落,超时那批会
+// 静默缺价、却仍报 live:true,脏数据会污染 DB/进程缓存、简报 movers、盘中提醒、战绩评分。
 async function fetchWithFallback(
   valid: string[],
   sinaSymbolOf: (code: string) => string,
   tencentSymbolOf: (code: string) => string
 ): Promise<{ quotes: Record<string, Quote>; live: boolean }> {
   if (valid.length === 0) return { quotes: {}, live: false };
-  const chunks: string[][] = [];
-  for (let i = 0; i < valid.length; i += CHUNK) chunks.push(valid.slice(i, i + CHUNK));
 
-  const run = async (
+  // 按 CHUNK 分批抓某一源;每批独立 catch 成空,互不拖累。
+  const runFor = async (
+    codes: string[],
     fetcher: (c: string[], s: (code: string) => string) => Promise<Record<string, Quote>>,
     symbolOf: (code: string) => string
   ) => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < codes.length; i += CHUNK) chunks.push(codes.slice(i, i + CHUNK));
     const results = await Promise.all(
       chunks.map((c) => fetcher(c, symbolOf).catch(() => ({} as Record<string, Quote>)))
     );
     return Object.assign({}, ...results) as Record<string, Quote>;
   };
 
-  let quotes = await run(fetchSinaChunk, sinaSymbolOf);
-  if (Object.keys(quotes).length === 0) {
-    // 新浪整体没数据 → 腾讯后备
-    quotes = await run(fetchTencentChunk, tencentSymbolOf);
+  const quotes = await runFor(valid, fetchSinaChunk, sinaSymbolOf);
+  const missing = valid.filter((c) => !(c in quotes));
+  if (missing.length > 0) {
+    const backup = await runFor(missing, fetchTencentChunk, tencentSymbolOf);
+    Object.assign(quotes, backup); // 腾讯只补 Sina 缺失的,不覆盖已有(Sina 优先)
   }
   return { quotes, live: Object.keys(quotes).length > 0 };
 }
