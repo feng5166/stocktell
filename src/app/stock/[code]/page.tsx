@@ -289,7 +289,7 @@ export default async function StockDetail({
         )}
 
         {checkup && checkup.findings.length > 0 && (
-          <Section title="财报体检 · 一句话看懂">
+          <Section collapsible title="财报体检 · 一句话看懂">
             <ul className="space-y-1.5 text-sm">
               {checkup.findings.map((f, i) => (
                 <li
@@ -314,7 +314,7 @@ export default async function StockDetail({
           </Section>
         )}
 
-        <Section title="对应的股票">
+        <Section collapsible title="对应的股票">
           {!hasPeers ? (
             sameSectorPeers.length > 0 ? (
               <div className="space-y-2 text-sm">
@@ -349,25 +349,27 @@ export default async function StockDetail({
           )}
         </Section>
 
-        <Section title="在产业链的位置">
-          <ChainPosition
-            sector={s.sector}
-            up={upPeers}
-            down={downPeers}
-          />
-        </Section>
-
         {etfs.length > 0 && (
           <Section title="相关 ETF · 一篮子参与">
-            <div className="space-y-1.5 text-sm">
+            <div className="space-y-1 text-sm">
               {etfs.map((e) => (
-                <div key={e.code} className="flex flex-wrap items-center gap-2">
+                <a
+                  key={e.code}
+                  href={`https://quote.eastmoney.com/${
+                    e.code.startsWith("5") ? "sh" : "sz"
+                  }${e.code}.html`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="-mx-2 flex flex-wrap items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50"
+                >
                   <span className="font-mono text-xs text-gray-400">{e.code}</span>
-                  <span className="font-medium text-gray-800">{e.name}</span>
+                  <span className="font-medium text-blue-700 hover:underline">
+                    {e.name}
+                  </span>
                   <span className="ml-auto text-xs text-gray-500">
                     {s.name}占 {e.ratio}%
                   </span>
-                </div>
+                </a>
               ))}
             </div>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
@@ -390,19 +392,30 @@ function Section({
   title,
   children,
   highlight,
+  collapsible,
 }: {
   title: string;
   children: React.ReactNode;
   highlight?: boolean;
+  collapsible?: boolean;
 }) {
+  const cls = `mb-4 rounded-xl border p-4 ${
+    highlight ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"
+  }`;
+  // 折叠用原生 <details>(无需客户端 JS),默认收起
+  if (collapsible) {
+    return (
+      <details className={`group ${cls}`}>
+        <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-400">
+          <span>{title}</span>
+          <span className="text-gray-300 transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div className="mt-2">{children}</div>
+      </details>
+    );
+  }
   return (
-    <section
-      className={`mb-4 rounded-xl border p-4 ${
-        highlight
-          ? "border-amber-200 bg-amber-50"
-          : "border-gray-200 bg-white"
-      }`}
-    >
+    <section className={cls}>
       <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
         {title}
       </h2>
