@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { similarityFor } from "@/lib/similarity";
+import { singleFlight } from "@/lib/single-flight";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -10,7 +11,7 @@ export const maxDuration = 30;
 // 注意:catch 放在缓存外层 —— 失败(抛错)时 unstable_cache 不缓存,避免瞬时抖动把
 // null "毒化"进 6h 缓存;similarityFor 正常返回的 null(无美股触发/样本不足)才会被缓存。
 const cachedSimilarity = unstable_cache(
-  async (code: string) => similarityFor(code),
+  async (code: string) => singleFlight(`similarity:${code}`, () => similarityFor(code)),
   ["similarity"],
   { revalidate: 21600 }
 );

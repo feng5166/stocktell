@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { STOCK_MAP } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
+import { singleFlight } from "@/lib/single-flight";
 import { clawbot } from "@/lib/clawbot";
 import { sendMail } from "@/lib/mailer";
 import { unsubUrl } from "@/lib/unsub";
@@ -145,9 +146,13 @@ async function computeRiskEvents(code: string): Promise<RiskEvent[]> {
 
 // 按天缓存(keyParts 含日期 → 每天自动刷新);详情页 / 和我相关 / cron 共用。
 export function riskEventsFor(code: string): Promise<RiskEvent[]> {
-  return unstable_cache(() => computeRiskEvents(code), ["risk-events", code, todayISO()], {
-    revalidate: 21600,
-  })();
+  // 单飞包在 compute 外:unstable_cache 不保证并发未命中只算一次,冷窗口下每只票 5 次
+  // Tushare 调用会被并发放大,这里合并为一次。
+  return unstable_cache(
+    () => singleFlight(`risk:${code}`, () => computeRiskEvents(code)),
+    ["risk-events", code, todayISO()],
+    { revalidate: 21600 }
+  )();
 }
 
 /* ---------- 推送 ---------- */

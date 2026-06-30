@@ -4,6 +4,7 @@
 import { unstable_cache } from "next/cache";
 import { STOCK_MAP } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
+import { singleFlight } from "@/lib/single-flight";
 import { latestFinancials, latestForecast, nextDisclosure } from "@/lib/tushare";
 
 export interface CheckupFinding {
@@ -158,11 +159,12 @@ export function financialCheckup(code: string): Promise<Checkup | null> {
   // 下次请求会重算——避免一次偶发失败把空结果毒住 12h。成功结果照常缓存。
   // 缓存 key 加版本号 v2:清掉旧版本可能毒住的空结果。
   return unstable_cache(
-    async () => {
-      const r = await compute(code);
-      if (!r) throw new Error("fin-checkup:no-data");
-      return r;
-    },
+    () =>
+      singleFlight(`fin:${code}`, async () => {
+        const r = await compute(code);
+        if (!r) throw new Error("fin-checkup:no-data");
+        return r;
+      }),
     ["fin-checkup", "v4", code, todayISO()],
     { revalidate: 43200 } // 12h(财报低频)
   )().catch(() => null);

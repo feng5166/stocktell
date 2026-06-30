@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { STOCK_MAP } from "@/data/stocks";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
+import { singleFlight } from "@/lib/single-flight";
 import {
   moneyflowByDate,
   longhuByDate,
@@ -23,6 +24,11 @@ export interface FundBundle {
   mg: Record<string, number>; // 裸code -> 融资余额(亿)
 }
 export async function getFundBundle(ymd: string): Promise<FundBundle> {
+  // 单飞:同实例并发冷请求合并为一次(DB 读 + Tushare 三大表 + 写库),防早盘窗口击穿。
+  return singleFlight(`fund-bundle:${ymd}`, () => loadFundBundle(ymd));
+}
+
+async function loadFundBundle(ymd: string): Promise<FundBundle> {
   const db = getPrisma();
   if (db) {
     const row = await db.fundDayCache.findUnique({ where: { ymd } }).catch(() => null);
