@@ -103,10 +103,12 @@ export function PwaActions() {
           {toast.text}
         </div>
       )}
-      {/* 安卓:上次没装上又被提示 → 引导用浏览器菜单(更稳,不依赖 WebAPK) */}
-      {reprompt && !isIOS && (
-        <div className="max-w-[240px] rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg">
-          上次似乎没装上?改用浏览器右上角 <b>⋮ 菜单 →「添加到主屏幕」</b> 更稳。
+      {/* 安卓:常驻引导用浏览器菜单(国内 Chrome 装 PWA 走 WebAPK 常失败,菜单更稳)。
+          检测到"装过又被提示"时文案会强调。 */}
+      {showInstall && !isIOS && (
+        <div className="max-w-[250px] rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg">
+          {reprompt ? "上次似乎没装上?" : "若点上方装不上或反复提示,"}
+          国内安卓改用浏览器 <b>⋮ 菜单 →「添加到主屏幕」</b> 更稳。
         </div>
       )}
       {showIOSHint && (
