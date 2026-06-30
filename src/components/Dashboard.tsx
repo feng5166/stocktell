@@ -107,6 +107,38 @@ function StrengthTag({ usCode, aCode }: { usCode: string; aCode: string }) {
   );
 }
 
+// 联动有效率徽章:过去2年该美股≥2%异动 → 次日A股同向且≥1% 的比例。小样本(<12)只给样本数、
+// 不亮百分比;tooltip 明确"联动有效率·非预测、历史不代表未来",守合规。数据来自 /api/linkage(边级缓存)。
+type LinkageStat = {
+  events: number;
+  hits: number;
+  rate: number;
+  avgNext: number;
+  windowYears: number;
+};
+const LINKAGE_MIN = 12;
+function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
+  if (!stat) return null;
+  if (stat.events < LINKAGE_MIN)
+    return (
+      <span
+        title={`样本仅 ${stat.events} 次,统计不足,仅供参考(联动有效率·非预测)`}
+        className="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[10px] leading-none text-gray-400"
+      >
+        样本{stat.events}
+      </span>
+    );
+  const pct = Math.round(stat.rate * 100);
+  return (
+    <span
+      title={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
+      className="shrink-0 rounded bg-sky-50 px-1 py-0.5 text-[10px] leading-none text-sky-600"
+    >
+      联动{pct}%
+    </span>
+  );
+}
+
 const TABS = ["股票列表", "板块ETF", "关联图谱", "特征矩阵", "主动发现"] as const;
 type Tab = (typeof TABS)[number];
 
@@ -1240,6 +1272,7 @@ function ActiveDiscovery({
   rows: Stock[];
   watchedCodes: Set<string>;
 }) {
+  const [linkage, setLinkage] = useState<Record<string, LinkageStat | null>>({});
   const GAP = 1.5; // 美股领先 A股 至少 1.5 个点才算预期差
   const map = new Map(rows.map((r) => [r.code, r]));
 
@@ -1254,6 +1287,23 @@ function ActiveDiscovery({
     })
     .filter((x) => x.lagging.length > 0)
     .sort((a, b) => b.us.change - a.us.change);
+
+  // 拉联动有效率(边级、天内不变,服务端缓存 6h),给每条落后边打"联动N%"徽章
+  const pairsKey = signals
+    .flatMap((s) => s.lagging.map((p) => `${s.us.code}:${p.code}`))
+    .slice(0, 12)
+    .join(",");
+  useEffect(() => {
+    if (!pairsKey) return;
+    let active = true;
+    fetch(`/api/linkage?pairs=${encodeURIComponent(pairsKey)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => active && setLinkage((prev) => ({ ...prev, ...(d.linkage ?? {}) })))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [pairsKey]);
 
   if (signals.length === 0)
     return (
@@ -1301,6 +1351,7 @@ function ActiveDiscovery({
                   }`}
                 >
                   <StrengthTag usCode={us.code} aCode={p.code} />
+                  <LinkageBadge stat={linkage[`${us.code}:${p.code}`]} />
                   <span className="font-medium text-gray-800">
                     {watched && <span className="text-amber-500">★</span>}
                     {p.name}
