@@ -41,7 +41,7 @@ export function EtfStrip({
                 onClick={() => wl.toggle(e.code)}
                 title={on ? "取消自选" : "加自选"}
                 aria-label={on ? "取消自选" : "加自选"}
-                className={`shrink-0 text-base leading-none transition-colors ${
+                className={`-m-2.5 inline-flex h-11 w-11 shrink-0 items-center justify-center text-base leading-none transition-colors ${
                   on ? "text-amber-500" : "text-gray-300 hover:text-amber-400"
                 }`}
               >

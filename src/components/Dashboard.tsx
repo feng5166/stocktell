@@ -821,7 +821,7 @@ function StockCard({
         <button
           onClick={onToggleWatch}
           aria-label={watched ? "取消自选" : "加入自选"}
-          className={`-m-1 p-1 text-lg leading-none ${
+          className={`-m-2.5 inline-flex h-11 w-11 items-center justify-center text-lg leading-none ${
             watched ? "text-amber-400" : "text-gray-300"
           }`}
         >
@@ -924,7 +924,7 @@ function ReactFragmentRow({
             }}
             aria-label={watched ? "取消自选" : "加入自选"}
             title={watched ? "取消自选" : "加入自选"}
-            className={`text-base leading-none ${
+            className={`-m-2.5 inline-flex h-11 w-11 items-center justify-center text-base leading-none ${
               watched ? "text-amber-400" : "text-gray-300 hover:text-amber-400"
             }`}
           >
