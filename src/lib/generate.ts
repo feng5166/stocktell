@@ -219,33 +219,17 @@ function buildTake(m: Mover): string {
   const tag = m.cumulative ? "假期累计" : "隔夜";
   const lead = m.cumulative ? "A股节后首日要一次性消化假期里的变动:" : "";
   const shortObs = (s?: string) => (s ? s.split(/[;;。,,]/)[0].slice(0, 28) : "");
-  const known = m.peers
-    .filter((p) => p.change !== null)
-    .map((p) => ({ name: p.name, change: p.change as number, obs: shortObs(p.observation) }));
-  const pick = (arr: { name: string }[]) => arr.slice(0, 2).map((p) => p.name).join("、");
-  const others = pick(m.peers); // 没有实时涨跌时退而用名字
+  const names = m.peers.slice(0, 2).map((p) => p.name).join("、");
   // 用领头标的的 observation 加一句"懂这只票"的个性化,消除多只雷同
-  const color = (arr: { name: string; obs: string }[]) =>
-    arr[0]?.obs ? `(${arr[0].name}:${arr[0].obs})` : "";
+  const first = m.peers[0];
+  const color = first?.observation ? `(${first.name}:${shortObs(first.observation)})` : "";
 
+  // 一律【前瞻】:早报盘前生成、A 股当天还没开盘、方向未知,绝不断言 A 股已经怎么走
+  // (否则和页面顶部实时行情打架,如"+3.65%"配文"微跌")。只陈述触发美股(隔夜已收盘)+ A 股该盯什么。
   if (m.change > 0) {
-    const lag = known.filter((p) => m.change - p.change >= 1.5);
-    if (lag.length)
-      return `${lead}海外${m.name}${tag}${up},A股${pick(lag)}却没怎么跟${color(lag)}——要么是涨幅暂时落后、还没同步反应,要么是它跟这条线没那么相关(海外营收占比低)。先别一开盘就追,看它能不能放量站上去;站不住,这种"落差"多半是假的。`;
-    if (known.length)
-      return `${lead}海外${m.name}${tag}${up},A股对应标的基本同步涨上去了,该反应的都写在脸上。这种时候追最容易接在情绪高点,想参与也等回踩、别追高。`;
-    return `${lead}海外${m.name}${tag}${up},A股${others}今天还没开盘。开盘看高开后能不能放量走强,高开冲高回落往往是借利好出货,别被一根高开骗进去。`;
+    return `${lead}海外${m.name}${tag}${up},A股${names}${color}开盘重点看能不能放量跟上——跟得上是真共振、别追在情绪高点;跟不上要么没轮到、要么本就不相关(海外营收占比低),别一开盘就冲。`;
   }
-
-  const over = known.filter((p) => p.change - m.change <= -1.5); // A股跌得比美股更狠
-  if (over.length)
-    return `${lead}海外${m.name}${tag}${down}(跌幅其实有限),A股${pick(over)}却跌得更狠${color(over)}——这通常是A股自己的情绪宣泄叠加大盘,不是单纯跟跌。别一看"美股没跌多少"就当错杀冲进去,先看跌势有没有缩量企稳。`;
-  const resil = known.filter((p) => p.change - m.change >= 1.5); // A股相对抗跌
-  if (resil.length)
-    return `${lead}海外${m.name}${tag}${down},A股${pick(resil)}反而扛住了${color(resil)}——要么有独立逻辑或资金护盘,要么是补跌还没轮到,留意第二天低开补跌的风险。`;
-  if (known.length)
-    return `${lead}海外${m.name}${tag}${down},A股对应标的也跟着跌、情绪面承压。越是这种时候越别被恐慌带着走,先看板块整体跌势缓没缓再说。`;
-  return `${lead}海外${m.name}${tag}${down},A股${others}还没开盘,大概率低开。低开别急着反应,看是低开企稳还是低开杀跌——前者常是错杀、后者是真承压。`;
+  return `${lead}海外${m.name}${tag}${down},A股${names}${color}开盘大概率承压——关键看是低开企稳(常是错杀)还是低开杀跌(真承压),别被恐慌带着走;若有独立逻辑的扛住了,也留意补跌还没轮到的风险。`;
 }
 
 /* ---------- LLM 生成 ---------- */
