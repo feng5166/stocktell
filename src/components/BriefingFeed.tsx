@@ -68,9 +68,7 @@ export function BriefingFeed({
             {mine.length === 0 ? (
               <>
                 <WatchOverview codes={wl.codes} />
-                <Hint>
-                  你的票今天没有 AI 产业链异动 —— 我盯着呢,有风吹草动第一时间告诉你 👀
-                </Hint>
+                <QuietWatchHint />
               </>
             ) : (
               <CardFeed
@@ -320,6 +318,45 @@ function Hint({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+// 无产业链动态时的守望文案:按北京时间所处的交易时段说人话(盯盘搭子口径)。
+type MarketPhase = "pre" | "open" | "lunch" | "post" | "weekend";
+function marketPhase(now: Date): MarketPhase {
+  // 统一用北京时间(A 股),避免海外用户本地时区算错盘口状态
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Shanghai",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(now)
+      .map((p) => [p.type, p.value])
+  );
+  if (parts.weekday === "Sat" || parts.weekday === "Sun") return "weekend";
+  const hm = Number(parts.hour) * 60 + Number(parts.minute);
+  if (hm < 9 * 60 + 30) return "pre"; // 开盘前
+  if (hm < 11 * 60 + 30) return "open"; // 上午盘
+  if (hm < 13 * 60) return "lunch"; // 午间休市
+  if (hm < 15 * 60) return "open"; // 下午盘
+  return "post"; // 收盘后
+}
+const QUIET_COPY: Record<MarketPhase, string> = {
+  pre: "开盘前 —— 你的票暂无产业链消息,开盘后有动静我提醒你 👀",
+  open: "你的票今天没有 AI 产业链异动 —— 我盯着呢,有风吹草动第一时间告诉你 👀",
+  lunch: "午间休市 —— 上午你的票没踩产业链的雷,下午我接着盯 👀",
+  post: "今天收工 —— 你的票没踩 AI 产业链的雷,也没错过风口,明天我接着盯 👀",
+  weekend: "周末休市 —— 你的票本周没有产业链异动,周一开盘我继续盯 👀",
+};
+function QuietWatchHint() {
+  // 默认用通用守望文案(SSR/水合前);挂载后按真实北京时段切换,避免服务端/客户端不一致
+  const [copy, setCopy] = useState(QUIET_COPY.open);
+  useEffect(() => {
+    setCopy(QUIET_COPY[marketPhase(new Date())]);
+  }, []);
+  return <Hint>{copy}</Hint>;
 }
 
 // 行内加粗:把 **xxx** 渲染成 <strong>(快读/解读里都用)
