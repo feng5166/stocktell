@@ -12,6 +12,10 @@ import {
 
 /* eslint-disable @next/next/no-img-element */
 
+// 微信入口暂隐藏:iLink 24h 会话窗口的"保活"无可行解,改以邮件+浏览器通知为主通道。
+// 盘中异动提醒仅微信渠道,故一并隐藏。恢复:置 true 即可。
+const SHOW_WEIXIN_PUSH = false;
+
 // 个人设置:推送渠道管理。邮件 + 浏览器通知是稳定主通道(不受微信窗口限制),排在最前。
 export function SettingsClient({ email }: { email: string | null }) {
   return (
@@ -19,11 +23,11 @@ export function SettingsClient({ email }: { email: string | null }) {
       <EmailCard hasEmail={!!email} email={email} />
       <BrowserPushCard />
       <RiskCard />
-      <IntradayCard />
-      <WeixinCard />
+      {SHOW_WEIXIN_PUSH && <IntradayCard />}
+      {SHOW_WEIXIN_PUSH && <WeixinCard />}
       <p className="px-1 text-xs leading-relaxed text-gray-400">
         我们只在你的自选有相关动态时才推送,没动静不打扰。各渠道可分别开关。
-        推荐至少开启<b>邮件</b>或<b>浏览器通知</b>——这两条最稳,不会因微信会话过期而收不到。
+        推荐至少开启<b>邮件</b>或<b>浏览器通知</b>——这两条最稳,随时随地都收得到。
       </p>
     </div>
   );
@@ -163,7 +167,7 @@ function RiskCard() {
   return (
     <Card
       title="⚠️ 雷区提醒"
-      desc="你的自选有解禁、大股东增减持、高质押、ST 风险等重要事件时,盘前提前提醒(微信优先,否则邮件)。"
+      desc="你的自选有解禁、大股东增减持、高质押、ST 风险等重要事件时,盘前提前提醒(走邮件)。"
     >
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-700">
