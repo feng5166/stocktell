@@ -166,6 +166,19 @@ const T_FUND_DAY = `CREATE TABLE IF NOT EXISTS "fund_day_cache" (
   CONSTRAINT "fund_day_cache_pkey" PRIMARY KEY ("ymd")
 )`;
 
+// 接口监控聚合表(幂等)
+const T_API_METRIC = `CREATE TABLE IF NOT EXISTS "api_metric" (
+  "route" text NOT NULL,
+  "ymd" text NOT NULL,
+  "count" integer NOT NULL DEFAULT 0,
+  "sum_ms" integer NOT NULL DEFAULT 0,
+  "max_ms" integer NOT NULL DEFAULT 0,
+  "errors" integer NOT NULL DEFAULT 0,
+  "slow" integer NOT NULL DEFAULT 0,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "api_metric_pkey" PRIMARY KEY ("route","ymd")
+)`;
+
 // 用户反馈表(幂等)
 const T_FEEDBACK = `CREATE TABLE IF NOT EXISTS "feedback" (
   "id" text NOT NULL,
@@ -228,6 +241,7 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(T_QUOTES_CACHE);
         await tx.$executeRawUnsafe(T_DEEP_CACHE);
         await tx.$executeRawUnsafe(T_FUND_DAY);
+        await tx.$executeRawUnsafe(T_API_METRIC);
         await tx.$executeRawUnsafe(T_FEEDBACK);
         await tx.$executeRawUnsafe(IDX_FEEDBACK_CREATED);
       },

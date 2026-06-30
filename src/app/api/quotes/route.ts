@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withMetrics } from "@/lib/metrics";
 import { STOCK_MAP } from "@/data/stocks";
 import { fetchQuotes } from "@/lib/quotes";
 import { writeQuotesCache, readQuotesCache } from "@/lib/quotes-cache";
@@ -11,7 +12,8 @@ export const revalidate = 0;
 const POOL_TTL = 15_000;
 let poolCache: { at: number; payload: unknown } | null = null;
 
-export async function GET(req: NextRequest) {
+export const GET = withMetrics("quotes", _GET);
+async function _GET(req: NextRequest) {
   const param = req.nextUrl.searchParams.get("symbols");
 
   if (!param && poolCache && Date.now() - poolCache.at < POOL_TTL) {

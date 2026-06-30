@@ -213,6 +213,22 @@ model QuotesCache {
   @@map("quotes_cache")
 }
 
+// 接口监控:按(路由,日期 Asia/Shanghai)聚合调用次数/累计耗时/峰值/错误/慢响应。
+// 不存每条调用,只增量聚合,行数有界。后台 /admin/metrics 读它出每日调用次数与平均/峰值响应。
+model ApiMetric {
+  route     String
+  ymd       String // Asia/Shanghai YYYYMMDD
+  count     Int      @default(0)
+  sumMs     Int      @default(0) @map("sum_ms") // 累计耗时(ms),avg = sumMs/count
+  maxMs     Int      @default(0) @map("max_ms") // 当日峰值耗时
+  errors    Int      @default(0) // 非 2xx / 抛错次数
+  slow      Int      @default(0) // 超过慢阈值(API_SLOW_MS)次数
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([route, ymd])
+  @@map("api_metric")
+}
+
 // 用户反馈(问题/建议/其他)。游客也可提,userId/email 可空。
 model Feedback {
   id        String   @id @default(cuid())

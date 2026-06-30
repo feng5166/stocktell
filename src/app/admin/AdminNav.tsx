@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/push", label: "微信推送" },
   { href: "/admin/email", label: "邮件推送" },
   { href: "/admin/briefing", label: "简报审发" },
+  { href: "/admin/metrics", label: "接口监控" },
 ];
 
 export function AdminNav({ adminEmail }: { adminEmail: string }) {

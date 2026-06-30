@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withMetrics } from "@/lib/metrics";
 import { STOCK_MAP } from "@/data/stocks";
 import { getMorningBrief } from "@/lib/morning-brief";
 import type { BriefingItem } from "@/lib/briefings";
@@ -9,7 +10,8 @@ export const maxDuration = 30;
 // 网页「和我相关」顶部的个性化早报。
 // 前端传自选 codes + 它本来就有的相关简报条目(items),服务端不再重查简报。
 // 缓存(getMorningBrief 内,key=当天+自选组合)命中时直接秒回,不打 LLM、不查库。
-export async function POST(req: NextRequest) {
+export const POST = withMetrics("morning-brief", _POST);
+async function _POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const codes: string[] = Array.isArray(body.codes) ? body.codes : [];
   const set = new Set(codes.filter((c) => STOCK_MAP[c]));

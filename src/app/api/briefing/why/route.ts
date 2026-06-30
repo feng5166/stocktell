@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withMetrics } from "@/lib/metrics";
 import { STOCK_MAP } from "@/data/stocks";
 import { explainMove } from "@/lib/why";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -21,7 +22,8 @@ function limited(req: NextRequest): NextResponse | null {
 
 // 按需"为什么动":仅前端在「和我相关」卡片上对命中自选的触发标的调用。
 // 未开启检索时统一返回 reason:null,前端不显示,绝不编因果。
-export async function GET(req: NextRequest) {
+export const GET = withMetrics("briefing-why", _GET);
+async function _GET(req: NextRequest) {
   const blocked = limited(req);
   if (blocked) return blocked;
   const code = req.nextUrl.searchParams.get("code") || "";
@@ -35,7 +37,8 @@ export async function GET(req: NextRequest) {
 
 // 批量版:「和我相关」首屏一次性把所有触发标的的"为什么动"取回,
 // 由 N 个卡片各发一次 → 合并成 1 次请求(各 explainMove 在服务端并行,带各自缓存)。
-export async function POST(req: NextRequest) {
+export const POST = withMetrics("briefing-why", _POST);
+async function _POST(req: NextRequest) {
   const blocked = limited(req);
   if (blocked) return blocked;
   const body = await req.json().catch(() => ({}));

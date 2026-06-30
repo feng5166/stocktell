@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withMetrics } from "@/lib/metrics";
 import { unstable_cache } from "next/cache";
 import { linkageStat, type LinkageStat } from "@/lib/linkage";
 import { singleFlight } from "@/lib/single-flight";
@@ -19,7 +20,8 @@ function cachedLinkage(us: string, a: string): Promise<LinkageStat | null> {
   )();
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withMetrics("linkage", _GET);
+async function _GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("pairs") || "";
   const pairs = raw
     .split(",")

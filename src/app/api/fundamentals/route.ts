@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withMetrics } from "@/lib/metrics";
 import { unstable_cache } from "next/cache";
 import { fetchFundamental } from "@/lib/tushare";
 import { singleFlight } from "@/lib/single-flight";
@@ -15,7 +16,8 @@ const cachedFundamental = unstable_cache(
   { revalidate: 3600 }
 );
 
-export async function GET(req: NextRequest) {
+export const GET = withMetrics("fundamentals", _GET);
+async function _GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   if (!code) return NextResponse.json({ ok: false, error: "缺少 code" }, { status: 400 });
   const f = await cachedFundamental(code).catch(() => null);
