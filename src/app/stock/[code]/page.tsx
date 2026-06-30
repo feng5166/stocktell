@@ -192,62 +192,10 @@ export default async function StockDetail({
           </div>
         )}
 
-        <Section title="它是干什么的">
-          <p className="text-title leading-relaxed text-gray-800">
-            {s.positioning}
-          </p>
-        </Section>
+        {/* 基本面真实数据并入标题区(紧凑一行) */}
+        <Fundamentals code={s.code} market={s.market} />
 
-        {/* 先给"发生了什么 + 该怎么想"的人话结论,术语类研究信息往后放 */}
-        <Section title="最近发生了什么">
-          <ul className="space-y-1.5 text-sm text-gray-700">
-            {todayNews.map((it) => (
-              <li key={it.id} className="text-rose-600">
-                • 今日简报:{it.title}
-              </li>
-            ))}
-            <li>• {s.observation}</li>
-          </ul>
-        </Section>
-
-        <Section title="散户怎么想" highlight>
-          <StockTellTake
-            itemId={newsItem?.id}
-            code={s.code}
-            retailTake={newsItem?.retailTake ?? s.retailTake}
-          />
-          {!newsItem && (
-            <p className="mt-1 text-xs text-gray-400">
-              今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
-            </p>
-          )}
-        </Section>
-
-        {/* 散户心态:结论之后先看「有没有坑(雷区)」「钱在怎么流(资金面)」,再看赚不赚钱(财报/估值) */}
-        {riskEvents.length > 0 && (
-          <Section title="重要事件 / 雷区">
-            <ul className="space-y-1.5 text-sm">
-              {riskEvents.map((e, i) => (
-                <li
-                  key={i}
-                  className={
-                    e.severity === "high"
-                      ? "text-rose-600"
-                      : e.severity === "info"
-                      ? "text-gray-500"
-                      : "text-amber-700"
-                  }
-                >
-                  {e.text}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              公开信息整理(Tushare),提示风险,不构成投资建议。
-            </p>
-          </Section>
-        )}
-
+        {/* 资金面置顶:进来先看今天聪明钱在怎么流 */}
         {fundItem &&
           (fundItem.netMf !== null || fundItem.rzChgYi !== null || fundItem.longhu) && (
             <Section title="资金面">
@@ -277,6 +225,69 @@ export default async function StockDetail({
             </Section>
           )}
 
+        <Section title="它是干什么的">
+          <p className="text-title leading-relaxed text-gray-800">
+            {s.positioning}
+          </p>
+        </Section>
+
+        <Section title="在产业链的位置">
+          <ChainPosition
+            sector={s.sector}
+            up={upPeers}
+            down={downPeers}
+          />
+        </Section>
+
+        <Section title="最近发生了什么">
+          <ul className="space-y-1.5 text-sm text-gray-700">
+            {todayNews.map((it) => (
+              <li key={it.id} className="text-rose-600">
+                • 今日简报:{it.title}
+              </li>
+            ))}
+            <li>• {s.observation}</li>
+          </ul>
+        </Section>
+
+        <Section title="散户怎么想" highlight>
+          <StockTellTake
+            itemId={newsItem?.id}
+            code={s.code}
+            retailTake={newsItem?.retailTake ?? s.retailTake}
+          />
+          {!newsItem && (
+            <p className="mt-1 text-xs text-gray-400">
+              今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
+            </p>
+          )}
+        </Section>
+
+        {/* 散户心态:结论之后看「有没有坑(雷区)」「赚不赚钱(财报)」 */}
+        {riskEvents.length > 0 && (
+          <Section title="重要事件 / 雷区">
+            <ul className="space-y-1.5 text-sm">
+              {riskEvents.map((e, i) => (
+                <li
+                  key={i}
+                  className={
+                    e.severity === "high"
+                      ? "text-rose-600"
+                      : e.severity === "info"
+                      ? "text-gray-500"
+                      : "text-amber-700"
+                  }
+                >
+                  {e.text}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">
+              公开信息整理(Tushare),提示风险,不构成投资建议。
+            </p>
+          </Section>
+        )}
+
         {checkup && checkup.findings.length > 0 && (
           <Section title="财报体检 · 一句话看懂">
             <ul className="space-y-1.5 text-sm">
@@ -302,8 +313,6 @@ export default async function StockDetail({
             </p>
           </Section>
         )}
-
-        <Fundamentals code={s.code} market={s.market} />
 
         <Section title="对应的股票">
           {!hasPeers ? (
