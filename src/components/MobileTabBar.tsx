@@ -33,7 +33,7 @@ const TABS: Tab[] = [
     ),
   },
   {
-    label: "战绩",
+    label: "复盘",
     href: "/track",
     icon: (a) => (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw(a)} className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round">

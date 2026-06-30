@@ -32,7 +32,7 @@ export default async function TrackPage() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <SiteHeader active="战绩" />
+      <SiteHeader active="复盘" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4">

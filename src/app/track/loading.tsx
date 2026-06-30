@@ -1,5 +1,5 @@
 import { PageSkeleton } from "@/components/PageSkeleton";
 
 export default function Loading() {
-  return <PageSkeleton active="战绩" />;
+  return <PageSkeleton active="复盘" />;
 }
