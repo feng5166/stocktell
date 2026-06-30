@@ -6,9 +6,11 @@ import { track } from "@/lib/analytics";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // 浮动入口:「安装到桌面」+ 安装结果反馈。
 // 成功以 `appinstalled` 事件为准;取消看 userChoice;iOS 走「添加到主屏幕」引导。
-// 安卓坑:大陆网络下 Chrome 装 PWA 需联 Google 的 WebAPK 铸包服务,常失败 → 退化成
-// 普通快捷方式、下次仍提示安装。检测到"装过又被提示"就引导用菜单更稳。
+// 安卓坑:大陆网络下 Chrome 装 PWA 需联 Google WebAPK 铸包服务,常失败 → 退化成普通
+// 快捷方式(从它打开是 Chrome 标签页、非 standalone),Chrome 会再次提示安装。
+// 因「快捷方式」与「Chrome 新访问」无法从前端区分,故:一旦装过/点过"不再提示"就永久隐藏。
 const TRIED_KEY = "pwa_install_tried";
+const DISMISS_KEY = "pwa_install_dismissed";
 type Toast = { ok: boolean; text: string } | null;
 
 export function PwaActions() {
@@ -16,7 +18,8 @@ export function PwaActions() {
   const [standalone, setStandalone] = useState(true);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSHint, setShowIOSHint] = useState(false);
-  const [reprompt, setReprompt] = useState(false); // 之前装过却又被提示 = 上次没真正装上
+  const [reprompt, setReprompt] = useState(false);
+  const [hidden, setHidden] = useState(true); // 默认隐藏,挂载后按 localStorage 决定
   const [toast, setToast] = useState<Toast>(null);
 
   const flash = useCallback((t: NonNullable<Toast>) => {
@@ -28,26 +31,37 @@ export function PwaActions() {
     const mql = window.matchMedia("(display-mode: standalone)");
     setStandalone(mql.matches || (navigator as any).standalone === true);
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
+    try {
+      // 装过 或 点过"不再提示" → 永久不再骚扰
+      setHidden(
+        !!localStorage.getItem(TRIED_KEY) || !!localStorage.getItem(DISMISS_KEY)
+      );
+    } catch {
+      setHidden(false);
+    }
 
     const onBIP = (e: any) => {
       e.preventDefault();
       setDeferred(e);
-      // 上次尝试过安装、现在又能提示 = 上次没装上(安卓 WebAPK 失败常见)
       try {
         if (localStorage.getItem(TRIED_KEY)) setReprompt(true);
       } catch {
         /* ignore */
       }
     };
-    const onInstalled = () => {
-      setDeferred(null);
-      setStandalone(true);
-      setShowIOSHint(false);
+    const markTried = () => {
       try {
         localStorage.setItem(TRIED_KEY, "1");
       } catch {
         /* ignore */
       }
+      setHidden(true);
+    };
+    const onInstalled = () => {
+      setDeferred(null);
+      setStandalone(true);
+      setShowIOSHint(false);
+      markTried();
       flash({ ok: true, text: "✅ 安装已发起 · 去桌面或应用列表找 StockTell 图标" });
       track("pwa_installed");
     };
@@ -74,6 +88,7 @@ export function PwaActions() {
           } catch {
             /* ignore */
           }
+          setHidden(true); // 已发起安装,不再显示(无论 WebAPK 是否真正铸包成功)
         } else if (outcome === "dismissed") {
           flash({ ok: false, text: "已取消安装,可随时再点此添加" });
           track("pwa_install_dismissed");
@@ -81,14 +96,23 @@ export function PwaActions() {
       } catch {
         /* 用户直接关弹窗 */
       } finally {
-        setDeferred(null); // prompt 只能用一次
+        setDeferred(null);
       }
     } else if (isIOS) {
       setShowIOSHint((v) => !v);
     }
   }
 
-  const showInstall = !standalone && (deferred || isIOS);
+  function dismiss() {
+    try {
+      localStorage.setItem(DISMISS_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    setHidden(true);
+  }
+
+  const showInstall = !standalone && !hidden && (deferred || isIOS);
   if (!showInstall && !toast) return null;
 
   return (
@@ -103,8 +127,7 @@ export function PwaActions() {
           {toast.text}
         </div>
       )}
-      {/* 安卓:常驻引导用浏览器菜单(国内 Chrome 装 PWA 走 WebAPK 常失败,菜单更稳)。
-          检测到"装过又被提示"时文案会强调。 */}
+      {/* 安卓:常驻引导用浏览器菜单(国内 WebAPK 常失败,菜单更稳);检测到反复提示时强调 */}
       {showInstall && !isIOS && (
         <div className="max-w-[250px] rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg">
           {reprompt ? "上次似乎没装上?" : "若点上方装不上或反复提示,"}
@@ -118,12 +141,20 @@ export function PwaActions() {
         </div>
       )}
       {showInstall && (
-        <button
-          onClick={install}
-          className="rounded-full bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-lg hover:bg-gray-700"
-        >
-          📲 安装到桌面
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={dismiss}
+            className="rounded-full bg-white/80 px-2 py-1 text-[11px] text-gray-500 shadow hover:bg-white"
+          >
+            不再提示
+          </button>
+          <button
+            onClick={install}
+            className="rounded-full bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-lg hover:bg-gray-700"
+          >
+            📲 安装到桌面
+          </button>
+        </div>
       )}
     </div>
   );
