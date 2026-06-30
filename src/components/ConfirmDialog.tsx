@@ -76,17 +76,18 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 {opts.message}
               </p>
             )}
-            <div className="mt-5 flex justify-end gap-2">
+            {/* 手机:上下堆叠全宽,取消落在拇指最近处(底部)、危险键拉开;桌面恢复右对齐横排。
+                去掉危险键 autoFocus——避免回车直接执行不可逆操作。 */}
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 onClick={() => close(false)}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                className="min-h-[44px] w-full rounded-lg px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 sm:w-auto"
               >
                 {opts.cancelText ?? "取消"}
               </button>
               <button
-                autoFocus
                 onClick={() => close(true)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+                className={`min-h-[44px] w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto ${
                   opts.danger
                     ? "bg-rose-600 hover:bg-rose-700"
                     : "bg-gray-900 hover:bg-gray-700"

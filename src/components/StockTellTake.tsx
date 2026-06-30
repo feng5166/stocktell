@@ -122,12 +122,12 @@ export function StockTellTake({
       </p>
 
       {canDeep && !deepStarted && (
-        <div className="mt-2 text-right">
+        <div className="mt-2">
           <button
             onClick={loadDeep}
-            className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
+            className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-100 px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 active:bg-gray-200"
           >
-            🔍 让 StockTell 深读这条 →
+            🔍 让 StockTell 深读这条
           </button>
         </div>
       )}
