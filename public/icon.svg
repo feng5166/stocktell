@@ -1,12 +1,12 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="bub" cx="0.36" cy="0.3" r="0.85">
       <stop offset="0" stop-color="#3b414b"/>
       <stop offset="1" stop-color="#0c0e13"/>
     </radialGradient>
   </defs>
-  <rect width="512" height="512" rx="116" fill="#f2f2f3"/>
-  <g transform="translate(124,80) scale(1.1)">
+  <rect width="512" height="512" fill="#f2f2f3"/>
+  <g transform="translate(88,71) scale(1.4)">
     <circle cx="120" cy="110" r="96" fill="url(#bub)"/>
     <path d="M70 170 L40 250 L150 178 Z" fill="url(#bub)"/>
     <path d="M78 150 L112 116 L138 138 L172 92" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
