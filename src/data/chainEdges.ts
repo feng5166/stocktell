@@ -273,7 +273,7 @@ export const CHAIN_EDGES: ChainEdge[] = [
   // 铜连接/高速互连
   { from: "002130", to: "NVDA", strength: "强", basis: "沃尔核材高速铜缆/铜背板,绑英伟达 GB200" },
   { from: "002130", to: "CRDO", strength: "中", basis: "高速铜连接对标 Credo" },
-  { from: "300679", to: "NVDA", strength: "中", basis: "电连技术高速铜缆/连接器受益 GB200" },
+  { from: "300679", to: "NVDA", strength: "中", basis: "电连技术高速铜缆/连接器配套 GB200" },
   { from: "300679", to: "CRDO", strength: "中", basis: "高速铜缆/AEC 对标 Credo" },
   { from: "300563", to: "002130", strength: "中", basis: "神宇高速线缆配套,跟随沃尔铜连接主线" },
   // 国产 GPU / 服务器
@@ -315,7 +315,7 @@ export const CHAIN_EDGES: ChainEdge[] = [
   { from: "300782", to: "603501", strength: "弱", basis: "国产手机芯片(射频+CIS),消费电子周期共振" },
   // 大模型 / 应用
   { from: "300033", to: "002230", strength: "弱", basis: "同花顺金融AI,与科大讯飞同属国产大模型应用" },
-  { from: "688041", to: "300033", strength: "弱", basis: "国产AI应用受益国产算力(海光)生态" },
+  { from: "688041", to: "300033", strength: "弱", basis: "国产AI应用依托国产算力(海光)生态" },
   { from: "AMZN", to: "SNOW", strength: "中", basis: "Snowflake 数据云构建于 AWS/Azure/GCP 之上" },
   { from: "PLTR", to: "SNOW", strength: "弱", basis: "企业级 AI/数据软件同主题" },
   { from: "PLTR", to: "NOW", strength: "弱", basis: "企业级 AI 软件同主题" },
@@ -368,7 +368,7 @@ export const CHAIN_EDGES: ChainEdge[] = [
   { from: "AES", to: "AMZN", strength: "弱", basis: "数据中心清洁电力采购对手方" },
   { from: "FLNC", to: "AES", strength: "中", basis: "Fluence 储能系统配套电网/电力运营" },
   { from: "FLNC", to: "GEV", strength: "弱", basis: "储能/电网设备同主题" },
-  { from: "002028", to: "688676", strength: "弱", basis: "思源输配电设备(开关/变压器),数据中心供电扩容受益" },
+  { from: "002028", to: "688676", strength: "弱", basis: "思源输配电设备(开关/变压器),关联数据中心供电扩容" },
   { from: "002028", to: "600875", strength: "弱", basis: "思源电气电力设备/输配电板块" },
   { from: "002028", to: "601985", strength: "弱", basis: "电力设备供应核电/电网主题" },
   // 战略材料 / 资源
