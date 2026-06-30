@@ -6,6 +6,10 @@
 import OpenAI from "openai";
 
 export const LLM_MODEL = process.env.LLM_MODEL || "deepseek-v4-pro";
+// 交互式场景(如「StockTell 解读」流式深读)用的快模型:pro 是推理模型,
+// 流式时先吐一大段 reasoning_content、content 迟迟才来,慢到常撞 maxDuration=用户以为挂了。
+// flash 推理短、几秒就开始吐正文,交互体验好得多。生成简报(离线 cron)仍用 LLM_MODEL 保质量。
+export const LLM_MODEL_FAST = process.env.LLM_MODEL_FAST || "deepseek-v4-flash";
 export const LLM_BASE_URL =
   process.env.LLM_BASE_URL || "https://api.modelverse.cn/v1";
 

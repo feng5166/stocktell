@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
-import { getLLM, LLM_MODEL } from "@/lib/llm";
+import { getLLM, LLM_MODEL_FAST } from "@/lib/llm";
 import { fetchQuotes } from "@/lib/quotes";
 import { STOCK_MAP, resolvePeer } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
@@ -198,7 +198,7 @@ ${lines}
   // LLM 服务偶发抖动:create() 失败先重试一次,仍失败返回干净 503(前端显示「重试」按钮)。
   const createStream = () =>
     client.chat.completions.create({
-      model: LLM_MODEL,
+      model: LLM_MODEL_FAST,
       stream: true,
       max_tokens: 8000,
       messages: [
