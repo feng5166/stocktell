@@ -4,6 +4,7 @@
 import { getPrisma } from "@/lib/prisma";
 import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
+import { dailyByDate } from "@/lib/tushare";
 
 export const HIT_THRESHOLD = 1.0; // 同向涨跌 ≥1% 记"跟上了"
 
@@ -43,10 +44,16 @@ function fromRow(r: any): OutcomeRow {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 // 评估某天的简报:回填受益股当日涨跌 + 命中。幂等(briefingId+code 唯一,upsert)。
-export async function recordOutcomes(date: string): Promise<{
+// historical=true 时用 Tushare 当日收盘涨跌幅(daily.pct_chg)取价,而非实时行情——
+// 用于补录漏记的历史交易日(实时行情只反映"当下",过了那天就取不到当天收盘了)。
+export async function recordOutcomes(
+  date: string,
+  opts: { historical?: boolean } = {}
+): Promise<{
   ok: boolean;
   skipped?: string;
   evaluated: number;
+  source?: string;
 }> {
   const db = getPrisma();
   if (!db) return { ok: true, skipped: "no-db", evaluated: 0 };
@@ -59,14 +66,24 @@ export async function recordOutcomes(date: string): Promise<{
   const codes = Array.from(
     new Set(briefings.flatMap((b) => b.beneficiaries.map((x) => x.code)))
   );
-  const { quotes } = await fetchQuotes(codes);
+
+  // 取价:historical 用 Tushare 当日收盘(裸代码→pct_chg),否则用实时行情
+  let changeOf: (code: string) => number | null;
+  if (opts.historical) {
+    const hist = await dailyByDate(date.replace(/-/g, ""));
+    if (hist.size === 0) return { ok: true, skipped: "no-history", evaluated: 0 };
+    changeOf = (c) => (hist.has(c) ? hist.get(c)! : null);
+  } else {
+    const { quotes } = await fetchQuotes(codes);
+    changeOf = (c) => quotes[c]?.change ?? null;
+  }
 
   let evaluated = 0;
   for (const b of briefings) {
     // 触发方向:涨→期待 A 股涨;跌→期待 A 股跌;拿不到方向按"涨"兜底
     const expected: "涨" | "跌" = (b.triggerChange ?? 0) < 0 ? "跌" : "涨";
     for (const ben of b.beneficiaries) {
-      const change = quotes[ben.code]?.change ?? null;
+      const change = changeOf(ben.code);
       const hit =
         change === null
           ? null
@@ -92,7 +109,7 @@ export async function recordOutcomes(date: string): Promise<{
       evaluated++;
     }
   }
-  return { ok: true, evaluated };
+  return { ok: true, evaluated, source: opts.historical ? "tushare-daily" : "realtime" };
 }
 
 // 查账:近若干条结果明细(按日期倒序)。backtest 省略=全部;true=仅回测;false=仅实盘。
