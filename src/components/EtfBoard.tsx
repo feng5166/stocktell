@@ -42,6 +42,7 @@ export function EtfBoard({
   const [live, setLive] = useState(false);
   const [cached, setCached] = useState(false);
   const [asOf, setAsOf] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   // 仅在标签页可见时轮询:后台标签页不再每 20s 空跑(与股票池一致);切回前台立即刷新一次。
   useEffect(() => {
@@ -108,6 +109,17 @@ export function EtfBoard({
     return [...starred, ...ETFS.filter((e) => !wl.codes.has(e.code))];
   }, [wl.codes]);
 
+  // 搜索:按 名称/代码/主题/跟踪指数/覆盖板块 模糊匹配(可搜 光模块、算力、半导体、512480 等)
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return ordered;
+    return ordered.filter((e) =>
+      `${e.code} ${e.name} ${e.theme} ${e.tracksIndex} ${(e.covers ?? []).join(" ")}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [ordered, query]);
+
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -128,8 +140,29 @@ export function EtfBoard({
         </div>
       </div>
 
+      {/* 搜索:名称/代码/主题/指数/覆盖板块 */}
+      <div className="mb-3">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="搜 ETF / 板块 / 指数,如 光模块、算力、半导体、512480"
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400"
+        />
+        {query.trim() && (
+          <div className="mt-1 px-1 text-xs text-gray-400">
+            匹配 {filtered.length} 只
+          </div>
+        )}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-400">
+          没找到匹配的 ETF,换个词试试(如 光模块、算力、PCB)
+        </div>
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2">
-        {ordered.map((e) => {
+        {filtered.map((e) => {
           const q = quotes[e.code];
           const on = wl.has(e.code);
           const mineCovered = (etfMembers.get(e.code) ?? []).filter((c) => wl.codes.has(c));
@@ -211,6 +244,7 @@ export function EtfBoard({
           );
         })}
       </div>
+      )}
 
       <p className="mt-3 text-xs text-gray-400">
         ETF 为研究归并的板块代理,覆盖关系/规模为量级参考,不构成投资建议。
