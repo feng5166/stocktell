@@ -17,6 +17,7 @@ export function PwaActions() {
   const [deferred, setDeferred] = useState<any>(null);
   const [standalone, setStandalone] = useState(true);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [showIOSHint, setShowIOSHint] = useState(false);
   const [reprompt, setReprompt] = useState(false);
   const [hidden, setHidden] = useState(true); // 默认隐藏,挂载后按 localStorage 决定
@@ -31,6 +32,7 @@ export function PwaActions() {
     const mql = window.matchMedia("(display-mode: standalone)");
     setStandalone(mql.matches || (navigator as any).standalone === true);
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
+    setIsAndroid(/android/i.test(navigator.userAgent));
     try {
       // 装过 或 点过"不再提示" → 永久不再骚扰
       setHidden(
@@ -127,8 +129,9 @@ export function PwaActions() {
           {toast.text}
         </div>
       )}
-      {/* 安卓:常驻引导用浏览器菜单(国内 WebAPK 常失败,菜单更稳);检测到反复提示时强调 */}
-      {showInstall && !isIOS && (
+      {/* 安卓:常驻引导用浏览器菜单(国内 WebAPK 常失败,菜单更稳);检测到反复提示时强调。
+          仅真安卓显示——桌面(mac/win)装 PWA 很稳,不需要这段。 */}
+      {showInstall && isAndroid && (
         <div className="max-w-[250px] rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg">
           {reprompt ? "上次似乎没装上?" : "若点上方装不上或反复提示,"}
           国内安卓改用浏览器 <b>⋮ 菜单 →「添加到主屏幕」</b> 更稳。
