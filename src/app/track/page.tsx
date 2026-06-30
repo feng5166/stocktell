@@ -62,7 +62,7 @@ export default async function TrackPage() {
             </li>
             <li>
               <Dot className="bg-gray-300" />
-              <b className="text-gray-500">未判定</b>:当日行情还没取到,暂时算不了,不计入有效率
+              <b className="text-gray-500">未判定</b>:还没到结算时间(每个交易日收盘后约 15:30 结算),或当日行情取不到;不计入有效率
             </li>
           </ul>
           <p className="mt-2">
