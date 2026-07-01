@@ -6,8 +6,7 @@ import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
-// 钉到香港:Vercel 美区连不上阿里云北京(博查 SLB),香港离得近、连通好。
-export const preferredRegion = "hkg1";
+// 区域统一由 vercel.json(regions:["hnd1"] 东京)控制,此处不单独钉区。
 
 // 「为什么动」诊断:一击定位来源为何为空。直接打博查(绕开 whyCache),报 HTTP 状态 + 命中数;
 // 再报 LLM 解析状态。不泄漏任何密钥值,只报是否存在/长度。

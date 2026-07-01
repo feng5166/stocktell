@@ -6,8 +6,8 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 冷启动 + 博查检索 + LLM 总结,留足余量避免超时
-// 钉到香港:Vercel 美区连不上博查(阿里云北京 SLB),香港离得近连通好;LLM 从香港也通。
-export const preferredRegion = "hkg1";
+// 区域统一由 vercel.json 的 regions:["hnd1"] 控制(东京到阿里云北京=博查/Tushare 快且稳,~65ms;
+// 香港区那条路又慢又抖,曾一度误钉 hkg1,已改)。此处不再单独 preferredRegion。
 
 // 限流:此端点会触发博查检索 + LLM(花钱),且公网无鉴权,挡 (code,date) 遍历刷量。
 // 同一 IP 5 分钟最多 30 次(正常用户:首页一次批量 + 偶尔单条,远用不到)。

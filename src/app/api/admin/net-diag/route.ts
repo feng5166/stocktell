@@ -5,7 +5,7 @@ import { runNetProbe } from "@/lib/net-probe";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-export const preferredRegion = "sin1"; // 新加坡
+// 区域由 vercel.json(hnd1)控制;此探针保留,跑在默认区。
 
 export async function GET(req: NextRequest) {
   if (!isAdminAuthorized(req) && !(await isAdminSession())) {
