@@ -500,29 +500,29 @@ function PeerGroup({
         {shownItems.map(({ token, peer }) => {
           const info = anchor && peer ? edgeInfo(anchor.code, peer.code) : null;
           return (
-            <div
-              key={peer?.code ?? token}
-              className="flex flex-wrap items-center gap-2"
-            >
-              {info && (
-                <span
-                  className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-meta ${STRENGTH_BADGE[info.strength]}`}
-                >
-                  {info.strength}关联
-                </span>
-              )}
+            <div key={peer?.code ?? token}>
               {peer ? (
+                // 整行可点:徽章+名称+依据一起纳入 ≥44px 命中区(手机),桌面 sm 还原紧凑
                 <Link
                   href={`/stock/${peer.code}`}
-                  className="font-medium text-gray-800 hover:text-brand-600"
+                  className="-mx-2 flex min-h-[44px] flex-wrap items-center gap-2 rounded-lg px-2 py-1.5 active:bg-brand-50/60 hover:bg-gray-50 sm:min-h-0 sm:py-1"
                 >
-                  {peer.name}
+                  {info && (
+                    <span
+                      className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-meta ${STRENGTH_BADGE[info.strength]}`}
+                    >
+                      {info.strength}关联
+                    </span>
+                  )}
+                  <span className="font-medium text-gray-800">{peer.name}</span>
+                  {info && (
+                    <span className="text-xs text-gray-500">· {info.basis}</span>
+                  )}
                 </Link>
               ) : (
-                <span className="text-gray-600">{token}</span>
-              )}
-              {info && (
-                <span className="text-xs text-gray-400">· {info.basis}</span>
+                <div className="flex min-h-[44px] flex-wrap items-center gap-2 sm:min-h-0">
+                  <span className="text-gray-600">{token}</span>
+                </div>
               )}
             </div>
           );
