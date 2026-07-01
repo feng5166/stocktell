@@ -87,6 +87,19 @@ async function tsCall(
   return null;
 }
 
+// 严格版:失败(无 token / 网络错 / 超时 / code!==0 重试后仍失败 → tsCall 返回 null)时**抛错**,
+// 让调用方能区分"真失败"与"成功但无行"(后者返回 {fields, items:[]},items 为空=合法无数据)。
+// 用于风险雷区 / 财报体检等需要"只在确有回源时才落 last-good 缓存、失败要告警"的路径。
+export async function tsCallStrict(
+  apiName: string,
+  params: Record<string, string>,
+  fields: string
+): Promise<{ fields: string[]; items: unknown[][] }> {
+  const r = await tsCall(apiName, params, fields);
+  if (!r) throw new Error(`tushare-fail:${apiName}`);
+  return r;
+}
+
 // A 股交易日历缓存(进程内,按 YYYYMMDD,仅缓存权威结果)
 const tradingDayCache = new Map<string, boolean>();
 
@@ -384,12 +397,11 @@ export interface FloatRow {
 export async function shareFloatRows(code: string): Promise<FloatRow[]> {
   const ts = tsCode(code);
   if (!ts) return [];
-  const d = await tsCall(
+  const d = await tsCallStrict(
     "share_float",
     { ts_code: ts },
     "float_date,float_ratio,holder_name,share_type"
-  ).catch(() => null);
-  if (!d) return [];
+  );
   const i = (k: string) => d.fields.indexOf(k);
   return d.items
     .map((r) => ({
@@ -412,12 +424,11 @@ export interface HolderTradeRow {
 export async function holderTradeRows(code: string): Promise<HolderTradeRow[]> {
   const ts = tsCode(code);
   if (!ts) return [];
-  const d = await tsCall(
+  const d = await tsCallStrict(
     "stk_holdertrade",
     { ts_code: ts },
     "ann_date,holder_name,holder_type,in_de,change_ratio,avg_price"
-  ).catch(() => null);
-  if (!d) return [];
+  );
   const i = (k: string) => d.fields.indexOf(k);
   return d.items
     .map((r) => ({
@@ -435,10 +446,8 @@ export async function holderTradeRows(code: string): Promise<HolderTradeRow[]> {
 export async function pledgeRatioLatest(code: string): Promise<number | null> {
   const ts = tsCode(code);
   if (!ts) return null;
-  const d = await tsCall("pledge_stat", { ts_code: ts }, "end_date,pledge_ratio").catch(
-    () => null
-  );
-  if (!d || d.items.length === 0) return null;
+  const d = await tsCallStrict("pledge_stat", { ts_code: ts }, "end_date,pledge_ratio");
+  if (d.items.length === 0) return null;
   const di = d.fields.indexOf("end_date");
   const pi = d.fields.indexOf("pledge_ratio");
   const latest = [...d.items].sort((a, b) =>
@@ -455,10 +464,7 @@ export interface RepurchaseRow {
 export async function repurchaseRows(code: string): Promise<RepurchaseRow[]> {
   const ts = tsCode(code);
   if (!ts) return [];
-  const d = await tsCall("repurchase", { ts_code: ts }, "ann_date,proc,amount").catch(
-    () => null
-  );
-  if (!d) return [];
+  const d = await tsCallStrict("repurchase", { ts_code: ts }, "ann_date,proc,amount");
   const i = (k: string) => d.fields.indexOf(k);
   return d.items
     .map((r) => {
@@ -476,10 +482,8 @@ export async function repurchaseRows(code: string): Promise<RepurchaseRow[]> {
 export async function currentName(code: string): Promise<string | null> {
   const ts = tsCode(code);
   if (!ts) return null;
-  const d = await tsCall("namechange", { ts_code: ts }, "name,start_date,end_date").catch(
-    () => null
-  );
-  if (!d || d.items.length === 0) return null;
+  const d = await tsCallStrict("namechange", { ts_code: ts }, "name,start_date,end_date");
+  if (d.items.length === 0) return null;
   const ni = d.fields.indexOf("name");
   const ei = d.fields.indexOf("end_date");
   const si = d.fields.indexOf("start_date");
@@ -520,7 +524,9 @@ export async function latestFinancials(code: string): Promise<AnnualFinancials |
   const ts = tsCode(code);
   if (!ts) return null;
   const [inc, bs, cf, fi] = await Promise.all([
-    tsCall("income", { ts_code: ts }, "end_date,revenue,n_income_attr_p").catch(() => null),
+    // 主表严格:income 真失败(Tushare 挂)时抛错,让上层区分"回源失败(告警)"与"该票无财报(no-data)";
+    // 辅表(资产负债/现金流/指标)保持宽松,单项缺失不致命,只影响个别体检结论。
+    tsCallStrict("income", { ts_code: ts }, "end_date,revenue,n_income_attr_p"),
     tsCall(
       "balancesheet",
       { ts_code: ts },

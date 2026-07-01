@@ -146,6 +146,14 @@ export async function cachedFundFlowSingle(code: string): Promise<FundFlowResult
     return { date: null, items: [] };
   }
   const it = res.items[0];
+  // date==null 对已确认的 A 股 = latestFundYmd 探测失败(Tushare 挂),不是"无数据"→ 告警(节流)。
+  // fundFlowFor 内部 tsCall 不抛错,失败会静默返回 date:null,所以这里用 date 判失败而非 catch。
+  if (res.date == null) {
+    await alertThrottled(
+      "fetch-fail:fundflow",
+      `⚠️ StockTell 资金面获取失败(Tushare 未取到交易日)| code=${code}`
+    );
+  }
   // 写门槛:当天有真实资金数据才落库(对齐 getFundBundle 的判空),否则空包会被永久钉住。
   const hasReal =
     res.date != null &&

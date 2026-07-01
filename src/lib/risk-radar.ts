@@ -45,8 +45,9 @@ async function computeRiskEvents(
 ): Promise<{ events: RiskEvent[]; sourcedOk: boolean }> {
   if (STOCK_MAP[code]?.market !== "A股") return { events: [], sourcedOk: true };
   const todayY = todayISO().replace(/-/g, "");
-  // allSettled:区分"Tushare 全挂返回空"与"该票真无事件"——至少一个源成功 = sourcedOk。
-  // 只有 sourcedOk 才允许把结果(含合法空 [])落 last-good 缓存,防"全挂空"毒化成"无风险"。
+  // allSettled + 严格包装(失败即 reject):区分"Tushare 回源失败"与"该票真无事件"。
+  // sourcedOk = 5 个源全部成功回源(含合法空)才算"可信完整"——任一失败即 false,
+  // 只有 sourcedOk 才把结果(含合法空 [])落 last-good 缓存,防"部分/全挂空"毒化成"无风险"。
   const settled = await Promise.allSettled([
     shareFloatRows(code),
     holderTradeRows(code),
@@ -54,7 +55,7 @@ async function computeRiskEvents(
     repurchaseRows(code),
     currentName(code),
   ]);
-  const sourcedOk = settled.some((s) => s.status === "fulfilled");
+  const sourcedOk = settled.every((s) => s.status === "fulfilled");
   const floats = settled[0].status === "fulfilled" ? settled[0].value : [];
   const holders = settled[1].status === "fulfilled" ? settled[1].value : [];
   const pledge = settled[2].status === "fulfilled" ? settled[2].value : null;
