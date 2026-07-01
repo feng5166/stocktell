@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
 
 // 断点判定(默认 639.98px,与 Tailwind sm=min-width:640px 严格互补,消除 (639,640) 分数像素缝隙)。
-// initial:SSR 端按 UA 预判的初值,让首帧就只渲染命中的一套(零双 DOM、零闪、零水合失配);
-//   传 null 则挂载前返回 null,调用方可回退"两套都渲染、靠 CSS 显隐"。
-// 挂载后一律用 matchMedia 兜正(处理 UA 误判 / 窗口跨断点缩放)。
-export function useIsMobile(
-  initial: boolean | null = null,
-  query = "(max-width: 639.98px)"
-): boolean | null {
-  const [isMobile, setIsMobile] = useState<boolean | null>(initial);
+// 挂载前返回 null:调用方据此在首帧照旧渲染两套(CSS 控制显隐),避免 SSR/水合失配与闪动;
+// 挂载后返回真实布尔,调用方可只渲染命中的一套以减 DOM。
+export function useIsMobile(query = "(max-width: 639.98px)"): boolean | null {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mql = window.matchMedia(query);

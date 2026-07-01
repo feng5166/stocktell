@@ -184,11 +184,7 @@ interface Quote {
   change: number;
 }
 
-export default function Dashboard({
-  initialIsMobile,
-}: {
-  initialIsMobile?: boolean;
-} = {}) {
+export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("股票列表");
   const [market, setMarket] = useState<(typeof MARKETS)[number]>("全部");
   const [position, setPosition] = useState<(typeof POSITIONS)[number]>("全部");
@@ -589,12 +585,7 @@ export default function Dashboard({
         {tab === "股票列表" && (
           <>
             <EtfStrip etfs={listEtfs} quotes={etfQuotes} wl={wl} />
-            <StockTable
-              rows={listRows}
-              newsCodes={newsCodes}
-              wl={wl}
-              initialIsMobile={initialIsMobile}
-            />
+            <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
           </>
         )}
         {tab === "板块ETF" && (
@@ -709,12 +700,10 @@ function StockTable({
   rows,
   newsCodes,
   wl,
-  initialIsMobile,
 }: {
   rows: Stock[];
   newsCodes: Set<string>;
   wl: UseWatchlist;
-  initialIsMobile?: boolean;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (code: string) =>
@@ -763,10 +752,10 @@ function StockTable({
   // 长列表渐进加载:手机/桌面各一份(同时只显示一个视图)
   const mob = useProgressive(sortedRows, 12);
   const desk = useProgressive(sortedRows, 20);
-  // 单树渲染:服务端按 UA 给初值(initialIsMobile)→ 首帧就只渲染命中的一套(零双 DOM);
-  // 无 UA 初值时回退 null → 两套都渲染、靠 CSS 显隐;挂载后统一 matchMedia 兜正。
-  const isMobile = useIsMobile(initialIsMobile ?? null);
-  const known = isMobile !== null; // 已定(UA 或 matchMedia):JS 权威,渲染的那棵去掉响应式隐藏类,避免 UA 误判留白
+  // 单树渲染:首帧(未挂载,isMobile=null)两套都渲染、靠 CSS 显隐(SSR 安全、静态可缓存、不闪);
+  // 挂载后 matchMedia 定值 → 只保留命中的一套,给移动端减 DOM。
+  const isMobile = useIsMobile();
+  const known = isMobile !== null; // 已定后 JS 权威:渲染的那棵去掉响应式隐藏类
   const showMobile = isMobile === null || isMobile;
   const showDesktop = isMobile === null || !isMobile;
 
