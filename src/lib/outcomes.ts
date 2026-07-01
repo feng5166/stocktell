@@ -104,7 +104,12 @@ export async function recordOutcomes(
           hit,
           isBacktest: false,
         },
-        update: { change, hit, evaluatedAt: new Date() },
+        // 取不到行情(change=null)时只更新评估时间,绝不用 null 覆盖已记好的 change/hit
+        // ——防"某票两源都缺价"的极端把已判定的战绩冲回未判定(核心产品数据,只进不退坏)。
+        update:
+          change === null
+            ? { evaluatedAt: new Date() }
+            : { change, hit, evaluatedAt: new Date() },
       });
       evaluated++;
     }

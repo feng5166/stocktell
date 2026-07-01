@@ -1,6 +1,7 @@
 // Tushare Pro:A 股基本面(PE/PB/市值/换手率)。实时价仍走新浪(Tushare HTTP 无实时)。
 // 需环境变量 TUSHARE_TOKEN(≥2000 积分才能用 daily_basic)。未配则返回 null。
 import { singleFlight } from "@/lib/single-flight";
+import { fetchJsonWithTimeout } from "@/lib/fetch-timeout";
 
 // 全局并发阀:无论上层并发多高,单实例在途 Tushare 请求数 ≤ MAX_CONCURRENT_TS,其余排队。
 // 作为放量/被刷时的安全阀,避免瞬时把 Tushare 打爆触发分钟级限频。仅同实例内有效。
@@ -51,21 +52,19 @@ async function tsFetchOnce(
 ): Promise<{ fields: string[]; items: unknown[][] } | null> {
   await tsAcquire();
   try {
-    const resp = await fetch("https://api.tushare.pro", {
+    // 超时覆盖 fetch+读体:Tushare 偶发卡死不再白占并发槽位、也不挂到平台上限。
+    const data = await fetchJsonWithTimeout<{
+      code: number;
+      data?: { fields: string[]; items: unknown[][] };
+    }>("https://api.tushare.pro", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ api_name: apiName, token, params, fields }),
       cache: "no-store",
     });
-    if (resp.ok) {
-      const data = (await resp.json()) as {
-        code: number;
-        data?: { fields: string[]; items: unknown[][] };
-      };
-      if (data.code === 0 && data.data) return data.data;
-    }
+    if (data.code === 0 && data.data) return data.data;
   } catch {
-    /* 网络错,落到重试 */
+    /* 网络错/超时,落到重试 */
   } finally {
     tsRelease();
   }

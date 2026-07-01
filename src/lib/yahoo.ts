@@ -1,5 +1,16 @@
 // 美股历史日线(免费,Yahoo Finance chart API,无需 key)。用于历史相似性的"美股事件"侧。
 // Tushare us_daily 需单独付费、东财封 Vercel IP,故美股历史走 Yahoo。失败返回空,调用方降级。
+import { fetchJsonWithTimeout } from "@/lib/fetch-timeout";
+
+type YahooChart = {
+  chart?: {
+    result?: Array<{
+      timestamp?: number[];
+      indicators?: { quote?: Array<{ close?: (number | null)[] }> };
+    }>;
+  };
+};
+
 export interface UsBar {
   date: string; // YYYY-MM-DD(美东)
   pct: number; // 当日涨跌 %
@@ -12,12 +23,10 @@ export async function usLatestTradingDay(ticker = "AAPL"): Promise<string | null
     ticker
   )}?range=5d&interval=1d`;
   try {
-    const r = await fetch(url, {
+    const j = await fetchJsonWithTimeout<YahooChart>(url, {
       headers: { "User-Agent": "Mozilla/5.0" },
       cache: "no-store",
     });
-    if (!r.ok) return null;
-    const j = await r.json();
     const res = j?.chart?.result?.[0];
     const ts: number[] = res?.timestamp ?? [];
     const closes: (number | null)[] = res?.indicators?.quote?.[0]?.close ?? [];
@@ -46,12 +55,10 @@ export async function usDailyHistory(
       ticker
     )}?range=${range}&interval=1d`;
   try {
-    const r = await fetch(url, {
+    const j = await fetchJsonWithTimeout<YahooChart>(url, {
       headers: { "User-Agent": "Mozilla/5.0" },
       cache: "no-store",
     });
-    if (!r.ok) return [];
-    const j = await r.json();
     const res = j?.chart?.result?.[0];
     const ts: number[] = res?.timestamp ?? [];
     const closes: (number | null)[] = res?.indicators?.quote?.[0]?.close ?? [];

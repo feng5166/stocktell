@@ -4,7 +4,7 @@
 //   1) 博查检索增强(配 BOCHA_API_KEY):先搜真实新闻 → 喂 LLM 只基于材料总结,带来源链接。
 //   2) 兼容旧路径(配 WHY_ENABLED 且模型本身能联网):直接问模型,提示词强制没把握就 null。
 //   都没有 → 返回 null。
-import { getLLM, LLM_MODEL } from "@/lib/llm";
+import { getLLM, LLM_MODEL, chatTimed } from "@/lib/llm";
 import { bochaSearch, bochaEnabled, type BochaHit } from "@/lib/bocha";
 import { getPrisma } from "@/lib/prisma";
 
@@ -68,7 +68,8 @@ async function retrievalWhy(
     .join("\n");
 
   try {
-    const resp = await client.chat.completions.create({
+    const resp = await chatTimed("why-rag", () =>
+      client.chat.completions.create({
       model: process.env.WHY_LLM_MODEL || LLM_MODEL,
       max_tokens: 400,
       response_format: { type: "json_object" },
@@ -79,7 +80,7 @@ async function retrievalWhy(
           content: `美股:${name}(${code}),简报日 ${date}。\n\n【检索材料】\n${material}\n\n请仅依据以上材料判断它最近为什么异动。`,
         },
       ],
-    });
+    }));
     const txt = resp.choices[0]?.message?.content ?? "{}";
     const p = JSON.parse(txt) as {
       reason?: unknown;
@@ -124,7 +125,8 @@ async function legacyWhy(
   code: string
 ): Promise<WhyResult> {
   try {
-    const resp = await client.chat.completions.create({
+    const resp = await chatTimed("why-legacy", () =>
+      client.chat.completions.create({
       model: process.env.WHY_LLM_MODEL || LLM_MODEL,
       max_tokens: 300,
       response_format: { type: "json_object" },
@@ -135,7 +137,7 @@ async function legacyWhy(
           content: `美股:${name}(${code})。它最近一个交易日为什么异动?`,
         },
       ],
-    });
+    }));
     const txt = resp.choices[0]?.message?.content ?? "{}";
     const p = JSON.parse(txt) as { reason?: unknown; asOf?: unknown };
     return {

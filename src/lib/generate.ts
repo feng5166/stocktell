@@ -3,7 +3,7 @@
 // 没有 LLM_API_KEY 时用模板生成,保证闭环可跑。
 import { STOCKS, STOCK_MAP, aSharePeers } from "@/data/stocks";
 import { fetchQuotes, type Quote } from "@/lib/quotes";
-import { getLLM, LLM_MODEL } from "@/lib/llm";
+import { getLLM, LLM_MODEL, chatTimed } from "@/lib/llm";
 import type { Impact, NewBriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { prevAshareTradingDay } from "@/lib/tushare";
@@ -292,7 +292,8 @@ async function llmOneItem(
     ? '【特别说明】今天是 A 股节后首个交易日,usChangePct 是该美股在 A 股休市期间的【假期累计涨跌】(跨多日)。title 与 retailTake 要点明"假期累计 / 节后需一次性消化",别用"隔夜"。\n\n'
     : "";
   // 推理模型较慢,故每条单独并行调用;单条 48s 超时 + 禁重试,留在 60s 函数上限内。
-  const resp = await client.chat.completions.create(
+  const resp = await chatTimed("briefing", () =>
+    client.chat.completions.create(
     {
       model: LLM_MODEL,
       max_tokens: 4000,
@@ -308,7 +309,7 @@ async function llmOneItem(
       ],
     },
     { timeout: 48000, maxRetries: 0 }
-  );
+  ));
   const it = JSON.parse(resp.choices[0]?.message?.content ?? "{}") as LLMItem;
   if (!it.retailTake || !it.title) throw new Error("llm_incomplete"); // 空内容 → 调用方回退模板
   let beneficiaries = (it.beneficiaryCodes ?? [])
