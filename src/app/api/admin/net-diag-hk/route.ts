@@ -5,7 +5,7 @@ import { runNetProbe } from "@/lib/net-probe";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-export const preferredRegion = "sin1"; // 新加坡
+export const preferredRegion = "hkg1"; // 香港(基线对照)
 
 export async function GET(req: NextRequest) {
   if (!isAdminAuthorized(req) && !(await isAdminSession())) {
