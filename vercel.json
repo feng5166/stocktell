@@ -1,5 +1,5 @@
 {
-  "regions": ["hnd1"],
+  "regions": ["hnd1", "iad1"],
   "crons": [
     {
       "path": "/api/cron/briefing",
