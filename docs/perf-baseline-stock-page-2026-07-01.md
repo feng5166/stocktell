@@ -35,19 +35,36 @@
 | HTML 壳 TTFB | ~0.9s | ✓ | 保持 |
 | 联动 similar | ~1–2s | ✓ | 保持 |
 
-## 根因(硬证据,见下)
-- 部署默认区 = **香港 hkg1**(`x-vercel-id` 全为 `sfo1::hkg1`,并由 `/api/admin/net-diag` 的 `VERCEL_REGION` 权威确认)。
-- 故"钉 hkg1"对 quotes/fundamentals **无效**(本就在香港跑)。
-- 真因:**新浪 `hq.sinajs.cn` / Tushare `api.tushare.pro` 从香港 Vercel 打不通/极慢**(quotes 撞 6s 超时吐过期缓存;fundamentals 6s+1.5s重试+6s≈14s 双超时→返回 null→不写缓存→每次重撞)。对照:博查(阿里云北京公有 API)香港能通。
-- 硬证据由 `/api/admin/net-diag`(不钉区域、从默认区直连各源、20s 超时)给出 —— **见下方"net-diag 实测"**(待部署后回填)。
+## 根因(按模块,基于硬证据)
+- 部署默认区 = **香港 hkg1**(`VERCEL_REGION` 权威 + `x-vercel-id` 全 `sfo1::hkg1`)。→ "钉 hkg1"对二者**无效**(本就在香港)。
+- **quotes(~5.9s,常态/每次)= 新浪按 IP 封 Vercel**:代码先打新浪→5s 后收 403(6/6 稳定)→才回落腾讯(腾讯 23–116ms 本来极快)。白白浪费 5s 在被封的新浪上。**这是持续问题。**
+- **fundamentals(~14s,间歇性)= Vercel 香港↔阿里云北京 间歇性连接超时**:Tushare 在阿里云北京,多数 ~500ms(fundamentals 1–2s),但**偶发 connect-timeout 段**,此时 daily_basic 6s+1.5s+6s 双超时→null→不缓存→超过前端 12s 中止→**该票基本面此刻拿不到 + 触发一条飞书告警**。**同一路径也影响"为什么动"(博查,同在阿里云北京),会一起间歇性失败。**
 
-## net-diag 实测(从 Vercel 香港区直连国内源)
-> 待 `/api/admin/net-diag` 部署后回填:各源 http/ms/是否超时。
+## net-diag 实测(从 Vercel 香港区直连国内源)—— 硬证据
+`VERCEL_REGION=hkg1`(权威确认默认区就是香港)。从该区直连:
 
-（回填中…）
+| 源 | 结果 | 结论 |
+|---|---|---|
+| 新浪 hq.sinajs.cn | **HTTP 403 Forbidden,5064ms** | **新浪按 IP 封 Vercel**(慢速拒绝拖 5s) |
+| 腾讯 qt.gtimg.cn(回落源) | HTTP 200,**77ms**,返回真实行情 | 腾讯正常极快 |
+| Tushare api.tushare.pro(主机可达性) | HTTP 200,**505ms** | Tushare 主机不慢 |
+| daily_basic(真 token,从 Vercel) | 多数 **code:0 真数据 ~500ms**;偶发 `UND_ERR_CONNECT_TIMEOUT` ~10s | fundamentals 时快时挂 |
 
-## 优化方向(不是换区域)
-把"打国内源"挪到大陆侧:复用大陆 VPS 做定时抓取/中继,把行情+基本面预热进 DB,Vercel(香港)只读 DB → sub-second。详见后续方案。
+**DNS**:`api.tushare.pro` 与 `api.bochaai.com` **同在阿里云北京**(`alb-*.cn-beijing.aliyuncsslb.com`);腾讯行情=腾讯云、新浪=新浪 IDC。
+**抖动率(6 轮采样,Vercel→源)**:新浪 403×6(稳定封);腾讯 200×6(23–116ms);Tushare/博查 本轮 200×6(~500ms)——但另一轮两者**同时** connect-timeout ~10s。→ **Vercel 香港↔阿里云北京:多数好(~500ms)+ 间歇性连接超时(Tushare 与博查同进同退,是到阿里云北京的路径问题)**。
+**复测佐证**:间歇窗口过后重测 /api/fundamentals(601138/688256/000977/002281/300394)= 0.9–2.0s 全正常 → 印证 fundamentals 的 14s 是**间歇性**,非常态。
+
+**对照(沙箱,网络位置≈香港/亚洲,AS63981 HK)**:
+- 新浪 `list=sh601138`:**HTTP 200,36ms**(vs Vercel 403)→ 坐实**新浪按 IP 封 Vercel**,非距离。
+- daily_basic(真 token,同 app 调用):**HTTP 200,146ms,14 行数据** → token 有效/有积分/查询正确/Tushare 飞快。
+
+**推翻的旧判断**:不是"香港够不着国内源"。区域=香港已确认;腾讯/Tushare 从香港都快。真凶按模块拆开(见下)。
+
+## 优化方向(按两类问题分开,不是换区域)
+1. **quotes(持续,新浪封 IP)**:代码**首选腾讯**(qt.gtimg.cn,实测 23–116ms 稳定)、把新浪降级为兜底或去掉。→ quotes 从 5.9s 直接 sub-second。改动小、收益确定。
+2. **fundamentals + 为什么动(间歇,Vercel↔阿里云北京 抖动)**:
+   - 治标:缩短 Tushare/博查单次超时(现 6s×2 太长)、失败快速回退,别让用户干等 12s;
+   - 治本:把打阿里云北京(Tushare/博查)的活**挪到大陆侧**——大陆 VPS 定时抓全池基本面预热进 DB(fundamentals 本就有 DB 缓存,预热后 Vercel 永不现打),为什么动同理;Vercel 只读 DB → 稳定 sub-second、不受跨境抖动影响。
 
 ## 复跑对比
 优化上线后执行 `bash scripts/perf-stock-page.sh`,与本文件"基线数据"表逐格对比;重点看 quotes 与 fundamentals(未缓存票)是否从 ~6s/~14s 降到 sub-second。
