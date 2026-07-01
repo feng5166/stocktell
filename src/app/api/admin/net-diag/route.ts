@@ -4,7 +4,9 @@ import { isAdminSession } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-// 故意【不钉 preferredRegion】:跑在项目默认区,借此权威读出 VERCEL_REGION,
+// 临时钉 sin1:验证 Vercel 新加坡区(AWS)打 Tushare/博查(阿里云北京)是否比香港区更稳。
+export const preferredRegion = "sin1";
+// (原:故意不钉,跑默认区读 VERCEL_REGION——已确认默认=hkg1)
 // 并从该区直连国内数据源(新浪/腾讯/Tushare),给出真实状态码/耗时/错误,
 // 坐实"这些源从 Vercel 当前区域到底能不能通、多慢"。
 
