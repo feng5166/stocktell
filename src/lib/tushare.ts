@@ -3,6 +3,12 @@
 import { singleFlight } from "@/lib/single-flight";
 import { fetchJsonWithTimeout } from "@/lib/fetch-timeout";
 
+// Tushare 单次请求超时:偶发抽风时快速失败(6s→3s)。tsCall 两次重试间隔 1.5s,
+// 故最坏等待从 6+1.5+6≈14s 降到 3+1.5+3≈7.5s。env 解析失败回退 3000(避免 NaN 秒 abort)。
+const parsedTsTimeout = Number(process.env.TUSHARE_FETCH_TIMEOUT_MS);
+const TS_TIMEOUT_MS =
+  Number.isFinite(parsedTsTimeout) && parsedTsTimeout > 0 ? parsedTsTimeout : 3000;
+
 // 全局并发阀:无论上层并发多高,单实例在途 Tushare 请求数 ≤ MAX_CONCURRENT_TS,其余排队。
 // 作为放量/被刷时的安全阀,避免瞬时把 Tushare 打爆触发分钟级限频。仅同实例内有效。
 const MAX_CONCURRENT_TS = 8;
@@ -61,7 +67,7 @@ async function tsFetchOnce(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ api_name: apiName, token, params, fields }),
       cache: "no-store",
-    });
+    }, TS_TIMEOUT_MS);
     if (data.code === 0 && data.data) return data.data;
   } catch {
     /* 网络错/超时,落到重试 */
