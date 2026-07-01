@@ -214,12 +214,21 @@ async function sendDigest(
   });
 }
 
+export interface DigestUserResult {
+  userId: string;
+  email: string;
+  mode: "digest" | "alerts";
+  sent: boolean; // sendMail 是否成功
+}
+
 export async function runPreOpenDigest(): Promise<{
   ok: boolean;
   skipped?: string;
   date?: string;
   candidates: number; // 有相关动态、该收到的用户数
   sent: number; // 实际发出数(Resend 没配时为 0)
+  failed?: number; // 该发但发送失败的数量
+  results?: DigestUserResult[]; // 逐用户结果(供后台记录失败)
 }> {
   const db = getPrisma();
   if (!db) return { ok: true, skipped: "no-db", candidates: 0, sent: 0 };
@@ -247,6 +256,7 @@ export async function runPreOpenDigest(): Promise<{
 
   let candidates = 0;
   let sent = 0;
+  const results: DigestUserResult[] = [];
   for (const u of users) {
     if (!u.email) continue;
     const codes = codesByUser.get(u.id);
@@ -264,16 +274,28 @@ export async function runPreOpenDigest(): Promise<{
       // 有相关简报:个性化早报 + 你的票要注意 + 相关动态
       candidates++;
       const brief = await getMorningBrief(Array.from(codes), relevant);
-      if (await sendDigest(u.email, u.id, date, relevant, brief, alerts)) sent++;
+      const ok = await sendDigest(u.email, u.id, date, relevant, brief, alerts);
+      results.push({ userId: u.id, email: u.email, mode: "digest", sent: ok });
+      if (ok) sent++;
       continue;
     }
 
     // 无相关简报:只要持仓有雷区/资金面异动就提醒
     if (alerts.length === 0) continue; // 既无简报又无要注意 → 不打扰
     candidates++;
-    if (await sendAlertsDigest(u.email, u.id, alerts)) sent++;
+    const ok = await sendAlertsDigest(u.email, u.id, alerts);
+    results.push({ userId: u.id, email: u.email, mode: "alerts", sent: ok });
+    if (ok) sent++;
   }
-  return { ok: true, date, candidates, sent };
+  const failed = results.filter((r) => !r.sent).length;
+  // 记录失败到运行日志(便于排查),并随返回值给后台
+  if (failed > 0) {
+    console.error(
+      "[digest] 发送失败:",
+      results.filter((r) => !r.sent).map((r) => r.email).join(", ")
+    );
+  }
+  return { ok: true, date, candidates, sent, failed, results };
 }
 
 // 给单个用户发一封真·digest(复用与全量推送完全相同的 sendDigest/sendAlertsDigest 模板)。
