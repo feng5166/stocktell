@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json().catch(() => ({}));
   let userId: string | undefined = body.userId;
-  const email: string | undefined = body.email;
+  const email: string | undefined = body.email; // 内容所属用户(按其自选渲染)
+  const to: string | undefined = body.to; // 可选:投递到这个地址(抽查别人的简报发到自己邮箱)
 
   if (!userId && email) {
     const db = getPrisma();
@@ -31,6 +32,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "missing userId or email" }, { status: 400 });
   }
 
-  const res = await sendDigestToUser(userId);
+  const res = await sendDigestToUser(userId, to);
   return NextResponse.json(res);
 }
