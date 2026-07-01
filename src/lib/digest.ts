@@ -9,7 +9,7 @@ import { getMorningBrief } from "@/lib/morning-brief";
 import { fundFlowFor, type FundFlowItem } from "@/lib/fund-flow";
 import { riskEventsFor } from "@/lib/risk-radar";
 import { STOCK_MAP } from "@/data/stocks";
-import { unsubUrl } from "@/lib/unsub";
+import { unsubFooter } from "@/lib/unsub";
 
 // 全量发信节流 + 失败重试:Resend 有速率上限,无间隔紧循环会偶发 429 丢邮件
 // (已踩:2026-07-01 全量推送 peggiezhou 撞限流失败)。每封间隔 + 失败等一下重试一次。
@@ -21,20 +21,6 @@ async function trySend(fn: () => Promise<boolean>): Promise<boolean> {
   return fn();
 }
 
-// 邮件页脚退订:刻意低调(小灰字,非按钮)——退订仍须可达(合规 + 找不到会点"垃圾邮件"反伤域名信誉),
-// 但不抢眼。给两条路:一键退订链接 + 到「设置」管理。保留 List-Unsubscribe 头(客户端原生一键退订)。
-function unsubParts(base: string, userId: string) {
-  const url = unsubUrl(base, userId);
-  const html = `<p style="margin:20px 0 0;text-align:center;color:#bbb;font-size:11px;line-height:1.6">
-      不想收到?<a href="${url}" style="color:#aaa;text-decoration:underline">退订</a>,或在<a href="${base}/settings" style="color:#aaa;text-decoration:underline">设置</a>里管理推送
-    </p>`;
-  const text = `\n\n不想收到?退订:${url} · 或在设置里管理:${base}/settings`;
-  const headers = {
-    "List-Unsubscribe": `<${url}>`,
-    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-  };
-  return { html, text, headers };
-}
 
 // 资金面"异动"阈值(绝对额,亿元):达到才单独触发推送,避免日常小波动骚扰
 const NET_MF_ALERT = 3.0; // 主力净流入/流出
@@ -95,7 +81,7 @@ async function sendAlertsDigest(
   alertLines: string[]
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.me";
-  const unsub = unsubParts(base, userId);
+  const unsub = unsubFooter(base, userId);
   const text =
     `今天没有跟你的票相关的隔夜美股动态,但你的持仓有以下要注意:\n\n` +
     alertLines.map((l) => `· ${l}`).join("\n") +
@@ -163,7 +149,7 @@ async function sendDigest(
   alerts: string[]
 ): Promise<boolean> {
   const base = process.env.NEXTAUTH_URL || "https://stocktell.me";
-  const unsub = unsubParts(base, userId);
+  const unsub = unsubFooter(base, userId);
   const rows = items.map((it) => {
     const benes = it.beneficiaries.map((b) => b.name).join("、");
     return { impact: it.impact, title: it.title, benes, take: oneLineTake(it.retailTake) };

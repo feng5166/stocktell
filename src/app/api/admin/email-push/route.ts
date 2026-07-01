@@ -3,7 +3,7 @@ import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mailer";
-import { unsubUrl } from "@/lib/unsub";
+import { unsubFooter } from "@/lib/unsub";
 
 export const dynamic = "force-dynamic";
 
@@ -57,21 +57,18 @@ export async function POST(req: NextRequest) {
 
   const results: { id: string; ok: boolean }[] = [];
   for (const u of targets) {
-    const url = unsubUrl(base, u.id);
+    const unsub = unsubFooter(base, u.id);
     const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
       <p style="color:#888;font-size:12px;margin:0 0 12px">StockTell</p>
       <div style="font-size:14px;line-height:1.75">${bodyHtml}</div>
-      <p style="margin:20px 0 0;text-align:center;color:#bbb;font-size:11px;line-height:1.6">不想收到?<a href="${url}" style="color:#aaa;text-decoration:underline">退订</a>,或在<a href="${base}/settings" style="color:#aaa;text-decoration:underline">设置</a>里管理推送</p>
+      ${unsub.html}
     </div>`;
     const ok = await sendMail({
       to: u.email,
       subject,
-      text: `${text}\n\n不想收到?退订:${url} · 或在设置里管理:${base}/settings`,
+      text: `${text}${unsub.text}`,
       html,
-      headers: {
-        "List-Unsubscribe": `<${url}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
+      headers: unsub.headers,
     });
     results.push({ id: u.id, ok });
   }
