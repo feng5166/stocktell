@@ -40,6 +40,8 @@ export default function AdminUsersClient() {
   const [sendTo, setSendTo] = useState<Row | null>(null);
   const [sendText, setSendText] = useState("");
   const [sending, setSending] = useState(false);
+  const [sortKey, setSortKey] = useState<"createdAt" | "lastLoginAt">("lastLoginAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,6 +104,25 @@ export default function AdminUsersClient() {
     );
   });
 
+  // 两个时间列可点表头排序;null(没登录过)恒沉底。默认「最近登录」倒序=最近活跃置顶。
+  const sorted = [...filtered].sort((a, b) => {
+    const av = a[sortKey] ? new Date(a[sortKey] as string).getTime() : null;
+    const bv = b[sortKey] ? new Date(b[sortKey] as string).getTime() : null;
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1; // null 沉底
+    if (bv === null) return -1;
+    return sortDir === "desc" ? bv - av : av - bv;
+  });
+  const toggleSort = (key: "createdAt" | "lastLoginAt") => {
+    if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+  const arrow = (key: "createdAt" | "lastLoginAt") =>
+    sortKey === key ? (sortDir === "desc" ? " ↓" : " ↑") : "";
+
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-h1 font-semibold text-gray-900">网站用户</h1>
@@ -140,22 +161,32 @@ export default function AdminUsersClient() {
           <thead className="bg-gray-50 text-left text-xs text-gray-500">
             <tr>
               <th className="px-3 py-2 font-medium">用户</th>
-              <th className="px-3 py-2 font-medium">注册时间</th>
-              <th className="px-3 py-2 font-medium">最近登录</th>
+              <th
+                className="cursor-pointer select-none px-3 py-2 font-medium hover:text-gray-700"
+                onClick={() => toggleSort("createdAt")}
+              >
+                注册时间{arrow("createdAt")}
+              </th>
+              <th
+                className="cursor-pointer select-none px-3 py-2 font-medium hover:text-gray-700"
+                onClick={() => toggleSort("lastLoginAt")}
+              >
+                最近登录{arrow("lastLoginAt")}
+              </th>
               <th className="px-3 py-2 font-medium">自选</th>
               <th className="px-3 py-2 font-medium">邮件订阅</th>
               <th className="px-3 py-2 font-medium">微信</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-gray-400">
                   {loading ? "加载中…" : "无数据"}
                 </td>
               </tr>
             )}
-            {filtered.map((u) => (
+            {sorted.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50">
                 <td className="px-3 py-2.5">
                   <div className="font-medium text-gray-800">
