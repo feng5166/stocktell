@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
       weixinOpenId: true,
       digestOptOut: true,
       createdAt: true,
+      lastLoginAt: true,
     },
     orderBy: { createdAt: "desc" },
     take: 1000,
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
     email: u.email,
     nickname: u.nickname,
     createdAt: u.createdAt,
+    lastLoginAt: u.lastLoginAt, // 最近一次登录(null=本功能上线后还没登录过)
     weixinBound: !!u.weixinOpenId,
     openId: u.weixinOpenId,
     digestOptOut: u.digestOptOut, // 已退订每日邮件

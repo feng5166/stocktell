@@ -104,4 +104,20 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  events: {
+    // 记录最近登录时间(所有 provider 通用)。列可能尚未建(先部署后 init-db)→ 吞错不阻断登录。
+    async signIn({ user }) {
+      if (!user?.id) return;
+      const db = getPrisma();
+      if (!db) return;
+      try {
+        await db.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
+      } catch {
+        /* last_login_at 列未建 / 用户不存在 等,不影响登录 */
+      }
+    },
+  },
 };

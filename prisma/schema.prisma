@@ -39,6 +39,8 @@ model User {
   // 关闭雷区提醒(解禁/增减持/质押/ST,默认开)
   riskOptOut   Boolean  @default(false) @map("risk_opt_out")
   createdAt    DateTime @default(now()) @map("created_at")
+  // 最近一次登录时间:每次成功登录由 NextAuth events.signIn 更新(JWT 模式无 Session 表,故显式记录)
+  lastLoginAt  DateTime? @map("last_login_at")
 
   @@map("users")
 }

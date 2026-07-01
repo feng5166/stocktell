@@ -7,6 +7,7 @@ interface Row {
   email: string | null;
   nickname: string | null;
   createdAt: string;
+  lastLoginAt?: string | null; // 最近一次登录(null=本功能上线后还没登录过)
   weixinBound: boolean;
   openId: string | null;
   watchlistCount?: number; // 自选数量
@@ -140,6 +141,7 @@ export default function AdminUsersClient() {
             <tr>
               <th className="px-3 py-2 font-medium">用户</th>
               <th className="px-3 py-2 font-medium">注册时间</th>
+              <th className="px-3 py-2 font-medium">最近登录</th>
               <th className="px-3 py-2 font-medium">自选</th>
               <th className="px-3 py-2 font-medium">邮件订阅</th>
               <th className="px-3 py-2 font-medium">微信</th>
@@ -148,7 +150,7 @@ export default function AdminUsersClient() {
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-3 py-6 text-center text-gray-400">
                   {loading ? "加载中…" : "无数据"}
                 </td>
               </tr>
@@ -164,6 +166,9 @@ export default function AdminUsersClient() {
                   )}
                 </td>
                 <td className="px-3 py-2.5 text-xs text-gray-500">{fmtDate(u.createdAt)}</td>
+                <td className="px-3 py-2.5 text-xs text-gray-500">
+                  {u.lastLoginAt ? fmtDate(u.lastLoginAt) : <span className="text-gray-300">—</span>}
+                </td>
                 <td className="px-3 py-2.5 text-xs">
                   {u.watchlistCount && u.watchlistCount > 0 ? (
                     <span className="font-medium text-emerald-600">✓ {u.watchlistCount} 只</span>
