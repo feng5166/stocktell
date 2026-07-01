@@ -30,8 +30,13 @@ export async function GET(req: NextRequest) {
     lines.push("", "—", "StockTell · 不构成投资建议");
     lines.push("https://stocktell.vercel.app");
 
-    await sendFeishu(lines.join("\n"));
-    return NextResponse.json({ ok: true, date, pushed: items.length });
+    const res = await sendFeishu(lines.join("\n"));
+    return NextResponse.json({
+      ok: res.ok,
+      date,
+      pushed: res.ok ? items.length : 0,
+      feishu: res, // 真实发送结果(ok/error),不再静默返回 pushed
+    });
   } catch (e) {
     await alertCron("push-feishu(飞书推送)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });

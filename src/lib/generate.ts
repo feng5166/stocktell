@@ -209,6 +209,24 @@ export function hasSpecificMove(t: string): boolean {
   );
 }
 
+// 把 LLM 文案里的具体涨跌数字"中性化"(去数字、保留其对这只票的差异化分析),
+// 而不是整条丢弃换模板——否则同向普涨日 N 条会全塌成同一句模板,千篇一律。
+// 中性化后若仍残留数字,调用方再回退模板。
+export function neutralizeNumbers(t: string): string {
+  return t
+    // 涨/跌 [超|了|约] N [个][多][点|%] → 涨/跌(如 涨了3个多点/涨超5%/微涨0.87% → 涨)
+    .replace(/([涨跌])\s*(?:超|了|约)?\s*\d+(?:\.\d+)?\s*个?\s*多?\s*[点%]?/g, "$1")
+    // 残留的 +N% / -N% / N% → 去掉
+    .replace(/[+\-]?\d+(?:\.\d+)?\s*%/g, "")
+    // 残留的 "N 个多点"
+    .replace(/\d+\s*个\s*多?\s*点/g, "")
+    // 收尾清理:多空格 / 重复标点 / 悬空的"了"
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/([,,。;;、])\s*\1+/g, "$1")
+    .replace(/([涨跌])了(?=[,,。;;、\s]|$)/g, "$1")
+    .trim();
+}
+
 // 模板兜底的「散户怎么想」:按方向 + A股相对美股的强弱定性,给"所以呢"+一句真提醒(非买卖)。
 // 一律不写具体涨跌数字(美股幅度也只用定性"大跌/重挫/微跌"),避免与页面实时行情打架。
 function buildTake(m: Mover): string {
@@ -226,10 +244,23 @@ function buildTake(m: Mover): string {
 
   // 一律【前瞻】:早报盘前生成、A 股当天还没开盘、方向未知,绝不断言 A 股已经怎么走
   // (否则和页面顶部实时行情打架,如"+3.65%"配文"微跌")。只陈述触发美股(隔夜已收盘)+ A 股该盯什么。
+  const pos = first?.position; // 上游/中游/下游 → 分化措辞,避免多条模板雷同
   if (m.change > 0) {
-    return `${lead}海外${m.name}${tag}${up},A股${names}${color}开盘重点看能不能放量跟上——跟得上是真共振、别追在情绪高点;跟不上要么没轮到、要么本就不相关(海外营收占比低),别一开盘就冲。`;
+    const watch =
+      pos === "上游"
+        ? "开盘看订单/产能能不能兑现,别只跟着情绪冲"
+        : pos === "下游"
+        ? "开盘看需求侧有没有放量,情绪票追高尤其危险"
+        : "开盘重点看能不能放量跟上,跟得上才是真共振、别追在情绪高点";
+    return `${lead}海外${m.name}${tag}${up},A股${names}${color}${watch};跟不上要么没轮到、要么本就不相关(海外营收占比低),别一开盘就冲。`;
   }
-  return `${lead}海外${m.name}${tag}${down},A股${names}${color}开盘大概率承压——关键看是低开企稳(常是错杀)还是低开杀跌(真承压),别被恐慌带着走;若有独立逻辑的扛住了,也留意补跌还没轮到的风险。`;
+  const watchD =
+    pos === "上游"
+      ? "开盘看是订单预期变了还是纯情绪杀,别把承压当错杀去抄"
+      : pos === "下游"
+      ? "开盘看需求端有没有被误伤,恐慌杀多半只是情绪"
+      : "开盘关键看低开企稳(常是错杀)还是低开杀跌(真承压)";
+  return `${lead}海外${m.name}${tag}${down},A股${names}${color}${watchD},别被恐慌带着走;若有独立逻辑的扛住了,也留意补跌还没轮到的风险。`;
 }
 
 /* ---------- LLM 生成 ---------- */
@@ -326,8 +357,12 @@ async function llmOneItem(
     triggerName: m.name,
     triggerChange: m.change,
     beneficiaries,
-    // 零容忍兜底:LLM 仍写了具体涨跌数字 → 换成确定性、无数字的模板文案
-    retailTake: hasSpecificMove(it.retailTake) ? buildTake(m) : it.retailTake,
+    // 先把数字中性化(保留 LLM 对这只票的差异化分析);仍残留数字/被清空才回退模板。
+    // 避免"带数字就整条换模板"导致同向普涨日文案雷同。
+    retailTake: (() => {
+      const n = neutralizeNumbers(it.retailTake);
+      return n.length >= 8 && !hasSpecificMove(n) ? n : buildTake(m);
+    })(),
     sourceUrl: null,
   };
 }

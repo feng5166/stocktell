@@ -1,11 +1,13 @@
 // 飞书自建应用机器人:发文本消息到指定用户(参照 cyberfate 反馈提醒)。
 // 需环境变量:FEISHU_BOT_APP_ID / FEISHU_BOT_APP_SECRET / FEISHU_USER_OPEN_ID
 // 未配置则静默跳过,不影响主流程。
-export async function sendFeishu(text: string): Promise<void> {
+export async function sendFeishu(
+  text: string
+): Promise<{ ok: boolean; error?: string }> {
   const appId = process.env.FEISHU_BOT_APP_ID;
   const appSecret = process.env.FEISHU_BOT_APP_SECRET;
   const openId = process.env.FEISHU_USER_OPEN_ID;
-  if (!appId || !appSecret || !openId) return;
+  if (!appId || !appSecret || !openId) return { ok: false, error: "missing-env" };
 
   try {
     const tokenRes = await fetch(
@@ -25,7 +27,7 @@ export async function sendFeishu(text: string): Promise<void> {
     };
     if (tokenData.code !== 0 || !tokenData.tenant_access_token) {
       console.error("[feishu] token error:", tokenData);
-      return;
+      return { ok: false, error: `token:${tokenData.code}` };
     }
 
     const sendRes = await fetch(
@@ -44,9 +46,14 @@ export async function sendFeishu(text: string): Promise<void> {
       }
     );
     const sendData = (await sendRes.json()) as { code: number; msg?: string };
-    if (sendData.code !== 0) console.error("[feishu] send error:", sendData);
+    if (sendData.code !== 0) {
+      console.error("[feishu] send error:", sendData);
+      return { ok: false, error: `send:${sendData.code}:${sendData.msg ?? ""}` };
+    }
+    return { ok: true };
   } catch (e) {
     console.error("[feishu] exception:", e);
+    return { ok: false, error: `exception:${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
