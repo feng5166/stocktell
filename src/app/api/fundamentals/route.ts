@@ -5,6 +5,7 @@ import { fetchFundamental } from "@/lib/tushare";
 import { singleFlight } from "@/lib/single-flight";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
+import { alertThrottled } from "@/lib/monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,14 @@ async function cachedFundamental(code: string) {
   let f: Awaited<ReturnType<typeof fetchFundamental>>;
   try {
     f = await singleFlight(`fundamental:${code}`, () => fetchFundamental(code));
-  } catch {
+  } catch (e) {
+    // 真失败(Tushare 报错/超时)才告警;null(这只票本就无 daily_basic)不算失败、不报。
+    await alertThrottled(
+      "fetch-fail:fundamentals",
+      `⚠️ StockTell 基本面获取失败(Tushare)| code=${code}\n${
+        e instanceof Error ? e.message : String(e)
+      }`
+    );
     return null;
   }
   if (db && f) {
