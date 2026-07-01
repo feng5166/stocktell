@@ -56,12 +56,10 @@ export async function similarityFor(
     usDailyHistory(primary.code, "2y"),
     dailyHistory(aCode, ymdYearsAgo(2)),
   ]);
-  // 数据源失败会静默返回 [](yahoo catch→[]、tushare tsCall→[])。主关联美股都是成熟标的、必有 2 年历史,
-  // 故任一为空≈拉取失败(而非真无历史)→ 抛错让上层不缓存 + 告警,避免把失败当"无相似性"毒化缓存。
-  if (us.length === 0 || aHist.length === 0) {
-    throw new Error(`similarity-fetch-fail:${aCode}`);
-  }
-  if (us.length < 20 || aHist.length < 20) return null; // 真样本不足(如次新股),合法无数据
+  // 样本不足→null(合法无数据)。注:数据源失败也会静默返回 [](→<20→null),这里不强抛:
+  // similarity 是低敏感增强块,"失败当无数据缓存"的代价小(当天不显示、按天键次日自愈),
+  // 强抛会让"持续拉取为空"的票每次重算数秒+误告警,得不偿失(与 risk 的"无风险=安全声明"不同)。
+  if (us.length < 20 || aHist.length < 20) return null;
 
   const aDates = aHist.map((b) => b.date); // 升序
   const aByDate = new Map(aHist.map((b) => [b.date, b.pct]));
