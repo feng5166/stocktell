@@ -546,11 +546,11 @@ export default function Dashboard() {
           </FilterGroup>
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <div className="flex items-center gap-2">
-              <span className="w-8 shrink-0 text-xs text-gray-400">板块</span>
+              <span className="w-8 shrink-0 text-xs text-gray-500">板块</span>
               <select
                 value={sector}
                 onChange={(e) => setSector(e.target.value)}
-                className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-gray-900"
+                className="min-h-[44px] rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-gray-900 sm:min-h-0"
               >
                 <option value="全部">全部({SECTORS.length})</option>
                 {SECTORS.map((s) => (
@@ -561,11 +561,11 @@ export default function Dashboard() {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-8 shrink-0 text-xs text-gray-400">概念</span>
+              <span className="w-8 shrink-0 text-xs text-gray-500">概念</span>
               <select
                 value={concept}
                 onChange={(e) => setConcept(e.target.value)}
-                className="max-w-[180px] rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-gray-900"
+                className="min-h-[44px] max-w-[180px] rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-gray-900 sm:min-h-0"
               >
                 <option value="全部">全部概念({CONCEPT_OPTIONS.length})</option>
                 {CONCEPT_OPTIONS.map((c) => (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { track } from "@/lib/analytics";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import {
   pushSupported,
   getPushSubscription,
@@ -330,6 +331,7 @@ function WeixinCard() {
   const [bound, setBound] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  useLockBodyScroll(showModal);
   const [qrImg, setQrImg] = useState<string | null>(null);
   const [qrcode, setQrcode] = useState<string | null>(null);
   const [bindState, setBindState] = useState<
@@ -568,20 +570,25 @@ function Switch({
   onChange: (next: boolean) => void;
 }) {
   return (
+    // 外层按钮撑到 44px 触达热区;内层 span 保持 24px 视觉轨道不变
     <button
       role="switch"
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-        checked ? "bg-emerald-600" : "bg-gray-300"
-      }`}
+      className="inline-flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-50"
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0.5"
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          checked ? "bg-emerald-600" : "bg-gray-300"
         }`}
-      />
+      >
+        <span
+          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0.5"
+          }`}
+        />
+      </span>
     </button>
   );
 }

@@ -48,7 +48,7 @@ export function PWARegister() {
   return (
     <button
       onClick={() => window.location.reload()}
-      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[101] mx-auto flex min-h-[40px] w-fit items-center justify-center rounded-full bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-lg sm:bottom-[calc(1rem+env(safe-area-inset-bottom))]"
+      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-[101] mx-auto flex min-h-[40px] w-fit items-center justify-center rounded-full bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-lg sm:bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]"
     >
       ✨ 有新版本 · 点此刷新
     </button>

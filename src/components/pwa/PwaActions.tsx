@@ -118,7 +118,7 @@ export function PwaActions() {
   if (!showInstall && !toast) return null;
 
   return (
-    <div className="fixed right-4 top-[72px] z-30 flex flex-col items-end gap-2 sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:top-auto">
+    <div className="fixed right-4 top-[72px] z-30 flex flex-col items-end gap-2 sm:bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:top-auto">
       {toast && (
         <div
           role="status"
