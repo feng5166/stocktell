@@ -513,12 +513,12 @@ function BriefingCard({
         <p className="text-sm leading-relaxed text-gray-800">{inlineBold(item.retailTake, "rt-")}</p>
 
         {!deepStarted && (
-          <div className="mt-2">
+          <div className="mt-2 flex justify-end">
             <button
               onClick={loadDeep}
-              className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-100 px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 active:bg-gray-200"
+              className="inline-flex min-h-[40px] items-center gap-1 py-1.5 text-sm text-gray-500 transition-colors hover:text-gray-700"
             >
-              🔍 让 StockTell 深读这条
+              🔍 让 StockTell 深读这条 →
             </button>
           </div>
         )}
