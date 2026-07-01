@@ -203,13 +203,13 @@ async function sendRiskEmail(
     Array.from(byStock.entries())
       .map(([name, evs]) => `${name}\n` + evs.map((e) => `  ${e.text}`).join("\n"))
       .join("\n\n") +
-    `\n\n打开看详情:${base}/#mine\n以上为公开信息整理,提示风险,不构成投资建议。\n\n不想收到?取消推送:${url}`;
+    `\n\n打开看详情:${base}/#mine\n以上为公开信息整理,提示风险,不构成投资建议。\n\n不想收到?退订:${url} · 或在设置里管理:${base}/settings`;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 10px">⚠️ StockTell 雷区提醒</p>
     ${blocks}
     <p><a href="${base}/#mine" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
     <p style="color:#aaa;font-size:11px">以上为公开信息整理,提示风险,不构成投资建议。</p>
-    <p style="margin:16px 0 0;text-align:center"><a href="${url}" style="color:#999;font-size:12px">取消每日推送</a></p>
+    <p style="margin:20px 0 0;text-align:center;color:#bbb;font-size:11px;line-height:1.6">不想收到?<a href="${url}" style="color:#aaa;text-decoration:underline">退订</a>,或在<a href="${base}/settings" style="color:#aaa;text-decoration:underline">设置</a>里管理推送</p>
   </div>`;
   return sendMail({
     to,

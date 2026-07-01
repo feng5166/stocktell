@@ -99,8 +99,24 @@ export default function AdminEmailClient() {
         </button>
       </div>
 
+      {/* 反馈改成固定悬浮 toast:发送按钮在底部,原来反馈在顶部会滚出视野=像"没反应"。
+          按结果配色:成功绿/失败红/发送中灰/校验提示琥珀。 */}
       {msg && (
-        <div className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{msg}</div>
+        <div
+          className={`fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg ${
+            msg.startsWith("已发送")
+              ? "bg-emerald-600"
+              : msg.startsWith("失败") ||
+                msg.startsWith("出错") ||
+                msg.includes("加载失败")
+              ? "bg-rose-600"
+              : msg === "发送中…"
+              ? "bg-gray-800"
+              : "bg-amber-500"
+          }`}
+        >
+          {msg}
+        </div>
       )}
 
       {/* 总览 */}

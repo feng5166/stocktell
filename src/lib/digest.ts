@@ -21,13 +21,14 @@ async function trySend(fn: () => Promise<boolean>): Promise<boolean> {
   return fn();
 }
 
-// 邮件页脚:取消推送按钮(HTML)+ 纯文本退订行 + List-Unsubscribe 头(邮件客户端原生一键退订)
+// 邮件页脚退订:刻意低调(小灰字,非按钮)——退订仍须可达(合规 + 找不到会点"垃圾邮件"反伤域名信誉),
+// 但不抢眼。给两条路:一键退订链接 + 到「设置」管理。保留 List-Unsubscribe 头(客户端原生一键退订)。
 function unsubParts(base: string, userId: string) {
   const url = unsubUrl(base, userId);
-  const html = `<p style="margin:16px 0 0;text-align:center">
-      <a href="${url}" style="display:inline-block;color:#999;font-size:12px;text-decoration:none;border:1px solid #e2e2e2;border-radius:8px;padding:7px 14px">取消每日推送</a>
+  const html = `<p style="margin:20px 0 0;text-align:center;color:#bbb;font-size:11px;line-height:1.6">
+      不想收到?<a href="${url}" style="color:#aaa;text-decoration:underline">退订</a>,或在<a href="${base}/settings" style="color:#aaa;text-decoration:underline">设置</a>里管理推送
     </p>`;
-  const text = `\n\n不想再收到每日推送?点此取消:${url}`;
+  const text = `\n\n不想收到?退订:${url} · 或在设置里管理:${base}/settings`;
   const headers = {
     "List-Unsubscribe": `<${url}>`,
     "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
