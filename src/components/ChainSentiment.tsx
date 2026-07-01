@@ -81,6 +81,23 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
         : { t: "中性", c: "bg-gray-100 text-gray-500" };
   }
 
+  // A股 EOD(涨跌/主力净流入)Tushare 傍晚才发布。交易日盘后、数据还停在上一交易日时,
+  // 给一句"约傍晚更新"提示,免得用户以为没更新。周末不显示(本就无当日数据)。
+  const fmtDay = (dt: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(dt);
+  const wd = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    weekday: "short",
+  }).format(new Date());
+  const aStale = Boolean(
+    d.date && d.date !== fmtDay(new Date()) && wd !== "Sat" && wd !== "Sun"
+  );
+
   return (
     <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
       <div className="mb-2.5 flex items-center gap-2">
@@ -141,6 +158,11 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
           </div>
         )}
       </div>
+      {aStale && (
+        <p className="mt-2 text-meta text-gray-400">
+          A股为 {d.date} 收盘数据 · 今日盘后数据约傍晚更新
+        </p>
+      )}
     </div>
   );
 }
