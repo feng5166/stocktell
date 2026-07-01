@@ -61,14 +61,12 @@ export async function POST(req: NextRequest) {
     const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
       <p style="color:#888;font-size:12px;margin:0 0 12px">StockTell</p>
       <div style="font-size:14px;line-height:1.75">${bodyHtml}</div>
-      <p style="margin:18px 0 0;text-align:center">
-        <a href="${url}" style="display:inline-block;color:#999;font-size:12px;text-decoration:none;border:1px solid #e2e2e2;border-radius:8px;padding:7px 14px">取消每日推送</a>
-      </p>
+      <p style="margin:20px 0 0;text-align:center;color:#bbb;font-size:11px;line-height:1.6">不想收到?<a href="${url}" style="color:#aaa;text-decoration:underline">退订</a>,或在<a href="${base}/settings" style="color:#aaa;text-decoration:underline">设置</a>里管理推送</p>
     </div>`;
     const ok = await sendMail({
       to: u.email,
       subject,
-      text: `${text}\n\n不想再收到每日推送?点此取消:${url}`,
+      text: `${text}\n\n不想收到?退订:${url} · 或在设置里管理:${base}/settings`,
       html,
       headers: {
         "List-Unsubscribe": `<${url}>`,

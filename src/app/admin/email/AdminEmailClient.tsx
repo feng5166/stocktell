@@ -182,7 +182,7 @@ export default function AdminEmailClient() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={6}
-          placeholder="邮件正文…(纯文本,换行会保留;底部自动附「取消每日推送」)"
+          placeholder="邮件正文…(纯文本,换行会保留;底部自动附小字退订链接)"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
         />
         <div className="flex gap-2">
