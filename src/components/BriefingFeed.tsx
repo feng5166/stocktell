@@ -15,6 +15,7 @@ import { WatchOverview } from "@/components/WatchOverview";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 const FREE_LIMIT = 3;
 
@@ -538,7 +539,7 @@ function BriefingCard({
                 {renderRich(deep)}
                 {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
                 {!deepLoading && (
-                  <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+                  <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
                     以上为 AI 对公开信息的整理与解读,不构成投资建议。
                   </p>
                 )}
@@ -582,6 +583,7 @@ function colorizePct(text: string): React.ReactNode[] {
 function WhyLine({ code }: { code: string }) {
   const map = useContext(WhyCtx);
   const [showSrc, setShowSrc] = useState(false);
+  useLockBodyScroll(showSrc); // 来源弹层打开时锁背景滚动(在早返回前调用,守住 hooks 顺序)
   const data = map.get(code);
   if (!data || !data.reason) return null;
   const reason = data.reason;
@@ -621,11 +623,11 @@ function WhyLine({ code }: { code: string }) {
 
       {showSrc && hasInSite && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-4 sm:items-center"
           onClick={() => setShowSrc(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+            className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -635,7 +637,7 @@ function WhyLine({ code }: { code: string }) {
               <button
                 type="button"
                 onClick={() => setShowSrc(false)}
-                className="shrink-0 text-gray-400 hover:text-gray-600"
+                className="-m-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                 aria-label="关闭"
               >
                 ✕
@@ -660,7 +662,7 @@ function WhyLine({ code }: { code: string }) {
                 查看原文 ↗
               </a>
             )}
-            <p className="mt-3 border-t border-gray-100 pt-2 text-meta text-gray-400">
+            <p className="mt-3 border-t border-gray-100 pt-2 text-meta text-gray-500">
               内容来自公开检索,仅供参考,以官方公告为准。
             </p>
           </div>

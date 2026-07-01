@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { track } from "@/lib/analytics";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 const CATEGORIES = ["问题", "建议", "其他"] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -30,6 +31,7 @@ export function FeedbackLink({ className }: { className?: string }) {
 }
 
 function FeedbackModal({ onClose }: { onClose: () => void }) {
+  useLockBodyScroll();
   const { data: session } = useSession();
   const [category, setCategory] = useState<Category>("建议");
   const [content, setContent] = useState("");
@@ -75,14 +77,14 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl sm:max-h-[85vh] sm:rounded-2xl sm:pb-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">意见反馈</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700"
+            className="-m-2 inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             aria-label="关闭"
           >
             ✕
@@ -129,7 +131,6 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setContent(e.target.value)}
               rows={4}
               maxLength={2000}
-              autoFocus
               placeholder={
                 category === "问题"
                   ? "遇到什么问题?在哪个页面、怎么操作出现的…"

@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 interface ConfirmOptions {
   title: string;
@@ -30,6 +31,7 @@ export function useConfirm() {
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [opts, setOpts] = useState<ConfirmOptions | null>(null);
   const resolver = useRef<((v: boolean) => void) | null>(null);
+  useLockBodyScroll(!!opts);
 
   const confirm = useCallback<ConfirmFn>((o) => {
     setOpts(o);

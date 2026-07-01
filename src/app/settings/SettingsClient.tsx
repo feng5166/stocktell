@@ -477,11 +477,11 @@ function WeixinCard() {
 
       {showModal && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-4 sm:items-center"
           onClick={closeModal}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+            className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
@@ -490,7 +490,7 @@ function WeixinCard() {
               </h3>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600"
+                className="-m-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                 aria-label="关闭"
               >
                 ✕

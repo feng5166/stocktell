@@ -228,7 +228,7 @@ export function OvernightRadar() {
           </div>
         ))}
       </div>
-      <p className="mt-2.5 text-[11px] leading-relaxed text-gray-400">
+      <p className="mt-2.5 text-[11px] leading-relaxed text-gray-500">
         历史规律不代表未来,不意味 A 股一定补涨。联动有效率为历史统计,非预测。
       </p>
     </div>

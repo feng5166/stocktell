@@ -118,7 +118,7 @@ export function PwaActions() {
   if (!showInstall && !toast) return null;
 
   return (
-    <div className="fixed right-4 top-[72px] z-[90] flex flex-col items-end gap-2 sm:bottom-4 sm:top-auto">
+    <div className="fixed right-4 top-[72px] z-30 flex flex-col items-end gap-2 sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:top-auto">
       {toast && (
         <div
           role="status"
@@ -147,13 +147,13 @@ export function PwaActions() {
         <div className="flex items-center gap-2">
           <button
             onClick={dismiss}
-            className="rounded-full bg-white/80 px-2 py-1 text-[11px] text-gray-500 shadow hover:bg-white"
+            className="inline-flex min-h-[36px] items-center rounded-full bg-white/80 px-3 py-1 text-[11px] text-gray-600 shadow hover:bg-white"
           >
             不再提示
           </button>
           <button
             onClick={install}
-            className="rounded-full bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-lg hover:bg-gray-700"
+            className="inline-flex min-h-[36px] items-center rounded-full bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-lg hover:bg-gray-700"
           >
             📲 安装到桌面
           </button>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics";
+import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
 // 本设备上次登录用的邮箱(只记邮箱、不记密码),下次自动回填登录框
@@ -17,6 +18,7 @@ export function AuthModal({
   reason?: string;
 }) {
   const router = useRouter();
+  useLockBodyScroll();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
@@ -106,7 +108,7 @@ export function AuthModal({
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
+          className="absolute right-2 top-2 inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           aria-label="关闭"
         >
           ✕
@@ -267,16 +269,16 @@ function ForgotPasswordModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
+          className="absolute right-2 top-2 inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           aria-label="关闭"
         >
           ✕
@@ -311,14 +313,14 @@ function ForgotPasswordModal({
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={onClose}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+                className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
               >
                 取消
               </button>
               <button
                 onClick={submit}
                 disabled={loading}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-60"
+                className="inline-flex min-h-[44px] items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-60"
               >
                 {loading ? "发送中…" : "发送重置链接"}
               </button>
