@@ -99,8 +99,10 @@ export function withMetrics(route: string, handler: RouteHandler): RouteHandler 
       ok = false;
       throw e;
     } finally {
-      // await 保证 serverless 冻结前写入(单次 upsert 很快);告警有冷却、很少触发。
-      await observe(route, Date.now() - t0, ok);
+      // 不阻塞响应:计时落库 + 慢/错时的 sendFeishu 网络往返放到响应之后的游离 promise 里跑。
+      // 监控数据非关键,serverless 冻结偶有丢点/漏一次告警可接受(告警有 10min 冷却、下次会补);
+      // 换来关键路径不被 api_metric 写与飞书告警拖慢。Next 14.2 无 waitUntil/after,故用 fire-and-forget。
+      void observe(route, Date.now() - t0, ok).catch(() => {});
     }
   };
 }
