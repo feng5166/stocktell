@@ -2,7 +2,8 @@
 // 用于邮件(digest)/微信(push-weixin)推送顶部,以及网页「和我相关」顶部。
 // 没配 LLM 时降级为规则概览,绝不喊买卖、不出现用户名字。
 import crypto from "crypto";
-import { getLLM, chatTimed } from "@/lib/llm";
+import { chatTimed } from "@/lib/llm";
+import { getLLMFor } from "@/lib/llm-provider";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
 import { fundFlowFor } from "@/lib/fund-flow";
@@ -31,8 +32,8 @@ export async function buildMorningBrief(
   items: BriefingItem[]
 ): Promise<string | null> {
   if (items.length === 0) return fallback(items);
-  const client = getLLM();
-  if (!client) return fallback(items);
+  const llm = await getLLMFor("fast");
+  if (!llm) return fallback(items);
 
   const payload = items.map((it) => ({
     impact: it.impact,
@@ -80,11 +81,11 @@ export async function buildMorningBrief(
     `\n\n请写这段早报。`;
 
   try {
-    const resp = await chatTimed("morning-brief", () =>
-      client.chat.completions.create(
+    const resp = await chatTimed("morning-brief", llm.provider, () =>
+      llm.client.chat.completions.create(
       {
-        // 早报是短文本,用非推理的 flash:快、且不会被 reasoning 吃掉 token 截断正文。
-        model: process.env.BRIEF_LLM_MODEL || "deepseek-v4-flash",
+        // 早报是短文本,用 fast/flash:快、且不会被 reasoning 吃掉 token 截断正文。
+        model: llm.model,
         max_tokens: 700,
         messages: [
           { role: "system", content: BRIEF_PROMPT },

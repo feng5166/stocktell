@@ -3,7 +3,8 @@
 // 没有 LLM_API_KEY 时用模板生成,保证闭环可跑。
 import { STOCKS, STOCK_MAP, aSharePeers } from "@/data/stocks";
 import { fetchQuotes, type Quote } from "@/lib/quotes";
-import { getLLM, LLM_MODEL, chatTimed } from "@/lib/llm";
+import { chatTimed } from "@/lib/llm";
+import { getLLMFor } from "@/lib/llm-provider";
 import type { Impact, NewBriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { prevAshareTradingDay } from "@/lib/tushare";
@@ -300,7 +301,7 @@ const JSON_SPEC = `只输出一个 JSON 对象:{"impact":"高|中|低","title":"
 
 // 单条 LLM 生成(并行调用的单元)。失败/超时/空内容由调用方按条回退模板。
 async function llmOneItem(
-  client: NonNullable<ReturnType<typeof getLLM>>,
+  llm: NonNullable<Awaited<ReturnType<typeof getLLMFor>>>,
   date: string,
   m: Mover
 ): Promise<NewBriefingItem> {
@@ -323,10 +324,10 @@ async function llmOneItem(
     ? '【特别说明】今天是 A 股节后首个交易日,usChangePct 是该美股在 A 股休市期间的【假期累计涨跌】(跨多日)。title 与 retailTake 要点明"假期累计 / 节后需一次性消化",别用"隔夜"。\n\n'
     : "";
   // 推理模型较慢,故每条单独并行调用;单条 48s 超时 + 禁重试,留在 60s 函数上限内。
-  const resp = await chatTimed("briefing", () =>
-    client.chat.completions.create(
+  const resp = await chatTimed("briefing", llm.provider, () =>
+    llm.client.chat.completions.create(
     {
-      model: LLM_MODEL,
+      model: llm.model,
       max_tokens: 4000,
       response_format: { type: "json_object" },
       messages: [
@@ -372,11 +373,11 @@ async function llmDrafts(
   date: string,
   movers: Mover[]
 ): Promise<NewBriefingItem[]> {
-  const client = getLLM();
-  if (!client) return templateDrafts(date, movers);
+  const llm = await getLLMFor("pro");
+  if (!llm) return templateDrafts(date, movers);
   return Promise.all(
     movers.map((m) =>
-      llmOneItem(client, date, m).catch(() => templateDrafts(date, [m])[0])
+      llmOneItem(llm, date, m).catch(() => templateDrafts(date, [m])[0])
     )
   );
 }
@@ -392,7 +393,9 @@ export async function generateDrafts(opts?: {
 }> {
   const date = opts?.date || todayISO(); // 可指定日期(管理员演示/回测累计口径)
   const { movers, usMarketClosed } = await findMovers(date);
-  const useLLM = !opts?.forceTemplate && Boolean(getLLM());
+  const useLLM =
+    !opts?.forceTemplate &&
+    Boolean(process.env.LLM_API_KEY || process.env.LLM_FALLBACK_API_KEY);
   let drafts: NewBriefingItem[];
   let engine: "llm" | "template" = "template";
   if (useLLM && movers.length > 0) {

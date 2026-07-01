@@ -5,11 +5,16 @@
 //   LLM_MODEL     默认 deepseek-v4-pro(推理模型,质量好但较慢;modelverse 上也有 deepseek-v4-flash / glm-5.2 / qwen3.7-plus ...)
 import OpenAI from "openai";
 import { observe } from "@/lib/metrics";
+import { noteLLMOutcome, type LLMProvider } from "@/lib/llm-provider";
 
-// 计时包装 LLM 非流式调用:把每次大模型调用的耗时记成 llm:<label> 落 api_metric
-// (后台 /admin/metrics 可查时间消耗),慢/失败走同一套飞书告警。返回原始结果。
-// 深读(流式)由 briefing-explain 路由指标覆盖,不重复包。
-export async function chatTimed<T>(label: string, call: () => T): Promise<Awaited<T>> {
+// 计时包装 LLM 非流式调用:把每次大模型调用的耗时记成 llm:<purpose> 落 api_metric
+// (后台 /admin/metrics 可查时间消耗),慢/失败走同一套飞书告警;并记 provider 结果给劣化检测
+// (主连续失败/超时→飞书一键切换提醒)。深读(流式)由 briefing-explain 路由指标覆盖,不重复包。
+export async function chatTimed<T>(
+  purpose: string,
+  provider: LLMProvider,
+  call: () => T
+): Promise<Awaited<T>> {
   const t0 = Date.now();
   let ok = true;
   try {
@@ -18,7 +23,8 @@ export async function chatTimed<T>(label: string, call: () => T): Promise<Awaite
     ok = false;
     throw e;
   } finally {
-    await observe(`llm:${label}`, Date.now() - t0, ok);
+    await observe(`llm:${purpose}`, Date.now() - t0, ok);
+    noteLLMOutcome(provider, ok);
   }
 }
 

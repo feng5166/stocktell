@@ -3,7 +3,7 @@ import { withMetrics } from "@/lib/metrics";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
-import { getLLM, LLM_MODEL_FAST } from "@/lib/llm";
+import { getLLMFor } from "@/lib/llm-provider";
 import { fetchQuotes } from "@/lib/quotes";
 import { STOCK_MAP, resolvePeer } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
@@ -195,13 +195,14 @@ ${lines}
     );
   }
 
-  const client = getLLM();
-  if (!client) return new Response("LLM 未配置", { status: 503 });
+  // 深读走 fast/flash;按后台开关选主(modelverse)或兜底(DeepSeek 官方)。
+  const llm = await getLLMFor("fast");
+  if (!llm) return new Response("LLM 未配置", { status: 503 });
 
   // LLM 服务偶发抖动:create() 失败先重试一次,仍失败返回干净 503(前端显示「重试」按钮)。
   const createStream = () =>
-    client.chat.completions.create({
-      model: LLM_MODEL_FAST,
+    llm.client.chat.completions.create({
+      model: llm.model,
       stream: true,
       max_tokens: 2000,
       messages: [
