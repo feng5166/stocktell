@@ -29,7 +29,22 @@ export function Fundamentals({ code, market }: { code: string; market: string })
       .finally(() => setLoaded(true));
   }, [code, market]);
 
-  if (market !== "A股" || !loaded || !f) return null;
+  if (market !== "A股") return null;
+  // 加载占位:与真实指标行同结构同高,加载完成后原地替换,不把下方内容顶下去(CLS)
+  if (!loaded) {
+    return (
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+        {["市盈率TTM", "PB", "总市值", "换手"].map((l) => (
+          <span key={l} className="inline-flex items-center gap-1">
+            {l}
+            <span className="inline-block h-3 w-9 animate-pulse rounded bg-gray-200" />
+          </span>
+        ))}
+        <span className="inline-block h-3 w-24 animate-pulse rounded bg-gray-100" />
+      </div>
+    );
+  }
+  if (!f) return null;
 
   const fmt = (v: number | null, suffix = "") =>
     v === null ? "—" : `${v}${suffix}`;

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useWatchlist, type UseWatchlist } from "@/components/useWatchlist";
 import { useProgressive } from "@/components/useProgressive";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { ChainSwitcher } from "@/components/ChainSwitcher";
 import { EtfBoard } from "@/components/EtfBoard";
 import { EtfStrip } from "@/components/EtfStrip";
@@ -751,10 +752,15 @@ function StockTable({
   // 长列表渐进加载:手机/桌面各一份(同时只显示一个视图)
   const mob = useProgressive(sortedRows, 12);
   const desk = useProgressive(sortedRows, 20);
+  // 首帧(未挂载)两套都渲染、靠 CSS 显隐(SSR 安全、不闪);挂载后只保留命中的一套,给移动端减 DOM
+  const isMobile = useIsMobile();
+  const showMobile = isMobile === null || isMobile;
+  const showDesktop = isMobile === null || !isMobile;
 
   return (
     <>
       {/* 手机:卡片列表(桌面 sm 以上隐藏,不影响原表格) */}
+      {showMobile && (
       <div className="space-y-2 sm:hidden">
         {mob.slice.map((s) => (
           <StockCard
@@ -781,8 +787,10 @@ function StockTable({
           </div>
         )}
       </div>
+      )}
 
       {/* 桌面:原表格(手机隐藏) */}
+      {showDesktop && (
       <div className="hidden overflow-hidden rounded-xl bg-white shadow-sm sm:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -844,6 +852,7 @@ function StockTable({
           </table>
         </div>
       </div>
+      )}
     </>
   );
 }

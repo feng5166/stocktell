@@ -33,13 +33,13 @@ export function LiveQuote({ code }: { code: string }) {
     };
   }, [code]);
 
-  // 加载中:占位,避免布局抖动
-  if (!done) return <span className="ml-auto text-sm text-gray-300">···</span>;
-  if (!q) return <span className="ml-auto text-sm text-gray-500">休市 / 行情未连接</span>;
+  // 加载中/无行情/有行情三态统一 leading-7(=text-lg 行盒 1.75rem),避免切换时行高跳变(CLS)
+  if (!done) return <span className="ml-auto text-sm leading-7 text-gray-300">···</span>;
+  if (!q) return <span className="ml-auto text-sm leading-7 text-gray-500">休市 / 行情未连接</span>;
 
   return (
     <span
-      className={`ml-auto font-mono text-lg font-semibold tabular-nums ${
+      className={`ml-auto font-mono text-lg font-semibold leading-7 tabular-nums ${
         q.change > 0
           ? "text-rose-600"
           : q.change < 0
