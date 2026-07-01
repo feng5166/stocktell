@@ -91,6 +91,8 @@
 - **用途**:「为什么动」真实新闻检索(避免编造)。
 - **关键文件**:`src/lib/bocha.ts`(端点 `POST /v1/web-search`)。
 - **环境变量**:`BOCHA_API_KEY`(没配则返回 null,调用方降级,不编造)。
+- **⚠️ 区域坑(必看)**:`api.bochaai.com` 解析到**阿里云北京 SLB**,**Vercel 美区(iad1)连不上**(报 `fetch failed`)。因此调博查的接口**必须钉香港区**:`src/app/api/briefing/why/route.ts` 与 `src/app/api/admin/why-diag/route.ts` 都有 `export const preferredRegion = "hkg1"` —— **别删**,删了「为什么动」来源会再次消失。
+- **诊断**:`GET /api/admin/why-diag`(管理员登录即可)报 key 是否存在/博查 HTTP 状态/命中数/实际执行区/LLM 状态;`?clear=1` 清 `whyCache`(旧 null 结果会挡新数据)。bocha.ts 失败也会 `console.warn`(Vercel 日志可见 401/402/429)。
 
 ---
 
