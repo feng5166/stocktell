@@ -184,7 +184,11 @@ interface Quote {
   change: number;
 }
 
-export default function Dashboard() {
+export default function Dashboard({
+  initialIsMobile,
+}: {
+  initialIsMobile?: boolean;
+} = {}) {
   const [tab, setTab] = useState<Tab>("股票列表");
   const [market, setMarket] = useState<(typeof MARKETS)[number]>("全部");
   const [position, setPosition] = useState<(typeof POSITIONS)[number]>("全部");
@@ -585,7 +589,12 @@ export default function Dashboard() {
         {tab === "股票列表" && (
           <>
             <EtfStrip etfs={listEtfs} quotes={etfQuotes} wl={wl} />
-            <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
+            <StockTable
+              rows={listRows}
+              newsCodes={newsCodes}
+              wl={wl}
+              initialIsMobile={initialIsMobile}
+            />
           </>
         )}
         {tab === "板块ETF" && (
@@ -700,10 +709,12 @@ function StockTable({
   rows,
   newsCodes,
   wl,
+  initialIsMobile,
 }: {
   rows: Stock[];
   newsCodes: Set<string>;
   wl: UseWatchlist;
+  initialIsMobile?: boolean;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (code: string) =>
@@ -752,8 +763,10 @@ function StockTable({
   // 长列表渐进加载:手机/桌面各一份(同时只显示一个视图)
   const mob = useProgressive(sortedRows, 12);
   const desk = useProgressive(sortedRows, 20);
-  // 首帧(未挂载)两套都渲染、靠 CSS 显隐(SSR 安全、不闪);挂载后只保留命中的一套,给移动端减 DOM
-  const isMobile = useIsMobile();
+  // 单树渲染:服务端按 UA 给初值(initialIsMobile)→ 首帧就只渲染命中的一套(零双 DOM);
+  // 无 UA 初值时回退 null → 两套都渲染、靠 CSS 显隐;挂载后统一 matchMedia 兜正。
+  const isMobile = useIsMobile(initialIsMobile ?? null);
+  const known = isMobile !== null; // 已定(UA 或 matchMedia):JS 权威,渲染的那棵去掉响应式隐藏类,避免 UA 误判留白
   const showMobile = isMobile === null || isMobile;
   const showDesktop = isMobile === null || !isMobile;
 
@@ -761,7 +774,7 @@ function StockTable({
     <>
       {/* 手机:卡片列表(桌面 sm 以上隐藏,不影响原表格) */}
       {showMobile && (
-      <div className="space-y-2 sm:hidden">
+      <div className={`space-y-2${known ? "" : " sm:hidden"}`}>
         {mob.slice.map((s) => (
           <StockCard
             key={s.code}
@@ -791,7 +804,11 @@ function StockTable({
 
       {/* 桌面:原表格(手机隐藏) */}
       {showDesktop && (
-      <div className="hidden overflow-hidden rounded-xl bg-white shadow-sm sm:block">
+      <div
+        className={`overflow-hidden rounded-xl bg-white shadow-sm ${
+          known ? "block" : "hidden sm:block"
+        }`}
+      >
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
           <thead>
