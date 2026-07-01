@@ -1,4 +1,5 @@
-// 行情抓取:主源新浪(hq.sinajs.cn),失败时自动回落腾讯(qt.gtimg.cn),消除单点。
+// 行情抓取:主源腾讯(qt.gtimg.cn),缺失时回落新浪(hq.sinajs.cn),消除单点。
+// (原主源新浪,但 Vercel 机房 IP 被新浪 403 封、慢速拒绝拖 5s,故换腾讯优先。)
 // 两源都 GBK 解码。后续要换 Polygon.io / AKShare,只改这一个文件。
 import { STOCK_MAP, sinaSymbol } from "@/data/stocks";
 
@@ -142,7 +143,7 @@ async function fetchTencentChunk(
   return parseTencent(text, codeBySym);
 }
 
-// 主源新浪 → 只对"缺失/超时的那批"用腾讯补齐(而非"Sina 全空才整体回落")。两源符号映射不同。
+// 主源腾讯 → 只对"缺失/超时的那批"用新浪补齐(而非"腾讯全空才整体回落")。两源符号映射不同。
 // 为什么是补缺而非全空回落:每批 6s 超时后"部分成功"是常态;若只在全空时回落,超时那批会
 // 静默缺价、却仍报 live:true,脏数据会污染 DB/进程缓存、简报 movers、盘中提醒、战绩评分。
 async function fetchWithFallback(
@@ -166,11 +167,13 @@ async function fetchWithFallback(
     return Object.assign({}, ...results) as Record<string, Quote>;
   };
 
-  const quotes = await runFor(valid, fetchSinaChunk, sinaSymbolOf);
+  // 主源改腾讯:新浪对机房/Vercel IP 返 403 且慢速拒绝拖 ~5s(实测 Vercel 香港区 403/5s),
+  // 腾讯从同环境稳定 20–100ms。故腾讯优先,新浪仅补腾讯缺失的(本地等非机房环境新浪仍可用)。
+  const quotes = await runFor(valid, fetchTencentChunk, tencentSymbolOf);
   const missing = valid.filter((c) => !(c in quotes));
   if (missing.length > 0) {
-    const backup = await runFor(missing, fetchTencentChunk, tencentSymbolOf);
-    Object.assign(quotes, backup); // 腾讯只补 Sina 缺失的,不覆盖已有(Sina 优先)
+    const backup = await runFor(missing, fetchSinaChunk, sinaSymbolOf);
+    Object.assign(quotes, backup); // 新浪只补腾讯缺失的,不覆盖已有(腾讯优先)
   }
   return { quotes, live: Object.keys(quotes).length > 0 };
 }
