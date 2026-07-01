@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       }
     }
     lines.push("", "—", "StockTell · 不构成投资建议");
-    lines.push("https://stocktell.vercel.app");
+    lines.push("https://stocktell.me");
 
     const res = await sendFeishu(lines.join("\n"));
     return NextResponse.json({

@@ -182,7 +182,7 @@ async function sendRiskEmail(
   userId: string,
   items: { name: string; ev: RiskEvent }[]
 ): Promise<boolean> {
-  const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
+  const base = process.env.NEXTAUTH_URL || "https://stocktell.me";
   const url = unsubUrl(base, userId);
   const byStock = new Map<string, RiskEvent[]>();
   for (const it of items) {
