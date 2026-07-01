@@ -26,6 +26,10 @@ export async function GET(req: NextRequest) {
     take: 1000,
   });
 
+  // 每个用户的自选数量(识别"注册了但没加票"的用户)
+  const wl = await db.watchlist.groupBy({ by: ["userId"], _count: { code: true } });
+  const wlCount = new Map(wl.map((w) => [w.userId, w._count.code]));
+
   const list = users.map((u) => ({
     id: u.id,
     email: u.email,
@@ -34,6 +38,7 @@ export async function GET(req: NextRequest) {
     weixinBound: !!u.weixinOpenId,
     openId: u.weixinOpenId,
     digestOptOut: u.digestOptOut, // 已退订每日邮件
+    watchlistCount: wlCount.get(u.id) ?? 0, // 自选数量
   }));
 
   return NextResponse.json({
@@ -41,6 +46,8 @@ export async function GET(req: NextRequest) {
     total: list.length,
     bound: list.filter((u) => u.weixinBound).length,
     withEmail: list.filter((u) => !!u.email).length,
+    withWatchlist: list.filter((u) => u.watchlistCount > 0).length,
+    subscribed: list.filter((u) => !!u.email && !u.digestOptOut).length,
     users: list,
   });
 }

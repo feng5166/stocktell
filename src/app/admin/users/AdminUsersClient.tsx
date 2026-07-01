@@ -9,6 +9,8 @@ interface Row {
   createdAt: string;
   weixinBound: boolean;
   openId: string | null;
+  watchlistCount?: number; // 自选数量
+  digestOptOut?: boolean; // 已退订每日邮件
 }
 
 function fmtDate(s: string): string {
@@ -138,13 +140,15 @@ export default function AdminUsersClient() {
             <tr>
               <th className="px-3 py-2 font-medium">用户</th>
               <th className="px-3 py-2 font-medium">注册时间</th>
+              <th className="px-3 py-2 font-medium">自选</th>
+              <th className="px-3 py-2 font-medium">邮件订阅</th>
               <th className="px-3 py-2 font-medium">微信</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={5} className="px-3 py-6 text-center text-gray-400">
                   {loading ? "加载中…" : "无数据"}
                 </td>
               </tr>
@@ -160,6 +164,22 @@ export default function AdminUsersClient() {
                   )}
                 </td>
                 <td className="px-3 py-2.5 text-xs text-gray-500">{fmtDate(u.createdAt)}</td>
+                <td className="px-3 py-2.5 text-xs">
+                  {u.watchlistCount && u.watchlistCount > 0 ? (
+                    <span className="font-medium text-emerald-600">✓ {u.watchlistCount} 只</span>
+                  ) : (
+                    <span className="text-amber-600">未加</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-xs">
+                  {!u.email ? (
+                    <span className="text-gray-300">无邮箱</span>
+                  ) : u.digestOptOut ? (
+                    <span className="text-gray-400">已退订</span>
+                  ) : (
+                    <span className="font-medium text-emerald-600">订阅中</span>
+                  )}
+                </td>
                 <td className="px-3 py-2.5">
                   {u.weixinBound ? (
                     <div className="flex items-center gap-2">
