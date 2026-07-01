@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 // 诊断:从 Vercel 函数(hkg1)真调各 LLM 入口的同一小模型(deepseek-v4-flash),比延迟。
 // 这才是决定主入口该用哪个的口径(本机/美国测会因地理错位而反向)。token 或 admin session 鉴权。
