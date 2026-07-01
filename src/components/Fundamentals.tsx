@@ -22,11 +22,21 @@ export function Fundamentals({ code, market }: { code: string; market: string })
       setLoaded(true);
       return;
     }
-    fetch(`/api/fundamentals?code=${code}`, { cache: "no-store" })
+    // 超时兜底:接口异常挂起时不让骨架无限空转,12s 后收尾(loaded=true → 无数据则不渲染)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    fetch(`/api/fundamentals?code=${code}`, { cache: "no-store", signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => setF(d.fundamental ?? null))
       .catch(() => {})
-      .finally(() => setLoaded(true));
+      .finally(() => {
+        clearTimeout(timer);
+        setLoaded(true);
+      });
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
   }, [code, market]);
 
   if (market !== "A股") return null;
