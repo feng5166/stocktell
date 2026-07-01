@@ -11,6 +11,16 @@ import { riskEventsFor } from "@/lib/risk-radar";
 import { STOCK_MAP } from "@/data/stocks";
 import { unsubUrl } from "@/lib/unsub";
 
+// 全量发信节流 + 失败重试:Resend 有速率上限,无间隔紧循环会偶发 429 丢邮件
+// (已踩:2026-07-01 全量推送 peggiezhou 撞限流失败)。每封间隔 + 失败等一下重试一次。
+const DIGEST_THROTTLE_MS = Number(process.env.DIGEST_THROTTLE_MS ?? 500);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+async function trySend(fn: () => Promise<boolean>): Promise<boolean> {
+  if (await fn()) return true;
+  await sleep(1500); // 撞限流/瞬时失败 → 稍等重试一次
+  return fn();
+}
+
 // 邮件页脚:取消推送按钮(HTML)+ 纯文本退订行 + List-Unsubscribe 头(邮件客户端原生一键退订)
 function unsubParts(base: string, userId: string) {
   const url = unsubUrl(base, userId);
@@ -274,18 +284,22 @@ export async function runPreOpenDigest(): Promise<{
       // 有相关简报:个性化早报 + 你的票要注意 + 相关动态
       candidates++;
       const brief = await getMorningBrief(Array.from(codes), relevant);
-      const ok = await sendDigest(u.email, u.id, date, relevant, brief, alerts);
+      const ok = await trySend(() =>
+        sendDigest(u.email!, u.id, date, relevant, brief, alerts)
+      );
       results.push({ userId: u.id, email: u.email, mode: "digest", sent: ok });
       if (ok) sent++;
+      await sleep(DIGEST_THROTTLE_MS);
       continue;
     }
 
     // 无相关简报:只要持仓有雷区/资金面异动就提醒
     if (alerts.length === 0) continue; // 既无简报又无要注意 → 不打扰
     candidates++;
-    const ok = await sendAlertsDigest(u.email, u.id, alerts);
+    const ok = await trySend(() => sendAlertsDigest(u.email!, u.id, alerts));
     results.push({ userId: u.id, email: u.email, mode: "alerts", sent: ok });
     if (ok) sent++;
+    await sleep(DIGEST_THROTTLE_MS);
   }
   const failed = results.filter((r) => !r.sent).length;
   // 记录失败到运行日志(便于排查),并随返回值给后台
