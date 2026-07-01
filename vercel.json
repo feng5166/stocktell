@@ -5,6 +5,14 @@
       "schedule": "0 23 * * *"
     },
     {
+      "path": "/api/cron/briefing-backup",
+      "schedule": "40 23 * * *"
+    },
+    {
+      "path": "/api/cron/briefing-watchdog",
+      "schedule": "30 0 * * *"
+    },
+    {
       "path": "/api/cron/outcome",
       "schedule": "30 7 * * *"
     },
