@@ -117,10 +117,10 @@ export function DeepRead({
   return (
     <>
       {!started && (
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 text-right">
           <button
             onClick={load}
-            className="inline-flex min-h-[40px] items-center gap-1 py-1.5 text-sm text-gray-500 transition-colors hover:text-gray-700"
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
           >
             {label}
           </button>
