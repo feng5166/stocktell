@@ -6,6 +6,7 @@ import { STOCK_MAP } from "@/data/stocks";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
 import { singleFlight } from "@/lib/single-flight";
+import { alertThrottled } from "@/lib/monitor";
 import {
   moneyflowByDate,
   longhuByDate,
@@ -116,4 +117,45 @@ export async function fundFlowFor(codes: string[]): Promise<FundFlowResult> {
   return unstable_cache(() => computeFundFlow(sorted), ["fund-flow", sorted.join(",")], {
     revalidate: 1800,
   })();
+}
+
+// 详情页(单码)专用:在 fundFlowFor 之上再加一层 DB 跨实例缓存(quotes_cache,id=fundflow:code:当天)。
+// fundFlowFor 外层是 unstable_cache(不跨实例),冷实例仍要跑 latestFundYmd 全市场探测 + bundle,易撞
+// 详情页 8s cap 致资金面整行消失。改后:命中秒回、当天有真实数据才写(防"盘前/数据未出"空包毒化)。
+// 批量路径(morning-brief/digest)仍走 fundFlowFor,不经此层(避免 per-code N 次 upsert)。
+export async function cachedFundFlowSingle(code: string): Promise<FundFlowResult> {
+  if (STOCK_MAP[code]?.market !== "A股") return { date: null, items: [] };
+  const id = `fundflow:${code}:${todayISO()}`;
+  const db = getPrisma();
+  if (db) {
+    const row = await db.quotesCache
+      .findUnique({ where: { id }, select: { data: true } })
+      .catch(() => null);
+    if (row?.data) return row.data as unknown as FundFlowResult;
+  }
+  let res: FundFlowResult;
+  try {
+    res = await fundFlowFor([code]);
+  } catch (e) {
+    await alertThrottled(
+      "fetch-fail:fundflow",
+      `⚠️ StockTell 资金面获取失败(Tushare)| code=${code}\n${
+        e instanceof Error ? e.message : String(e)
+      }`
+    );
+    return { date: null, items: [] };
+  }
+  const it = res.items[0];
+  // 写门槛:当天有真实资金数据才落库(对齐 getFundBundle 的判空),否则空包会被永久钉住。
+  const hasReal =
+    res.date != null &&
+    it != null &&
+    (it.netMf != null || it.rzChgYi != null || it.longhu != null);
+  if (db && hasReal) {
+    const data = res as unknown as Prisma.InputJsonValue;
+    await db.quotesCache
+      .upsert({ where: { id }, create: { id, data }, update: { data } })
+      .catch(() => {});
+  }
+  return res;
 }

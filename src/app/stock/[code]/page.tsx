@@ -15,7 +15,7 @@ import { StockTellTake } from "@/components/StockTellTake";
 import { InfoHint } from "@/components/InfoHint";
 import { riskEventsFor } from "@/lib/risk-radar";
 import { financialCheckup } from "@/lib/financials";
-import { fundFlowFor } from "@/lib/fund-flow";
+import { cachedFundFlowSingle } from "@/lib/fund-flow";
 import { ETF_HOLDINGS } from "@/data/etf-holdings.generated";
 import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
@@ -62,7 +62,7 @@ export default async function StockDetail({
   const [riskEvents, checkup, fund, todayBriefs] = await Promise.all([
     isA ? cap(riskEventsFor(s.code), 8000, []) : Promise.resolve([]),
     isA ? cap(financialCheckup(s.code), 8000, null) : Promise.resolve(null),
-    isA ? cap(fundFlowFor([s.code]), 8000, null) : Promise.resolve(null),
+    isA ? cap(cachedFundFlowSingle(s.code), 8000, null) : Promise.resolve(null),
     cap(listBriefing({ date: todayISO(), status: "published" }), 8000, []),
   ]);
   const fundItem = fund?.items[0];

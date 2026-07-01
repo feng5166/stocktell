@@ -1,10 +1,11 @@
 // 个股雷区雷达:绑定自选/持仓的确定性风险事件(解禁/增减持/质押/ST/回购),
 // 详情页 + 和我相关展示,并由 cron 提前/及时推送。纯事实陈述,不喊买卖。
-import { unstable_cache } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { STOCK_MAP } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
 import { singleFlight } from "@/lib/single-flight";
+import { alertThrottled } from "@/lib/monitor";
 import { clawbot } from "@/lib/clawbot";
 import { sendMail } from "@/lib/mailer";
 import { unsubFooter } from "@/lib/unsub";
@@ -39,16 +40,26 @@ function shortHolder(h: string): string {
   return h.replace(/(合伙企业.*|有限公司|股份有限公司|\(.*?\))/g, "").trim().slice(0, 14) || h.slice(0, 14);
 }
 
-async function computeRiskEvents(code: string): Promise<RiskEvent[]> {
-  if (STOCK_MAP[code]?.market !== "A股") return [];
+async function computeRiskEvents(
+  code: string
+): Promise<{ events: RiskEvent[]; sourcedOk: boolean }> {
+  if (STOCK_MAP[code]?.market !== "A股") return { events: [], sourcedOk: true };
   const todayY = todayISO().replace(/-/g, "");
-  const [floats, holders, pledge, repurch, name] = await Promise.all([
-    shareFloatRows(code).catch(() => []),
-    holderTradeRows(code).catch(() => []),
-    pledgeRatioLatest(code).catch(() => null),
-    repurchaseRows(code).catch(() => []),
-    currentName(code).catch(() => null),
+  // allSettled:区分"Tushare 全挂返回空"与"该票真无事件"——至少一个源成功 = sourcedOk。
+  // 只有 sourcedOk 才允许把结果(含合法空 [])落 last-good 缓存,防"全挂空"毒化成"无风险"。
+  const settled = await Promise.allSettled([
+    shareFloatRows(code),
+    holderTradeRows(code),
+    pledgeRatioLatest(code),
+    repurchaseRows(code),
+    currentName(code),
   ]);
+  const sourcedOk = settled.some((s) => s.status === "fulfilled");
+  const floats = settled[0].status === "fulfilled" ? settled[0].value : [];
+  const holders = settled[1].status === "fulfilled" ? settled[1].value : [];
+  const pledge = settled[2].status === "fulfilled" ? settled[2].value : null;
+  const repurch = settled[3].status === "fulfilled" ? settled[3].value : [];
+  const name = settled[4].status === "fulfilled" ? settled[4].value : null;
   const ev: RiskEvent[] = [];
 
   // 解禁:未来 30 天内、占比 ≥ 5%
@@ -141,18 +152,45 @@ async function computeRiskEvents(code: string): Promise<RiskEvent[]> {
   ev.sort(
     (a, b) => rank[a.severity] - rank[b.severity] || (a.daysUntil ?? 99) - (b.daysUntil ?? 99)
   );
-  return ev;
+  return { events: ev, sourcedOk };
 }
 
-// 按天缓存(keyParts 含日期 → 每天自动刷新);详情页 / 和我相关 / cron 共用。
-export function riskEventsFor(code: string): Promise<RiskEvent[]> {
-  // 单飞包在 compute 外:unstable_cache 不保证并发未命中只算一次,冷窗口下每只票 5 次
-  // Tushare 调用会被并发放大,这里合并为一次。
-  return unstable_cache(
-    () => singleFlight(`risk:${code}`, () => computeRiskEvents(code)),
-    ["risk-events", code, todayISO()],
-    { revalidate: 21600 }
-  )();
+// DB 跨实例缓存(quotes_cache,id=risk:code:当天):存 {events},合法空 [] 也回放。
+// unstable_cache 不跨实例,冷实例每票重打 5 个 Tushare(易撞详情页 8s cap 致雷区块消失)。
+// allowStale 默认 true(展示可吃当天 last-good);cron(runRiskRadar)传 false,只吃当天真实回源,
+// 避免用不完整结果误推/漏推。只在 sourcedOk(至少一源成功)时写库,防"全挂空"毒化成"无风险"。
+export async function riskEventsFor(
+  code: string,
+  opts?: { allowStale?: boolean }
+): Promise<RiskEvent[]> {
+  const allowStale = opts?.allowStale ?? true;
+  const id = `risk:${code}:${todayISO()}`;
+  const db = getPrisma();
+  if (allowStale && db) {
+    const row = await db.quotesCache
+      .findUnique({ where: { id }, select: { data: true } })
+      .catch(() => null);
+    const cached = row?.data as unknown as { events?: RiskEvent[] } | undefined;
+    if (cached && Array.isArray(cached.events)) return cached.events;
+  }
+  // 单飞:同实例并发未命中只算一次,防冷窗口下 5 个 Tushare 调用被并发放大。
+  const { events, sourcedOk } = await singleFlight(`risk:${code}`, () =>
+    computeRiskEvents(code)
+  );
+  if (!sourcedOk) {
+    await alertThrottled(
+      "fetch-fail:risk",
+      `⚠️ StockTell 雷区雷达获取失败(Tushare 全挂)| code=${code}`
+    );
+    return events; // 全挂 → events 必为 [];不写库,下次重试
+  }
+  if (db) {
+    const data = { events } as unknown as Prisma.InputJsonValue;
+    await db.quotesCache
+      .upsert({ where: { id }, create: { id, data }, update: { data } })
+      .catch(() => {});
+  }
+  return events;
 }
 
 /* ---------- 推送 ---------- */
@@ -255,7 +293,10 @@ export async function runRiskRadar(): Promise<{
 
   const eventsByCode = new Map<string, RiskEvent[]>();
   await Promise.all(
-    Array.from(allCodes).map(async (c) => eventsByCode.set(c, await riskEventsFor(c)))
+    // 推送只吃当天真实回源结果(不吃展示用的 last-good),避免用不完整结果误推/漏推。
+    Array.from(allCodes).map(async (c) =>
+      eventsByCode.set(c, await riskEventsFor(c, { allowStale: false }))
+    )
   );
 
   const sent = await db.eventAlert.findMany({

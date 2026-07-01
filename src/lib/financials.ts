@@ -1,10 +1,12 @@
 // 财报体检卡:把三大报表 + 财务指标翻译成几句人话结论(结论 + 大白话 + 警告),
 // 散户看不懂报表,这里替他抓"利润现金流打架 / 商誉暴雷 / 靠不靠主业 / 资金链"。
 // 纯规则、纯事实,不调 LLM、不喊买卖。
-import { unstable_cache } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { STOCK_MAP } from "@/data/stocks";
+import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
 import { singleFlight } from "@/lib/single-flight";
+import { alertThrottled } from "@/lib/monitor";
 import { latestFinancials, latestForecast, nextDisclosure } from "@/lib/tushare";
 
 export interface CheckupFinding {
@@ -154,18 +156,44 @@ async function compute(code: string): Promise<Checkup | null> {
   return { period: f.period, year: yr, reportLabel, findings };
 }
 
-export function financialCheckup(code: string): Promise<Checkup | null> {
-  // null 不进缓存:compute 拿不到数据(限流/抖动)时抛错,unstable_cache 不缓存抛错,
-  // 下次请求会重算——避免一次偶发失败把空结果毒住 12h。成功结果照常缓存。
-  // 缓存 key 加版本号 v2:清掉旧版本可能毒住的空结果。
-  return unstable_cache(
-    () =>
-      singleFlight(`fin:${code}`, async () => {
-        const r = await compute(code);
-        if (!r) throw new Error("fin-checkup:no-data");
-        return r;
-      }),
-    ["fin-checkup", "v4", code, todayISO()],
-    { revalidate: 43200 } // 12h(财报低频)
-  )().catch(() => null);
+// DB 跨实例缓存(quotes_cache,id=fin:code:当天):财报低频,当天键即可。
+// unstable_cache 在 Vercel 不跨实例持久,冷实例每次重打 6 个 Tushare 接口(易撞详情页 8s cap 致
+// 财报块静默消失)。改后:命中一次 findUnique 秒回;失败(真报错)不写库、不毒化,并发飞书告警。
+export async function financialCheckup(code: string): Promise<Checkup | null> {
+  const id = `fin:${code}:${todayISO()}`;
+  const db = getPrisma();
+  if (db) {
+    const row = await db.quotesCache
+      .findUnique({ where: { id }, select: { data: true } })
+      .catch(() => null);
+    if (row?.data) return row.data as unknown as Checkup;
+  }
+  let r: Checkup | null;
+  try {
+    r = await singleFlight(`fin:${code}`, async () => {
+      const c = await compute(code);
+      if (!c) throw new Error("fin-checkup:no-data");
+      return c;
+    });
+  } catch (e) {
+    // no-data(该票本就无财报)不算失败、不告警;真失败(Tushare 报错/超时)才告警。
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("no-data")) {
+      await alertThrottled(
+        "fetch-fail:fin",
+        `⚠️ StockTell 财报体检获取失败(Tushare)| code=${code}\n${msg}`
+      );
+    }
+    return null;
+  }
+  if (db && r) {
+    await db.quotesCache
+      .upsert({
+        where: { id },
+        create: { id, data: r as unknown as Prisma.InputJsonValue },
+        update: { data: r as unknown as Prisma.InputJsonValue },
+      })
+      .catch(() => {});
+  }
+  return r;
 }
