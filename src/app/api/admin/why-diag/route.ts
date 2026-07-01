@@ -6,6 +6,8 @@ import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+// 钉到香港:Vercel 美区连不上阿里云北京(博查 SLB),香港离得近、连通好。
+export const preferredRegion = "hkg1";
 
 // 「为什么动」诊断:一击定位来源为何为空。直接打博查(绕开 whyCache),报 HTTP 状态 + 命中数;
 // 再报 LLM 解析状态。不泄漏任何密钥值,只报是否存在/长度。
@@ -18,6 +20,7 @@ export async function GET(req: NextRequest) {
 
   const key = process.env.BOCHA_API_KEY;
   const out: Record<string, unknown> = {
+    region: process.env.VERCEL_REGION ?? "local", // 期望 hkg1
     env: {
       bochaKeyPresent: !!key,
       bochaKeyLen: key ? key.trim().length : 0, // 只报长度,便于发现空串/误贴带空格
@@ -67,7 +70,14 @@ export async function GET(req: NextRequest) {
         bodySnippet: resp.ok ? undefined : text.slice(0, 300),
       };
     } catch (e) {
-      out.bochaTest = { error: String(e) };
+      // undici 把真正原因塞在 e.cause(ETIMEDOUT/ECONNRESET/ENOTFOUND/证书错误…),挖出来
+      const cause = (e as { cause?: unknown })?.cause;
+      const code = (cause as { code?: string; message?: string } | undefined);
+      out.bochaTest = {
+        error: String(e),
+        cause: cause ? String(code?.code ?? code?.message ?? cause) : undefined,
+        region: process.env.VERCEL_REGION ?? null, // 实际执行区域,确认是否 hkg1
+      };
     }
   } else {
     out.bochaTest = { skipped: "BOCHA_API_KEY 未配置(生产环境 Vercel 需单独配置 + 重新部署才生效)" };
