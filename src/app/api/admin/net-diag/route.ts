@@ -68,6 +68,26 @@ export async function GET(req: NextRequest) {
       headers: { Authorization: "Bearer net-diag-probe", "Content-Type": "application/json" },
       body: JSON.stringify({ query: "test", count: 1 }),
     }),
+    // 决定性:用【真 TUSHARE_TOKEN】从本区直打 app 实际那次 daily_basic(沙箱侧同调用 146ms/14行)
+    probe(
+      "tushare-daily_basic真token",
+      "https://api.tushare.pro",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_name: "daily_basic",
+          token: process.env.TUSHARE_TOKEN ?? "",
+          params: {
+            ts_code: "601138.SH",
+            start_date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" })
+              .format(new Date(Date.now() - 20 * 86400000))
+              .replace(/-/g, ""),
+          },
+          fields: "ts_code,trade_date,pe_ttm,pb,total_mv,circ_mv,turnover_rate",
+        }),
+      }
+    ),
   ]);
 
   return NextResponse.json({
