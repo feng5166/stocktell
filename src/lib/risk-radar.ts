@@ -159,7 +159,7 @@ async function computeRiskEvents(
 // DB 跨实例缓存(quotes_cache,id=risk:code:当天):存 {events},合法空 [] 也回放。
 // unstable_cache 不跨实例,冷实例每票重打 5 个 Tushare(易撞详情页 8s cap 致雷区块消失)。
 // allowStale 默认 true(展示可吃当天 last-good);cron(runRiskRadar)传 false,只吃当天真实回源,
-// 避免用不完整结果误推/漏推。只在 sourcedOk(至少一源成功)时写库,防"全挂空"毒化成"无风险"。
+// 避免用不完整结果误推/漏推。只在 sourcedOk(5 源全部成功回源)时写库,防"部分/全挂空"毒化成"无风险"。
 export async function riskEventsFor(
   code: string,
   opts?: { allowStale?: boolean }
@@ -181,9 +181,9 @@ export async function riskEventsFor(
   if (!sourcedOk) {
     await alertThrottled(
       "fetch-fail:risk",
-      `⚠️ StockTell 雷区雷达获取失败(Tushare 全挂)| code=${code}`
+      `⚠️ StockTell 雷区雷达获取失败(Tushare 部分/全部源失败)| code=${code}`
     );
-    return events; // 全挂 → events 必为 [];不写库,下次重试
+    return events; // 任一源失败即 sourcedOk=false;不写库(防部分毒化),下次重试
   }
   if (db) {
     const data = { events } as unknown as Prisma.InputJsonValue;

@@ -221,7 +221,7 @@ export async function moneyflowByDate(ymd: string): Promise<Map<string, number>>
     const cached = mfCache.get(ymd); // 双检:排队期间可能已被前一个填好
     if (cached) return cached;
     const out = new Map<string, number>();
-    const d = await tsCall("moneyflow", { trade_date: ymd }, "ts_code,net_mf_amount");
+    const d = await tsCallStrict("moneyflow", { trade_date: ymd }, "ts_code,net_mf_amount");
     if (d) {
       const ci = d.fields.indexOf("ts_code");
       const ni = d.fields.indexOf("net_mf_amount");
@@ -245,7 +245,7 @@ export async function longhuByDate(ymd: string): Promise<Map<string, LonghuHit>>
     const cached = lhCache.get(ymd);
     if (cached) return cached;
     const out = new Map<string, LonghuHit>();
-    const d = await tsCall("top_list", { trade_date: ymd }, "ts_code,net_amount,reason");
+    const d = await tsCallStrict("top_list", { trade_date: ymd }, "ts_code,net_amount,reason");
     if (d) {
       const ci = d.fields.indexOf("ts_code");
       const ai = d.fields.indexOf("net_amount");
@@ -276,7 +276,7 @@ export async function marginByDate(ymd: string): Promise<Map<string, number>> {
     const cached = mgCache.get(ymd);
     if (cached) return cached;
     const out = new Map<string, number>();
-    const d = await tsCall("margin_detail", { trade_date: ymd }, "ts_code,rzye");
+    const d = await tsCallStrict("margin_detail", { trade_date: ymd }, "ts_code,rzye");
     if (d) {
       const ci = d.fields.indexOf("ts_code");
       const yi = d.fields.indexOf("rzye");
@@ -322,8 +322,9 @@ export async function dailyByDate(ymd: string): Promise<Map<string, number>> {
 export async function latestFundYmd(todayISO: string): Promise<string | null> {
   const todayYmd = todayISO.replace(/-/g, "");
   if (await isAshareTradingDay(todayISO)) {
-    const mf = await moneyflowByDate(todayYmd);
-    if (mf.size > 0) return todayYmd;
+    // Tushare 挂时 moneyflowByDate 抛错(strict)→ 当作今日数据未出,落到上一交易日
+    const mf = await moneyflowByDate(todayYmd).catch(() => null);
+    if (mf && mf.size > 0) return todayYmd;
   }
   const prev = await prevAshareTradingDay(todayISO);
   return prev ? prev.replace(/-/g, "") : null;
@@ -361,7 +362,8 @@ export async function dailyHistory(
 export async function fetchFundamental(code: string): Promise<Fundamental | null> {
   const ts = tsCode(code);
   if (!ts) return null;
-  const d = await tsCall(
+  // strict:Tushare 报错/超时抛错(让 /api/fundamentals 的 catch 告警),空 items=合法无数据返回 null
+  const d = await tsCallStrict(
     "daily_basic",
     { ts_code: ts, start_date: ymdDaysAgo(20) },
     "ts_code,trade_date,pe_ttm,pb,total_mv,circ_mv,turnover_rate"

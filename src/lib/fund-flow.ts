@@ -23,6 +23,7 @@ export interface FundBundle {
   mf: Record<string, number>; // 裸code -> 主力净流入(亿)
   lh: Record<string, LonghuHit>; // 裸code -> 龙虎榜
   mg: Record<string, number>; // 裸code -> 融资余额(亿)
+  complete: boolean; // 三张表是否全部成功回源(false=有源失败,勿缓存,防部分毒化)
 }
 export async function getFundBundle(ymd: string): Promise<FundBundle> {
   // 单飞:同实例并发冷请求合并为一次(DB 读 + Tushare 三大表 + 写库),防早盘窗口击穿。
@@ -33,19 +34,36 @@ async function loadFundBundle(ymd: string): Promise<FundBundle> {
   const db = getPrisma();
   if (db) {
     const row = await db.fundDayCache.findUnique({ where: { ymd } }).catch(() => null);
-    if (row?.data) return row.data as unknown as FundBundle;
+    // 缓存里的都是"三源全成"时才落的完整包,回放即视为 complete。
+    if (row?.data) return { ...(row.data as unknown as FundBundle), complete: true };
   }
-  const [mf, lh, mg] = await Promise.all([
+  // 三张表用 tsCallStrict(失败即抛),allSettled 区分"回源失败"与"成功但空(盘前/无数据)"。
+  const settled = await Promise.allSettled([
     moneyflowByDate(ymd),
     longhuByDate(ymd),
     marginByDate(ymd),
   ]);
+  const sourcedOk = settled.every((s) => s.status === "fulfilled");
+  const mf = settled[0].status === "fulfilled" ? settled[0].value : new Map<string, number>();
+  const lh = settled[1].status === "fulfilled" ? settled[1].value : new Map<string, LonghuHit>();
+  const mg = settled[2].status === "fulfilled" ? settled[2].value : new Map<string, number>();
   const bundle: FundBundle = {
     mf: Object.fromEntries(mf),
     lh: Object.fromEntries(lh),
     mg: Object.fromEntries(mg),
+    complete: sourcedOk,
   };
-  // 只在确有数据时落库(避免把"当天数据还没出"的空包缓存住)
+  // 任一源失败 → 告警 + 绝不落库(防"单表失败当空"按 ymd 永久钉住 = 部分毒化);
+  // 本请求仍返回已成功的部分(降级不致命,complete=false 让上层不缓存单票结果)。
+  if (!sourcedOk) {
+    await alertThrottled(
+      "fetch-fail:fund-bundle",
+      `⚠️ StockTell 资金面整包部分回源失败(Tushare)| ymd=${ymd} · ` +
+        `mf=${settled[0].status} lh=${settled[1].status} mg=${settled[2].status}`
+    );
+    return bundle;
+  }
+  // 三源全成:只在确有真实数据(避免盘前空包)时落库。
   if (db && (mf.size > 0 || mg.size > 0)) {
     const data = bundle as unknown as Prisma.InputJsonValue;
     await db.fundDayCache
@@ -66,6 +84,7 @@ export interface FundFlowItem {
 export interface FundFlowResult {
   date: string | null; // 数据交易日 YYYY-MM-DD
   items: FundFlowItem[];
+  complete?: boolean; // 底层资金面整包是否全源成功(false=有源失败,单票结果勿缓存)
 }
 
 const ymdToISO = (ymd: string) =>
@@ -73,10 +92,10 @@ const ymdToISO = (ymd: string) =>
 
 async function computeFundFlow(codes: string[]): Promise<FundFlowResult> {
   const aCodes = codes.filter((c) => STOCK_MAP[c]?.market === "A股");
-  if (aCodes.length === 0) return { date: null, items: [] };
+  if (aCodes.length === 0) return { date: null, items: [], complete: true };
 
   const ymd = await latestFundYmd(todayISO());
-  if (!ymd) return { date: null, items: [] };
+  if (!ymd) return { date: null, items: [], complete: false };
 
   const prevIso = await prevAshareTradingDay(ymdToISO(ymd));
   const prevYmd = prevIso ? prevIso.replace(/-/g, "") : null;
@@ -103,7 +122,9 @@ async function computeFundFlow(codes: string[]): Promise<FundFlowResult> {
     };
   });
 
-  return { date: ymdToISO(ymd), items };
+  // 当日包 + 上一日包(算融资变化)都全源成功才算完整;任一部分失败 → complete=false,上层不缓存
+  const complete = bundle.complete && (prevBundle?.complete ?? true);
+  return { date: ymdToISO(ymd), items, complete };
 }
 
 // 按(去重排序后的)代码组合缓存 30 分钟。资金面是 T+1 日频数据,半小时足够新。
@@ -146,16 +167,10 @@ export async function cachedFundFlowSingle(code: string): Promise<FundFlowResult
     return { date: null, items: [] };
   }
   const it = res.items[0];
-  // date==null 对已确认的 A 股 = latestFundYmd 探测失败(Tushare 挂),不是"无数据"→ 告警(节流)。
-  // fundFlowFor 内部 tsCall 不抛错,失败会静默返回 date:null,所以这里用 date 判失败而非 catch。
-  if (res.date == null) {
-    await alertThrottled(
-      "fetch-fail:fundflow",
-      `⚠️ StockTell 资金面获取失败(Tushare 未取到交易日)| code=${code}`
-    );
-  }
-  // 写门槛:当天有真实资金数据才落库(对齐 getFundBundle 的判空),否则空包会被永久钉住。
+  // 写门槛:底层三源全成(res.complete)+ 当天确有真实数据 才落库。
+  // 失败信号由底层 loadFundBundle 的 allSettled 统一告警;部分失败 complete=false → 不缓存单票,防毒化。
   const hasReal =
+    res.complete !== false &&
     res.date != null &&
     it != null &&
     (it.netMf != null || it.rzChgYi != null || it.longhu != null);
