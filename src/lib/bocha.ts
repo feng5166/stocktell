@@ -38,7 +38,11 @@ export async function bochaSearch(
       }),
       cache: "no-store",
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      // 别再静默:401=key 无效/错产品、402=余额不足、429=限流,写日志方便线上排查
+      console.warn(`[bocha] web-search HTTP ${resp.status}`, (await resp.text()).slice(0, 200));
+      return null;
+    }
     const j = await resp.json();
     // 兼容返回结构:data.webPages.value 为主
     /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -61,7 +65,8 @@ export async function bochaSearch(
       }))
       .filter((h) => h.name && (h.snippet || h.summary));
     return hits.length ? hits : null;
-  } catch {
+  } catch (e) {
+    console.warn("[bocha] web-search error", String(e));
     return null;
   }
 }
