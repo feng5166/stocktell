@@ -35,6 +35,23 @@ async function probe(
 }
 
 export async function runNetProbe() {
+  // DB(Neon)往返:每个接口都要读库,这个延迟决定区域该怎么选。
+  let dbMs: number | null = null;
+  let dbErr: string | null = null;
+  try {
+    const { getPrisma } = await import("@/lib/prisma");
+    const db = getPrisma();
+    if (db) {
+      const t0 = Date.now();
+      await db.$queryRaw`SELECT 1`;
+      dbMs = Date.now() - t0;
+    } else {
+      dbErr = "no db";
+    }
+  } catch (e) {
+    dbErr = String(e);
+  }
+
   const key = process.env.BOCHA_API_KEY;
   const sd = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" })
     .format(new Date(Date.now() - 20 * 86400000))
@@ -63,5 +80,5 @@ export async function runNetProbe() {
       }),
     }),
   ]);
-  return { region: process.env.VERCEL_REGION ?? "local", results };
+  return { region: process.env.VERCEL_REGION ?? "local", dbMs, dbErr, results };
 }
