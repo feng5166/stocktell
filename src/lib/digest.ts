@@ -275,3 +275,45 @@ export async function runPreOpenDigest(): Promise<{
   }
   return { ok: true, date, candidates, sent };
 }
+
+// 给单个用户发一封真·digest(复用与全量推送完全相同的 sendDigest/sendAlertsDigest 模板)。
+// 用于后台预览/自测邮件格式,不影响其它用户。返回命中模式与是否发出。
+export async function sendDigestToUser(userId: string): Promise<{
+  ok: boolean;
+  reason?: string;
+  mode?: "digest" | "alerts";
+  sent?: boolean;
+  email?: string;
+  relevant?: number;
+}> {
+  const db = getPrisma();
+  if (!db) return { ok: false, reason: "no-db" };
+  const u = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true },
+  });
+  if (!u?.email) return { ok: false, reason: "no-email" };
+
+  const date = todayISO();
+  const briefings = await listBriefing({ date, status: "published" });
+  const ws = await db.watchlist.findMany({ where: { userId }, select: { code: true } });
+  const codes = new Set(ws.map((w) => w.code));
+  if (codes.size === 0) return { ok: false, reason: "no-watchlist", email: u.email };
+
+  const relevant = briefings.filter(
+    (b) =>
+      (b.triggerCode != null && codes.has(b.triggerCode)) ||
+      b.beneficiaries.some((x) => codes.has(x.code))
+  );
+  const alerts = await buildWatchAlerts(Array.from(codes));
+
+  if (relevant.length > 0) {
+    const brief = await getMorningBrief(Array.from(codes), relevant);
+    const sent = await sendDigest(u.email, u.id, date, relevant, brief, alerts);
+    return { ok: true, mode: "digest", sent, email: u.email, relevant: relevant.length };
+  }
+  if (alerts.length === 0)
+    return { ok: false, reason: "nothing-relevant", email: u.email, relevant: 0 };
+  const sent = await sendAlertsDigest(u.email, u.id, alerts);
+  return { ok: true, mode: "alerts", sent, email: u.email, relevant: 0 };
+}
