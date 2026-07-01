@@ -181,7 +181,7 @@ export function EtfBoard({
                 </button>
                 <span className="font-semibold text-gray-900">{e.name}</span>
                 <span className="font-mono text-xs text-gray-400">{e.code}</span>
-                <span className="rounded bg-gray-100 px-1 py-0.5 text-[10px] font-medium text-gray-500">
+                <span className="rounded bg-gray-100 px-1 py-0.5 text-[11px] font-medium text-gray-500">
                   {e.exchange}
                 </span>
                 <span

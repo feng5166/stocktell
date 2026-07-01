@@ -44,7 +44,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setOpts(null);
   }, []);
 
-  // Esc = 取消(确定键 autoFocus,回车天然触发确定)
+  // Esc = 取消;确定键不再 autoFocus,回车不会误触不可逆操作
   useEffect(() => {
     if (!opts) return;
     const onKey = (e: KeyboardEvent) => {

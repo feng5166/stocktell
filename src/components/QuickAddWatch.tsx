@@ -66,7 +66,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
                       {s.code}
                     </span>
                     <span
-                      className={`ml-2 rounded px-1 py-0.5 text-[10px] ${
+                      className={`ml-2 rounded px-1 py-0.5 text-[11px] ${
                         s.market === "美股"
                           ? "bg-brand-50 text-brand-600"
                           : "bg-red-50 text-red-600"

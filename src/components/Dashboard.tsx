@@ -47,7 +47,7 @@ function ConceptChips({ code, max = 3 }: { code: string; max?: number }) {
           key={c}
           href={`/stocks?concept=${encodeURIComponent(c)}`}
           onClick={(e) => e.stopPropagation()}
-          className="rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500 hover:bg-brand-50 hover:text-brand-600"
+          className="rounded bg-gray-100 px-1 py-0.5 text-[11px] text-gray-500 hover:bg-brand-50 hover:text-brand-600"
         >
           {c}
         </Link>
@@ -62,7 +62,7 @@ function TierTag({ code }: { code: string }) {
   if (!t) return null;
   return (
     <span
-      className={`ml-1 shrink-0 rounded px-1 py-0.5 text-[10px] ${
+      className={`ml-1 shrink-0 rounded px-1 py-0.5 text-[11px] ${
         t === "龙头" ? "bg-amber-100 font-medium text-amber-700" : "bg-sky-50 text-sky-600"
       }`}
     >
@@ -382,12 +382,12 @@ export default function Dashboard() {
               </h1>
               <FeedbackLink />
             </div>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-gray-500">
               数据来源于研究框架梳理 · 非确认的客户/供应商/持仓关系 ·
               不构成投资建议
             </p>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
             <span
               className={`inline-block h-1.5 w-1.5 rounded-full ${
                 live ? "bg-emerald-500" : cached ? "bg-amber-400" : "bg-gray-300"
@@ -413,7 +413,7 @@ export default function Dashboard() {
               className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors ${
                 tab === t
                   ? "border-gray-900 font-medium text-gray-900"
-                  : "border-transparent text-gray-400 hover:text-gray-700"
+                  : "border-transparent text-gray-500 hover:text-gray-800"
               }`}
             >
               {t}
@@ -1124,7 +1124,7 @@ function RelationMap({
           <span className="text-amber-600"> 中</span>=对标/替代 ·
           <span className="text-gray-500"> 弱</span>=蹭概念(点徽章看依据)
         </span>
-        <span className="basis-full text-meta leading-relaxed text-gray-400">
+        <span className="basis-full text-meta leading-relaxed text-gray-500">
           「联动率」=过去 2 年该美股异动、次日 A 股同向的复盘比例,仅统计、非预测,历史不代表未来。
         </span>
       </div>

@@ -35,7 +35,7 @@ export function LiveQuote({ code }: { code: string }) {
 
   // 加载中:占位,避免布局抖动
   if (!done) return <span className="ml-auto text-sm text-gray-300">···</span>;
-  if (!q) return <span className="ml-auto text-sm text-gray-400">休市 / 行情未连接</span>;
+  if (!q) return <span className="ml-auto text-sm text-gray-500">休市 / 行情未连接</span>;
 
   return (
     <span
@@ -53,7 +53,7 @@ export function LiveQuote({ code }: { code: string }) {
         {q.change.toFixed(2)}%
       </span>
       {stale && asOf && (
-        <span className="ml-1 text-xs font-normal text-gray-400">
+        <span className="ml-1 text-xs font-normal text-gray-500">
           · 截至{" "}
           {new Intl.DateTimeFormat("zh-CN", {
             timeZone: "Asia/Shanghai",

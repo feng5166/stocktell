@@ -50,7 +50,7 @@ export function EtfStrip({
 
               <span className="font-medium text-gray-900">{e.name}</span>
               <span className="font-mono text-xs text-gray-400">{e.code}</span>
-              <span className="rounded bg-sky-50 px-1 py-0.5 text-[10px] font-medium text-sky-600">
+              <span className="rounded bg-sky-50 px-1 py-0.5 text-[11px] font-medium text-sky-600">
                 ETF
               </span>
               <span className="hidden text-xs text-gray-400 sm:inline">

@@ -23,7 +23,7 @@ export function InstalledBadge() {
   return (
     <span
       title="已作为 App 安装,从主屏图标打开"
-      className="inline-flex shrink-0 items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600"
+      className="inline-flex shrink-0 items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600"
     >
       ✓ 已安装
     </span>
