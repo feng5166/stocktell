@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { FeedbackLink } from "@/components/FeedbackLink";
 
 export const metadata = {
   title: "服务条款 · StockTell",
@@ -69,11 +70,9 @@ export default function TermsPage() {
           </Section>
 
           <Section title="10. 联系我们">
-            如对本条款有任何疑问,请联系:
-            <a href="mailto:support@stocktell.me" className="text-brand-600 underline">
-              support@stocktell.me
-            </a>
-            。
+            如对本条款有任何疑问,欢迎通过站内{" "}
+            <FeedbackLink className="text-brand-600 underline hover:text-brand-700" />{" "}
+            告诉我们。
           </Section>
         </div>
 
