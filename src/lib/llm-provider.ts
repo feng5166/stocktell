@@ -44,8 +44,10 @@ export function fallbackAvailable(): boolean {
   return fallbackConfigured();
 }
 
-// 解析当前该用的 client + 模型(tier=pro/fast)。切到兜底后统一用 LLM_FALLBACK_MODEL(flash);
-// 未配兜底或未切换则用主(modelverse,按 tier 选 pro/flash)。无任何 key 返回 null(调用方回退模板)。
+// 解析当前该用的 client + 模型(tier=pro/fast)。兜底也按档位走(与主一致):pro 档用
+// LLM_FALLBACK_MODEL(deepseek-v4-pro,保简报/why 质量),fast 档用 LLM_FALLBACK_MODEL_FAST
+// (flash,早报/深读 短文+交互,防 reasoning 截断)。未配兜底或未切换则用主(modelverse)。
+// 无任何 key 返回 null(调用方回退模板)。
 export async function getLLMFor(
   tier: "pro" | "fast"
 ): Promise<{ client: OpenAI; model: string; provider: LLMProvider } | null> {
@@ -56,7 +58,10 @@ export async function getLLMFor(
         apiKey: process.env.LLM_FALLBACK_API_KEY!,
         baseURL: process.env.LLM_FALLBACK_BASE_URL!,
       }),
-      model: process.env.LLM_FALLBACK_MODEL || "deepseek-v4-flash",
+      model:
+        tier === "pro"
+          ? process.env.LLM_FALLBACK_MODEL || "deepseek-v4-pro"
+          : process.env.LLM_FALLBACK_MODEL_FAST || "deepseek-v4-flash",
       provider: "fallback",
     };
   }
