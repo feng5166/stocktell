@@ -32,7 +32,6 @@ export function ChainConvert({
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState<"idle" | "done" | "fail">("idle");
   const [shareUrl, setShareUrl] = useState("");
-  const [canShare, setCanShare] = useState(false);
   const tracked = useRef(false);
 
   // 落地归因(每次访问一次)
@@ -72,7 +71,6 @@ export function ChainConvert({
     setShareUrl(
       `${window.location.origin}/chain/${chainId}?ref=${encodeURIComponent(myRef)}&utm_source=share`
     );
-    setCanShare(typeof navigator !== "undefined" && !!navigator.share);
   }, [chainId, myRef]);
 
   const openShare = () => {
@@ -193,37 +191,37 @@ export function ChainConvert({
               </div>
             </div>
 
-            {/* 始终可见、可长按选中的链接(兜底手动复制) */}
-            <input
-              readOnly
-              value={shareUrl}
-              onFocus={(e) => e.currentTarget.select()}
-              className="mt-3 w-full rounded-lg bg-white/95 px-3 py-2 text-xs text-gray-600"
-            />
-            <div className="mt-2 flex gap-2">
-              {canShare && (
-                <button
-                  onClick={nativeShare}
-                  className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow"
-                >
-                  📤 分享给朋友
-                </button>
-              )}
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={nativeShare}
+                className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow"
+              >
+                📤 分享给朋友
+              </button>
               <button
                 onClick={copyLink}
-                className={`rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow ${
-                  canShare ? "" : "flex-1"
-                }`}
+                className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow"
               >
-                {copied === "done"
-                  ? "✓ 已复制"
-                  : copied === "fail"
-                  ? "长按上方链接复制"
-                  : "复制链接"}
+                {copied === "done" ? "✓ 已复制" : "复制链接"}
               </button>
             </div>
+            {copied === "done" && (
+              <p className="mt-2 text-center text-xs font-medium text-white">
+                ✓ 链接已复制,粘贴到微信发给朋友/群
+              </p>
+            )}
+            {/* 仅复制失败时才露链接兜底(平时不显示) */}
+            {copied === "fail" && (
+              <input
+                readOnly
+                value={shareUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                className="mt-2 w-full rounded-lg bg-white/95 px-3 py-2 text-xs text-gray-600"
+                aria-label="分享链接"
+              />
+            )}
             <p className="mt-2 text-center text-xs text-white/85">
-              {canShare ? "点「分享」调起微信/系统分享" : "复制链接发给朋友/群"},或直接截屏转发这张卡片
+              点「分享」调起微信/系统分享,或复制链接、截屏转发这张卡片
             </p>
             <button
               onClick={() => setShowShare(false)}
