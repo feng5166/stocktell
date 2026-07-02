@@ -4,6 +4,7 @@ import { FeedbackLink } from "@/components/FeedbackLink";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
+import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { chainSentiment } from "@/lib/sentiment";
 import {
@@ -76,6 +77,9 @@ export default async function Home() {
 
         {/* 跨市场预期差雷达:隔夜美股已涨、对应 A 股暂未跟上 → 一屏直达(无 live 信号时自隐藏) */}
         <OvernightRadar />
+
+        {/* AI 链落地页入口 + 分享引导(分享机制 V1;埋点 chain_entry_click) */}
+        <ChainHomeEntry />
 
         {items.length === 0 ? (
           <EmptyState errored={errored} />
