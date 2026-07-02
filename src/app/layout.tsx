@@ -10,6 +10,9 @@ import { GuestWatchlistNudge } from "@/components/GuestWatchlistNudge";
 // 自动采集 pageview;自定义事件经 lib/analytics 的 track() 上报。
 const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC;
 const UMAMI_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+// Microsoft Clarity(会话回放 + 热力图,免费、自动屏蔽输入/PII)。配了 ID 才注入。
+// 分工:Umami 管漏斗/事件,Clarity 管回放/热力图。NEXT_PUBLIC_ 构建时内联。
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID;
 
 export const metadata: Metadata = {
   title: "StockTell · AI产业链股票池",
@@ -53,6 +56,11 @@ export default function RootLayout({
         <PWARegister />
         {UMAMI_SRC && UMAMI_ID && (
           <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} strategy="afterInteractive" />
+        )}
+        {CLARITY_ID && (
+          <Script id="ms-clarity" strategy="afterInteractive">
+            {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${CLARITY_ID}");`}
+          </Script>
         )}
       </body>
     </html>

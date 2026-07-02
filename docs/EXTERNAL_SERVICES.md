@@ -33,6 +33,8 @@
 | `ADMIN_TOKEN` | 后台 | 管理端点鉴权(Bearer);如 init-db |
 | `ADMIN_EMAILS` | 后台 | 管理员邮箱白名单(逗号分隔) |
 | `UNSUB_SECRET` | 邮件退订 | 退订链接 HMAC 签名(未配则回退 NEXTAUTH_SECRET) |
+| `NEXT_PUBLIC_UMAMI_SRC` / `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami(分析) | 自托管网页分析:pageview + 自定义事件(漏斗/留存) |
+| `NEXT_PUBLIC_CLARITY_ID` | Microsoft Clarity | 会话回放 + 热力图(免费、自动屏蔽输入/PII) |
 
 ---
 
@@ -137,6 +139,22 @@
 - **用途**:把微信绑定二维码字符串渲染成图片展示。
 - **关键文件**:`src/app/settings/SettingsClient.tsx`(及后台绑定流程)。
 - 免 key 的公共服务;仅前端 `<img>` 调用。
+
+---
+
+## 8. 分析 / Analytics
+
+### Umami(自托管)— `analytics.stocktell.me`
+- **用途**:pageview + 自定义事件(`umami.track`),漏斗/留存看板。
+- **关键文件**:`src/app/layout.tsx`(注入 script.js)、`src/lib/analytics.ts`(`track()` 封装);事件清单 `docs/埋点需求.md`。
+- **env**:`NEXT_PUBLIC_UMAMI_SRC` / `NEXT_PUBLIC_UMAMI_WEBSITE_ID`。websiteId=`f07470dd-c040-4f45-a774-44148f249d5f`。
+- 后台已建 5 个看板(核心增长 / 登录轻推 / 美股桥 / 分享病毒环 漏斗 + 用户留存)。⚠️ 自托管管理员口令务必用强密码(公网可访问)。
+
+### Microsoft Clarity — `clarity.microsoft.com`(会话回放 + 热力图)
+- **用途**:录真实用户**会话回放** + **点击热力图** + rage-click,盯种子用户体验/卡点。
+- **为什么不用 Umami 的「回放」**:自托管 OSS 版开不了(网站 `recorderEnabled` 经 API 改不动、疑似 Cloud 功能),故用 Clarity(免费无限量、成熟、默认屏蔽输入/PII)。
+- **关键文件**:`src/app/layout.tsx`(inline 脚本,配了 `NEXT_PUBLIC_CLARITY_ID` 才注入)。
+- **env**:`NEXT_PUBLIC_CLARITY_ID`(2026-07-02 接入;project id 是公开值)。数据在 Clarity 侧看,不进我们 DB。
 
 ---
 
