@@ -202,6 +202,28 @@ async function computeSentiment(): Promise<ChainSentiment> {
   return { date: aRes.date, a: aRes.a, us };
 }
 
+// 只读快照(ISR 页面专用):纯 L1/DB 读,**绝不触发冷算/任何 fetch**。
+// Next 14 里渲染期间碰到 no-store fetch 会把整页打成动态渲染(ISR 报废、每请求都跑函数),
+// 首页/落地页务必用这个;fresh=false 时由客户端组件后台拉 /api/chain-sentiment 刷新+回写缓存。
+export async function sentimentSnapshot(): Promise<{
+  data: ChainSentiment;
+  fresh: boolean;
+} | null> {
+  const trading = inTradingClock();
+  const ttl = trading ? 45_000 : TTL;
+  const dbFresh = trading ? 90_000 : DB_FRESH;
+  if (cache && Date.now() - cache.at < ttl) return { data: cache.data, fresh: true };
+  const db = getPrisma();
+  if (!db) return null;
+  const row = await db.quotesCache
+    .findUnique({ where: { id: CACHE_ID } })
+    .catch(() => null);
+  if (!row?.data) return null;
+  const data = row.data as unknown as ChainSentiment;
+  const fresh = Date.now() - new Date(row.updatedAt).getTime() < dbFresh;
+  return { data, fresh };
+}
+
 export async function chainSentiment(): Promise<ChainSentiment> {
   // 盘中家数/均涨跌是实时的,缓存要短(否则挂 20min 就不"实时"了);盘后回到长缓存。
   const trading = inTradingClock();

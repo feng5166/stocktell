@@ -6,7 +6,7 @@ import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainRoster } from "@/components/chain/ChainRoster";
 import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert";
-import { chainSentiment } from "@/lib/sentiment";
+import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
@@ -41,10 +41,12 @@ export default async function ChainPage({
     typeof searchParams?.ref === "string" ? searchParams.ref : null;
 
   const date = todayISO();
-  const [sentiment, todayItems] = await Promise.all([
-    chainSentiment().catch(() => ({ date: null, a: null, us: null })),
+  // 情绪只读缓存快照(零 fetch,不在渲染里冷算堵 TTFB);过期由客户端组件后台刷新
+  const [snap, todayItems] = await Promise.all([
+    sentimentSnapshot().catch(() => null),
     listBriefing({ date, status: "published" }).catch(() => [] as BriefingItem[]),
   ]);
+  const sentiment: SentimentData = snap?.data ?? { date: null, a: null, us: null };
 
   let items = todayItems;
   let shownDate = date;
@@ -93,9 +95,9 @@ export default async function ChainPage({
           <p className="mt-1 text-sm text-gray-500">{chain.tagline}</p>
         </div>
 
-        {/* 今日情绪 */}
+        {/* 今日情绪(快照过期 → 先渲染旧值再后台刷新) */}
         <div className="mt-4">
-          <ChainSentiment initial={sentiment} />
+          <ChainSentiment initial={sentiment} refresh={snap ? !snap.fresh : false} />
         </div>
 
         {/* 隔夜美股 · A股联动 */}

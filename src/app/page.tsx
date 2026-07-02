@@ -6,7 +6,7 @@ import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
-import { chainSentiment } from "@/lib/sentiment";
+import { sentimentSnapshot } from "@/lib/sentiment";
 import {
   listBriefing,
   latestBriefing,
@@ -24,15 +24,12 @@ export default async function Home() {
   const date = todayISO();
   let items: BriefingItem[] = [];
   let errored = false;
-  // 简报 + AI链情绪并行算。情绪不阻塞首屏(大陆TTFB优先):热路径=DB缓存一次查询(<100ms)
-  // 会在 1.2s 内赢;冷算(要打行情/Yahoo,可到 18s)超时就不等,traded off 给客户端——
-  // ChainSentiment 组件收到空 initial 会自己拉 /api/chain-sentiment(本有该回退)。
-  const [briefingsRes, sentiment] = await Promise.all([
+  // 简报 + AI链情绪快照并行。情绪只读缓存快照(纯 DB 查询、零 fetch):
+  // Next 14 渲染期间碰到 no-store fetch 会把整页打成动态(ISR 报废、每请求跑函数、大陆更慢),
+  // 所以首页绝不在服务端触发情绪冷算;快照过期由客户端组件后台拉 /api/chain-sentiment 刷新。
+  const [briefingsRes, snap] = await Promise.all([
     listBriefing({ date, status: "published" }).catch(() => null),
-    Promise.race([
-      chainSentiment(),
-      new Promise<null>((r) => setTimeout(() => r(null), 1200)),
-    ]).catch(() => null),
+    sentimentSnapshot().catch(() => null),
   ]);
   if (briefingsRes === null) errored = true;
   else items = briefingsRes;
@@ -77,8 +74,13 @@ export default async function Home() {
           </div>
         )}
 
-        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目)。右下角塞 AI 链落地页入口 */}
-        <ChainSentiment initial={sentiment ?? undefined} action={<ChainHomeEntry />} />
+        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目)。右下角塞 AI 链落地页入口。
+            快照过期(refresh)→ 先渲染旧值再后台刷新,不空窗 */}
+        <ChainSentiment
+          initial={snap?.data}
+          refresh={snap ? !snap.fresh : false}
+          action={<ChainHomeEntry />}
+        />
 
         {/* 跨市场预期差雷达:隔夜美股已涨、对应 A 股暂未跟上 → 一屏直达(无 live 信号时自隐藏) */}
         <OvernightRadar />

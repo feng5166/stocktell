@@ -37,9 +37,11 @@ const fmtYi = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}亿`;
 export function ChainSentiment({
   initial,
   action,
+  refresh,
 }: {
   initial?: Data;
-  action?: ReactNode; // 右上角可选插槽(首页塞"看/分享"入口;落地页不传)
+  action?: ReactNode; // 右下角可选插槽(首页塞"看/分享"入口;落地页不传)
+  refresh?: boolean; // 服务端快照已过期 → 即便有 initial 也后台拉一次最新(顺带触发服务端回写缓存)
 }) {
   // 只把"有实际数据"的 initial 当作可用;服务端那次冷算超时返回的空 initial 不算,
   // 否则会卡在"数据生成中"且不再客户端兜底(空态自愈不了)。
@@ -47,19 +49,19 @@ export function ChainSentiment({
   const [d, setD] = useState<Data | null>(initialOk ? (initial as Data) : null);
   const [errored, setErrored] = useState(false);
   useEffect(() => {
-    // 服务端注入了有效的 EOD(非实时)数据 → 无需再拉;
-    // 但"盘中实时"数据可能被首页 ISR 缓存住(时点偏旧)→ 客户端再拉一次取 ≤90s 新值。
-    if (initialOk && !initial?.a?.pctLive) return;
+    // 服务端注入了有效且新鲜的 EOD(非实时)数据 → 无需再拉;
+    // "盘中实时"可能被 ISR 缓存住(时点偏旧)、或服务端快照已过期(refresh)→ 后台拉最新。
+    if (initialOk && !initial?.a?.pctLive && !refresh) return;
     let active = true;
     fetch("/api/chain-sentiment", { cache: "no-store" })
       .then((r) => r.json())
-      .then((x) => active && setD(x))
+      .then((x) => active && x && (x.a || x.us) && setD(x))
       // 有 initial 时,刷新失败别把已渲染内容清空;仅无 initial 时才报错占位
       .catch(() => active && !initialOk && setErrored(true));
     return () => {
       active = false;
     };
-  }, [initialOk, initial]);
+  }, [initialOk, initial, refresh]);
 
   // 加载中:占位骨架,别让模块"凭空消失"(首页每天打开的理由,要稳定在场)
   if (!d && !errored) {
