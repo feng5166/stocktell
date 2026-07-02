@@ -73,7 +73,9 @@ async function retrievalWhy(
     const resp = await chatTimed("why-rag", llm.provider, () =>
       llm.client.chat.completions.create({
       model: process.env.WHY_LLM_MODEL || llm.model,
-      max_tokens: 400,
+      // deepseek-v4-pro 是推理模型:reasoning_content 先吃 token,400 太小会把正文 JSON 挤空→
+      // 解析不出 reason→全站为什么动空(切 DeepSeek 官方兜底后 reasoning 更啰嗦触发)。给足 2000。
+      max_tokens: 2000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: RAG_PROMPT },
@@ -130,7 +132,7 @@ async function legacyWhy(
     const resp = await chatTimed("why-legacy", llm.provider, () =>
       llm.client.chat.completions.create({
       model: process.env.WHY_LLM_MODEL || llm.model,
-      max_tokens: 300,
+      max_tokens: 1500, // 推理模型留足 reasoning+JSON 空间(同 why-rag)
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: LEGACY_PROMPT },
