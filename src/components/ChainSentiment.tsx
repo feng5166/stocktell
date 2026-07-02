@@ -9,8 +9,11 @@ interface A {
   down: number;
   flat: number;
   avgPct: number;
-  netMfYi: number;
+  netMfYi: number | null;
   covered: number;
+  pctLive?: boolean; // 家数/均涨跌是否盘中实时
+  pctAsOf?: string; // 家数/均涨跌时点:实时"HH:MM" / EOD"YYYY-MM-DD"
+  netMfDate?: string | null; // 主力净流入的 EOD 交易日(始终收盘)
 }
 interface US {
   up: number;
@@ -37,17 +40,19 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
   const [d, setD] = useState<Data | null>(initialOk ? (initial as Data) : null);
   const [errored, setErrored] = useState(false);
   useEffect(() => {
-    if (initialOk) return; // 服务端已注入有效数据,无需再拉
-    // 空 initial / 复用场景:客户端拉(此时 DB 缓存多已热,秒回真数据)
+    // 服务端注入了有效的 EOD(非实时)数据 → 无需再拉;
+    // 但"盘中实时"数据可能被首页 ISR 缓存住(时点偏旧)→ 客户端再拉一次取 ≤90s 新值。
+    if (initialOk && !initial?.a?.pctLive) return;
     let active = true;
     fetch("/api/chain-sentiment", { cache: "no-store" })
       .then((r) => r.json())
       .then((x) => active && setD(x))
-      .catch(() => active && setErrored(true));
+      // 有 initial 时,刷新失败别把已渲染内容清空;仅无 initial 时才报错占位
+      .catch(() => active && !initialOk && setErrored(true));
     return () => {
       active = false;
     };
-  }, [initialOk]);
+  }, [initialOk, initial]);
 
   // 加载中:占位骨架,别让模块"凭空消失"(首页每天打开的理由,要稳定在场)
   if (!d && !errored) {
@@ -109,8 +114,15 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
             {mood.t}
           </span>
         )}
-        {d.date && (
-          <span className="ml-auto text-meta text-gray-400">{d.date.slice(5)}</span>
+        {a?.pctLive ? (
+          <span className="ml-auto flex items-center gap-1 text-meta text-rose-500">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+            实时 {a.pctAsOf}
+          </span>
+        ) : (
+          d.date && (
+            <span className="ml-auto text-meta text-gray-400">{d.date.slice(5)} 收盘</span>
+          )
         )}
       </div>
       <div className="space-y-2">
@@ -121,10 +133,12 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
             down={a.down}
             avgPct={a.avgPct}
             extra={
-              <>
-                {" · 主力 "}
-                <span className={changeClass(a.netMfYi)}>{fmtYi(a.netMfYi)}</span>
-              </>
+              a.netMfYi != null ? (
+                <>
+                  {" · 主力 "}
+                  <span className={changeClass(a.netMfYi)}>{fmtYi(a.netMfYi)}</span>
+                </>
+              ) : undefined
             }
           />
         )}
@@ -158,11 +172,18 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
           </div>
         )}
       </div>
-      {aStale && (
-        <p className="mt-2 text-meta text-gray-400">
-          A股为 {d.date} 收盘数据 · 今日盘后数据约傍晚更新
-        </p>
-      )}
+      {a?.pctLive
+        ? a.netMfYi != null &&
+          a.netMfDate && (
+            <p className="mt-2 text-meta text-gray-400">
+              涨跌为盘中实时;主力净流入为 {a.netMfDate} 收盘数据(今日盘后更新)
+            </p>
+          )
+        : aStale && (
+            <p className="mt-2 text-meta text-gray-400">
+              A股为 {d.date} 收盘数据 · 今日盘后数据约傍晚更新
+            </p>
+          )}
     </div>
   );
 }
