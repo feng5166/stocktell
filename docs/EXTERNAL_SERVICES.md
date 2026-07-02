@@ -34,7 +34,6 @@
 | `ADMIN_EMAILS` | 后台 | 管理员邮箱白名单(逗号分隔) |
 | `UNSUB_SECRET` | 邮件退订 | 退订链接 HMAC 签名(未配则回退 NEXTAUTH_SECRET) |
 | `NEXT_PUBLIC_UMAMI_SRC` / `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami(分析) | 自托管网页分析:pageview + 自定义事件(漏斗/留存) |
-| `NEXT_PUBLIC_CLARITY_ID` | Microsoft Clarity | 会话回放 + 热力图(免费、自动屏蔽输入/PII) |
 
 ---
 
@@ -150,12 +149,9 @@
 - **env**:`NEXT_PUBLIC_UMAMI_SRC` / `NEXT_PUBLIC_UMAMI_WEBSITE_ID`。websiteId=`f07470dd-c040-4f45-a774-44148f249d5f`。
 - 后台已建 6 个看板(核心增长 / 登录轻推 / 美股桥 / 分享病毒环 / 落地页订阅 漏斗 + 用户留存)。⚠️ 自托管管理员口令务必用强密码(公网可访问);临时账号用完即删。
 
-### Microsoft Clarity — `clarity.microsoft.com`(会话回放 + 热力图)
-- **用途**:录真实用户**会话回放** + **点击热力图** + rage-click,盯种子用户体验/卡点。
-- **为什么不用 Umami 的「回放」**:自托管 OSS 版开不了(网站 `recorderEnabled` 经 API 改不动、疑似 Cloud 功能),故用 Clarity(免费无限量、成熟、默认屏蔽输入/PII)。
-- **关键文件**:`src/app/layout.tsx`(inline 脚本,配了 `NEXT_PUBLIC_CLARITY_ID` 才注入)。
-- **env**:`NEXT_PUBLIC_CLARITY_ID`(2026-07-02 接入;project id 是公开值)。数据在 Clarity 侧看,不进我们 DB。
-- **⚠️ 状态:2026-07-02 当晚已暂时关闭**(用户拍板)——`clarity.ms` 大陆访问慢,即便改 `lazyOnload` 仍嫌拖体感,已从 Vercel **删除该 env**(代码保留,注入自动消失)。**恢复**:把 `NEXT_PUBLIC_CLARITY_ID=xg4deamzqa` 加回 env(production/preview/development)再部署;若再启用,保持 `lazyOnload`、或考虑仅海外注入。
+### ~~Microsoft Clarity~~(会话回放)——**已移除**(2026-07-02)
+- 当天接入、当天下线:`clarity.ms` 大陆访问慢拖页面体感(先改 lazyOnload 仍嫌),用户拍板**代码级完全移除**(layout.tsx 注入已删、Vercel env `NEXT_PUBLIC_CLARITY_ID` 已删;Clarity 项目 id 为 `xg4deamzqa`,如未来重新评估需重新接入,建议仅海外注入或换自托管回放)。
+- 会话回放需求现状:**无**(Umami 自托管无回放;漏斗/事件仍由 Umami 覆盖)。
 
 ---
 
