@@ -1,12 +1,12 @@
 "use client";
 
-// 自选状态(客户端):登录用户走 /api/watchlist。游客加自选需先登录(toggle 里拦截、弹登录框),
-// 不再本地新增;localStorage 仅保留历史遗留自选,登录瞬间自动合并进库再清本地,别让用户丢自选。
+// 自选状态(客户端):登录用户走 /api/watchlist,游客走 localStorage,接口同构。
+// 登录瞬间若本地有自选,自动合并进库再清本地,别让用户丢自选。
+// 游客可零门槛加自选(利于首次转化);"有自选的游客换页时"由 GuestWatchlistNudge 轻推登录。
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { track } from "@/lib/analytics";
 import { useToast } from "@/components/Toast";
-import { useAuthModal } from "@/components/Providers";
 import { ETF_CODES } from "@/data/etfs";
 
 const LS_KEY = "stocktell_watchlist";
@@ -41,7 +41,6 @@ export interface UseWatchlist {
 export function useWatchlist(initialCodes?: string[]): UseWatchlist {
   const { status } = useSession();
   const toast = useToast();
-  const { open: openAuth } = useAuthModal();
   const [codes, setCodes] = useState<Set<string>>(
     () => new Set(initialCodes ?? [])
   );
@@ -102,17 +101,6 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
   const toggle = useCallback(
     (code: string) => {
       const adding = !codes.has(code);
-      // 游客加自选:不再本地新增,弹登录框先登录(登录后 init 里本地历史自选仍会自动合并进库)。
-      // 只拦"加"、且仅在确认未登录时(loading 态不拦,避免登录用户误触);取消自选不拦。
-      if (adding && status === "unauthenticated") {
-        track("add_watchlist_gated", {
-          kind: ETF_CODES.includes(code) ? "etf" : "stock",
-        });
-        openAuth(
-          "登录后即可加自选,StockTell 会在「和我相关」帮你盯这只票的相关动态 —— 免费,不喊单。"
-        );
-        return;
-      }
       const next = new Set(codes);
       if (adding) next.add(code);
       else next.delete(code);
@@ -153,7 +141,7 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
         if (adding) toast(ADDED_MSG);
       }
     },
-    [codes, status, toast, openAuth]
+    [codes, status, toast]
   );
 
   return { codes, ready, loggedIn: status === "authenticated", has, toggle };

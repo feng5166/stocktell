@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { PWARegister } from "@/components/PWARegister";
 import { SiteFooter } from "@/components/SiteFooter";
+import { GuestWatchlistNudge } from "@/components/GuestWatchlistNudge";
 
 // Umami 网页分析(自托管 analytics.stocktell.me)。配了 WEBSITE_ID 才注入,
 // 自动采集 pageview;自定义事件经 lib/analytics 的 track() 上报。
@@ -44,7 +45,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className="antialiased pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <GuestWatchlistNudge />
+        </Providers>
         <SiteFooter />
         <PWARegister />
         {UMAMI_SRC && UMAMI_ID && (
