@@ -62,8 +62,6 @@ export default async function Home() {
             </div>
             <p className="mt-1 text-xs text-gray-400">
               {shownDate} · AI 产业链动态,跟你的持仓有什么关系
-              {/* 内联小入口 → AI 链落地页(埋点 chain_entry_click) */}
-              <ChainHomeEntry />
             </p>
           </div>
         </div>
@@ -74,8 +72,8 @@ export default async function Home() {
           </div>
         )}
 
-        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目) */}
-        <ChainSentiment initial={sentiment} />
+        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目)。右上角塞 AI 链落地页入口 */}
+        <ChainSentiment initial={sentiment} action={<ChainHomeEntry />} />
 
         {/* 跨市场预期差雷达:隔夜美股已涨、对应 A 股暂未跟上 → 一屏直达(无 live 信号时自隐藏) */}
         <OvernightRadar />

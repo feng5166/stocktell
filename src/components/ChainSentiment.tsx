@@ -1,7 +1,7 @@
 "use client";
 
 // P2 AI链情绪仪表盘:首页顶部一条今日情绪(A股整体 + 隔夜美股),给个每天打开的理由。
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { changeClass } from "@/lib/format";
 import { INDEX_FULL, FEIBAN_NOTE } from "@/data/indices";
 
@@ -34,7 +34,13 @@ const fmtYi = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}亿`;
 
 // initial 由首页 ISR 服务端算好直接传入 → 首屏即出、零客户端请求(原来是挂载后再跨境拉一次,很慢)。
 // 不传 initial 时(其它复用场景)仍回退到客户端拉取。
-export function ChainSentiment({ initial }: { initial?: Data }) {
+export function ChainSentiment({
+  initial,
+  action,
+}: {
+  initial?: Data;
+  action?: ReactNode; // 右上角可选插槽(首页塞"看/分享"入口;落地页不传)
+}) {
   // 只把"有实际数据"的 initial 当作可用;服务端那次冷算超时返回的空 initial 不算,
   // 否则会卡在"数据生成中"且不再客户端兜底(空态自愈不了)。
   const initialOk = !!(initial && (initial.a || initial.us));
@@ -109,22 +115,21 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
       <div className="mb-2.5 flex items-center gap-2">
         <span className="text-sm font-semibold text-gray-800">AI链今日情绪</span>
         {mood && (
-          <span
-            className={`rounded px-1.5 py-0.5 text-meta ${mood.c}`}
-          >
-            {mood.t}
-          </span>
+          <span className={`rounded px-1.5 py-0.5 text-meta ${mood.c}`}>{mood.t}</span>
         )}
-        {a?.pctLive ? (
-          <span className="ml-auto flex items-center gap-1 text-meta text-rose-500">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
-            实时 {a.pctAsOf}
-          </span>
-        ) : (
-          d.date && (
-            <span className="ml-auto text-meta text-gray-400">{d.date.slice(5)} 收盘</span>
-          )
-        )}
+        <div className="ml-auto flex items-center gap-2.5">
+          {a?.pctLive ? (
+            <span className="flex items-center gap-1 text-meta text-rose-500">
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+              实时 {a.pctAsOf}
+            </span>
+          ) : (
+            d.date && (
+              <span className="text-meta text-gray-400">{d.date.slice(5)} 收盘</span>
+            )
+          )}
+          {action}
+        </div>
       </div>
       <div className="space-y-2">
         {a && (
