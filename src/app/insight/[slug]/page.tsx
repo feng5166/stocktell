@@ -8,6 +8,7 @@ import {
   type InsightChain,
   type Hop,
   type HeatDir,
+  type HeatRow,
   type StockMap,
   type Relation,
   type Confidence,
@@ -26,6 +27,19 @@ const HEAT: Record<HeatDir, { box: string; bar: string }> = {
   分化: { box: "bg-violet-50 text-violet-700", bar: "text-violet-300" },
   中性: { box: "bg-gray-100 text-gray-500", bar: "text-gray-300" },
 };
+
+// 热力色块:颜色深浅=与本次事件的关联强弱(A股心智:红=热、绿=冷;非涨幅)
+function heatTile(r: HeatRow): { bg: string; fg: string; sub: string; glyph: string } {
+  if (r.direction === "升温") {
+    if (r.intensity >= 5) return { bg: "bg-rose-500", fg: "text-white", sub: "text-rose-100", glyph: "▲▲▲" };
+    if (r.intensity === 4) return { bg: "bg-rose-400", fg: "text-white", sub: "text-rose-100", glyph: "▲▲" };
+    if (r.intensity === 3) return { bg: "bg-rose-200", fg: "text-rose-900", sub: "text-rose-700", glyph: "▲" };
+    return { bg: "bg-rose-100", fg: "text-rose-800", sub: "text-rose-600", glyph: "▲" };
+  }
+  if (r.direction === "降温") return { bg: "bg-emerald-100", fg: "text-emerald-900", sub: "text-emerald-700", glyph: "▼" };
+  if (r.direction === "分化") return { bg: "bg-slate-200", fg: "text-slate-800", sub: "text-slate-600", glyph: "◐" };
+  return { bg: "bg-gray-100", fg: "text-gray-700", sub: "text-gray-500", glyph: "—" };
+}
 const REL: Record<Relation, string> = {
   直接: "bg-rose-100 text-rose-700",
   间接: "bg-amber-100 text-amber-700",
@@ -186,10 +200,17 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           </a>
         </div>
 
-        {/* 再具体点:这次到底变了啥(事件 delta,一句人话)*/}
+        {/* 简单说:整条传导故事(人话为主)+ 一行专业口径(专业为辅) */}
         <div className="mb-3 rounded-xl bg-gray-50 px-4 py-3">
-          <p className="text-[11px] font-medium text-gray-500">这次到底变了啥</p>
-          <p className="mt-0.5 text-sm leading-relaxed text-gray-700">{c.deltaPlain}</p>
+          <p className="text-[11px] font-medium text-gray-500">简单说</p>
+          <div className="mt-1 space-y-1">
+            {c.storyPlain.map((line, i) => (
+              <p key={i} className="text-sm leading-relaxed text-gray-800">
+                {line}
+              </p>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-gray-400">{c.storyPro}</p>
         </div>
 
         {/* 事件(简短)+ 占位提示 */}
@@ -199,55 +220,69 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
               🧪 演示事件 · 说明见页底
             </span>
           </p>
-          <p className="text-sm leading-relaxed text-gray-700">{c.event}</p>
+          <p className="text-sm leading-relaxed text-gray-700">{c.eventPlain}</p>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">专业表述:{c.event}</p>
         </Section>
 
         {/* ===== 第二层:热力图 + 多跳因果链(1 分钟看明白)===== */}
-        <Section icon="🔥" title="产业链热力(哪些环节在升温)" sub={c.heatmapNote}>
-          <div className="space-y-2">
+        <Section icon="🔥" title="产业链热力(哪段在升温)" sub={c.heatmapNote}>
+          {/* 一眼热力:色块网格,颜色越深=与本次事件关联越强(红=热、绿=冷,非涨幅) */}
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {c.heatmap.map((r, i) => {
-              // 该环节的"怎么传到这的"(因果链分支跳)折叠进行内——热力图=第二层唯一骨架,不再单列分支区
-              const hop = r.hopOrder ? c.branchHops.find((h) => h.order === r.hopOrder) : undefined;
+              const t = heatTile(r);
               return (
-                <div key={i} className="rounded-lg bg-gray-50 px-3 py-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-sm font-medium text-gray-800">{r.segment}</span>
-                    <Pill text={r.direction} cls={HEAT[r.direction].box} />
-                    <span className={`font-mono text-xs ${HEAT[r.direction].bar}`}>
-                      {"▮".repeat(r.intensity)}
-                      <span className="text-gray-200">{"▮".repeat(5 - r.intensity)}</span>
-                    </span>
-                    {r.relation && <Pill text={r.relation} cls={REL[r.relation]} />}
-                    {r.confidence && <Pill text={`置信 ${r.confidence}`} cls={CONF[r.confidence]} />}
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-gray-600">
-                    <span className="text-gray-500">这是啥:</span>
-                    {r.plain}
+                <div key={i} className={`rounded-lg px-2.5 py-2 ${t.bg}`}>
+                  <p className={`text-[13px] font-medium leading-snug ${t.fg}`}>{r.segment}</p>
+                  <p className={`mt-0.5 text-[11px] ${t.sub}`}>
+                    {t.glyph} {r.direction}
+                    {r.relation ? ` · ${r.relation}` : ""}
                   </p>
-                  <details className="mt-1">
-                    <summary className="cursor-pointer text-[11px] text-gray-400">
-                      {hop ? "怎么传到这的 · 依据" : "为什么这么判"}
-                    </summary>
-                    <div className="mt-1 space-y-1">
-                      {hop && <p className="text-xs leading-relaxed text-gray-600">{hop.plain}</p>}
-                      {hop?.caveatPlain && (
-                        <p className="rounded bg-rose-50/70 px-2 py-1 text-[11px] leading-relaxed text-rose-700">
-                          ⚠️ {hop.caveatPlain}
-                        </p>
-                      )}
-                      <p className="text-[11px] leading-relaxed text-gray-400">{r.reason}</p>
-                      {hop && (
-                        <p className="text-[11px] leading-relaxed text-gray-400">
-                          依据·{hop.evidenceType}
-                          {hop.evidenceExample ? `:${hop.evidenceExample}` : ""}
-                        </p>
-                      )}
-                    </div>
-                  </details>
                 </div>
               );
             })}
           </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
+            颜色越深 = 和这次事件的关联越强、证据越足(不是涨幅)。
+          </p>
+
+          {/* 深挖层:逐环节细看(这是啥/怎么传到这的/依据),默认收起 */}
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs text-gray-500">
+              逐个环节细看(这是啥 · 怎么传到这的 · 依据)
+            </summary>
+            <div className="mt-2 space-y-2">
+              {c.heatmap.map((r, i) => {
+                const hop = r.hopOrder ? c.branchHops.find((h) => h.order === r.hopOrder) : undefined;
+                return (
+                  <div key={i} className="rounded-lg bg-gray-50 px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-sm font-medium text-gray-800">{r.segment}</span>
+                      <Pill text={r.direction} cls={HEAT[r.direction].box} />
+                      {r.relation && <Pill text={r.relation} cls={REL[r.relation]} />}
+                      {r.confidence && <Pill text={`置信 ${r.confidence}`} cls={CONF[r.confidence]} />}
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                      <span className="text-gray-500">这是啥:</span>
+                      {r.plain}
+                    </p>
+                    {hop && <p className="mt-1 text-xs leading-relaxed text-gray-600">{hop.plain}</p>}
+                    {hop?.caveatPlain && (
+                      <p className="mt-1 rounded bg-rose-50/70 px-2 py-1 text-[11px] leading-relaxed text-rose-700">
+                        ⚠️ {hop.caveatPlain}
+                      </p>
+                    )}
+                    <p className="mt-1 text-[11px] leading-relaxed text-gray-400">{r.reason}</p>
+                    {hop && (
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-gray-400">
+                        依据·{hop.evidenceType}
+                        {hop.evidenceExample ? `:${hop.evidenceExample}` : ""}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </details>
         </Section>
 
         <Section
