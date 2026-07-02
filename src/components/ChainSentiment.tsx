@@ -3,6 +3,7 @@
 // P2 AI链情绪仪表盘:首页顶部一条今日情绪(A股整体 + 隔夜美股),给个每天打开的理由。
 import { useEffect, useState } from "react";
 import { changeClass } from "@/lib/format";
+import { INDEX_FULL, FEIBAN_NOTE } from "@/data/indices";
 
 interface A {
   up: number;
@@ -153,21 +154,33 @@ export function ChainSentiment({ initial }: { initial?: Data }) {
               />
             )}
             {d.us.indices && d.us.indices.length > 0 && (
-              <div className="flex items-center gap-3 text-xs">
-                <span className="w-14 shrink-0 text-gray-400">
-                  {d.us.covered > 0 ? "大盘" : "隔夜美股"}
-                </span>
-                <span className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-gray-500">
-                  {d.us.indices.map((ix) => (
-                    <span key={ix.name} className="whitespace-nowrap">
-                      {ix.name}{" "}
-                      <span className={`tabular-nums ${changeClass(ix.change)}`}>
-                        {fmtPct(ix.change)}
+              <>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="w-14 shrink-0 text-gray-400">
+                    {d.us.covered > 0 ? "大盘" : "隔夜美股"}
+                  </span>
+                  <span className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-gray-500">
+                    {d.us.indices.map((ix) => (
+                      <span key={ix.name} className="whitespace-nowrap">
+                        <span
+                          title={INDEX_FULL[ix.name]}
+                          className={
+                            INDEX_FULL[ix.name]
+                              ? "cursor-help border-b border-dotted border-gray-300"
+                              : ""
+                          }
+                        >
+                          {ix.name}
+                        </span>{" "}
+                        <span className={`tabular-nums ${changeClass(ix.change)}`}>
+                          {fmtPct(ix.change)}
+                        </span>
                       </span>
-                    </span>
-                  ))}
-                </span>
-              </div>
+                    ))}
+                  </span>
+                </div>
+                <p className="pl-[4.25rem] text-[10px] text-gray-400">{FEIBAN_NOTE}</p>
+              </>
             )}
           </div>
         )}

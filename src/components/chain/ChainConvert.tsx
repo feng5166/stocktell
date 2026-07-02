@@ -9,6 +9,7 @@ import { useSession, signIn } from "next-auth/react";
 import { track } from "@/lib/analytics";
 import { IMPACT_META } from "@/lib/impact";
 import type { Impact } from "@/lib/briefings";
+import { FEIBAN_NOTE } from "@/data/indices";
 
 export interface ShareSummary {
   date: string;
@@ -239,6 +240,7 @@ export function ChainConvert({
                     <div>📊 {summary.aLine}</div>
                     <div>🌙 隔夜 {summary.usLine}</div>
                   </div>
+                  <div className="mt-1 text-[10px] text-gray-400">{FEIBAN_NOTE}</div>
                 </div>
 
                 {/* 今日关键动态 */}
