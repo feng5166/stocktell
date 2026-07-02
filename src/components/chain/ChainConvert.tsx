@@ -123,12 +123,13 @@ export function ChainConvert({
           url: shareUrl,
         });
         track("share_link_copied", { chain: chainId, medium: "native" });
-      } catch {
-        /* 用户取消,忽略 */
+        return;
+      } catch (e) {
+        // 用户主动取消(AbortError)→ 不兜底;其它失败(部分安卓/国产浏览器 share 抛错)→ 兜底复制
+        if (e instanceof Error && e.name === "AbortError") return;
       }
-    } else {
-      await copyLink();
     }
+    await copyLink(); // 无原生分享 或 share 真失败 → 复制链接 + 提示,别让按钮变死
   };
 
   return (
