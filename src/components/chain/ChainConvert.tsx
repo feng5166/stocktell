@@ -10,9 +10,9 @@ import { track } from "@/lib/analytics";
 
 export interface ShareSummary {
   date: string;
-  moodLine: string; // "A股 涨32 跌18 · 均 +0.8%"
-  overnight: string; // "隔夜 纳指 +1.2% · 费半 +2.5%"
-  topTitle: string | null; // 今日头条动态标题
+  aLine: string; // A股情绪(涨跌家数 · 均幅 · 主力净流入)
+  usLine: string; // 隔夜美股(纳指 · 标普 · 费半)
+  items: { impact: string; title: string; benes: string }[]; // 今日关键动态 top3
 }
 
 export function ChainConvert({
@@ -220,10 +220,8 @@ export function ChainConvert({
               </>
             ) : (
               // 海报卡(既是预览,也是渲图目标)
-              <div
-                ref={posterRef}
-                className="overflow-hidden rounded-2xl bg-white shadow-2xl"
-              >
+              // 矩形海报(不加圆角:圆角切出的透明角会被白底填成白边);浏览器渲图=中文原生
+              <div ref={posterRef} className="bg-white shadow-2xl">
                 <div className="bg-brand-600 px-5 pb-5 pt-5 text-white">
                   <div className="text-xs font-semibold tracking-wide opacity-90">
                     StockTell · 产业链解读
@@ -231,14 +229,42 @@ export function ChainConvert({
                   <div className="mt-3 text-xl font-bold">{chainName} · 今日解读</div>
                   <div className="mt-0.5 text-xs opacity-80">{summary.date}</div>
                 </div>
-                <div className="space-y-2.5 px-5 py-4 text-sm text-gray-700">
-                  <div>📊 {summary.moodLine}</div>
-                  <div>🌙 {summary.overnight}</div>
-                  {summary.topTitle && (
-                    <div className="line-clamp-2">📌 {summary.topTitle}</div>
-                  )}
+
+                {/* 今日情绪 */}
+                <div className="px-5 pt-4">
+                  <div className="text-xs font-semibold text-brand-600">今日情绪</div>
+                  <div className="mt-1.5 space-y-1.5 text-sm text-gray-700">
+                    <div>📊 {summary.aLine}</div>
+                    <div>🌙 隔夜 {summary.usLine}</div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 border-t border-gray-100 px-5 py-4">
+
+                {/* 今日关键动态 */}
+                {summary.items.length > 0 && (
+                  <div className="px-5 pt-4">
+                    <div className="text-xs font-semibold text-brand-600">
+                      今日关键动态 · 隔夜联动
+                    </div>
+                    <div className="mt-1.5 space-y-2.5">
+                      {summary.items.map((it, i) => (
+                        <div key={i} className="text-sm text-gray-700">
+                          <div className="flex gap-1.5">
+                            <span className="shrink-0 rounded bg-gray-100 px-1.5 text-[11px] font-medium leading-5 text-gray-500">
+                              {it.impact}
+                            </span>
+                            <span className="font-medium text-gray-800">{it.title}</span>
+                          </div>
+                          {it.benes && (
+                            <div className="mt-0.5 text-xs text-gray-500">涉及:{it.benes}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 二维码 */}
+                <div className="mt-4 flex items-center gap-3 border-t border-gray-100 px-5 py-4">
                   {qrUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={qrUrl} alt="扫码" className="h-16 w-16 rounded" />

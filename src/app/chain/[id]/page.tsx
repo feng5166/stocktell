@@ -59,16 +59,22 @@ export default async function ChainPage({
   // 分享卡摘要(服务端算好)
   const a = sentiment.a;
   const us = sentiment.us;
+  const fmtYi = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}亿`;
   const summary: ShareSummary = {
     date: shownDate,
-    moodLine: a
-      ? `A股 涨${a.up} 跌${a.down} · 均 ${pct2(a.avgPct)}`
-      : "A股 情绪数据生成中",
-    overnight:
+    aLine: a
+      ? `A股 涨${a.up} 跌${a.down} · 均 ${pct2(a.avgPct)}` +
+        (a.netMfYi != null ? ` · 主力 ${fmtYi(a.netMfYi)}` : "")
+      : "A股情绪数据生成中",
+    usLine:
       us?.indices && us.indices.length
-        ? "隔夜 " + us.indices.map((i) => `${i.name} ${pct1(i.change)}`).join(" · ")
-        : "隔夜美股 数据生成中",
-    topTitle: topItems[0]?.title ?? null,
+        ? us.indices.map((i) => `${i.name} ${pct1(i.change)}`).join(" · ")
+        : "隔夜美股数据生成中",
+    items: topItems.map((it) => ({
+      impact: it.impact,
+      title: it.title,
+      benes: it.beneficiaries.map((b) => b.name).slice(0, 5).join("、"),
+    })),
   };
 
   const roster = rosterOf(chain);
