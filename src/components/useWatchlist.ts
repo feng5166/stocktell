@@ -89,8 +89,22 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
       }
     }
     init();
+    // 兜底:status 若长时间卡在 "loading"(session 端点慢/客户端水合异常),别让"和我相关"永远转圈——
+    // 4s 后直接按 cookie 取一次自选(登录用户返回 codes;游客/未登录走本地),置 ready。
+    const fallback = setTimeout(async () => {
+      if (!active || status !== "loading" || ready) return;
+      const r = await fetch("/api/watchlist", { cache: "no-store" })
+        .then((x) => x.json())
+        .catch(() => null);
+      if (!active) return;
+      setCodes(
+        new Set<string>(r && r.ok && Array.isArray(r.codes) ? r.codes : readLocal())
+      );
+      setReady(true);
+    }, 4000);
     return () => {
       active = false;
+      clearTimeout(fallback);
     };
     // initialCodes 由服务端一次性注入、引用稳定,只需随登录态变化重跑
     // eslint-disable-next-line react-hooks/exhaustive-deps
