@@ -67,6 +67,8 @@ export interface InsightChain {
   mappingNote: string;
   mappings: StockMap[];
   uncertainties: string[]; // 已知不确定性(深度)
+  // 去哪核实:常设官方入口(真实可点的 URL,不编造具体文章);正式上线时每跳另挂当天具体来源+时间戳
+  references: { name: string; url: string; type: string; note: string }[];
   disclaimer: string;
 }
 
@@ -184,11 +186,18 @@ const AI_INFRA: InsightChain = {
   ],
 
   uncertainties: [
-    "Hop1 是全链总闸:「算得便宜」若只是省钱没多用,整条链方向反转——最需盯的假设。",
     "液冷渗透、光/铜替代边界、电力→A 股电力设备传导,节奏都不确定,不宜线性外推。",
     "国产算力芯片(海光/寒武纪)刻意标「情绪映射」:它们不直接给英伟达供货,若读成直接受益会严重失真。",
     "香农芯创(代理)、东方电气(发电)关系偏弱、置信度低,放进来是为诚实展示「弱映射长什么样」。",
-    "有没有被资金提前充分定价(price-in)没校验,需结合当日行情与资金面再看。",
+    "有没有被资金提前炒过头(price-in)没校验,需结合当日行情与资金面再看。",
+  ],
+  references: [
+    { name: "OpenAI 官方定价页", url: "https://openai.com/api/pricing/", type: "官方定价", note: "核实「AI 算一次更便宜」:每百万 token 价格逐代变化" },
+    { name: "英伟达投资者关系", url: "https://investor.nvidia.com", type: "财报/指引", note: "数据中心分部收入与下季指引原文" },
+    { name: "微软投资者关系(云厂 capex 口径)", url: "https://www.microsoft.com/en-us/investor", type: "财报/资本开支", note: "云厂「AI 与数据中心投入」资本开支指引(Alphabet/Meta/亚马逊同理见各家 IR)" },
+    { name: "美光投资者关系", url: "https://investors.micron.com", type: "财报", note: "HBM 产能与预定情况(SK 海力士同理)" },
+    { name: "台积电投资者关系(法说会)", url: "https://investor.tsmc.com", type: "法说会", note: "CoWoS 先进封装扩产表述" },
+    { name: "巨潮资讯网(A股法定信息披露)", url: "http://www.cninfo.com.cn", type: "A股公告", note: "文中 A 股标的的公告/订单披露原文,以此为准" },
   ],
   disclaimer:
     "本内容为 AI 推理基础设施产业链的关联梳理,基于公开、公认的行业因果逻辑与证据类型示例;「证据举例」仅说明真实上线时应引用何种来源,不含真实实时数字与 URL,种子事件为占位演示需替换为当日真事件。文中所有关系均为「关联/映射/受影响」,属非确认因果关系、仅统计非预测,不构成任何投资建议、不含买卖指令、目标价或涨跌预测。多跳链为「逻辑 + 证据」框架,非回测统计胜率。本工具不提供证券投资咨询服务,所列个股仅为产业链关联的说明性示例,不构成任何推荐;个股波动风险自负。",

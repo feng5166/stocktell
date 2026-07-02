@@ -14,32 +14,20 @@ import {
   type Confidence,
 } from "@/data/insight-chains";
 
-// 推理链详情页(内核最小可证 · 隔离实验)。静态预生成,不进导航/首页。
-// 产品化三层:首屏结论卡(10秒)→ 热力图 + 多跳因果链(1分钟)→ 深度核验(证据/不确定性)。人话为主。
+// 推理链详情页(内核最小可证 · Beta)。静态预生成,不进导航/首页。
+// 信息层级(默认更短、展开更深):10秒(首屏卡)→ 1分钟(简单说+热力色块+票名单)→ 深挖(依据/references/方法)。
 export const dynamic = "force-static";
 export function generateStaticParams() {
   return Object.keys(INSIGHT_CHAINS).map((slug) => ({ slug }));
 }
 
-const HEAT: Record<HeatDir, { box: string; bar: string }> = {
-  升温: { box: "bg-orange-50 text-orange-700", bar: "text-orange-400" },
-  降温: { box: "bg-slate-100 text-slate-500", bar: "text-slate-300" },
-  分化: { box: "bg-violet-50 text-violet-700", bar: "text-violet-300" },
-  中性: { box: "bg-gray-100 text-gray-500", bar: "text-gray-300" },
+// 方向 pill(与热力色块同一色系:红=热、绿=冷、灰=分化)
+const HEAT: Record<HeatDir, string> = {
+  升温: "bg-rose-50 text-rose-700",
+  降温: "bg-emerald-50 text-emerald-700",
+  分化: "bg-slate-200 text-slate-600",
+  中性: "bg-gray-100 text-gray-500",
 };
-
-// 热力色块:颜色深浅=与本次事件的关联强弱(A股心智:红=热、绿=冷;非涨幅)
-function heatTile(r: HeatRow): { bg: string; fg: string; sub: string; glyph: string } {
-  if (r.direction === "升温") {
-    if (r.intensity >= 5) return { bg: "bg-rose-500", fg: "text-white", sub: "text-rose-100", glyph: "▲▲▲" };
-    if (r.intensity === 4) return { bg: "bg-rose-400", fg: "text-white", sub: "text-rose-100", glyph: "▲▲" };
-    if (r.intensity === 3) return { bg: "bg-rose-200", fg: "text-rose-900", sub: "text-rose-700", glyph: "▲" };
-    return { bg: "bg-rose-100", fg: "text-rose-800", sub: "text-rose-600", glyph: "▲" };
-  }
-  if (r.direction === "降温") return { bg: "bg-emerald-100", fg: "text-emerald-900", sub: "text-emerald-700", glyph: "▼" };
-  if (r.direction === "分化") return { bg: "bg-slate-200", fg: "text-slate-800", sub: "text-slate-600", glyph: "◐" };
-  return { bg: "bg-gray-100", fg: "text-gray-700", sub: "text-gray-500", glyph: "—" };
-}
 const REL: Record<Relation, string> = {
   直接: "bg-rose-100 text-rose-700",
   间接: "bg-amber-100 text-amber-700",
@@ -55,9 +43,22 @@ const CONF: Record<Confidence, string> = {
 const REL_GROUPS: { rel: Relation; label: string; hint: string }[] = [
   { rel: "直接", label: "🟥 直接相关", hint: "和这次事件、这些环节的关系最直接(比如给北美云厂供货)" },
   { rel: "间接", label: "🟨 间接相关", hint: "受益链条存在,但中间隔了几环,要看具体订单/客户/收入占比" },
-  { rel: "情绪映射", label: "⬜ 情绪映射", hint: "可能被热度带动,但不等于这次事件的直接受益方,真金白银看订单" },
+  { rel: "情绪映射", label: "⬜ 沾热度(情绪映射)", hint: "可能被热度带动,但不等于这次事件的直接受益方,真金白银看订单" },
   { rel: "弱", label: "弱关联", hint: "" },
 ];
+
+// 热力色块:颜色深浅=与本次事件的关联强弱(A股心智:红=热、绿=冷;非涨幅)
+function heatTile(r: HeatRow): { bg: string; fg: string; sub: string; glyph: string } {
+  if (r.direction === "升温") {
+    if (r.intensity >= 5) return { bg: "bg-rose-500", fg: "text-white", sub: "text-rose-100", glyph: "▲▲▲" };
+    if (r.intensity === 4) return { bg: "bg-rose-400", fg: "text-white", sub: "text-rose-100", glyph: "▲▲" };
+    if (r.intensity === 3) return { bg: "bg-rose-200", fg: "text-rose-900", sub: "text-rose-700", glyph: "▲" };
+    return { bg: "bg-rose-100", fg: "text-rose-800", sub: "text-rose-600", glyph: "▲" };
+  }
+  if (r.direction === "降温") return { bg: "bg-emerald-100", fg: "text-emerald-900", sub: "text-emerald-700", glyph: "▼" };
+  if (r.direction === "分化") return { bg: "bg-slate-200", fg: "text-slate-800", sub: "text-slate-600", glyph: "◐" };
+  return { bg: "bg-gray-100", fg: "text-gray-700", sub: "text-gray-500", glyph: "—" };
+}
 
 function Section({
   icon,
@@ -73,7 +74,7 @@ function Section({
   id?: string;
 }) {
   return (
-    <section id={id} className="mb-3.5 scroll-mt-16 rounded-xl bg-white px-4 py-3.5 shadow-sm">
+    <section id={id} className="mb-3 scroll-mt-16 rounded-xl bg-white px-4 py-3.5 shadow-sm">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
         <span>{icon}</span>
         {title}
@@ -88,25 +89,18 @@ function Pill({ text, cls }: { text: string; cls: string }) {
   return <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] ${cls}`}>{text}</span>;
 }
 
+// 主线跳:人话主线 + 反转人话 + 依据行(置信度前置)
 function HopRow({ h }: { h: Hop }) {
   return (
     <li className="rounded-lg bg-gray-50 px-3 py-2.5">
-      {/* 人话主线 */}
       <p className="text-sm leading-relaxed text-gray-800">{h.plain}</p>
-      {/* 反转/证伪的人话(醒目) */}
       {h.caveatPlain && (
         <p className="mt-1.5 rounded bg-rose-50/70 px-2 py-1 text-xs leading-relaxed text-rose-700">
           ⚠️ {h.caveatPlain}
         </p>
       )}
-      {/* 专业细节(次要,想深挖的看) */}
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-gray-400">
-        <span className="rounded bg-white px-1 py-0.5 font-medium text-gray-500">
-          {h.from} → {h.to}
-        </span>
-        <Pill text={`置信 ${h.confidence}`} cls={CONF[h.confidence]} />
-      </div>
-      <p className="mt-1 text-[11px] leading-relaxed text-gray-400">
+      <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
+        <span className={`mr-1 rounded px-1 py-0.5 ${CONF[h.confidence]}`}>置信 {h.confidence}</span>
         依据·{h.evidenceType}
         {h.evidenceExample ? `:${h.evidenceExample}` : ""}
       </p>
@@ -114,14 +108,16 @@ function HopRow({ h }: { h: Hop }) {
   );
 }
 
-function Mapping({ m }: { m: StockMap }) {
+// 票:默认单行(名单常显),依据收进组级折叠
+function MappingRow({ m }: { m: StockMap }) {
   const inPool = m.code ? !!STOCK_MAP[m.code] : false;
-  const head = (
+  const inner = (
     <>
-      <span className="font-medium text-gray-800">{m.name}</span>
+      <span className="text-sm font-medium text-gray-800">{m.name}</span>
       {m.code && <span className="font-mono text-xs text-gray-400">{m.code}</span>}
-      <span className="text-xs text-gray-400">· {m.segment}</span>
+      <span className="text-xs text-gray-400">{m.segment}</span>
       <Pill text={`置信 ${m.confidence}`} cls={CONF[m.confidence]} />
+      {inPool && <span className="ml-auto text-[11px] text-brand-400">看个股 →</span>}
     </>
   );
   return (
@@ -129,15 +125,13 @@ function Mapping({ m }: { m: StockMap }) {
       {inPool && m.code ? (
         <Link
           href={`/stock/${m.code}`}
-          className="-mx-2 flex flex-wrap items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-gray-50 active:bg-gray-50"
+          className="-mx-2 flex min-h-[40px] flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-2 py-1 transition-colors hover:bg-gray-50 active:bg-gray-50"
         >
-          {head}
-          <span className="text-[11px] text-brand-400">看个股 →</span>
+          {inner}
         </Link>
       ) : (
-        <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5">{head}</div>
+        <div className="flex min-h-[40px] flex-wrap items-center gap-x-2 gap-y-0.5 px-2 py-1">{inner}</div>
       )}
-      <p className="px-2 pb-1 text-xs leading-relaxed text-gray-500">{m.reason}</p>
     </li>
   );
 }
@@ -154,32 +148,41 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-h1 font-semibold tracking-tight">{c.title}</h1>
             <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700">
-              推理链 · 内核实验
+              Beta
             </span>
           </div>
           <p className="mt-1 text-xs text-gray-400">
-            更新 {c.updatedAt} · 一件全球事件,如何一路传到 A 股
+            一件全球事件,如何一路传到 A 股 · 更新 {c.updatedAt}
           </p>
         </header>
 
-        {/* ===== 第一层:10 秒懂(极简,像张图一眼扫完)===== */}
-        <div className="mb-3 rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-inset ring-brand-100">
-          <p className="text-[15px] font-medium leading-relaxed text-gray-900">{c.tldr.hook}</p>
+        {/* ===== 10 秒层:首屏卡(事件一行 + 钩子 + 三档 + 风险 + 看票) ===== */}
+        <div className="mb-3 rounded-2xl bg-brand-50/40 px-4 py-4 shadow-sm">
+          <p className="text-[11px] leading-relaxed text-gray-500">
+            <span className="mr-1 rounded bg-white/80 px-1 py-0.5 text-gray-500">🧪 演示事件</span>
+            {c.eventPlain}
+          </p>
+          <p className="mt-2 text-[15px] font-medium leading-relaxed text-gray-900">{c.tldr.hook}</p>
           <div className="mt-3 space-y-2.5">
             {c.tldr.tiers.map((t) => {
               const inner = (
                 <>
                   <span className="mt-0.5 shrink-0 text-lg leading-none">{t.emoji}</span>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="shrink-0 text-[11px] font-medium text-gray-400">{t.level}</span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                          t.rel ? REL[t.rel] : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {t.level}
+                      </span>
                       <span className="text-sm font-semibold text-gray-900">{t.what}</span>
                     </div>
-                    <p className="text-xs leading-relaxed text-gray-500">{t.why}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-gray-500">{t.why}</p>
                   </div>
                 </>
               );
-              // 有对应映射分组的档,整行可点、锚到该分组(解决"看完首屏想看票要滑4-5屏")
               return t.rel ? (
                 <a key={t.level} href={`#rel-${t.rel}`} className="flex items-start gap-2.5">
                   {inner}
@@ -200,10 +203,10 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           </a>
         </div>
 
-        {/* 简单说:整条传导故事(人话为主)+ 一行专业口径(专业为辅) */}
-        <div className="mb-3 rounded-xl bg-gray-50 px-4 py-3">
-          <p className="text-[11px] font-medium text-gray-500">简单说</p>
-          <div className="mt-1 space-y-1">
+        {/* ===== 1 分钟层 ===== */}
+        {/* 简单说(人话故事)+ 主线依据折叠(展开更深) */}
+        <Section icon="🧭" title="简单说:这事怎么传到股票的">
+          <div className="space-y-1">
             {c.storyPlain.map((line, i) => (
               <p key={i} className="text-sm leading-relaxed text-gray-800">
                 {line}
@@ -211,22 +214,21 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
             ))}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-gray-400">{c.storyPro}</p>
-        </div>
-
-        {/* 事件(简短)+ 占位提示 */}
-        <Section icon="📰" title="事件">
-          <p className="mb-1.5">
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
-              🧪 演示事件 · 说明见页底
-            </span>
-          </p>
-          <p className="text-sm leading-relaxed text-gray-700">{c.eventPlain}</p>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">专业表述:{c.event}</p>
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs text-gray-500">
+              主线两步的依据(证据 · 置信度 · 什么情况会反转)
+            </summary>
+            <ul className="mt-2 space-y-1.5">
+              {c.mainHops.map((h) => (
+                <HopRow key={h.order} h={h} />
+              ))}
+            </ul>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">{c.hopsNote}</p>
+          </details>
         </Section>
 
-        {/* ===== 第二层:热力图 + 多跳因果链(1 分钟看明白)===== */}
+        {/* 热力色块(一眼)+ 逐环节深挖折叠 */}
         <Section icon="🔥" title="产业链热力(哪段在升温)" sub={c.heatmapNote}>
-          {/* 一眼热力:色块网格,颜色越深=与本次事件关联越强(红=热、绿=冷,非涨幅) */}
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {c.heatmap.map((r, i) => {
               const t = heatTile(r);
@@ -244,8 +246,6 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
             颜色越深 = 和这次事件的关联越强、证据越足(不是涨幅)。
           </p>
-
-          {/* 深挖层:逐环节细看(这是啥/怎么传到这的/依据),默认收起 */}
           <details className="mt-2">
             <summary className="cursor-pointer text-xs text-gray-500">
               逐个环节细看(这是啥 · 怎么传到这的 · 依据)
@@ -257,7 +257,7 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
                   <div key={i} className="rounded-lg bg-gray-50 px-3 py-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-sm font-medium text-gray-800">{r.segment}</span>
-                      <Pill text={r.direction} cls={HEAT[r.direction].box} />
+                      <Pill text={r.direction} cls={HEAT[r.direction]} />
                       {r.relation && <Pill text={r.relation} cls={REL[r.relation]} />}
                       {r.confidence && <Pill text={`置信 ${r.confidence}`} cls={CONF[r.confidence]} />}
                     </div>
@@ -285,19 +285,7 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           </details>
         </Section>
 
-        <Section
-          icon="🧭"
-          title="这事怎么一步步传到股票的"
-          sub={c.hopsNote}
-        >
-          <ul className="space-y-1.5">
-            {c.mainHops.map((h) => (
-              <HopRow key={h.order} h={h} />
-            ))}
-          </ul>
-        </Section>
-
-        {/* 国内标的 — 按关系分组 */}
+        {/* 票:名单常显(单行),依据收进组级折叠 */}
         <Section id="mappings" icon="🔗" title="国内相关的票(按关系分级,不是推荐)" sub={c.mappingNote}>
           <div className="space-y-3">
             {REL_GROUPS.map((g) => {
@@ -306,26 +294,64 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
               return (
                 <div key={g.rel} id={`rel-${g.rel}`} className="scroll-mt-16">
                   <p className="text-xs font-semibold text-gray-700">{g.label}</p>
-                  {g.hint && <p className="mb-1 text-[11px] leading-relaxed text-gray-400">{g.hint}</p>}
-                  <ul className="space-y-1">
+                  {g.hint && (
+                    <p className="mb-0.5 text-[11px] leading-relaxed text-gray-400">{g.hint}</p>
+                  )}
+                  <ul>
                     {items.map((m) => (
-                      <Mapping key={m.name} m={m} />
+                      <MappingRow key={m.name} m={m} />
                     ))}
                   </ul>
+                  <details>
+                    <summary className="cursor-pointer text-[11px] text-gray-400">
+                      为什么是这几只 · 关系依据
+                    </summary>
+                    <ul className="mt-1 space-y-1">
+                      {items.map((m) => (
+                        <li key={m.name} className="text-xs leading-relaxed text-gray-500">
+                          <b className="text-gray-600">{m.name}</b>:{m.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 </div>
               );
             })}
           </div>
         </Section>
 
-        {/* ===== 第三层:深度核验 ===== */}
-        <Section icon="⚠️" title="要提醒你的(诚实说)">
+        {/* ===== 深挖层:提醒 + references + 完整判断/方法 ===== */}
+        <Section icon="🔍" title="深挖核验(给想较真的你)">
           <ul className="space-y-1 text-xs leading-relaxed text-gray-600">
             {c.uncertainties.map((u, i) => (
               <li key={i}>· {u}</li>
             ))}
           </ul>
-          <details className="mt-2.5 text-xs text-gray-500">
+          <details className="mt-2.5">
+            <summary className="cursor-pointer text-xs text-gray-500">📚 去哪核实(references)</summary>
+            <ul className="mt-2 space-y-2">
+              {c.references.map((ref) => (
+                <li key={ref.name} className="text-xs leading-relaxed">
+                  <a
+                    href={ref.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-brand-600 hover:underline"
+                  >
+                    {ref.name} ↗
+                  </a>
+                  <span className="ml-1.5 rounded bg-gray-100 px-1 py-0.5 text-[11px] text-gray-500">
+                    {ref.type}
+                  </span>
+                  <span className="block text-gray-500">{ref.note}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+              演示阶段给的是常设官方入口(真实可点);正式上线,每一步还会挂当天的具体来源与时间戳。
+            </p>
+          </details>
+          <details className="mt-1.5 text-xs text-gray-500">
             <summary className="cursor-pointer text-gray-500">完整判断 · 凭什么不是「新闻聚合」· 方法</summary>
             <div className="mt-1.5 space-y-1.5 leading-relaxed">
               <p className="text-gray-600">
@@ -336,6 +362,10 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
                 <b className="text-gray-700">专业口径:</b>
                 {c.oneLiner}
               </p>
+              <p className="text-gray-600">
+                <b className="text-gray-700">事件专业表述:</b>
+                {c.event}
+              </p>
               <p className="pt-1 font-medium text-gray-600">凭什么不是新闻聚合:</p>
               {c.differentiators.map((d, i) => (
                 <p key={i}>· {d}</p>
@@ -345,13 +375,35 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           </details>
         </Section>
 
-        {/* 合规 CTA(关注/加自选/反馈,不做交易导向) */}
-        <div className="mb-3.5 rounded-xl bg-white px-4 py-3 text-xs text-gray-500 shadow-sm">
-          <span className="font-medium text-gray-700">接下来:</span> 点上方任意标的可看个股 / 加自选;
-          「订阅这条链的更新 · 看它最近的历史联动复盘」规划中。有想法?
-          <span className="ml-1 inline-flex align-middle">
-            <FeedbackLink />
-          </span>
+        {/* ===== CTA:真按钮,不做交易导向 ===== */}
+        <div className="mb-3 rounded-xl bg-white px-4 py-3.5 shadow-sm">
+          <p className="text-sm font-semibold text-gray-800">接下来</p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            <a
+              href="#mappings"
+              className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+            >
+              ⭐ 挑几只加进自选盯起来
+            </a>
+            <Link
+              href="/settings"
+              className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-100 px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+            >
+              📬 订阅每日提醒
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-100 px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+            >
+              📰 看今日简报
+            </Link>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+            不喊单:这些动作只是帮你持续跟着这条链。想要「订阅这条链」的更新?
+            <span className="ml-1 inline-flex align-middle">
+              <FeedbackLink />
+            </span>
+          </p>
         </div>
 
         <p className="mb-2 text-meta leading-relaxed text-gray-400">🧪 {c.eventNote}</p>
