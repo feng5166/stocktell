@@ -16,12 +16,15 @@ body {
   }
 }
 
-/* 手机端表单控件强制 ≥16px:iOS Safari 对 <16px 的输入框聚焦时会自动放大整页,
-   踩在最高频的"搜票"动作上,体验很差。统一兜底,视觉上 16px 与 text-sm 差异极小。 */
-@media (max-width: 639px) {
+/* 表单控件计算字号 <16px 时,iOS Safari 聚焦会自动放大整页(踩在最高频的"搜票"动作上)。
+   两个坑必须都治:① 本项目未启用原生 @layer,Tailwind 的 .text-sm(class 0,1,0)会盖过
+   元素选择器 input(0,0,1),故必须 !important 才真正生效(否则这条规则形同虚设);
+   ② 用 (pointer: coarse) 覆盖手机+平板+横屏所有触屏设备(原 max-width:639px 漏了 iPad/横屏)。
+   视觉上 16px 与 text-sm 差异极小,已确认无 input 故意用 text-lg+。 */
+@media (pointer: coarse) {
   input,
   select,
   textarea {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 }
