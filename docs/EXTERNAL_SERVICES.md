@@ -69,7 +69,8 @@
 ### ModelVerse(OpenAI 兼容)— `api.modelverse.cn`
 - **用途**:今日简报、「StockTell 解读」、个性化早报、「散户怎么想」、「为什么动」总结。
 - **关键文件**:`src/lib/llm.ts`(默认模型 `deepseek-v4-pro`,推理模型,慢、流式)。
-- **环境变量**:`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`;为什么动另有 `WHY_ENABLED` / `WHY_LLM_MODEL`。
+- **环境变量**:`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`;为什么动另有 `WHY_ENABLED` / `WHY_LLM_MODEL`。`LLM_API_KEY` 2026-07-01 轮换过(改 env 后需重部署才生效)。
+- **主/兜底**:ModelVerse 为主,**DeepSeek 官方 API 为兜底**;劣化时 `/admin/llm` **运行时手动切换**(两家模型名一致,一键链接);劣化会飞书提醒但**不自动切**。
 - **坑**:reasoning 模型会先吐 `reasoning_content` 吃 token,`max_tokens` 要给够;60s 限制下用并发(每条一调)+ 模板兜底。
 
 ---
@@ -80,7 +81,7 @@
 |---|---|---|---|
 | **新浪行情** `hq.sinajs.cn` / `finance.sina.com.cn` | A股/美股实时行情 | `src/lib/quotes.ts` | 免 key;失败读 `quotes_cache` |
 | **东方财富** `push2his.eastmoney.com` / `quote.eastmoney.com` | 美股历史日线、A股资金面 | `src/lib/history.ts`、`src/lib/us-history.ts` | 免 key;**会封 Vercel IP**(美股历史改用 Yahoo) |
-| **Tushare** `api.tushare.pro` | 交易日历(trade_cal)/ 基本面(daily_basic)/ 资金面(moneyflow/top_list/margin)/ **雷区雷达**(share_float 解禁、stk_holdertrade 增减持、pledge_stat 质押、repurchase 回购、namechange ST 判定)/ **财报体检**(income/balancesheet/cashflow/fina_indicator) | `src/lib/tushare.ts`、`src/lib/risk-radar.ts`、`src/lib/financials.ts` | 需 `TUSHARE_TOKEN`(6000积分);雷区/财报按 ts_code 拉、按天 `unstable_cache` |
+| **Tushare** `api.tushare.pro` | 交易日历(trade_cal)/ 基本面(daily_basic)/ 资金面(moneyflow/top_list/margin)/ **雷区雷达**(share_float 解禁、stk_holdertrade 增减持、pledge_stat 质押、repurchase 回购、namechange ST 判定)/ **财报体检**(income/balancesheet/cashflow/fina_indicator)/ **相似性**(dailyHistory 2年日线) | `src/lib/tushare.ts`、`risk-radar.ts`、`financials.ts`、`similarity.ts`、`api/fundamentals`、`api/similarity` | 需 `TUSHARE_TOKEN`(6000积分)。**缓存(2026-07-01 起)**:基本面/资金面/雷区/财报/相似性结果落 **DB 跨实例缓存**——`quotes_cache`(按 `<类>:code:当天`)+ `fund_day_cache`(按 ymd),**非 `unstable_cache`**(Vercel 不跨实例、冷启重打)。失败用 `tsCallStrict` 区分「回源失败 vs 成功但空行」:**只在确有回源时才写缓存(不毒化)** + `alertThrottled` 飞书告警。仅 `fundFlowFor` 批量外层仍留轻量 unstable_cache(内层 bundle 已 DB 缓存) |
 | **Yahoo Finance** `query1.finance.yahoo.com` | 美股历史日线(相似性用) | `src/lib/yahoo.ts` | 免 key;Tushare us_daily 要付费 + 东财封 IP,故走 Yahoo |
 
 ---
@@ -151,3 +152,8 @@
 ## 暂未接入(评估记录)
 
 - **短网址服务**:目前**未接**,微信/邮件里都是完整 `stocktell.me/...`。若要做,优先考虑**站内 `stocktell.me/s/<code>`**(复用 Vercel+Postgres,同域名被微信信任,免新基建);其次才是 VPS 自建。
+- **Redis / Upstash**:目前**未接**——高频缓存暂由 **Postgres 承担**(`quotes_cache` 单行 id→json + `fund_day_cache`,拿 DB 当跨实例缓存层)。2026-07-01 多专家评估 + 对抗验证结论=**当前(29 用户/低流量)不引入**:
+  - DB 单行主键点查/点写亚毫秒、Neon pooler 已挡 serverless 扇出,**到数百 DAU 前不是瓶颈**;会先炸的(`api_metric` 单行热点、`risk-radar` 逐票扇出)**Redis 都救不了**。
+  - 唯一真"高危缺口"(简报重复生成 / 邮件重复群发)正解是 **DB 唯一约束**;限流跨实例失效用 **PG 原子计数**即可强一致——都零新依赖、更彻底。
+  - **量化触发器(到点再上,且只接锁/额度/限流,不接热缓存)**:①撞库/找回轰炸迹象 → `@upstash/ratelimit`(`rate-limit.ts` 接口 `rateLimit(key,limit,windowMs)` 已预留,平移零改);②常驻热实例 ≥8 或 `fetch-fail` 告警集中 → `SET NX` 锁只包最贵的全市场整包回源(`fund-bundle:ymd`);③fundamentals/similarity 日调用上千 / DAU 300–500 → 才整体搬热缓存。
+  - **硬约束**:Redis 只软接(命中即用、挂了绕过回落 PG→直算),**永不成新单点**。完整评估见记忆 `stocktell-storage-tiering-decision`。
