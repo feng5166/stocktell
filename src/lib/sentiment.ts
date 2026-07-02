@@ -228,6 +228,8 @@ export async function chainSentiment(): Promise<ChainSentiment> {
   // 冷算(带总预算超时);失败/超时回退 DB 旧值,绝不 504
   try {
     const data = await withTimeout(computeSentiment(), COMPUTE_BUDGET);
+    // 一次 US 抖动(新浪封/Yahoo 超时)别抹掉大盘:这次没取到 US 但缓存里有,沿用缓存的 US。
+    if (!data.us && stale?.us) data.us = stale.us;
     if (db && (data.a || data.us)) {
       const payload = data as unknown as Prisma.InputJsonValue;
       await db.quotesCache

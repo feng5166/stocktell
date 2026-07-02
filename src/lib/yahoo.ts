@@ -46,6 +46,51 @@ export async function usLatestTradingDay(ticker = "AAPL"): Promise<string | null
   }
 }
 
+// 美股最近一个交易日的涨跌%(用日线最后两根收盘算),多 ticker 并行。免鉴权、东京可达。
+// 用途:隔夜美股大盘 context(纳指/标普/费半)——新浪封 Vercel 机房 IP、腾讯美股指数不全(无费半),故走 Yahoo。
+export async function fetchYahooChanges(
+  tickers: string[]
+): Promise<Record<string, { change: number; asOf?: string }>> {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const one = async (
+    t: string
+  ): Promise<[string, { change: number; asOf?: string }] | null> => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      t
+    )}?range=5d&interval=1d`;
+    try {
+      const j = await fetchJsonWithTimeout<YahooChart>(
+        url,
+        { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" },
+        6000
+      );
+      const res = j?.chart?.result?.[0];
+      const ts = res?.timestamp ?? [];
+      const closes = res?.indicators?.quote?.[0]?.close ?? [];
+      const valid: { c: number; d: number }[] = [];
+      for (let i = 0; i < ts.length; i++)
+        if (closes[i] != null) valid.push({ c: closes[i] as number, d: ts[i] });
+      if (valid.length < 2) return null;
+      const last = valid[valid.length - 1];
+      const prev = valid[valid.length - 2];
+      if (prev.c === 0) return null;
+      const change = Math.round(((last.c - prev.c) / prev.c) * 10000) / 100;
+      return [t, { change, asOf: fmt.format(new Date(last.d * 1000)) }];
+    } catch {
+      return null;
+    }
+  };
+  const results = await Promise.all(tickers.map(one));
+  const out: Record<string, { change: number; asOf?: string }> = {};
+  for (const r of results) if (r) out[r[0]] = r[1];
+  return out;
+}
+
 export async function usDailyHistory(
   ticker: string,
   range = "2y"

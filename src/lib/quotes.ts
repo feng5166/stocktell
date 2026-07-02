@@ -2,6 +2,7 @@
 // (原主源新浪,但 Vercel 机房 IP 被新浪 403 封、慢速拒绝拖 5s,故换腾讯优先。)
 // 两源都 GBK 解码。后续要换 Polygon.io / AKShare,只改这一个文件。
 import { STOCK_MAP, sinaSymbol } from "@/data/stocks";
+import { fetchYahooChanges } from "@/lib/yahoo";
 
 export interface Quote {
   price: number;
@@ -193,9 +194,9 @@ export async function fetchQuotes(
 // 看 NVDA+3% 时,同时看到纳指/费半,才知道是普涨还是产业超额。新浪 gb_$ 与美股个股同格式;
 // 腾讯仅作整体回落(SOX 在腾讯无 usSOX,回落时该项缺失,可接受)。
 const US_INDICES = [
-  { key: "IXIC", name: "纳指", sina: "gb_$ixic", tencent: "usIXIC" },
-  { key: "INX", name: "标普", sina: "gb_$inx", tencent: "usINX" },
-  { key: "SOX", name: "费半", sina: "gb_$sox", tencent: "usSOX" },
+  { key: "IXIC", name: "纳指", sina: "gb_$ixic", tencent: "usIXIC", yahoo: "^IXIC" },
+  { key: "INX", name: "标普", sina: "gb_$inx", tencent: "usINX", yahoo: "^GSPC" },
+  { key: "SOX", name: "费半", sina: "gb_$sox", tencent: "usSOX", yahoo: "^SOX" },
 ] as const;
 
 export interface IndexQuote {
@@ -205,22 +206,40 @@ export interface IndexQuote {
 }
 
 export async function fetchUsIndices(): Promise<IndexQuote[]> {
-  const sMap: Record<string, string> = {};
-  const tMap: Record<string, string> = {};
-  for (const i of US_INDICES) {
-    sMap[i.key] = i.sina;
-    tMap[i.key] = i.tencent;
-  }
-  const { quotes } = await fetchWithFallback(
-    US_INDICES.map((i) => i.key),
-    (code) => sMap[code],
-    (code) => tMap[code]
+  // 主走 Yahoo:新浪封 Vercel 机房 IP、腾讯美股指数不全(无费半),故美股大盘走 Yahoo(免鉴权、东京可达)。
+  // Yahoo 缺的再用新浪/腾讯补(本地等非机房环境仍可用)。
+  const y = await fetchYahooChanges(US_INDICES.map((i) => i.yahoo)).catch(
+    () => ({} as Record<string, { change: number; asOf?: string }>)
   );
+  const missing = US_INDICES.filter(
+    (i) => !(y[i.yahoo] && Number.isFinite(y[i.yahoo].change))
+  );
+  let backup: Record<string, Quote> = {};
+  if (missing.length > 0) {
+    const sMap: Record<string, string> = {};
+    const tMap: Record<string, string> = {};
+    for (const i of missing) {
+      sMap[i.key] = i.sina;
+      tMap[i.key] = i.tencent;
+    }
+    backup = (
+      await fetchWithFallback(
+        missing.map((i) => i.key),
+        (code) => sMap[code],
+        (code) => tMap[code]
+      ).catch(() => ({ quotes: {} as Record<string, Quote> }))
+    ).quotes;
+  }
   const out: IndexQuote[] = [];
   for (const i of US_INDICES) {
-    const q = quotes[i.key];
-    if (q && Number.isFinite(q.change)) {
-      out.push({ name: i.name, change: q.change, asOf: q.asOf });
+    const yq = y[i.yahoo];
+    if (yq && Number.isFinite(yq.change)) {
+      out.push({ name: i.name, change: yq.change, asOf: yq.asOf });
+      continue;
+    }
+    const bq = backup[i.key];
+    if (bq && Number.isFinite(bq.change)) {
+      out.push({ name: i.name, change: bq.change, asOf: bq.asOf });
     }
   }
   return out;
