@@ -17,6 +17,7 @@ import { riskEventsFor } from "@/lib/risk-radar";
 import { financialCheckup } from "@/lib/financials";
 import { cachedFundFlowSingle } from "@/lib/fund-flow";
 import { ETF_HOLDINGS } from "@/data/etf-holdings.generated";
+import { EtfPeek } from "@/components/EtfPeek";
 import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
@@ -378,31 +379,7 @@ export default async function StockDetail({
 
         {etfs.length > 0 && (
           <Section icon="🧺" title="相关 ETF · 一篮子参与">
-            <div className="space-y-1 text-sm">
-              {etfs.map((e) => (
-                <a
-                  key={e.code}
-                  href={`https://quote.eastmoney.com/${
-                    e.code.startsWith("5") ? "sh" : "sz"
-                  }${e.code}.html`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group/etf -mx-2 flex flex-wrap items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-brand-50/60"
-                >
-                  <span className="font-mono text-xs text-gray-400">{e.code}</span>
-                  <span className="font-medium text-gray-800 group-hover/etf:text-brand-600">
-                    {e.name}
-                    <span className="ml-0.5 text-gray-300 group-hover/etf:text-brand-400">
-                      ↗
-                    </span>
-                  </span>
-                  <span className="ml-auto text-xs text-gray-400">
-                    {s.name}占{" "}
-                    <b className="font-medium text-gray-600">{e.ratio}%</b>
-                  </span>
-                </a>
-              ))}
-            </div>
+            <EtfPeek etfs={etfs} stockName={s.name} />
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
               看好这个方向又不想押单只,可考虑重仓它的 ETF 一篮子参与。基金季报持仓(Tushare),不构成投资建议。
             </p>
