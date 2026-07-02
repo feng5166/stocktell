@@ -3,6 +3,7 @@
 // 产业链切换器:AI 产业链(当前)+ 其他「开发中」链。
 // 点开发中的链 → 展开「🚧 开发中 + 👀 我想要」投票,收集需求/反哺开发优先级。
 import { useEffect, useState } from "react";
+import { track } from "@/lib/analytics";
 
 const CHAINS: { key: string; name: string; ready: boolean }[] = [
   { key: "ai", name: "AI 产业链", ready: true },
@@ -45,6 +46,7 @@ export function ChainSwitcher() {
 
   function vote(chain: string) {
     if (voted.has(chain)) return;
+    track("vote_chain", { chain }); // 需求信号:哪条产业链呼声高,反哺开发优先级
     const next = new Set(voted);
     next.add(chain);
     setVoted(next);

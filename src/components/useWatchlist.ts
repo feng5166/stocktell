@@ -120,7 +120,9 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
       else next.delete(code);
       setCodes(next); // 乐观更新:先点亮/熄灭
 
-      if (adding) track("add_watchlist", { kind: ETF_CODES.includes(code) ? "etf" : "stock" });
+      const kind = ETF_CODES.includes(code) ? "etf" : "stock";
+      if (adding) track("add_watchlist", { kind });
+      else track("remove_watchlist", { kind }); // 取消自选也记:看"加了又删"的比例(黏性信号)
 
       const ADDED_MSG = "已加入自选 · 首页「和我相关」会给你看相关动态";
       // 失败回滚 + 提示:不再静默吞掉(旧版 .catch(()=>{}) 会让用户以为加了、刷新却没了)

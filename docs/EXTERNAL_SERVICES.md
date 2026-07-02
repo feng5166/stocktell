@@ -148,7 +148,7 @@
 - **用途**:pageview + 自定义事件(`umami.track`),漏斗/留存看板。
 - **关键文件**:`src/app/layout.tsx`(注入 script.js)、`src/lib/analytics.ts`(`track()` 封装);事件清单 `docs/埋点需求.md`。
 - **env**:`NEXT_PUBLIC_UMAMI_SRC` / `NEXT_PUBLIC_UMAMI_WEBSITE_ID`。websiteId=`f07470dd-c040-4f45-a774-44148f249d5f`。
-- 后台已建 5 个看板(核心增长 / 登录轻推 / 美股桥 / 分享病毒环 漏斗 + 用户留存)。⚠️ 自托管管理员口令务必用强密码(公网可访问)。
+- 后台已建 6 个看板(核心增长 / 登录轻推 / 美股桥 / 分享病毒环 / 落地页订阅 漏斗 + 用户留存)。⚠️ 自托管管理员口令务必用强密码(公网可访问);临时账号用完即删。
 
 ### Microsoft Clarity — `clarity.microsoft.com`(会话回放 + 热力图)
 - **用途**:录真实用户**会话回放** + **点击热力图** + rage-click,盯种子用户体验/卡点。
