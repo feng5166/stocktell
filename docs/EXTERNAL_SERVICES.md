@@ -155,6 +155,7 @@
 - **为什么不用 Umami 的「回放」**:自托管 OSS 版开不了(网站 `recorderEnabled` 经 API 改不动、疑似 Cloud 功能),故用 Clarity(免费无限量、成熟、默认屏蔽输入/PII)。
 - **关键文件**:`src/app/layout.tsx`(inline 脚本,配了 `NEXT_PUBLIC_CLARITY_ID` 才注入)。
 - **env**:`NEXT_PUBLIC_CLARITY_ID`(2026-07-02 接入;project id 是公开值)。数据在 Clarity 侧看,不进我们 DB。
+- **⚠️ 状态:2026-07-02 当晚已暂时关闭**(用户拍板)——`clarity.ms` 大陆访问慢,即便改 `lazyOnload` 仍嫌拖体感,已从 Vercel **删除该 env**(代码保留,注入自动消失)。**恢复**:把 `NEXT_PUBLIC_CLARITY_ID=xg4deamzqa` 加回 env(production/preview/development)再部署;若再启用,保持 `lazyOnload`、或考虑仅海外注入。
 
 ---
 
