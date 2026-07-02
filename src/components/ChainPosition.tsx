@@ -10,7 +10,15 @@ interface Peer {
   code: string;
   name: string;
   market: string;
+  strength?: string; // 强/中/弱(来自 chainEdges 的关联强度)
 }
+
+// 关联强度配色:强=真供货/深度绑定,中=对标/替代/配套,弱=主题映射
+const STR_BADGE: Record<string, string> = {
+  强: "bg-rose-100 text-rose-700",
+  中: "bg-amber-100 text-amber-700",
+  弱: "bg-gray-200 text-gray-500",
+};
 
 export function ChainPosition({
   sector,
@@ -58,17 +66,20 @@ export function ChainPosition({
         className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
           clickable
             ? `${c.box} font-medium ring-1 ring-inset ${isOpen ? c.ringOpen : c.ring}`
-            : "bg-gray-50 text-gray-300"
+            : "bg-gray-50 text-gray-400 ring-1 ring-inset ring-gray-100"
         }`}
       >
         {side.label}
-        {clickable && (
+        {clickable ? (
           <>
             <span className={`ml-1 rounded-full px-1.5 text-xs ${c.pill}`}>
               {side.list.length}
             </span>
             <span className={`ml-1 text-xs ${c.chevron}`}>{isOpen ? "▴" : "▾"}</span>
           </>
+        ) : (
+          // 明确"确实没有",而非"没加载出来"
+          <span className="ml-1 text-xs text-gray-400">无</span>
         )}
       </button>
     );
@@ -97,11 +108,20 @@ export function ChainPosition({
             <Link
               key={x.code}
               href={`/stock/${x.code}`}
-              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-200"
+              className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-200"
             >
               {x.name}
               {x.market === "美股" && (
-                <span className="ml-0.5 text-brand-500">·美</span>
+                <span className="text-brand-500">·美</span>
+              )}
+              {x.strength && (
+                <span
+                  className={`rounded px-1 text-[11px] ${
+                    STR_BADGE[x.strength] ?? STR_BADGE["弱"]
+                  }`}
+                >
+                  {x.strength}
+                </span>
               )}
             </Link>
           ))}

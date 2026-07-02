@@ -127,12 +127,18 @@ export default async function StockDetail({
 
   // 产业链上下游导航:按边的真实方向分(up=供货给本股的上游;down=采购本股的下游),
   // 而非按全局位置——否则同为「上游」的供应商会落进「你在这」被隐藏。已按强度降序。
-  const upPeers: { code: string; name: string; market: string }[] = [];
-  const downPeers: { code: string; name: string; market: string }[] = [];
+  type ChainPeer = { code: string; name: string; market: string; strength: string };
+  const upPeers: ChainPeer[] = [];
+  const downPeers: ChainPeer[] = [];
   for (const n of chainNeighbors(s.code)) {
     const p = STOCK_MAP[n.code];
     if (!p) continue;
-    const item = { code: p.code, name: p.name, market: p.market };
+    const item: ChainPeer = {
+      code: p.code,
+      name: p.name,
+      market: p.market,
+      strength: edgeInfo(s.code, p.code)?.strength ?? "弱",
+    };
     (n.dir === "up" ? upPeers : downPeers).push(item);
   }
 
