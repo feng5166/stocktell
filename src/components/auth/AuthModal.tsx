@@ -93,7 +93,8 @@ export function AuthModal({
   async function handleGoogle() {
     if (!agreed) return setError("请先阅读并同意服务条款和隐私政策");
     if (!GOOGLE_ENABLED) return setError("Google 登录即将开启,请先用邮箱");
-    await signIn("google", { callbackUrl: "/" });
+    // 带 ?auth=google 标记:Google 整页跳转、无法内联埋点,回来后由 AuthTracker 据此补 fire signup/login
+    await signIn("google", { callbackUrl: "/?auth=google" });
   }
 
   return (
