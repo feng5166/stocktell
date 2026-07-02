@@ -117,19 +117,16 @@ export function ChainSentiment({
         {mood && (
           <span className={`rounded px-1.5 py-0.5 text-meta ${mood.c}`}>{mood.t}</span>
         )}
-        <div className="ml-auto flex items-center gap-2.5">
-          {a?.pctLive ? (
-            <span className="flex items-center gap-1 text-meta text-rose-500">
-              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
-              实时 {a.pctAsOf}
-            </span>
-          ) : (
-            d.date && (
-              <span className="text-meta text-gray-400">{d.date.slice(5)} 收盘</span>
-            )
-          )}
-          {action}
-        </div>
+        {a?.pctLive ? (
+          <span className="ml-auto flex items-center gap-1 text-meta text-rose-500">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+            实时 {a.pctAsOf}
+          </span>
+        ) : (
+          d.date && (
+            <span className="ml-auto text-meta text-gray-400">{d.date.slice(5)} 收盘</span>
+          )
+        )}
       </div>
       <div className="space-y-2">
         {a && (
@@ -202,6 +199,8 @@ export function ChainSentiment({
               A股为 {d.date} 收盘数据 · 今日盘后数据约傍晚更新
             </p>
           )}
+      {/* 右下角可选入口(首页塞"看/分享";落地页不传)——样式对齐"深读这条" */}
+      {action && <div className="mt-2 text-right">{action}</div>}
     </div>
   );
 }

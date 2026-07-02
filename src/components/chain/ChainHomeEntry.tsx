@@ -10,7 +10,7 @@ export function ChainHomeEntry() {
     <Link
       href="/chain/ai"
       onClick={() => track("chain_entry_click", { from: "home" })}
-      className="whitespace-nowrap text-meta font-medium text-gray-500 hover:text-gray-700"
+      className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
     >
       看 / 分享 →
     </Link>
