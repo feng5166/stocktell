@@ -27,6 +27,7 @@ export interface HeatRow {
   intensity: number; // 1-5,逻辑关联+证据完整度(非收益/涨幅)
   relation?: Relation; // 与本次事件的传导层级
   confidence?: Confidence;
+  hopOrder?: number; // 关联的因果链分支跳(「怎么传到这的」折叠进该热力行,热力图=第二层唯一骨架)
   reason: string; // 专业原因
 }
 export interface StockMap {
@@ -45,17 +46,14 @@ export interface InsightChain {
   eventNote: string; // 占位说明
   // 首屏 10 秒懂(极简,像张图一眼扫完;术语一律不上首屏)
   tldr: {
-    hook: string; // 一句大白话:这事是啥、看什么
-    tiers: { emoji: string; level: string; what: string; why: string }[]; // 强弱三档
+    hook: string; // 一句大白话:这事是啥、看什么(禁资金/买卖暗示)
+    tiers: { emoji: string; level: string; what: string; why: string; rel?: Relation }[]; // 强弱三档;rel=锚到对应映射分组
     risk: string; // 一句话最大风险
   };
-  // 首屏结论卡(人话为主)
-  oneLinerPlain: string; // 一句话判断(大白话)
-  oneLiner: string; // 一句话判断(专业/合规完整版)
+  // 结论:人话版=分享卡 canonical 文案(渲染在深度层);专业版=合规完整口径
+  oneLinerPlain: string;
+  oneLiner: string;
   deltaPlain: string; // 本次事件核心 delta(人话)
-  watchToday: string[]; // 今天最该盯的 3 个环节
-  reversalRiskPlain: string; // 最大反转风险(人话)
-  reversalRisk: string; // 最大反转风险(专业)
   differentiators: string[]; // 强于聚合的差异点(深度)
   whyThisEvent: string; // 反换皮方法论(深度/muted)
   heatmapNote: string;
@@ -76,29 +74,24 @@ const AI_INFRA: InsightChain = {
   event:
     "英伟达季度财报上调数据中心收入指引,叠加新一代推理模型发布带动「单位算力 token 成本明显下降」——即一次「模型能力跃迁 / 推理成本↓」型全球事件。",
   eventNote:
-    "占位演示事件,仅用于展示因果链结构。上线须替换为当下已发生的真实公告/财报/纪要,并回原始来源核对数字。",
+    "示例事件:这类「AI 变便宜」的事历史上反复发生(历代模型发布/降价);正式上线会换成当天真实公告并核对数字。",
 
   tldr: {
-    hook: "假设 AI 算得更便宜了(像 GPT-6 这种大事)——钱会往哪个方向走?一眼看懂 👇",
+    hook: "AI 要是算得更便宜了(比如 GPT-6 这种大事)——最先传到产业链的哪几段?一眼看懂 👇",
     tiers: [
-      { emoji: "🔥", level: "最直接", what: "光模块 · HBM", why: "数据中心之间传数据的「光纤管道」+ 贴着 AI 芯片的「快内存」,AI 一多就抢手" },
-      { emoji: "🌡️", level: "跟着热", what: "液冷 · 供电 · 先进封装", why: "机器堆多了,要散热、要供电、要更强的封装工艺" },
-      { emoji: "💨", level: "只蹭热度", what: "国产 AI 芯片(海光 · 寒武纪)", why: "沾了 AI 热度,但不直接给英伟达供货,真受益要看自己的订单" },
+      { emoji: "🔥", level: "最直接", what: "光模块 · 快内存(HBM)", rel: "直接", why: "数据中心里机器之间高速传数据的「光接头」;贴着 AI 芯片的「快内存」——AI 用得越多越抢手" },
+      { emoji: "🌡️", level: "跟着热", what: "液冷 · 供电 · 先进封装", rel: "间接", why: "机器堆多了,要散热、要供电、要更强的封装工艺" },
+      { emoji: "💨", level: "沾光为主", what: "国产 AI 芯片(海光 · 寒武纪)", rel: "情绪映射", why: "股价常跟着 AI 热度走,但它们不直接给英伟达供货——真受益要看自己的订单" },
     ],
-    risk: "前提是大家真的会更多地用 AI。如果「变便宜」只是让云厂省了钱、没多用,这条链的利好就打折。",
+    risk: "前提是大家真的会更多地用 AI。如果「变便宜」只是帮微软、谷歌这些云计算大厂省了钱、没带来更多使用,这条链的利好就打折。",
   },
 
   oneLinerPlain:
-    "这种「AI 算得更便宜」的事,最先带火的是给数据中心「高速传数据的光纤管道(光模块)」和「贴着芯片的超高速内存(HBM)」;其次是给机器降温的「液冷」和「供电」;国产 AI 芯片(海光、寒武纪)更多是「沾了热度」,真金白银还得看订单。",
+    "这种「AI 算得更便宜」的事,最先带火的是数据中心里机器之间高速传数据的「光接头(光模块)」和贴着芯片的「快内存(HBM)」;其次是给机器降温的「液冷」和「供电」;国产 AI 芯片(海光、寒武纪)更多是股价沾光,真金白银还得看订单。",
   oneLiner:
     "与本类「推理成本↓/模型能力↑」事件产业逻辑关联最紧、证据链相对完整的是「AI 推理基础设施链」。按「传导层级 + 证据完整度」(非推荐顺序、非收益/涨幅排序):光模块/高速互连 ≥ HBM/先进封装 > 液冷/数据中心电力;国产算力芯片(海光/寒武纪)与本次海外事件多属「国产替代的情绪映射」而非直接供货,应以订单兑现等公开信息自行核实。",
   deltaPlain:
-    "这次不是笼统说「AI 又利好了」。真正的变化是:AI 算一次答案更便宜了 → 大家可能用得更多 → 数据中心要堆更多设备 → 一路传到 光模块、HBM、封装、液冷、供电 这些环节。",
-  watchToday: ["光模块 / 高速互连", "HBM / 先进封装", "液冷 / 数据中心电力"],
-  reversalRiskPlain:
-    "最大变数:如果「算得便宜」只是让云厂省了钱、大家并没因此多用,那这条链的利好就会明显打折。",
-  reversalRisk:
-    "若推理降本主要转化为云厂商单位成本节省、而非推理调用量放大(杰文斯悖论不成立),则硬件链条利好显著弱化——这是全链置信度的总闸。",
+    "这次不是笼统说「AI 又利好了」。真正的变化是:AI 算一次答案更便宜了 → 大家可能用得更多 → 数据中心要堆更多设备 → 一路传到 光模块、快内存、封装、液冷、供电 这些环节。",
 
   differentiators: [
     "环节放量的传导层级排序(不是罗列,是分级)",
@@ -111,19 +104,19 @@ const AI_INFRA: InsightChain = {
   heatmapNote:
     "「升温/降温/分化」= 产业景气/关注度,非股价涨跌预测;强度 = 逻辑关联与证据完整度,非收益或涨幅排序。",
   heatmap: [
-    { segment: "光模块 / 高速互连", plain: "机器之间高速传数据的「光纤管道」", direction: "升温", intensity: 5, relation: "直接", confidence: "高", reason: "万卡/十万卡集群横向扩展(scale-out)刚性拉动,速率向 800G/1.6T 迭代,北美云厂订单能见度高——本链证据链最完整、传导最直接的一环" },
-    { segment: "存储 / HBM", plain: "贴着 AI 芯片的「超高速内存」", direction: "升温", intensity: 4, relation: "直接", confidence: "高", reason: "每颗 AI GPU 强制配套多颗 HBM,出货强绑定 + 持续供不应求。备注:A 股缺真正 HBM 自研标的,本环节无强直接映射" },
-    { segment: "先进封装 / 封测", plain: "把芯片和内存「叠装」在一起的高级工艺", direction: "升温", intensity: 3, relation: "间接", confidence: "中", reason: "CoWoS/2.5D 是算力供给实际卡点;国产封测受全球 AI 芯片放量 + 国产替代双驱动,业绩兑现需时间" },
-    { segment: "液冷 / 温控", plain: "机器太热,用液体给它降温", direction: "升温", intensity: 3, relation: "间接", confidence: "中", reason: "单机柜功率顶到风冷极限,液冷由可选变刚需、渗透率抬升;落地与订单确认节奏存在不确定性" },
-    { segment: "铜连接 / 高速互连(铜)", plain: "机柜里近距离连接用的「铜线」", direction: "分化", intensity: 3, relation: "间接", confidence: "中", reason: "GB 系统铜背板放量利好短距 scale-up,但光/铜路线随距离速率存在替代博弈,内部分化" },
-    { segment: "数据中心电力 / 供配电", plain: "给数据中心供电、配电的设备", direction: "升温", intensity: 3, relation: "间接", confidence: "中", reason: "电力从「成本项」变「能否上电」的核心约束;但传导到 A 股电力设备偏间接、噪声大" },
+    { segment: "光模块 / 高速互连", plain: "数据中心里机器之间高速传数据的「光接头」", direction: "升温", intensity: 5, relation: "直接", confidence: "高", hopOrder: 6, reason: "万卡/十万卡集群横向扩展(scale-out)刚性拉动,速率向 800G/1.6T 迭代,北美云厂订单能见度高——本链证据链最完整、传导最直接的一环" },
+    { segment: "存储 / HBM", plain: "贴着 AI 芯片的「快内存」", direction: "升温", intensity: 4, relation: "直接", confidence: "高", hopOrder: 3, reason: "每颗 AI GPU 强制配套多颗 HBM,出货强绑定 + 持续供不应求。备注:A 股缺真正 HBM 自研标的,本环节无强直接映射" },
+    { segment: "先进封装 / 封测", plain: "把芯片和内存「叠装」在一起的高级工艺", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 4, reason: "CoWoS/2.5D 是算力供给实际卡点;国产封测受全球 AI 芯片放量 + 国产替代双驱动,业绩兑现需时间" },
+    { segment: "液冷 / 温控", plain: "机器太热,用液体给它降温", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 5, reason: "单机柜功率顶到风冷极限,液冷由可选变刚需、渗透率抬升;落地与订单确认节奏存在不确定性" },
+    { segment: "铜连接 / 高速互连(铜)", plain: "机柜里近距离连接用的「铜线」", direction: "分化", intensity: 3, relation: "间接", confidence: "中", hopOrder: 7, reason: "GB 系统铜背板放量利好短距 scale-up,但光/铜路线随距离速率存在替代博弈,内部分化" },
+    { segment: "数据中心电力 / 供配电", plain: "给数据中心供电、配电的设备", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 8, reason: "电力从「成本项」变「能否上电」的核心约束;但传导到 A 股电力设备偏间接、噪声大" },
     { segment: "国产算力芯片", plain: "国产的 AI 芯片(对标英伟达)", direction: "分化", intensity: 3, relation: "情绪映射", confidence: "中", reason: "国产替代关注度高,但受海外单一事件的直接驱动弱,靠订单兑现区分真伪、波动大" },
     { segment: "服务器 / 算力代工", plain: "组装 AI 服务器的厂", direction: "升温", intensity: 3, relation: "直接", confidence: "高", reason: "AI 服务器出货风向标,绑定英伟达/云厂 capex 节奏" },
     { segment: "传统风冷 / 低速互连", plain: "老式风扇散热 / 慢速连接(在被替代)", direction: "降温", intensity: 2, relation: "弱", confidence: "低", reason: "被液冷与高速互连结构性替代,长期承压(供参照的承压项)" },
   ],
 
   hopsNote:
-    "真正层层递进的是 Hop1→Hop2(事件→用得更多→云厂加大投入);下面是由「数据中心/芯片需求↑」扇出的并行环节,对本次事件的边际敏感度低于主链——不以跳数堆砌伪装深度。",
+    "真正一环扣一环的只有这两步:AI 变便宜 → 用得更多 → 云厂加大投入。其余环节是被「加大投入」一起带起来的(每个环节「怎么传到这的」见上方热力图行内展开),关系没主线这么直接。",
   mainHops: [
     {
       order: 1,
@@ -152,7 +145,7 @@ const AI_INFRA: InsightChain = {
     { order: 3, from: "买更多 AI 芯片", to: "超高速内存(HBM)需求↑", plain: "每张 AI 芯片都要配一堆「超高速内存(HBM)」,芯片卖得多,HBM 就抢手。", logic: "每颗 AI GPU 强制配套多颗 HBM,近似线性绑定,持续供不应求。", evidenceType: "存储厂财报 / 需求预测", evidenceExample: "美光、SK 海力士财报「HBM 产能已售罄/年度预定」与扩产计划。", confidence: "高" },
     { order: 4, from: "芯片+内存要集成", to: "先进封装产能吃紧↑", plain: "把芯片和内存「叠装」在一起的高级封装工艺,是产能卡脖子的地方,跟着吃紧。", logic: "HBM 与逻辑 die 集成依赖 CoWoS,封装产能而非晶圆前道往往是算力供给实际卡点。", evidenceType: "代工/封测法说会", evidenceExample: "台积电法说会 CoWoS 扩产表述;OSAT 先进封装稼动率。", confidence: "高" },
     { order: 5, from: "机器越堆越热", to: "液冷降温需求↑", plain: "机器越堆越密、越来越烫,风扇吹不动了,只能改用「液体降温(液冷)」。", logic: "单机柜功率跃升至风冷极限之上,液冷由可选变刚需。渗透节奏与建设周期存在不确定性。", evidenceType: "官方 datasheet / 方案商订单", evidenceExample: "英伟达 GB 系列机柜整机功率 datasheet;Vertiv 液冷渗透率/在手订单。", confidence: "中" },
-    { order: 6, from: "机器连成一大片一起算", to: "光模块/高速互连需求↑", plain: "机器多了要连成一大片一起算,机器之间靠「光纤管道(光模块)」高速传数据,需求跟着放量。", logic: "万卡/十万卡集群横向扩展,GPU:光模块配比抬升,速率向 800G/1.6T 迭代。", evidenceType: "光模块厂财报 / 速率路线图", evidenceExample: "中际旭创、新易盛季报高速率光模块收入占比与北美客户结构。", confidence: "高" },
+    { order: 6, from: "机器连成一大片一起算", to: "光模块/高速互连需求↑", plain: "机器多了要连成一大片一起算,机器之间靠「光接头(光模块)」高速传数据,需求跟着放量。", logic: "万卡/十万卡集群横向扩展,GPU:光模块配比抬升,速率向 800G/1.6T 迭代。", evidenceType: "光模块厂财报 / 速率路线图", evidenceExample: "中际旭创、新易盛季报高速率光模块收入占比与北美客户结构。", confidence: "高" },
     { order: 7, from: "机柜内近距离连接", to: "高速铜连接需求↑", plain: "机柜里近距离连接主要用「铜线」,也跟着放量;但光和铜谁用得多有博弈。", logic: "机柜内短距高速互连以铜缆为主,GB 系统铜背板放量;光/铜边界随距离速率变化。", evidenceType: "官方规格 / 客户验证纪要", evidenceExample: "英伟达 NVLink 铜背板规格;高速铜缆/AEC 客户验证进展。", confidence: "中", caveat: "存在替代博弈,需警惕拥挤交易与路线切换风险。", caveatPlain: "光和铜在抢地盘,押错路线会踩坑。" },
     { order: 8, from: "这么多机器一起转", to: "供电/配电设备需求↑", plain: "这么多机器一起转最耗电,「能不能供上电」成了硬约束,供配电设备跟着受关注。", logic: "算力集群总功率激增,电力从「成本项」升级为「能否上电」的核心约束。传导到 A 股电力设备属较间接一层。", evidenceType: "用电增速 / 供配电订单", evidenceExample: "云厂/电网数据中心用电增速;Vertiv、Eaton 供配电订单积压。", confidence: "中" },
   ],

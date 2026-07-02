@@ -7,6 +7,7 @@ import {
   INSIGHT_CHAINS,
   type InsightChain,
   type Hop,
+  type HeatDir,
   type StockMap,
   type Relation,
   type Confidence,
@@ -19,7 +20,7 @@ export function generateStaticParams() {
   return Object.keys(INSIGHT_CHAINS).map((slug) => ({ slug }));
 }
 
-const HEAT: Record<string, { box: string; bar: string }> = {
+const HEAT: Record<HeatDir, { box: string; bar: string }> = {
   升温: { box: "bg-orange-50 text-orange-700", bar: "text-orange-400" },
   降温: { box: "bg-slate-100 text-slate-500", bar: "text-slate-300" },
   分化: { box: "bg-violet-50 text-violet-700", bar: "text-violet-300" },
@@ -49,14 +50,16 @@ function Section({
   title,
   children,
   sub,
+  id,
 }: {
   icon: string;
   title: string;
   children: React.ReactNode;
   sub?: string;
+  id?: string;
 }) {
   return (
-    <section className="mb-3.5 rounded-xl bg-white px-4 py-3.5 shadow-sm">
+    <section id={id} className="mb-3.5 scroll-mt-16 rounded-xl bg-white px-4 py-3.5 shadow-sm">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
         <span>{icon}</span>
         {title}
@@ -149,23 +152,38 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
         <div className="mb-3 rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-inset ring-brand-100">
           <p className="text-[15px] font-medium leading-relaxed text-gray-900">{c.tldr.hook}</p>
           <div className="mt-3 space-y-2.5">
-            {c.tldr.tiers.map((t) => (
-              <div key={t.level} className="flex items-start gap-2.5">
-                <span className="mt-0.5 shrink-0 text-lg leading-none">{t.emoji}</span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="shrink-0 text-[11px] font-medium text-gray-400">{t.level}</span>
-                    <span className="text-sm font-semibold text-gray-900">{t.what}</span>
+            {c.tldr.tiers.map((t) => {
+              const inner = (
+                <>
+                  <span className="mt-0.5 shrink-0 text-lg leading-none">{t.emoji}</span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="shrink-0 text-[11px] font-medium text-gray-400">{t.level}</span>
+                      <span className="text-sm font-semibold text-gray-900">{t.what}</span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-gray-500">{t.why}</p>
                   </div>
-                  <p className="text-xs leading-relaxed text-gray-500">{t.why}</p>
+                </>
+              );
+              // 有对应映射分组的档,整行可点、锚到该分组(解决"看完首屏想看票要滑4-5屏")
+              return t.rel ? (
+                <a key={t.level} href={`#rel-${t.rel}`} className="flex items-start gap-2.5">
+                  {inner}
+                </a>
+              ) : (
+                <div key={t.level} className="flex items-start gap-2.5">
+                  {inner}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <p className="mt-3 rounded-lg bg-rose-50/70 px-3 py-2 text-xs leading-relaxed text-rose-800">
             <span className="font-medium text-rose-600">⚠️ 一句话风险:</span>
             {c.tldr.risk}
           </p>
+          <a href="#mappings" className="mt-2.5 block text-center text-sm font-medium text-brand-600">
+            👉 直接看国内相关的票({c.mappings.length} 只,按关系分级)
+          </a>
         </div>
 
         {/* 再具体点:这次到底变了啥(事件 delta,一句人话)*/}
@@ -176,34 +194,59 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
 
         {/* 事件(简短)+ 占位提示 */}
         <Section icon="📰" title="事件">
-          <p className="text-sm leading-relaxed text-gray-700">{c.event}</p>
-          <p className="mt-2 rounded border border-amber-200 bg-amber-50/50 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-700">
-            🧪 演示用占位事件:{c.eventNote}
+          <p className="mb-1.5">
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
+              🧪 演示事件 · 说明见页底
+            </span>
           </p>
+          <p className="text-sm leading-relaxed text-gray-700">{c.event}</p>
         </Section>
 
         {/* ===== 第二层:热力图 + 多跳因果链(1 分钟看明白)===== */}
         <Section icon="🔥" title="产业链热力(哪些环节在升温)" sub={c.heatmapNote}>
           <div className="space-y-2">
-            {c.heatmap.map((r, i) => (
-              <div key={i} className="rounded-lg bg-gray-50 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-sm font-medium text-gray-800">{r.segment}</span>
-                  <Pill text={r.direction} cls={HEAT[r.direction].box} />
-                  <span className={`font-mono text-xs ${HEAT[r.direction].bar}`}>
-                    {"▮".repeat(r.intensity)}
-                    <span className="text-gray-200">{"▮".repeat(5 - r.intensity)}</span>
-                  </span>
-                  {r.relation && <Pill text={r.relation} cls={REL[r.relation]} />}
-                  {r.confidence && <Pill text={`置信 ${r.confidence}`} cls={CONF[r.confidence]} />}
+            {c.heatmap.map((r, i) => {
+              // 该环节的"怎么传到这的"(因果链分支跳)折叠进行内——热力图=第二层唯一骨架,不再单列分支区
+              const hop = r.hopOrder ? c.branchHops.find((h) => h.order === r.hopOrder) : undefined;
+              return (
+                <div key={i} className="rounded-lg bg-gray-50 px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-sm font-medium text-gray-800">{r.segment}</span>
+                    <Pill text={r.direction} cls={HEAT[r.direction].box} />
+                    <span className={`font-mono text-xs ${HEAT[r.direction].bar}`}>
+                      {"▮".repeat(r.intensity)}
+                      <span className="text-gray-200">{"▮".repeat(5 - r.intensity)}</span>
+                    </span>
+                    {r.relation && <Pill text={r.relation} cls={REL[r.relation]} />}
+                    {r.confidence && <Pill text={`置信 ${r.confidence}`} cls={CONF[r.confidence]} />}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                    <span className="text-gray-500">这是啥:</span>
+                    {r.plain}
+                  </p>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-[11px] text-gray-400">
+                      {hop ? "怎么传到这的 · 依据" : "为什么这么判"}
+                    </summary>
+                    <div className="mt-1 space-y-1">
+                      {hop && <p className="text-xs leading-relaxed text-gray-600">{hop.plain}</p>}
+                      {hop?.caveatPlain && (
+                        <p className="rounded bg-rose-50/70 px-2 py-1 text-[11px] leading-relaxed text-rose-700">
+                          ⚠️ {hop.caveatPlain}
+                        </p>
+                      )}
+                      <p className="text-[11px] leading-relaxed text-gray-400">{r.reason}</p>
+                      {hop && (
+                        <p className="text-[11px] leading-relaxed text-gray-400">
+                          依据·{hop.evidenceType}
+                          {hop.evidenceExample ? `:${hop.evidenceExample}` : ""}
+                        </p>
+                      )}
+                    </div>
+                  </details>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-gray-600">
-                  <span className="text-gray-500">这是啥:</span>
-                  {r.plain}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-gray-400">{r.reason}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Section>
 
@@ -212,30 +255,21 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           title="这事怎么一步步传到股票的"
           sub={c.hopsNote}
         >
-          <p className="mb-1 text-xs font-medium text-gray-600">主线(一环扣一环)</p>
           <ul className="space-y-1.5">
             {c.mainHops.map((h) => (
-              <HopRow key={h.order} h={h} />
-            ))}
-          </ul>
-          <p className="mb-1 mt-3 text-xs font-medium text-gray-600">
-            由此扇出的相关环节(和这次事件关系没主线那么紧)
-          </p>
-          <ul className="space-y-1.5">
-            {c.branchHops.map((h) => (
               <HopRow key={h.order} h={h} />
             ))}
           </ul>
         </Section>
 
         {/* 国内标的 — 按关系分组 */}
-        <Section icon="🔗" title="国内相关的票(按关系分级,不是推荐)" sub={c.mappingNote}>
+        <Section id="mappings" icon="🔗" title="国内相关的票(按关系分级,不是推荐)" sub={c.mappingNote}>
           <div className="space-y-3">
             {REL_GROUPS.map((g) => {
               const items = c.mappings.filter((m) => m.relation === g.rel);
               if (items.length === 0) return null;
               return (
-                <div key={g.rel}>
+                <div key={g.rel} id={`rel-${g.rel}`} className="scroll-mt-16">
                   <p className="text-xs font-semibold text-gray-700">{g.label}</p>
                   {g.hint && <p className="mb-1 text-[11px] leading-relaxed text-gray-400">{g.hint}</p>}
                   <ul className="space-y-1">
@@ -260,7 +294,11 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
             <summary className="cursor-pointer text-gray-500">完整判断 · 凭什么不是「新闻聚合」· 方法</summary>
             <div className="mt-1.5 space-y-1.5 leading-relaxed">
               <p className="text-gray-600">
-                <b className="text-gray-700">完整判断:</b>
+                <b className="text-gray-700">完整判断(人话):</b>
+                {c.oneLinerPlain}
+              </p>
+              <p className="text-gray-600">
+                <b className="text-gray-700">专业口径:</b>
                 {c.oneLiner}
               </p>
               <p className="pt-1 font-medium text-gray-600">凭什么不是新闻聚合:</p>
@@ -281,6 +319,7 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           </span>
         </div>
 
+        <p className="mb-2 text-meta leading-relaxed text-gray-400">🧪 {c.eventNote}</p>
         <p className="text-meta leading-relaxed text-gray-400">{c.disclaimer}</p>
       </main>
     </div>
