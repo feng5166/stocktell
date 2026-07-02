@@ -24,10 +24,15 @@ export default async function Home() {
   const date = todayISO();
   let items: BriefingItem[] = [];
   let errored = false;
-  // 简报 + AI链情绪并行算(情绪是全局数据,ISR 时烘进 HTML,客户端零请求)
+  // 简报 + AI链情绪并行算。情绪不阻塞首屏(大陆TTFB优先):热路径=DB缓存一次查询(<100ms)
+  // 会在 1.2s 内赢;冷算(要打行情/Yahoo,可到 18s)超时就不等,traded off 给客户端——
+  // ChainSentiment 组件收到空 initial 会自己拉 /api/chain-sentiment(本有该回退)。
   const [briefingsRes, sentiment] = await Promise.all([
     listBriefing({ date, status: "published" }).catch(() => null),
-    chainSentiment().catch(() => ({ date: null, a: null, us: null })),
+    Promise.race([
+      chainSentiment(),
+      new Promise<null>((r) => setTimeout(() => r(null), 1200)),
+    ]).catch(() => null),
   ]);
   if (briefingsRes === null) errored = true;
   else items = briefingsRes;
@@ -72,8 +77,8 @@ export default async function Home() {
           </div>
         )}
 
-        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目)。右上角塞 AI 链落地页入口 */}
-        <ChainSentiment initial={sentiment} action={<ChainHomeEntry />} />
+        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目)。右下角塞 AI 链落地页入口 */}
+        <ChainSentiment initial={sentiment ?? undefined} action={<ChainHomeEntry />} />
 
         {/* 跨市场预期差雷达:隔夜美股已涨、对应 A 股暂未跟上 → 一屏直达(无 live 信号时自隐藏) */}
         <OvernightRadar />

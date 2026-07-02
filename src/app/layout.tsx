@@ -59,8 +59,10 @@ export default function RootLayout({
         {UMAMI_SRC && UMAMI_ID && (
           <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} strategy="afterInteractive" />
         )}
+        {/* lazyOnload:clarity.ms 大陆访问慢,afterInteractive 会在水合后立刻抢加载、浏览器
+            转圈久停不下(体感"页面很慢")。改页面完全加载后再拉,回放少记开头几秒无所谓。 */}
         {CLARITY_ID && (
-          <Script id="ms-clarity" strategy="afterInteractive">
+          <Script id="ms-clarity" strategy="lazyOnload">
             {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${CLARITY_ID}");`}
           </Script>
         )}
