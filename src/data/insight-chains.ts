@@ -43,6 +43,12 @@ export interface InsightChain {
   updatedAt: string;
   event: string;
   eventNote: string; // 占位说明
+  // 首屏 10 秒懂(极简,像张图一眼扫完;术语一律不上首屏)
+  tldr: {
+    hook: string; // 一句大白话:这事是啥、看什么
+    tiers: { emoji: string; level: string; what: string; why: string }[]; // 强弱三档
+    risk: string; // 一句话最大风险
+  };
   // 首屏结论卡(人话为主)
   oneLinerPlain: string; // 一句话判断(大白话)
   oneLiner: string; // 一句话判断(专业/合规完整版)
@@ -71,6 +77,16 @@ const AI_INFRA: InsightChain = {
     "英伟达季度财报上调数据中心收入指引,叠加新一代推理模型发布带动「单位算力 token 成本明显下降」——即一次「模型能力跃迁 / 推理成本↓」型全球事件。",
   eventNote:
     "占位演示事件,仅用于展示因果链结构。上线须替换为当下已发生的真实公告/财报/纪要,并回原始来源核对数字。",
+
+  tldr: {
+    hook: "假设 AI 算得更便宜了(像 GPT-6 这种大事)——钱会往哪个方向走?一眼看懂 👇",
+    tiers: [
+      { emoji: "🔥", level: "最直接", what: "光模块 · HBM", why: "数据中心之间传数据的「光纤管道」+ 贴着 AI 芯片的「快内存」,AI 一多就抢手" },
+      { emoji: "🌡️", level: "跟着热", what: "液冷 · 供电 · 先进封装", why: "机器堆多了,要散热、要供电、要更强的封装工艺" },
+      { emoji: "💨", level: "只蹭热度", what: "国产 AI 芯片(海光 · 寒武纪)", why: "沾了 AI 热度,但不直接给英伟达供货,真受益要看自己的订单" },
+    ],
+    risk: "前提是大家真的会更多地用 AI。如果「变便宜」只是让云厂省了钱、没多用,这条链的利好就打折。",
+  },
 
   oneLinerPlain:
     "这种「AI 算得更便宜」的事,最先带火的是给数据中心「高速传数据的光纤管道(光模块)」和「贴着芯片的超高速内存(HBM)」;其次是给机器降温的「液冷」和「供电」;国产 AI 芯片(海光、寒武纪)更多是「沾了热度」,真金白银还得看订单。",

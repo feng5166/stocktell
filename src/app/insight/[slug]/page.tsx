@@ -145,36 +145,33 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
           </p>
         </header>
 
-        {/* ===== 第一层:首屏结论卡(10 秒看懂,全人话)===== */}
-        <div className="mb-3.5 rounded-2xl bg-brand-50/60 px-4 py-4 shadow-sm ring-1 ring-inset ring-brand-100">
-          <p className="text-[11px] font-medium text-brand-600">一句话</p>
-          <p className="mt-1 text-[15px] font-medium leading-relaxed text-gray-900">
-            {c.oneLinerPlain}
+        {/* ===== 第一层:10 秒懂(极简,像张图一眼扫完)===== */}
+        <div className="mb-3 rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-inset ring-brand-100">
+          <p className="text-[15px] font-medium leading-relaxed text-gray-900">{c.tldr.hook}</p>
+          <div className="mt-3 space-y-2.5">
+            {c.tldr.tiers.map((t) => (
+              <div key={t.level} className="flex items-start gap-2.5">
+                <span className="mt-0.5 shrink-0 text-lg leading-none">{t.emoji}</span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="shrink-0 text-[11px] font-medium text-gray-400">{t.level}</span>
+                    <span className="text-sm font-semibold text-gray-900">{t.what}</span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-gray-500">{t.why}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 rounded-lg bg-rose-50/70 px-3 py-2 text-xs leading-relaxed text-rose-800">
+            <span className="font-medium text-rose-600">⚠️ 一句话风险:</span>
+            {c.tldr.risk}
           </p>
+        </div>
 
-          <div className="mt-3 rounded-lg bg-white/70 px-3 py-2">
-            <p className="text-[11px] font-medium text-gray-500">这次到底变了啥</p>
-            <p className="mt-0.5 text-sm leading-relaxed text-gray-700">{c.deltaPlain}</p>
-          </div>
-
-          <div className="mt-2.5">
-            <p className="text-[11px] font-medium text-gray-500">今天最该盯</p>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {c.watchToday.map((w) => (
-                <span
-                  key={w}
-                  className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700"
-                >
-                  {w}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-2.5 rounded-lg bg-rose-50/70 px-3 py-2">
-            <p className="text-[11px] font-medium text-rose-600">⚠️ 最大变数(可能反转)</p>
-            <p className="mt-0.5 text-sm leading-relaxed text-rose-800">{c.reversalRiskPlain}</p>
-          </div>
+        {/* 再具体点:这次到底变了啥(事件 delta,一句人话)*/}
+        <div className="mb-3 rounded-xl bg-gray-50 px-4 py-3">
+          <p className="text-[11px] font-medium text-gray-500">这次到底变了啥</p>
+          <p className="mt-0.5 text-sm leading-relaxed text-gray-700">{c.deltaPlain}</p>
         </div>
 
         {/* 事件(简短)+ 占位提示 */}
@@ -260,8 +257,13 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
             ))}
           </ul>
           <details className="mt-2.5 text-xs text-gray-500">
-            <summary className="cursor-pointer text-gray-500">它凭什么不是「新闻聚合」/ 方法说明</summary>
+            <summary className="cursor-pointer text-gray-500">完整判断 · 凭什么不是「新闻聚合」· 方法</summary>
             <div className="mt-1.5 space-y-1.5 leading-relaxed">
+              <p className="text-gray-600">
+                <b className="text-gray-700">完整判断:</b>
+                {c.oneLiner}
+              </p>
+              <p className="pt-1 font-medium text-gray-600">凭什么不是新闻聚合:</p>
               {c.differentiators.map((d, i) => (
                 <p key={i}>· {d}</p>
               ))}
