@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useAuthModal } from "@/components/Providers";
 
 // 登录后头像下拉菜单。
@@ -20,6 +21,7 @@ const MENU_ITEMS: MenuItem[] = [
 export function AuthStatus() {
   const { data, status } = useSession();
   const { open } = useAuthModal();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -103,9 +105,11 @@ export function AuthStatus() {
           <div className="border-t border-gray-100 pt-1">
             <button
               role="menuitem"
-              onClick={() => {
+              onClick={async () => {
                 setMenuOpen(false);
-                signOut({ callbackUrl: "/" });
+                // 退出后停留在当前页并软刷新(重渲染服务端组件为登出态),不再跳回首页
+                await signOut({ redirect: false });
+                router.refresh();
               }}
               className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50"
             >

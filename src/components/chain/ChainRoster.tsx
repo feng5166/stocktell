@@ -1,7 +1,7 @@
 "use client";
 
-// 产业链成分股列表 + 加自选(分享落地页的转化出口之一)。按板块分组,一句话看懂,
-// 游客也能加(useWatchlist 走 localStorage,登录后自动合并)。
+// 产业链成分股列表 + 加自选(分享落地页的转化出口之一)。按板块分组,一句话看懂。
+// 加自选统一走 useWatchlist:游客点"加"会弹登录框先登录(登录后本地历史自选自动合并)。
 import { useMemo } from "react";
 import Link from "next/link";
 import { useWatchlist } from "@/components/useWatchlist";
