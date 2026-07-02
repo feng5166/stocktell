@@ -3,6 +3,7 @@
 // 产业链成分股列表 + 加自选(分享落地页的转化出口之一)。按板块分组,一句话看懂,
 // 游客也能加(useWatchlist 走 localStorage,登录后自动合并)。
 import { useMemo } from "react";
+import Link from "next/link";
 import { useWatchlist } from "@/components/useWatchlist";
 import { track } from "@/lib/analytics";
 import type { RosterItem } from "@/data/chains";
@@ -70,19 +71,25 @@ export function ChainRoster({
                       i > 0 ? "border-t border-gray-100" : ""
                     }`}
                   >
-                    <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/stock/${it.code}`}
+                      className="group min-w-0 flex-1"
+                    >
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-gray-900">{it.name}</span>
+                        <span className="font-medium text-gray-900 group-hover:text-brand-700 group-hover:underline">
+                          {it.name}
+                        </span>
                         {it.tier === "龙头" && (
                           <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700">
                             龙头
                           </span>
                         )}
+                        <span className="text-xs text-gray-300 group-hover:text-brand-400">›</span>
                       </div>
                       {it.take && (
                         <div className="mt-0.5 line-clamp-2 text-xs text-gray-500">{it.take}</div>
                       )}
-                    </div>
+                    </Link>
                     <button
                       onClick={() => onToggle(it.code)}
                       className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${

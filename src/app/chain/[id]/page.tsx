@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ChainSentiment } from "@/components/ChainSentiment";
@@ -118,7 +119,18 @@ export default async function ChainPage({
                   </div>
                   {it.beneficiaries.length > 0 && (
                     <div className="mt-1 text-xs text-gray-500">
-                      涉及:{it.beneficiaries.map((b) => b.name).join("、")}
+                      涉及:
+                      {it.beneficiaries.map((b, bi) => (
+                        <span key={b.code}>
+                          {bi > 0 && "、"}
+                          <Link
+                            href={`/stock/${b.code}`}
+                            className="text-brand-600 hover:underline"
+                          >
+                            {b.name}
+                          </Link>
+                        </span>
+                      ))}
                     </div>
                   )}
                   {it.retailTake && (
