@@ -1,11 +1,12 @@
 "use client";
 
-// 分享落地页的转化 + 分享出口:①订阅每日解读(复用 /api/me/digest-pref)②分享(品牌卡 + 复制链接,带 ref)。
-// 落地即埋 chain_landing_view(带 ref 归因)。V1 海报先走"品牌卡 + 截图/复制链接";一键存图海报(next/og)后置。
+// 分享落地页的转化 + 分享出口:①订阅每日解读(复用 /api/me/digest-pref)②分享海报图(内嵌二维码)。
+// 海报图:客户端把卡片渲成 PNG(浏览器自带中文字体,绕开 next/og 的 CJK 字体坑)→ 支持则系统分享
+// 图片文件、不支持(华为/微信 webview)则渲成真 <img> 让用户长按保存/转发。图里二维码 → 扫码回带 ref
+// 的落地页,分享闭环不断。落地即埋 chain_landing_view(带 ref 归因)。
 import { useEffect, useRef, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { track } from "@/lib/analytics";
-import { Logo } from "@/components/Logo";
 
 export interface ShareSummary {
   date: string;
@@ -32,6 +33,10 @@ export function ChainConvert({
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState<"idle" | "done" | "fail">("idle");
   const [shareUrl, setShareUrl] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const [imgState, setImgState] = useState<"idle" | "working" | "saved" | "fail">("idle");
+  const [imgUrl, setImgUrl] = useState("");
+  const posterRef = useRef<HTMLDivElement | null>(null);
   const tracked = useRef(false);
 
   // 落地归因(每次访问一次)
@@ -41,10 +46,27 @@ export function ChainConvert({
     track("chain_landing_view", { chain: chainId, ref: refCode ?? "" });
   }, [chainId, refCode]);
 
+  const myRef = session?.user?.id ?? "anon";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShareUrl(
+      `${window.location.origin}/chain/${chainId}?ref=${encodeURIComponent(myRef)}&utm_source=share`
+    );
+  }, [chainId, myRef]);
+
+  // 生成二维码(指向带 ref 的落地页)
+  useEffect(() => {
+    if (!shareUrl) return;
+    import("qrcode")
+      .then((QR) => QR.toDataURL(shareUrl, { margin: 1, width: 200 }))
+      .then(setQrUrl)
+      .catch(() => {});
+  }, [shareUrl]);
+
   const subscribe = async () => {
     if (!session?.user) {
       track("chain_subscribe", { chain: chainId, state: "guest" });
-      signIn(); // 游客 → 登录/注册,登录后默认在每日推送里
+      signIn();
       return;
     }
     setSub("loading");
@@ -64,17 +86,10 @@ export function ChainConvert({
     }
   };
 
-  // 我的分享 ref:登录用 userId,游客用 anon(仍归因到"来自分享")
-  const myRef = session?.user?.id ?? "anon";
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setShareUrl(
-      `${window.location.origin}/chain/${chainId}?ref=${encodeURIComponent(myRef)}&utm_source=share`
-    );
-  }, [chainId, myRef]);
-
   const openShare = () => {
     setShowShare(true);
+    setImgState("idle");
+    setImgUrl("");
     track("share_poster_generated", { chain: chainId, entry: "landing" });
   };
 
@@ -97,7 +112,7 @@ export function ChainConvert({
       document.body.appendChild(ta);
       ta.focus();
       ta.select();
-      ta.setSelectionRange(0, text.length); // iOS 需要
+      ta.setSelectionRange(0, text.length);
       const ok = document.execCommand("copy");
       document.body.removeChild(ta);
       return ok;
@@ -113,29 +128,51 @@ export function ChainConvert({
     if (ok) track("share_link_copied", { chain: chainId, medium: "link" });
   };
 
-  // 移动端最优:调起系统/微信原生分享面板;无则回退复制
-  const nativeShare = async () => {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: `${chainName} · 今日解读`,
-          text: `${summary.moodLine} · ${summary.overnight}`,
-          url: shareUrl,
-        });
-        track("share_link_copied", { chain: chainId, medium: "native" });
-        return;
-      } catch (e) {
-        // 用户主动取消(AbortError)→ 不兜底;其它失败(部分安卓/国产浏览器 share 抛错)→ 兜底复制
-        if (e instanceof Error && e.name === "AbortError") return;
+  // 分享海报图:DOM → PNG → 支持则系统分享图片文件;不支持则渲成 <img> 让用户长按保存/转发
+  const shareImage = async () => {
+    if (!posterRef.current) return;
+    setImgState("working");
+    try {
+      const { toBlob } = await import("html-to-image");
+      const blob = await toBlob(posterRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: "#ffffff",
+      });
+      if (!blob) throw new Error("no-blob");
+      const file = new File([blob], "stocktell-ai-chain.png", { type: "image/png" });
+      const nav = navigator as Navigator & {
+        canShare?: (d: { files: File[] }) => boolean;
+      };
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          track("share_image", { chain: chainId, medium: "native" });
+          setImgState("idle");
+          return;
+        } catch (e) {
+          if (e instanceof Error && e.name === "AbortError") {
+            setImgState("idle");
+            return;
+          }
+          /* 其它失败 → 落到长按保存兜底 */
+        }
       }
+      // 兜底:渲成真 <img>,用户长按保存/转发(华为内置/微信 webview 也能用)
+      setImgUrl(URL.createObjectURL(blob));
+      setImgState("saved");
+      track("share_image", { chain: chainId, medium: "longpress" });
+    } catch {
+      setImgState("fail");
     }
-    await copyLink(); // 无原生分享 或 share 真失败 → 复制链接 + 提示,别让按钮变死
   };
 
   return (
     <>
       <section className="mt-6 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
-        <div className="text-title font-semibold text-gray-900">每天早上,{chainName}怎么动一眼看懂</div>
+        <div className="text-title font-semibold text-gray-900">
+          每天早上,{chainName}怎么动一眼看懂
+        </div>
         <p className="mt-1 text-xs text-gray-500">
           订阅后每个交易日早盘前收到解读邮件(隔夜联动 + 你自选的票要注意)。随时可退订。
         </p>
@@ -164,44 +201,76 @@ export function ChainConvert({
 
       {showShare && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-4"
           onClick={() => setShowShare(false)}
         >
-          <div
-            className="w-full max-w-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 品牌分享卡(截图转发 / 复制链接) */}
-            <div className="overflow-hidden rounded-2xl bg-white shadow-2xl">
-              <div className="bg-gradient-to-br from-brand-600 to-indigo-500 px-5 pb-6 pt-5 text-white">
-                <div className="flex items-center gap-2">
-                  <Logo className="h-5 w-auto brightness-0 invert" />
-                  <span className="text-xs opacity-90">StockTell</span>
+          <div className="w-full max-w-sm py-6" onClick={(e) => e.stopPropagation()}>
+            {/* 兜底:已生成的图片(真 <img>,可长按保存/转发) */}
+            {imgState === "saved" && imgUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imgUrl}
+                  alt="今日解读海报"
+                  className="w-full rounded-2xl shadow-2xl"
+                />
+                <p className="mt-3 text-center text-sm text-white">
+                  长按上面图片「保存图片 / 发送给朋友」
+                </p>
+              </>
+            ) : (
+              // 海报卡(既是预览,也是渲图目标)
+              <div
+                ref={posterRef}
+                className="overflow-hidden rounded-2xl bg-white shadow-2xl"
+              >
+                <div className="bg-brand-600 px-5 pb-5 pt-5 text-white">
+                  <div className="text-xs font-semibold tracking-wide opacity-90">
+                    StockTell · 产业链解读
+                  </div>
+                  <div className="mt-3 text-xl font-bold">{chainName} · 今日解读</div>
+                  <div className="mt-0.5 text-xs opacity-80">{summary.date}</div>
                 </div>
-                <div className="mt-4 text-lg font-semibold">{chainName} · 今日解读</div>
-                <div className="mt-0.5 text-xs opacity-80">{summary.date}</div>
+                <div className="space-y-2.5 px-5 py-4 text-sm text-gray-700">
+                  <div>📊 {summary.moodLine}</div>
+                  <div>🌙 {summary.overnight}</div>
+                  {summary.topTitle && (
+                    <div className="line-clamp-2">📌 {summary.topTitle}</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 border-t border-gray-100 px-5 py-4">
+                  {qrUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={qrUrl} alt="扫码" className="h-16 w-16 rounded" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-800">
+                      扫码看今日解读 · 加自选
+                    </div>
+                    <div className="mt-0.5 text-xs text-gray-400">{tagline}</div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 px-5 py-2 text-center text-[11px] text-gray-400">
+                  信息整理,不构成投资建议 · stocktell.me
+                </div>
               </div>
-              <div className="space-y-2 px-5 py-4 text-sm text-gray-700">
-                <div>📊 {summary.moodLine}</div>
-                <div>🌙 {summary.overnight}</div>
-                {summary.topTitle && <div className="line-clamp-2">📌 {summary.topTitle}</div>}
-                <div className="pt-1 text-xs text-gray-400">{tagline}</div>
-              </div>
-              <div className="border-t border-gray-100 px-5 py-2.5 text-center text-[11px] text-gray-400">
-                stocktell.me/chain/{chainId} · 信息整理,不构成投资建议
-              </div>
-            </div>
+            )}
 
             <div className="mt-3 flex gap-2">
-              <button
-                onClick={nativeShare}
-                className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow"
-              >
-                📤 分享给朋友
-              </button>
+              {imgState !== "saved" && (
+                <button
+                  onClick={shareImage}
+                  disabled={imgState === "working"}
+                  className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow disabled:opacity-60"
+                >
+                  {imgState === "working" ? "生成图片中…" : "📤 分享图片"}
+                </button>
+              )}
               <button
                 onClick={copyLink}
-                className="rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow"
+                className={`rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow ${
+                  imgState === "saved" ? "flex-1" : ""
+                }`}
               >
                 {copied === "done" ? "✓ 已复制" : "复制链接"}
               </button>
@@ -211,18 +280,13 @@ export function ChainConvert({
                 ✓ 链接已复制,粘贴到微信发给朋友/群
               </p>
             )}
-            {/* 仅复制失败时才露链接兜底(平时不显示) */}
-            {copied === "fail" && (
-              <input
-                readOnly
-                value={shareUrl}
-                onFocus={(e) => e.currentTarget.select()}
-                className="mt-2 w-full rounded-lg bg-white/95 px-3 py-2 text-xs text-gray-600"
-                aria-label="分享链接"
-              />
+            {imgState === "fail" && (
+              <p className="mt-2 text-center text-xs text-white/85">
+                图片生成失败,可改用「复制链接」或直接截屏转发
+              </p>
             )}
             <p className="mt-2 text-center text-xs text-white/85">
-              点「分享」调起微信/系统分享,或复制链接、截屏转发这张卡片
+              分享图片里带二维码,朋友扫码即可看解读、加自选
             </p>
             <button
               onClick={() => setShowShare(false)}
