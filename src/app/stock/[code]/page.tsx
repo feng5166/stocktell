@@ -220,6 +220,14 @@ export default async function StockDetail({
         {/* 基本面真实数据并入标题区(紧凑一行)。下方按散户心态重排:先结论/关系,资金面等支撑细节折叠靠后 */}
         <Fundamentals code={s.code} market={s.market} />
 
+        <Section icon="🧭" title="在产业链的位置">
+          <ChainPosition
+            sector={s.sector}
+            up={upPeers}
+            down={downPeers}
+          />
+        </Section>
+
         <Section icon="📰" title="最近发生了什么">
           <ul className="space-y-1.5 text-sm text-gray-700">
             {todayNews.map((it) => (
@@ -281,14 +289,6 @@ export default async function StockDetail({
               今日暂无相关动态,以上为该标的的长期定位;点上方可让 StockTell 现在深读这只票。
             </p>
           )}
-        </Section>
-
-        <Section icon="🧭" title="在产业链的位置">
-          <ChainPosition
-            sector={s.sector}
-            up={upPeers}
-            down={downPeers}
-          />
         </Section>
 
         <Section icon="🔗" title="对应的股票">
