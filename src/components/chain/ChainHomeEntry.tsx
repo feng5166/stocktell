@@ -1,7 +1,7 @@
 "use client";
 
-// 首页 → AI 链落地页(/chain/ai)入口 + 分享引导(分享机制 V1)。
-// 埋点 chain_entry_click:看"首页 → 落地页 → 加自选/订阅/分享"这条漏斗的第一跳。
+// 首页头部「看 / 分享」小入口 → AI 链落地页(/chain/ai)。克制不突兀:小号品牌色文字链接,
+// 贴在"今日简报"标题行右侧、与 meta 行对齐。埋点 chain_entry_click:看"首页 → 落地页"漏斗第一跳。
 import Link from "next/link";
 import { track } from "@/lib/analytics";
 
@@ -10,17 +10,9 @@ export function ChainHomeEntry() {
     <Link
       href="/chain/ai"
       onClick={() => track("chain_entry_click", { from: "home" })}
-      className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 transition-colors hover:bg-brand-50"
+      className="shrink-0 whitespace-nowrap text-xs font-medium text-brand-600 hover:underline"
     >
-      <div className="min-w-0">
-        <div className="text-sm font-medium text-gray-900">AI 产业链 · 今日解读</div>
-        <div className="mt-0.5 text-xs text-gray-500">
-          隔夜联动 + 成分股一页看懂,分享给朋友扫码即看
-        </div>
-      </div>
-      <span className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white">
-        看 / 分享
-      </span>
+      看 / 分享 →
     </Link>
   );
 }

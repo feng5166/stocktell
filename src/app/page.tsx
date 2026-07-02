@@ -64,6 +64,8 @@ export default async function Home() {
               {shownDate} · AI 产业链动态,跟你的持仓有什么关系
             </p>
           </div>
+          {/* 头部小入口 → AI 链落地页(埋点 chain_entry_click) */}
+          <ChainHomeEntry />
         </div>
 
         {stale && (
@@ -77,9 +79,6 @@ export default async function Home() {
 
         {/* 跨市场预期差雷达:隔夜美股已涨、对应 A 股暂未跟上 → 一屏直达(无 live 信号时自隐藏) */}
         <OvernightRadar />
-
-        {/* AI 链落地页入口 + 分享引导(分享机制 V1;埋点 chain_entry_click) */}
-        <ChainHomeEntry />
 
         {items.length === 0 ? (
           <EmptyState errored={errored} />
