@@ -62,10 +62,10 @@ export default async function Home() {
             </div>
             <p className="mt-1 text-xs text-gray-400">
               {shownDate} · AI 产业链动态,跟你的持仓有什么关系
+              {/* 内联小入口 → AI 链落地页(埋点 chain_entry_click) */}
+              <ChainHomeEntry />
             </p>
           </div>
-          {/* 头部小入口 → AI 链落地页(埋点 chain_entry_click) */}
-          <ChainHomeEntry />
         </div>
 
         {stale && (
