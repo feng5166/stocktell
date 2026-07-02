@@ -30,7 +30,9 @@ export function ChainConvert({
   const { data: session } = useSession();
   const [sub, setSub] = useState<"idle" | "loading" | "done">("idle");
   const [showShare, setShowShare] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"idle" | "done" | "fail">("idle");
+  const [shareUrl, setShareUrl] = useState("");
+  const [canShare, setCanShare] = useState(false);
   const tracked = useRef(false);
 
   // 落地归因(每次访问一次)
@@ -63,25 +65,71 @@ export function ChainConvert({
     }
   };
 
-  // 我的分享 ref:登录用 userId,游客用 anon(仍可归因到"来自分享")
+  // 我的分享 ref:登录用 userId,游客用 anon(仍归因到"来自分享")
   const myRef = session?.user?.id ?? "anon";
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/chain/${chainId}?ref=${encodeURIComponent(myRef)}&utm_source=share`
-      : "";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShareUrl(
+      `${window.location.origin}/chain/${chainId}?ref=${encodeURIComponent(myRef)}&utm_source=share`
+    );
+    setCanShare(typeof navigator !== "undefined" && !!navigator.share);
+  }, [chainId, myRef]);
 
   const openShare = () => {
     setShowShare(true);
     track("share_poster_generated", { chain: chainId, entry: "landing" });
   };
-  const copyLink = async () => {
+
+  // 跨浏览器复制:clipboard API 失败(微信/旧 WebView 常禁用)→ execCommand 兜底
+  async function robustCopy(text: string): Promise<boolean> {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-      track("share_link_copied", { chain: chainId, medium: "link" });
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
     } catch {
-      /* 剪贴板不可用时用户可长按卡片截图 */
+      /* 落到兜底 */
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.top = "0";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length); // iOS 需要
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  const copyLink = async () => {
+    const ok = await robustCopy(shareUrl);
+    setCopied(ok ? "done" : "fail");
+    setTimeout(() => setCopied("idle"), 2200);
+    if (ok) track("share_link_copied", { chain: chainId, medium: "link" });
+  };
+
+  // 移动端最优:调起系统/微信原生分享面板;无则回退复制
+  const nativeShare = async () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${chainName} · 今日解读`,
+          text: `${summary.moodLine} · ${summary.overnight}`,
+          url: shareUrl,
+        });
+        track("share_link_copied", { chain: chainId, medium: "native" });
+      } catch {
+        /* 用户取消,忽略 */
+      }
+    } else {
+      await copyLink();
     }
   };
 
@@ -145,23 +193,44 @@ export function ChainConvert({
               </div>
             </div>
 
-            <div className="mt-3 flex gap-2">
+            {/* 始终可见、可长按选中的链接(兜底手动复制) */}
+            <input
+              readOnly
+              value={shareUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              className="mt-3 w-full rounded-lg bg-white/95 px-3 py-2 text-xs text-gray-600"
+            />
+            <div className="mt-2 flex gap-2">
+              {canShare && (
+                <button
+                  onClick={nativeShare}
+                  className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow"
+                >
+                  📤 分享给朋友
+                </button>
+              )}
               <button
                 onClick={copyLink}
-                className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow"
+                className={`rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow ${
+                  canShare ? "" : "flex-1"
+                }`}
               >
-                {copied ? "✓ 链接已复制" : "复制分享链接"}
-              </button>
-              <button
-                onClick={() => setShowShare(false)}
-                className="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-medium text-white ring-1 ring-inset ring-white/30"
-              >
-                关闭
+                {copied === "done"
+                  ? "✓ 已复制"
+                  : copied === "fail"
+                  ? "长按上方链接复制"
+                  : "复制链接"}
               </button>
             </div>
-            <p className="mt-2 text-center text-xs text-white/80">
-              长按上面卡片可保存图片,或复制链接发给朋友/群
+            <p className="mt-2 text-center text-xs text-white/85">
+              {canShare ? "点「分享」调起微信/系统分享" : "复制链接发给朋友/群"},或直接截屏转发这张卡片
             </p>
+            <button
+              onClick={() => setShowShare(false)}
+              className="mt-1 w-full py-2 text-center text-sm text-white/80"
+            >
+              关闭
+            </button>
           </div>
         </div>
       )}
