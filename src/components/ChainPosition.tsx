@@ -11,6 +11,7 @@ interface Peer {
   name: string;
   market: string;
   strength?: string; // 强/中/弱(来自 chainEdges 的关联强度)
+  basis?: string; // 关联依据(chainEdges 的 basis:为什么算关联)
 }
 
 // 关联强度配色:强=真供货/深度绑定,中=对标/替代/配套,弱=主题映射
@@ -100,29 +101,32 @@ export function ChainPosition({
       </div>
 
       {open && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-gray-400">
-            {open === "up" ? "上游(供货给它)" : "下游(采购它的)"}:
-          </span>
+        <div className="mt-2 space-y-0.5">
+          <div className="text-xs text-gray-400">
+            {open === "up" ? "上游(供货给它):" : "下游(采购它的):"}
+          </div>
           {(open === "up" ? up : down).map((x) => (
             <Link
               key={x.code}
               href={`/stock/${x.code}`}
-              className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-200"
+              className="-mx-1 flex flex-wrap items-center gap-1.5 rounded px-1 py-1 transition-colors hover:bg-gray-50 active:bg-gray-50"
             >
-              {x.name}
-              {x.market === "美股" && (
-                <span className="text-brand-500">·美</span>
-              )}
               {x.strength && (
                 <span
-                  className={`rounded px-1 text-[11px] ${
+                  className={`shrink-0 rounded px-1 text-[11px] ${
                     STR_BADGE[x.strength] ?? STR_BADGE["弱"]
                   }`}
                 >
                   {x.strength}
                 </span>
               )}
+              <span className="text-xs font-medium text-gray-800">
+                {x.name}
+                {x.market === "美股" && (
+                  <span className="ml-0.5 text-brand-500">·美</span>
+                )}
+              </span>
+              {x.basis && <span className="text-xs text-gray-500">· {x.basis}</span>}
             </Link>
           ))}
         </div>
