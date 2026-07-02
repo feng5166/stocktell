@@ -10,16 +10,16 @@ export function ChainHomeEntry() {
     <Link
       href="/chain/ai"
       onClick={() => track("chain_entry_click", { from: "home" })}
-      className="mt-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-500 px-4 py-3.5 text-white shadow-sm transition-opacity hover:opacity-95"
+      className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 transition-colors hover:bg-brand-50"
     >
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold">AI 产业链 · 今日解读</div>
-        <div className="mt-0.5 text-xs text-white/85">
-          隔夜联动 + 成分股一页看懂 · 分享给朋友,扫码即看
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-gray-900">AI 产业链 · 今日解读</div>
+        <div className="mt-0.5 text-xs text-gray-500">
+          隔夜联动 + 成分股一页看懂,分享给朋友扫码即看
         </div>
       </div>
-      <span className="shrink-0 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-medium ring-1 ring-inset ring-white/25">
-        看 / 分享 →
+      <span className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white">
+        看 / 分享
       </span>
     </Link>
   );
