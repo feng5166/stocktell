@@ -10,6 +10,7 @@ import { chainSentiment } from "@/lib/sentiment";
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
+import { IMPACT_META } from "@/lib/impact";
 import { DISCLAIMER } from "@/lib/constants";
 
 export const revalidate = 60;
@@ -118,8 +119,10 @@ export default async function ChainPage({
                   className="rounded-xl border border-gray-200 bg-white px-4 py-3"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">
-                      {it.impact}影响
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${IMPACT_META[it.impact].tagClass}`}
+                    >
+                      {IMPACT_META[it.impact].label}
                     </span>
                     <span className="font-medium text-gray-900">{it.title}</span>
                   </div>
