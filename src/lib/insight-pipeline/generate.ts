@@ -13,6 +13,7 @@ import { relationForCode } from "@/lib/relation";
 import { fallbackChainTake } from "@/lib/chain-take";
 import { dailyRisk } from "@/lib/home-feed";
 import { runGuards, type GuardResult } from "./guard";
+import { heatSignature, getRecentHeatSignatures } from "./docs";
 import type { DailyInsightPayload, HeatDirection } from "./schema";
 
 export interface GenerateResult {
@@ -21,6 +22,9 @@ export interface GenerateResult {
   payload?: DailyInsightPayload;
   guard?: GuardResult;
   reason?: string;
+  // 同图谱检测(§7.2-6):与今日热力方向相同的连续历史天数(含今日算 1)。
+  // ≥2 → 警告;≥3 → cron 触发暂停。真实连续行情也会命中,故是启发式,人工确认。
+  heatStreak?: number;
 }
 
 const FALLBACK_SEGMENT = "其他链上环节";
@@ -292,16 +296,22 @@ async function buildReferences(
     for (const ev of tops.length ? tops : trigger.events.slice(0, 2)) {
       try {
         meta.searchCalls++;
-        const hits = await bochaSearch(`${ev.name} 美股 ${ev.direction === "down" ? "下跌" : "上涨"} 原因 财报`, {
-          count: 3,
-          freshness: "oneWeek",
+        // 检索词带中文名 + 英文 ticker,提高召回精度(纯中文名易召回同名无关公司)
+        const hits = await bochaSearch(
+          `${ev.name} ${ev.code} 股价 ${ev.direction === "down" ? "大跌" : "大涨"} 原因`,
+          { count: 5, freshness: "oneWeek" }
+        );
+        // 相关性过滤(§12 修):标题/摘要必须真提到该触发标的(中文名或 ticker),
+        // 否则丢弃——宁可没有这条来源,也不塞无关新闻(今天出过"百威亚太"误召回)。
+        const rel = (hits ?? []).find((h) => {
+          const text = `${h.name ?? ""} ${h.summary ?? h.snippet ?? ""}`;
+          return text.includes(ev.name) || new RegExp(`\\b${ev.code}\\b`, "i").test(text);
         });
-        const h = hits?.[0];
-        if (h?.url) {
+        if (rel?.url) {
           refs.push({
-            name: h.name?.slice(0, 60) || `${ev.name} 相关报道`,
-            url: h.url,
-            date: h.datePublished ?? undefined,
+            name: rel.name?.slice(0, 60) || `${ev.name} 相关报道`,
+            url: rel.url,
+            date: rel.datePublished ?? undefined,
             supports: `触发事件:${ev.name}`,
             kind: "具体来源",
             verified: false,
@@ -357,5 +367,19 @@ export async function generateDailyInsight(
   };
 
   const guard = runGuards(payload, chain.segments, meta);
-  return { ok: true, blocked: guard.blockers.length > 0, payload, guard };
+
+  // 同图谱检测:今日热力指纹 vs 最近两天,算连续相同天数(含今日)。
+  const todaySig = heatSignature(payload);
+  const prevSigs = await getRecentHeatSignatures(chainId, date, 2).catch(() => []);
+  let heatStreak = 1;
+  for (const sig of prevSigs) {
+    if (sig === todaySig) heatStreak++;
+    else break;
+  }
+  if (heatStreak >= 3)
+    guard.warnings.push(`同图谱:连续 ${heatStreak} 天热力方向零变化——疑似退化成预制图谱(若为真实连续行情属正常,人工确认)`);
+  else if (heatStreak >= 2)
+    guard.warnings.push(`同图谱:与昨日热力方向完全一致(连续 ${heatStreak} 天),人审重点看是否真实`);
+
+  return { ok: true, blocked: guard.blockers.length > 0, payload, guard, heatStreak };
 }

@@ -32,6 +32,55 @@ const fromRow = (r: any): InsightDocRow => ({
 
 export const dailySlug = (chainId: string, date: string) => `daily-${chainId}-${date}`;
 
+// 热力方向指纹(同图谱检测用):环节按名排序后拼 方向,稳定可比。
+export function heatSignature(payload: DailyInsightPayload): string {
+  return payload.heat
+    .slice()
+    .sort((a, b) => a.segment.localeCompare(b.segment))
+    .map((h) => `${h.segment}:${h.direction}`)
+    .join("|");
+}
+
+// 最近 n 天(不含 beforeDate 当天)该链 daily 的热力指纹,最新在前。
+// 只看 published/draft(rejected/superseded 不算历史轨迹)。
+export async function getRecentHeatSignatures(
+  chainId: string,
+  beforeDate: string,
+  n: number
+): Promise<string[]> {
+  const db = getPrisma();
+  if (!db) return [];
+  const rows = await db.insightDoc.findMany({
+    where: { chainId, kind: "daily", date: { lt: beforeDate }, status: { in: ["published", "draft"] } },
+    orderBy: { date: "desc" },
+    take: n,
+  });
+  return rows.map((r) => heatSignature(r.payload as unknown as DailyInsightPayload));
+}
+
+/* ---------- 管线暂停开关(同图谱连续告警未处理→自动暂停,§7.2-6) ---------- */
+// 复用 morning_brief_cache 当 KV;key=insight-paused:{chainId},value=暂停原因。
+const pauseKey = (chainId: string) => `insight-paused:${chainId}`;
+
+export async function isPipelinePaused(chainId: string): Promise<string | null> {
+  const db = getPrisma();
+  if (!db) return null;
+  const row = await db.morningBriefCache.findUnique({ where: { key: pauseKey(chainId) } }).catch(() => null);
+  return row?.brief ?? null;
+}
+export async function pausePipeline(chainId: string, reason: string): Promise<void> {
+  const db = getPrisma();
+  if (!db) return;
+  await db.morningBriefCache
+    .upsert({ where: { key: pauseKey(chainId) }, create: { key: pauseKey(chainId), brief: reason }, update: { brief: reason, updatedAt: new Date() } })
+    .catch(() => {});
+}
+export async function resumePipeline(chainId: string): Promise<void> {
+  const db = getPrisma();
+  if (!db) return;
+  await db.morningBriefCache.delete({ where: { key: pauseKey(chainId) } }).catch(() => {});
+}
+
 // 当日该链是否已有 daily(draft/published 任一)——cron 幂等判断用(rejected/superseded 不算)
 export async function hasDaily(chainId: string, date: string): Promise<boolean> {
   const db = getPrisma();

@@ -5,7 +5,7 @@ import { todayISO } from "@/lib/date";
 import { sendFeishu } from "@/lib/feishu";
 import { alertCron } from "@/lib/monitor";
 import { generateDailyInsight } from "@/lib/insight-pipeline/generate";
-import { saveDraft, hasDaily, getPrevHeat } from "@/lib/insight-pipeline/docs";
+import { saveDraft, hasDaily, getPrevHeat, isPipelinePaused, pausePipeline } from "@/lib/insight-pipeline/docs";
 import { CHAINS } from "@/data/chains";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +29,16 @@ export async function GET(req: NextRequest) {
   for (const chain of Object.values(CHAINS)) {
     if (!chain.segments?.length) continue;
     try {
+      // 同图谱连续告警未处理 → 管线暂停(§7.2-6):跳过生成,等人工 force 恢复
+      const paused = await isPipelinePaused(chain.id);
+      if (paused) {
+        results[chain.id] = "paused";
+        await alertCron(
+          "insight-daily(已暂停)",
+          `${date} ${chain.name} 管线处于暂停态(${paused})。确认非预制图谱后手动恢复:POST /api/admin/insight-daily?force=1&chain=${chain.id}`
+        );
+        continue;
+      }
       if (await hasDaily(chain.id, date)) {
         results[chain.id] = "already-exists";
         continue;
@@ -49,6 +59,14 @@ export async function GET(req: NextRequest) {
       }
       const doc = await saveDraft(r.payload!, r.guard!);
       results[chain.id] = doc ? "draft-saved" : "no-db";
+      // 同图谱连续 3 天零变化 → 设暂停标记 + 升级告警(草稿仍落库供人审判断)
+      if ((r.heatStreak ?? 1) >= 3) {
+        await pausePipeline(chain.id, `连续 ${r.heatStreak} 天热力零变化(${date})`);
+        await alertCron(
+          "insight-daily(同图谱暂停)",
+          `${date} ${chain.name} 连续 ${r.heatStreak} 天热力方向零变化,疑似退化成预制图谱 → 管线已暂停。若为真实连续行情,确认后 POST /api/admin/insight-daily?force=1&chain=${chain.id} 恢复`
+        );
+      }
       if (doc) {
         const warn = r.guard!.warnings.length
           ? `⚠️ ${r.guard!.warnings.length} 项警告`

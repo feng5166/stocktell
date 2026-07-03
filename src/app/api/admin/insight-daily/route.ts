@@ -3,7 +3,7 @@ import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
 import { todayISO } from "@/lib/date";
 import { generateDailyInsight } from "@/lib/insight-pipeline/generate";
-import { saveDraft, hasDaily, getPrevHeat } from "@/lib/insight-pipeline/docs";
+import { saveDraft, hasDaily, getPrevHeat, resumePipeline } from "@/lib/insight-pipeline/docs";
 import { getChain } from "@/data/chains";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
   if (!force && (await hasDaily(chainId, date))) {
     return NextResponse.json({ ok: true, skipped: "already-exists", date, chainId });
   }
+  // 手动 force = 人工确认,顺带解除同图谱暂停(§7.2-6 恢复路径)
+  if (force) await resumePipeline(chainId).catch(() => {});
   const prevHeat = await getPrevHeat(chainId, date).catch(() => null);
   const r = await generateDailyInsight(chainId, date, { yesterdayHeat: prevHeat });
   if (!r.ok) return NextResponse.json({ ok: false, error: r.reason, date, chainId });
