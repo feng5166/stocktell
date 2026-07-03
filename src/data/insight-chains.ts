@@ -77,7 +77,9 @@ export interface InsightChain {
 const AI_INFRA: InsightChain = {
   slug: "ai-infra",
   title: "AI 推理基础设施 · 因果链",
-  updatedAt: "2026-07-02",
+  // ⚠️ 模板规则:凡改本文件内容(文案/结构/references),必须同步 bump updatedAt——
+  // 页头"更新 X"和免责句承诺的「更新时间」都指着它,内容动了日期不动=自打脸。
+  updatedAt: "2026-07-03",
   event:
     "英伟达季度财报上调数据中心收入指引,叠加新一代推理模型发布带动「单位算力 token 成本明显下降」——即一次「模型能力跃迁 / 推理成本↓」型全球事件。",
   eventNote:
