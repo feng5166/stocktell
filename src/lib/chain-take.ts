@@ -14,7 +14,7 @@ import type { BriefingItem } from "@/lib/briefings";
 const TAKE_PROMPT = `你是 StockTell 的产业链解读助手,面向看不懂产业链的 A 股散户。
 给你今天「AI 产业链」相关的简报条目(盘前生成,触发事件=隔夜美股,A 股当天还没开盘),写一段 60~110 字的链级判断:
 - 结构:①这条链今天整体偏强/偏弱/分化,压力或动力来自哪些隔夜事件(点名触发,不带具体涨跌数字) ②传导最直接的 1~3 个环节(如 光模块、半导体设备、AI服务器、存储/HBM) ③点明哪些环节或方向更多是情绪映射、不代表订单变化(如 国产算力芯片对海外事件多为情绪映射)。
-- 帮用户理解传导,不替用户操作:禁止 买入/卖出/加仓/减仓/抄底/追高/接盘/逢回调布局/上车 等任何操作暗示;用"传导/映射/承压/企稳/观察/验证"这类词。
+- 帮用户理解传导,不替用户操作:禁止 买入/卖出/加仓/减仓/抄底/追高/接盘/逢回调布局/上车 等任何操作暗示;用"传导/映射/承压/观察/验证/共振"这类词;不出现 低开/高开/企稳/放量/缩量/破位/补跌 等盘口词。
 - A 股尚未开盘,一律前瞻口吻("可能/预计承压/开盘后看"),不断言 A 股已经怎么走;不用"暴跌/崩盘/血洗"等吓人词;不写免责声明。
 - 一段话不分点、不用 markdown、不带称呼。只输出正文。`;
 
@@ -27,9 +27,17 @@ export function fallbackChainTake(items: BriefingItem[]): string | null {
   const triggers = Array.from(
     new Set(items.map((it) => it.triggerName).filter(Boolean))
   ).slice(0, 3) as string[];
+  const ups = items.filter((it) => (it.triggerChange ?? 0) > 0).length;
   const downs = items.filter((it) => (it.triggerChange ?? 0) < 0).length;
+  // 方向数据缺失(up=down=0)时不妄断强弱,用中性词——别把"没数据"说成"偏强"
   const tone =
-    downs === 0 ? "偏强" : downs === items.length ? "偏弱" : "分化";
+    ups > 0 && downs === 0
+      ? "偏强"
+      : downs > 0 && ups === 0
+      ? "偏弱"
+      : ups === 0 && downs === 0
+      ? "有新动态"
+      : "分化";
   const sectorCount = new Map<string, number>();
   for (const it of items)
     for (const b of it.beneficiaries) {
@@ -40,7 +48,8 @@ export function fallbackChainTake(items: BriefingItem[]): string | null {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([s]) => s);
-  return `今天 AI 链情绪${tone},主要来自隔夜 ${triggers.join("、")} 的变动;映射最集中的环节是${topSectors.join("、")}。个股是否只是情绪跟随,开盘后看量能与订单逻辑验证。`;
+  const head = tone === "有新动态" ? "今天 AI 链有新动态" : `今天 AI 链情绪${tone}`;
+  return `${head},主要来自隔夜 ${triggers.join("、")} 的变动;映射最集中的环节是${topSectors.join("、")}。个股是否只是情绪跟随,要看订单与板块共振验证。`;
 }
 
 // LLM 生成(纯生成,无缓存)。失败/为空返回 null,让调用方不缓存、下次重试。
