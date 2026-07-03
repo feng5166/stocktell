@@ -25,7 +25,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
   return (
     <div className="rounded-xl border border-brand-100 bg-white p-3 sm:p-4">
       <div className="text-sm font-medium text-gray-800">
-        先告诉我你拿哪些票 👇
+        添加自选,查看今天哪些全球事件影响你的股票 👇
       </div>
       <div className="mt-1 text-xs text-gray-500">
         搜代码或名称加自选,以后这儿只给你看跟你票相关的动态。
@@ -34,7 +34,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="如 中际旭创 / 300308 / 英伟达"
+        placeholder="如:中际旭创 / 科大讯飞 / 海光信息"
         className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
       />
 

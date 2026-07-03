@@ -26,11 +26,15 @@ export function BriefingFeed({
   loggedIn,
   initialCodes,
   insightHref,
+  chainName,
+  chainHref,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
   initialCodes?: string[]; // 服务端预取的登录用户自选,首屏即按它切分,省 /api/watchlist 一跳
   insightHref?: string | null; // 事件卡「看这条链怎么传导」的链级因果链入口(P0 全部事件属 AI 链)
+  chainName?: string; // 事件卡「影响链」chip 文案(评审:字段顺序 变了啥→影响链→A股映射→怎么验证)
+  chainHref?: string; // 影响链 chip 跳转 /chain/[id]
 }) {
   const wl = useWatchlist(initialCodes);
   const isMine = (it: BriefingItem) =>
@@ -81,6 +85,8 @@ export function BriefingFeed({
                 loggedIn={loggedIn}
                 watchedCodes={wl.codes}
                 insightHref={insightHref}
+                chainName={chainName}
+                chainHref={chainHref}
                 mine
               />
             )}
@@ -90,7 +96,10 @@ export function BriefingFeed({
 
       {others.length > 0 && (
         <section className="rounded-2xl bg-gray-100/50 p-3 sm:p-4">
-          <SectionHead title="今天这些事件,正在影响 A 股产业链" />
+          <SectionHead
+            title="今天这些事件,正在影响 A 股产业链"
+            hint="只看能传导到 A 股产业链的事件"
+          />
           {/* 付费分层暂未开启:所有用户简报功能一致,不再上免费墙(gated 默认 false)。
               仅自选保存、推送订阅需登录;LockedCard/FREE_LIMIT 基础设施保留,日后分层再开。 */}
           <CardFeed
@@ -98,6 +107,9 @@ export function BriefingFeed({
             loggedIn={loggedIn}
             watchedCodes={wl.codes}
             insightHref={insightHref}
+            chainName={chainName}
+            chainHref={chainHref}
+            collapsed
           />
         </section>
       )}
@@ -260,6 +272,9 @@ function CardFeed({
   gated = false,
   mine = false,
   insightHref,
+  chainName,
+  chainHref,
+  collapsed = false,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
@@ -267,12 +282,18 @@ function CardFeed({
   gated?: boolean;
   mine?: boolean;
   insightHref?: string | null;
+  chainName?: string;
+  chainHref?: string;
+  collapsed?: boolean; // 首页事件区:默认只放 5 条,其余手动「查看更多」——首页是分发台不是事件库(评审)
 }) {
   const STEP = 6;
-  const [visible, setVisible] = useState(STEP);
+  const INITIAL = collapsed ? 5 : STEP;
+  const [visible, setVisible] = useState(INITIAL);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // 非折叠模式(和我相关等)保留滚动渐进加载;折叠模式只走手动按钮,不自动铺开
   useEffect(() => {
+    if (collapsed) return;
     const el = sentinelRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
@@ -284,7 +305,7 @@ function CardFeed({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [items.length]);
+  }, [items.length, collapsed]);
 
   // 免费墙(仅 gated):游客高影响全可见 + 累计前 3 条,其余锁定
   let shown = 0;
@@ -301,23 +322,36 @@ function CardFeed({
             mine={mine}
             watchedCodes={watchedCodes}
             insightHref={insightHref}
+            chainName={chainName}
+            chainHref={chainHref}
           />
         ) : (
           <LockedCard key={it.id} item={it} />
         );
       })}
       {visible < items.length ? (
-        <div
-          ref={sentinelRef}
-          className="flex flex-col items-center gap-1 py-5 text-gray-400"
-        >
-          <span className="animate-bounce text-base leading-none">↓</span>
-          <span className="text-xs">
-            继续向下滚动,加载更多 · {visible}/{items.length}
-          </span>
-        </div>
+        collapsed ? (
+          <div className="pt-1 text-center">
+            <button
+              onClick={() => setVisible((v) => Math.min(v + STEP, items.length))}
+              className="inline-flex min-h-[36px] items-center rounded-lg bg-white px-4 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50"
+            >
+              查看更多事件(还有 {items.length - visible} 条)
+            </button>
+          </div>
+        ) : (
+          <div
+            ref={sentinelRef}
+            className="flex flex-col items-center gap-1 py-5 text-gray-400"
+          >
+            <span className="animate-bounce text-base leading-none">↓</span>
+            <span className="text-xs">
+              继续向下滚动,加载更多 · {visible}/{items.length}
+            </span>
+          </div>
+        )
       ) : (
-        items.length > STEP && (
+        items.length > INITIAL && (
           <div className="py-4 text-center text-meta text-gray-300">
             — 已全部加载({items.length}条)—
           </div>
@@ -329,7 +363,7 @@ function CardFeed({
 
 function SectionHead({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="mb-3 flex items-baseline gap-2">
+    <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <h2 className="text-base font-semibold tracking-tight text-gray-900">
         {title}
       </h2>
@@ -462,11 +496,15 @@ function BriefingCard({
   mine,
   watchedCodes,
   insightHref,
+  chainName,
+  chainHref,
 }: {
   item: BriefingItem;
   mine?: boolean;
   watchedCodes?: Set<string>;
   insightHref?: string | null;
+  chainName?: string;
+  chainHref?: string;
 }) {
   const meta = IMPACT_META[item.impact];
   const [deep, setDeep] = useState("");
@@ -520,10 +558,26 @@ function BriefingCard({
       className={`rounded-xl bg-white p-4 shadow-sm`}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span
-          className={`inline-flex rounded px-1.5 py-0.5 text-meta font-medium ${meta.tagClass}`}
-        >
-          {meta.label}
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span
+            className={`inline-flex rounded px-1.5 py-0.5 text-meta font-medium ${meta.tagClass}`}
+          >
+            {meta.label}
+          </span>
+          {/* 影响链 chip(评审字段:变了啥→影响链→A股映射→怎么验证) */}
+          {chainName &&
+            (chainHref ? (
+              <Link
+                href={chainHref}
+                className="inline-flex rounded bg-brand-50 px-1.5 py-0.5 text-meta font-medium text-brand-700 hover:bg-brand-100"
+              >
+                {chainName}
+              </Link>
+            ) : (
+              <span className="inline-flex rounded bg-brand-50 px-1.5 py-0.5 text-meta font-medium text-brand-700">
+                {chainName}
+              </span>
+            ))}
         </span>
         <span className="shrink-0 text-meta text-gray-400">
           {item.date.slice(5)}

@@ -67,7 +67,7 @@ export function ChainSentiment({
   if (!d && !errored) {
     return (
       <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-gray-800">AI链今日情绪</div>
+        <div className="text-sm font-semibold text-gray-800">AI 链今日状态</div>
         <div className="mt-2.5 h-3 w-2/3 animate-pulse rounded bg-gray-100" />
         <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-gray-100" />
       </div>
@@ -77,7 +77,7 @@ export function ChainSentiment({
   if (errored || !d || (!d.a && !d.us)) {
     return (
       <div className="mb-4 rounded-xl bg-white px-4 py-3 text-sm text-gray-400 shadow-sm">
-        <span className="font-semibold text-gray-800">AI链今日情绪</span>
+        <span className="font-semibold text-gray-800">AI 链今日状态</span>
         <span className="ml-2">数据生成中,稍后刷新看看</span>
       </div>
     );
@@ -115,7 +115,7 @@ export function ChainSentiment({
   return (
     <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
       <div className="mb-2.5 flex items-center gap-2">
-        <span className="text-sm font-semibold text-gray-800">AI链今日情绪</span>
+        <span className="text-sm font-semibold text-gray-800">AI 链今日状态</span>
         {mood && (
           <span className={`rounded px-1.5 py-0.5 text-meta ${mood.c}`}>{mood.t}</span>
         )}

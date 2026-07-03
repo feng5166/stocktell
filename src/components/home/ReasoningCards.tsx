@@ -65,38 +65,38 @@ function Card({ c, rank }: { c: HomeReasoningCard; rank: number }) {
 
   return (
     <div ref={ref}>
+      {/* 首页主卡:比事件卡重一级(品牌描边),内部三段=判断/三层关系/一句话风险(评审压缩版) */}
       <Link
         href={`/insight/${c.insightSlug}`}
         onClick={onClick}
-        className="block rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow"
+        className="block rounded-xl bg-white p-4 shadow-sm ring-1 ring-brand-100 transition-shadow hover:shadow"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
-            {c.chainName}
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">
+              {c.chainName}
+            </span>
+            {c.trigger && (
+              <span className="text-meta text-gray-400">今日触发:{c.trigger}</span>
+            )}
           </span>
-          <span className="text-meta text-gray-400">
+          <span className="shrink-0 text-meta text-gray-400">
             {c.stale ? `最近一期 · ${c.date.slice(5)}` : c.date.slice(5)}
           </span>
         </div>
 
-        {c.trigger && (
-          <p className="mt-2 text-xs text-gray-500">
-            <span className="font-medium text-gray-600">今日触发</span>:{c.trigger}
-          </p>
-        )}
-
         {c.humanSummary ? (
-          <p className="mt-1.5 text-sm leading-relaxed text-gray-800">{c.humanSummary}</p>
+          <p className="mt-2 text-sm leading-relaxed text-gray-800">{c.humanSummary}</p>
         ) : (
-          <p className="mt-1.5 text-sm leading-relaxed text-gray-400">
+          <p className="mt-2 text-sm leading-relaxed text-gray-400">
             今日判断生成中(每个交易日约 07:00 更新),先看这条链的传导结构 👇
           </p>
         )}
 
-        {/* 三层环节:结构来自 insight,一行一层 */}
-        <div className="mt-2.5 space-y-1">
+        {/* 三层关系:一条可换行的横排,压缩高度 */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1">
           {c.tiers.map((t) => (
-            <div key={t.level} className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span key={t.level} className="inline-flex items-center gap-1 text-xs">
               <span>{t.emoji}</span>
               <span
                 className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
@@ -106,16 +106,16 @@ function Card({ c, rank }: { c: HomeReasoningCard; rank: number }) {
                 {t.level}
               </span>
               <span className="font-medium text-gray-800">{t.what}</span>
-            </div>
+            </span>
           ))}
         </div>
 
-        <p className="mt-2.5 rounded-lg bg-rose-50/70 px-3 py-2 text-xs leading-relaxed text-rose-800">
+        <p className="mt-2 rounded-lg bg-rose-50/70 px-3 py-1.5 text-xs leading-relaxed text-rose-800">
           <span className="font-medium text-rose-600">⚠️ 一句话风险:</span>
           {c.risk}
         </p>
 
-        <div className="mt-2 text-right text-xs font-medium text-brand-600">
+        <div className="mt-1.5 text-right text-xs font-medium text-brand-600">
           看这条链怎么传导 →
         </div>
       </Link>

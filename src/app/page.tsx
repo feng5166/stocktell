@@ -89,7 +89,13 @@ export default async function Home() {
           <EmptyState errored={errored} />
         ) : (
           <div className="mt-5">
-            <BriefingFeed items={items} loggedIn={false} insightHref={insightHref} />
+            <BriefingFeed
+              items={items}
+              loggedIn={false}
+              insightHref={insightHref}
+              chainName={aiChain?.name}
+              chainHref={aiChain ? `/chain/${aiChain.id}` : undefined}
+            />
           </div>
         )}
 
