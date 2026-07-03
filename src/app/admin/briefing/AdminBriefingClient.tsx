@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { IMPACT_META } from "@/lib/impact";
+import { beijingHM } from "@/lib/date";
 
 type Impact = "高" | "中" | "低";
 interface Beneficiary {
@@ -104,7 +105,13 @@ export default function AdminBriefingClient() {
   }
 
   const drafts = items.filter((i) => i.status === "draft");
-  const published = items.filter((i) => i.status === "published");
+  // 已发布跨多天累积,接口默认按影响力排;这里按时间倒序(新日期在前,同日新发布在前)
+  const published = items
+    .filter((i) => i.status === "published")
+    .sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
+    );
 
   return (
     <div className="text-ink">
@@ -189,7 +196,9 @@ export default function AdminBriefingClient() {
                 className={`h-2 w-2 shrink-0 rounded-full ${IMPACT_META[it.impact].dotClass}`}
               />
               <span className="text-sm font-medium">{it.title}</span>
-              <span className="text-xs text-gray-400">{it.date}</span>
+              <span className="shrink-0 text-xs text-gray-400">
+                {it.date} {beijingHM(it.createdAt)}
+              </span>
               <button
                 onClick={() => patch(it.id, { status: "draft" })}
                 className="ml-auto text-xs text-gray-500 hover:text-gray-900"

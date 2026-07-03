@@ -9,6 +9,19 @@ export function todayISO(): string {
   }).format(new Date());
 }
 
+// ISO 时间戳 → 北京时间 HH:mm(简报条目发布时间等展示用)。
+// 固定时区 + 固定格式,服务端渲染与客户端水合输出一致,不会产生 hydration 告警。
+export function beijingHM(iso: string): string | null {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(d);
+}
+
 export function beijingWeekday(): number {
   // 0=周日 .. 6=周六
   const s = new Intl.DateTimeFormat("en-US", {
