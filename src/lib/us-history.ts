@@ -1,5 +1,7 @@
 // 美股历史日 K(东方财富)。用于"节后首个 A 股交易日"计算假期累计涨跌。
 // 端点轻量:secid=<市场>.<代码>,fields2=f51(日期),f53(收盘),lmt=最近 N 根。
+import { fetchJsonWithTimeout } from "@/lib/fetch-timeout";
+
 const EM_MARKETS = [105, 106, 107]; // NASDAQ / NYSE / AMEX,逐个试
 
 interface Bar {
@@ -10,12 +12,12 @@ interface Bar {
 async function emCloses(ticker: string): Promise<Bar[] | null> {
   for (const mkt of EM_MARKETS) {
     try {
-      const r = await fetch(
+      // 曾是 briefing 链路里唯一裸奔的外部 fetch(其它源都已包超时):东财挂起会拖死简报 cron
+      const j = (await fetchJsonWithTimeout(
         `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${mkt}.${ticker}&fields1=f1&fields2=f51,f53&klt=101&fqt=1&end=20500101&lmt=250`,
-        { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } }
-      );
-      if (!r.ok) continue;
-      const j = (await r.json()) as { data?: { klines?: string[] } };
+        { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } },
+        6000
+      )) as { data?: { klines?: string[] } };
       const kl = j?.data?.klines;
       if (Array.isArray(kl) && kl.length) {
         const bars = kl

@@ -109,18 +109,23 @@ export async function tsCallStrict(
 // A 股交易日历缓存(进程内,按 YYYYMMDD,仅缓存权威结果)
 const tradingDayCache = new Map<string, boolean>();
 
-// 判断某天(YYYY-MM-DD)是否 A 股交易日(上交所日历,含节假日)。
-// Tushare 未配/失败时回退:非周末即视为交易日(与旧行为一致,不致命退化)。
-export async function isAshareTradingDay(dateISO: string): Promise<boolean> {
+// 三态交易日判定:权威区分「交易日 / 确定休市 / 无法确认」。
+//   - "trading":Tushare 日历确认开市。
+//   - "closed":周末(纯日期算术,可靠),或 Tushare 日历确认休市(节假日)。
+//   - "unknown":工作日但 Tushare 不可用,无法区分「工作日型节假日」与真交易日。
+// 调用方据此各自决策:检查型(看门狗)把 unknown 当交易日(宁多报一条可忽略的告警);
+// 会对用户做不可逆动作的(生成/推送/记账)把 unknown 当"这天不动 + 发告警"(假日误发不可撤回,
+// 但也不能静默漏掉真交易日 → 用告警让人工确认/手动触发,而非无声跳过)。
+export async function ashareDayStatus(
+  dateISO: string
+): Promise<"trading" | "closed" | "unknown"> {
   const ymd = dateISO.replace(/-/g, "");
   const cached = tradingDayCache.get(ymd);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) return cached ? "trading" : "closed";
 
-  const weekendFallback = () => {
-    // dateISO 是北京日期;取当天 12:00+08(=04:00 UTC 同日)的 UTC 星期,稳妥不跨日
-    const wd = new Date(`${dateISO}T12:00:00+08:00`).getUTCDay();
-    return wd !== 0 && wd !== 6;
-  };
+  // 周末:纯日期算术,可靠,不打 Tushare
+  const wd = new Date(`${dateISO}T12:00:00+08:00`).getUTCDay();
+  if (wd === 0 || wd === 6) return "closed";
 
   const d = await tsCall(
     "trade_cal",
@@ -128,12 +133,25 @@ export async function isAshareTradingDay(dateISO: string): Promise<boolean> {
     "cal_date,is_open"
   ).catch(() => null);
 
-  if (!d || d.items.length === 0) return weekendFallback();
+  if (!d || d.items.length === 0) return "unknown"; // 工作日 + Tushare 不可用
   const idx = d.fields.indexOf("is_open");
   const open = String(d.items[0][idx]) === "1";
-  tradingDayCache.set(ymd, open);
-  capDates(tradingDayCache, 500); // 交易日判定很小,留宽松上限即可
-  return open;
+  tradingDayCache.set(ymd, open); // 仅缓存权威结果,unknown 不缓存(下次重试)
+  capDates(tradingDayCache, 500);
+  return open ? "trading" : "closed";
+}
+
+// 布尔封装(保留旧调用方)。onUnknown 决定「工作日但无权威日历」时的方向:
+//   - true(默认,fail-open):当交易日。适合检查型(看门狗/情绪卡)——假日误判仅多一条可忽略告警。
+//   - false(fail-closed):当非交易日。适合会对用户做不可逆动作的——但调用方应改用 ashareDayStatus
+//     并在 unknown 时发告警,否则真交易日的 Tushare 抖动会被静默跳过(评审确认的回归)。
+export async function isAshareTradingDay(
+  dateISO: string,
+  opts: { onUnknown?: boolean } = {}
+): Promise<boolean> {
+  const s = await ashareDayStatus(dateISO);
+  if (s === "unknown") return opts.onUnknown ?? true;
+  return s === "trading";
 }
 
 // 上一个 A 股交易日(YYYY-MM-DD,严格早于 dateISO)。用于判断节后缺口/累计窗口。
