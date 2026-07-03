@@ -1,5 +1,7 @@
 {
-  "regions": ["hnd1"],
+  "regions": [
+    "hnd1"
+  ],
   "crons": [
     {
       "path": "/api/cron/briefing",
@@ -24,6 +26,10 @@
     {
       "path": "/api/cron/risk-radar",
       "schedule": "50 22 * * *"
+    },
+    {
+      "path": "/api/cron/insight-daily",
+      "schedule": "5 23 * * *"
     }
   ]
 }

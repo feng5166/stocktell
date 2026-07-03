@@ -36,7 +36,6 @@ const REL_GROUPS: { rel: Relation; label: string; hint: string }[] = [
   { rel: "直接", label: "🟥 直接映射", hint: "和这次事件、这些环节的关系最直接(比如给北美云厂供货)" },
   { rel: "间接", label: "🟨 间接映射", hint: "受益链条存在,但中间隔了几环,要看具体订单/客户/收入占比" },
   { rel: "情绪映射", label: "⬜ 情绪映射(沾热度)", hint: "可能被热度带动,但不等于这次事件的直接受益方,真金白银看订单" },
-  { rel: "弱", label: "弱关联", hint: "" },
 ];
 
 // 热力行底色:颜色深浅=与本次事件的关联强弱(A股心智:红=热、绿=冷;非涨幅)
@@ -270,7 +269,9 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
         <Section id="mappings" icon="🔗" title="国内相关的票(按关系分级,不是推荐)" sub={c.mappingNote}>
           <div className="space-y-3">
             {REL_GROUPS.map((g) => {
-              const items = c.mappings.filter((m) => m.relation === g.rel);
+              const items = c.mappings.filter((m) =>
+                g.rel === "情绪映射" ? m.relation === "情绪映射" || m.relation === "弱" : m.relation === g.rel
+              );
               if (items.length === 0) return null;
               // 每组默认只展开前 3 只,其余折叠(评审:16 只全展开页面太长)
               const HEAD = 3;

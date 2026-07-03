@@ -258,3 +258,25 @@ model Feedback {
   @@index([createdAt])
   @@map("feedback")
 }
+
+// insight 生产管线(PRD docs/prd-insight-pipeline.md §4):链级每日推理/事件专篇。
+// status: draft → published(同链同日同 kind 至多一个,旧 published 置 superseded)| rejected | superseded
+model InsightDoc {
+  id          String    @id @default(uuid())
+  slug        String    @unique // daily-{chainId}-{date} | evt-{date}-{triggerCode}
+  chainId     String    @map("chain_id")
+  date        String // YYYY-MM-DD(北京)
+  kind        String // daily | event
+  status      String    @default("draft") // draft | published | rejected | superseded
+  payload     Json // DailyInsightPayload(daily)/ InsightChain 子集(event)
+  guard       Json? // 护栏结果 {blockers, warnings, detail},审核页展示
+  reviewNote  String?   @map("review_note")
+  reviewedAt  DateTime? @map("reviewed_at")
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([date, status])
+  @@index([chainId, date, kind])
+  @@map("insight_docs")
+}

@@ -207,6 +207,28 @@ const T_FEEDBACK = `CREATE TABLE IF NOT EXISTS "feedback" (
 )`;
 const IDX_FEEDBACK_CREATED = `CREATE INDEX IF NOT EXISTS "feedback_created_at_idx" ON "feedback" ("created_at")`;
 
+
+// insight 管线:insight_docs 表(幂等;PRD docs/prd-insight-pipeline.md)
+const T_INSIGHT_DOCS = `CREATE TABLE IF NOT EXISTS "insight_docs" (
+  "id" text NOT NULL,
+  "slug" text NOT NULL,
+  "chain_id" text NOT NULL,
+  "date" text NOT NULL,
+  "kind" text NOT NULL,
+  "status" text NOT NULL DEFAULT 'draft',
+  "payload" jsonb NOT NULL,
+  "guard" jsonb,
+  "review_note" text,
+  "reviewed_at" timestamp(3),
+  "published_at" timestamp(3),
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "insight_docs_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_INSIGHT_SLUG = `CREATE UNIQUE INDEX IF NOT EXISTS "insight_docs_slug_key" ON "insight_docs" ("slug")`;
+const IDX_INSIGHT_DATE_STATUS = `CREATE INDEX IF NOT EXISTS "insight_docs_date_status_idx" ON "insight_docs" ("date", "status")`;
+const IDX_INSIGHT_CHAIN = `CREATE INDEX IF NOT EXISTS "insight_docs_chain_id_date_kind_idx" ON "insight_docs" ("chain_id", "date", "kind")`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -259,6 +281,10 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(T_API_METRIC);
         await tx.$executeRawUnsafe(T_FEEDBACK);
         await tx.$executeRawUnsafe(IDX_FEEDBACK_CREATED);
+        await tx.$executeRawUnsafe(T_INSIGHT_DOCS);
+        await tx.$executeRawUnsafe(IDX_INSIGHT_SLUG);
+        await tx.$executeRawUnsafe(IDX_INSIGHT_DATE_STATUS);
+        await tx.$executeRawUnsafe(IDX_INSIGHT_CHAIN);
         await tx.$executeRawUnsafe(T_DIGEST_SEND_LOG);
         await tx.$executeRawUnsafe(IDX_DIGEST_SEND_UNIQUE);
         await tx.$executeRawUnsafe(IDX_DIGEST_SEND_DATE);

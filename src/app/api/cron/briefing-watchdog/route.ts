@@ -59,6 +59,24 @@ export async function GET(req: NextRequest) {
   if (!(await isAshareTradingDay(date))) {
     return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
   }
+  // insight 管线心跳(PRD §5):交易日到 08:30 还没有当日链级每日推理(draft 或 published)→ 告警。
+  // 人审未完成不算失败(降级发布=地板在线);完全没草稿才是管线断了。
+  try {
+    const dbi = getPrisma();
+    const dailyCount = dbi
+      ? await dbi.insightDoc.count({
+          where: { date, kind: "daily", status: { in: ["draft", "published"] } },
+        })
+      : -1;
+    if (dailyCount === 0) {
+      await sendFeishu(
+        `❌ StockTell 链级每日推理缺失 · ${date} · 08:30 仍无 draft(07:05 主跑+07:45 补跑都没产出)。手动:POST /api/admin/insight-daily?force=1(Bearer ADMIN_TOKEN)`
+      );
+      await alertCron("insight-daily 看门狗", `交易日 ${date} 无当日每日推理草稿,管线疑似断产`);
+    }
+  } catch {
+    /* insight 心跳失败不影响简报看门狗主流程 */
+  }
   const items = await listBriefing({ date, status: "published" }).catch(() => []);
   let payload: Record<string, unknown>;
   if (items.length > 0) {

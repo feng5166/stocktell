@@ -18,7 +18,14 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
     const primary = await r.json().catch(() => ({}));
-    return NextResponse.json({ ok: true, backup: true, primary });
+    // 顺带补跑链级每日推理(insight 管线 PRD §5;自身幂等,已有 draft/published 则秒回)
+    const ins = await fetch(`${base}/api/cron/insight-daily`, {
+      headers: { Authorization: `Bearer ${secret}` },
+      cache: "no-store",
+    })
+      .then((x) => x.json())
+      .catch(() => null);
+    return NextResponse.json({ ok: true, backup: true, primary, insight: ins });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

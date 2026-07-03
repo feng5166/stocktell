@@ -19,6 +19,16 @@ for (const ins of Object.values(INSIGHT_CHAINS)) {
 
 export const RELATION_FALLBACK = "产业链相关";
 
+// 单只票的核定关系(insight mappings 人工核过的);没核过返回 null(调用方用环节默认档)。
+// 后台四档原值(含「弱」);前台展示归三档见 relationLabelFor。
+export function relationForCode(
+  code: string
+): "直接映射" | "间接映射" | "情绪映射" | "弱映射" | null {
+  const r = codeRel.get(code);
+  if (!r) return null;
+  return r === "直接" ? "直接映射" : r === "间接" ? "间接映射" : r === "弱" ? "弱映射" : "情绪映射";
+}
+
 export function relationLabelFor(item: {
   beneficiaries: { code: string }[];
 }): string {
@@ -28,12 +38,11 @@ export function relationLabelFor(item: {
     if (r && (!best || ORDER.indexOf(r) < ORDER.indexOf(best))) best = r;
   }
   if (!best) return RELATION_FALLBACK;
-  // 语言资产定稿(评审):映射层级统一为 直接映射/间接映射/情绪映射(/弱映射),全站复用
+  // 语言资产定稿(评审):前台统一三档 直接映射/间接映射/情绪映射;
+  // 「弱」只保留在后台/数据层,前台归并入情绪映射(M1 开工前增补 #5)
   return best === "直接"
     ? "直接映射"
     : best === "间接"
     ? "间接映射"
-    : best === "弱"
-    ? "弱映射"
     : "情绪映射";
 }

@@ -22,7 +22,7 @@ export interface HomeReasoningCard {
 
 // 今日一句话风险(评审:不再用 insight 的演示事件静态风险——"AI 变便宜"前提和
 // 当日集体下跌语境错位)。按当日触发方向给验证口径,下跌日文案=负责人定稿原句。
-function dailyRisk(items: BriefingItem[]): string {
+export function dailyRisk(items: BriefingItem[]): string {
   const ups = items.filter((it) => (it.triggerChange ?? 0) > 0).length;
   const downs = items.filter((it) => (it.triggerChange ?? 0) < 0).length;
   if (downs > 0 && ups === 0)
