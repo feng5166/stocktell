@@ -9,6 +9,7 @@ import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
+import { TakeBody } from "@/components/RetailTake";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
@@ -201,7 +202,11 @@ export default async function ChainPage({
                     </div>
                   )}
                   {it.retailTake && (
-                    <div className="mt-1 text-xs text-gray-600">这条逻辑怎么验证:{it.retailTake}</div>
+                    <div className="mt-1 text-xs text-gray-600">
+                      <div className="mb-0.5 font-medium text-gray-500">这条逻辑怎么验证</div>
+                      {/* retailTake 现为四段 markdown,必须用 TakeBody 渲染,否则字面 ** 星号泄漏 */}
+                      <TakeBody text={it.retailTake} />
+                    </div>
                   )}
                   {/* 深读出口:把分享页与 insight 因果链打通(评审拍板 P0-2) */}
                   {chain.insightSlug && (

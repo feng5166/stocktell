@@ -274,13 +274,45 @@ const STANDING_REFS = [
   { name: "巨潮资讯网", url: "http://www.cninfo.com.cn", supports: "A 股映射公司公告/财报核验", kind: "常设入口" as const },
 ];
 
+// SSRF 防护(#11):references URL 来自博查检索的外部页面,cron 无人值守自动 HEAD 探测。
+// ①只允许 http(s) ②拦私网 / 环回 / 元数据地址(hostname 直判 + 常见内网域) ③redirect:manual
+// (不跟随——否则外站 302 到内网即绕过 host 检查);302/301 视为可达(该 URL 存在)。
+function isBlockedHost(host: string): boolean {
+  const h = host.toLowerCase().replace(/^\[|\]$/g, ""); // 去 IPv6 括号
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) return true;
+  if (h === "metadata.google.internal") return true;
+  // IPv4 私网 / 环回 / 链路本地 / 云元数据 169.254.169.254
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true; // 含 169.254.169.254 元数据
+    if (a >= 224) return true; // 组播 / 保留
+  }
+  // IPv6 环回 / 唯一本地 / 链路本地
+  if (h === "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80")) return true;
+  return false;
+}
+
 async function verifyUrl(url: string): Promise<boolean> {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+  if (isBlockedHost(u.hostname)) return false;
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 5000);
-    const res = await fetch(url, { method: "HEAD", redirect: "follow", signal: ctrl.signal });
+    // redirect:manual —— 不跟随跳转,防外站 302 到内网绕过 host 检查
+    const res = await fetch(url, { method: "HEAD", redirect: "manual", signal: ctrl.signal });
     clearTimeout(timer);
-    return res.ok || (res.status >= 300 && res.status < 500 && res.status !== 404);
+    // 2xx 可达;3xx(opaqueredirect/手动)= 该 URL 存在,视为可达但不跟进内网
+    return res.ok || res.type === "opaqueredirect" || (res.status >= 300 && res.status < 400);
   } catch {
     return false;
   }

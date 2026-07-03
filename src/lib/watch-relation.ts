@@ -4,7 +4,7 @@
 // 且不把 insight-chains 全文拖进客户端包(只传算好的精简 Record)。
 import { CHAINS, type ChainSegment } from "@/data/chains";
 import { STOCK_MAP } from "@/data/stocks";
-import { relationForCode } from "@/lib/relation";
+import { relationForCode, segmentForCode } from "@/lib/relation";
 
 export interface WatchChainInfo {
   chainId: string;
@@ -33,13 +33,22 @@ export function buildWatchChainMap(): Record<string, WatchChainInfo> {
     for (const stock of chain.aMembers) {
       if (map[stock.code]) continue; // 已被前一条链占用
       const seg = segmentOf(chain.segments, STOCK_MAP[stock.code]?.sector);
+      // 环节 / 关系优先取 insight 核定(精细,口径一致);消除按 sector 粗分与核定的矛盾(V-1)。
+      // 如澜起:核定「服务器内存接口/DDR5·间接」,而非 sector 粗分的「存储/HBM·直接」。
+      const insightSeg = segmentForCode(stock.code);
       const rel = relationForCode(stock.code) ?? seg.defaultRelation;
+      // 验证点:insight 核定环节与 chains 环节一致时用其模板,否则用中性验证点
+      // (避免给 DDR5 标的挂上 HBM 验证——那正是核定 reason 里「别按 HBM 理解」要避免的)。
+      const verify =
+        insightSeg && insightSeg !== seg.name
+          ? ["订单 / 客户导入", "收入占比", "毛利率 / 交付节奏"]
+          : seg.verifyTemplate.slice(0, 3);
       map[stock.code] = {
         chainId: chain.id,
         chainName: chain.name,
-        segment: seg.name,
+        segment: insightSeg ?? seg.name,
         relation: toFront(rel),
-        verify: seg.verifyTemplate.slice(0, 3),
+        verify,
       };
     }
   }

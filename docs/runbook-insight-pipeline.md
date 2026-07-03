@@ -18,7 +18,7 @@
 ## 告警与处置
 | 飞书告警 | 含义 | 处置 |
 |---|---|---|
-| `insight-daily(护栏阻断)` | 生成产物撞阻断型护栏(schema/禁词/数字),未进审 | 07:45 会自动补跑;连续阻断 → 查 prompt 或当日简报数据是否异常 |
+| `insight-daily(护栏阻断)` | 生成产物撞阻断型护栏(schema/禁词/数字),未进审 | 07:40 briefing-backup 会重试;连续阻断 → 查 prompt 或当日简报数据是否异常 |
 | `insight-daily(生成)` 报错 | LLM/DB 异常 | 看 Vercel 日志;`force=1` 手动重跑 |
 | `❌ 链级每日推理缺失`(08:30 看门狗) | 主跑+补跑都没产出草稿 | `POST /api/admin/insight-daily?force=1` 手动补;查简报是否 0 条 |
 | `insight-daily(同图谱暂停)` | 连续 3 天热力方向**零变化**,疑似预制图谱(§7.2-6) | 判断是"真实连续行情"还是"退化成预制图谱":真实连续行情属正常;若确为预制,查 prompt/数据。**确认后 `POST /api/admin/insight-daily?force=1&chain=ai` 恢复**(force 自动解除暂停) |

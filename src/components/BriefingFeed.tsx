@@ -18,6 +18,7 @@ import { todayISO } from "@/lib/date";
 import { track } from "@/lib/analytics";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
 import { STOCK_MAP } from "@/data/stocks";
+import { TakeBody } from "@/components/RetailTake";
 import type { WatchChainInfo } from "@/lib/watch-relation";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
@@ -453,12 +454,19 @@ function MyWatchRelations({
 }) {
   const viewed = useRef(false);
   const covered: CoveredRow[] = [];
-  const uncovered: { code: string; name: string }[] = []; // 非本链池(定稿③:必须展示,不消失)
+  // 非 A 股映射(定稿③:必须展示不消失)。区分两类:美股锚点(是产业链触发源、非 A 股持仓映射)
+  // 与 真·暂未覆盖 A 股——避免把「今天正是 AI 事件 triggerCode 的美股」误标成"暂未纳入覆盖"(#5)。
+  const anchors: { code: string; name: string; isTrigger: boolean }[] = [];
+  const uncovered: { code: string; name: string }[] = [];
   for (const code of Array.from(codes)) {
     const info = chainMap[code];
     const name = STOCK_MAP[code]?.name ?? code;
     if (!info) {
-      uncovered.push({ code, name });
+      if (STOCK_MAP[code]?.market === "美股") {
+        anchors.push({ code, name, isTrigger: items.some((it) => it.triggerCode === code) });
+      } else {
+        uncovered.push({ code, name });
+      }
       continue;
     }
     const hits = items.filter(
@@ -471,7 +479,7 @@ function MyWatchRelations({
     covered.push({ code, name, info, impact, event: hits[0]?.title ?? null, hit: hits.length > 0 });
   }
 
-  const total = covered.length + uncovered.length;
+  const total = covered.length + uncovered.length + anchors.length;
   useEffect(() => {
     if (viewed.current || total === 0) return;
     viewed.current = true;
@@ -479,8 +487,9 @@ function MyWatchRelations({
       watched: total,
       affected: covered.filter((r) => r.hit).length,
       uncovered: uncovered.length,
+      anchors: anchors.length,
     });
-  }, [total, covered, uncovered.length]);
+  }, [total, covered, uncovered.length, anchors.length]);
 
   if (total === 0) return null;
   // 排序(定稿 §6.1):点名在前 → 触发强度降序 → 关系类型(直接>间接>情绪)
@@ -515,6 +524,26 @@ function MyWatchRelations({
           <div className="mt-2 space-y-2">
             {quiet.map((r) => (
               <WatchRelationCard key={r.code} row={r} quiet />
+            ))}
+          </div>
+        </details>
+      )}
+      {/* 美股锚点:是产业链的触发源(非 A 股持仓映射),单列不误标"暂未覆盖"(#5) */}
+      {anchors.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs text-gray-400">
+            美股锚点 {anchors.length} 只(产业链触发源)
+          </summary>
+          <div className="mt-2 space-y-1.5">
+            {anchors.map((a) => (
+              <div key={a.code} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50/60 px-3 py-2">
+                <Link href={`/stock/${a.code}`} className="text-sm font-medium text-gray-700 hover:underline">
+                  {a.name}
+                </Link>
+                <span className="text-[11px] text-gray-400">
+                  美股 · 产业链锚点{a.isTrigger ? "(今日 AI 事件触发源)" : ""}
+                </span>
+              </div>
             ))}
           </div>
         </details>
@@ -723,23 +752,7 @@ const REL_LABEL_CLS: Record<string, string> = {
   产业链相关: "bg-gray-100 text-gray-600",
 };
 
-// 四段式正文(**这次变了啥**…):按段拆行渲染;旧格式(自由文案)整段渲染
-const TAKE_SECTIONS = /(?=\*\*(?:这次变了啥|影响哪条链|A股怎么映射|后续怎么验证)\*\*)/;
-function TakeBody({ text }: { text: string }) {
-  if (!text.includes("**这次变了啥**")) {
-    return <p className="text-sm leading-relaxed text-gray-800">{inlineBold(text, "rt-")}</p>;
-  }
-  const parts = text.split(TAKE_SECTIONS).filter((seg) => seg.trim());
-  return (
-    <div className="space-y-1">
-      {parts.map((seg, i) => (
-        <p key={i} className="text-sm leading-relaxed text-gray-800">
-          {inlineBold(seg.trim(), "rt-" + i)}
-        </p>
-      ))}
-    </div>
-  );
-}
+// TakeBody 迁到 components/RetailTake.tsx(共享,链页等消费点复用);顶部已 import。
 
 function BriefingCard({
   item,

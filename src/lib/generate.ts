@@ -7,6 +7,7 @@ import { chatTimed } from "@/lib/llm";
 import { getLLMFor } from "@/lib/llm-provider";
 import type { Impact, NewBriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
+import { hasSpecificMove, scanBannedWords } from "@/lib/content-guard";
 import { prevAshareTradingDay } from "@/lib/tushare";
 import { usCumulativeChange } from "@/lib/us-history";
 import { usLatestTradingDay } from "@/lib/yahoo";
@@ -207,14 +208,9 @@ function templateDrafts(date: string, movers: Mover[]): NewBriefingItem[] {
   });
 }
 
-// 零容忍:文案含任何具体涨跌数字(X% / X个点 / 涨了X / 跌了X)即判违规 → 回退模板。
-export function hasSpecificMove(t: string): boolean {
-  return (
-    /\d+(\.\d+)?\s*%/.test(t) ||
-    /\d+\s*个\s*多?\s*点/.test(t) ||
-    /(涨|跌)\s*了?\s*\d/.test(t)
-  );
-}
+// hasSpecificMove / scanBannedWords 迁到 src/lib/content-guard.ts(共享,防循环依赖);
+// 顶部已 import 供本模块使用,这里 re-export 保持既有外部 import 兼容。
+export { hasSpecificMove, scanBannedWords };
 
 // 把 LLM 文案里的具体涨跌数字"中性化"(去数字、保留其对这只票的差异化分析),
 // 而不是整条丢弃换模板——否则同向普涨日 N 条会全塌成同一句模板,千篇一律。
@@ -362,11 +358,13 @@ async function llmOneItem(
     triggerName: m.name,
     triggerChange: m.change,
     beneficiaries,
-    // 先把数字中性化(保留 LLM 对这只票的差异化分析);仍残留数字/被清空才回退模板。
-    // 避免"带数字就整条换模板"导致同向普涨日文案雷同。
+    // 先把数字中性化(保留 LLM 对这只票的差异化分析);仍残留数字 / 含盘面禁词 / 被清空
+    // 才回退模板(buildTake 构造式合规)。禁词是铁律③的代码级强制:模型某天回「可低吸/
+    // 关注企稳」也会在这里被拦回模板,不会 status:published 自动上线。
     retailTake: (() => {
       const n = neutralizeNumbers(it.retailTake);
-      return n.length >= 8 && !hasSpecificMove(n) ? n : buildTake(m);
+      const clean = n.length >= 8 && !hasSpecificMove(n) && scanBannedWords(n).length === 0;
+      return clean ? n : buildTake(m);
     })(),
     sourceUrl: null,
   };

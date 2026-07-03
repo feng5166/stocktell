@@ -7,6 +7,7 @@ import { getLLMFor } from "@/lib/llm-provider";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
 import { fundFlowFor } from "@/lib/fund-flow";
+import { scanBannedWords, hasSpecificMove } from "@/lib/content-guard";
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
 
 function matchByCodes(all: BriefingItem[], codes: string[]): BriefingItem[] {
@@ -156,7 +157,11 @@ export async function buildMorningBrief(
       { maxRetries: 1, timeout: 10000 }
     ));
     const txt = resp.choices[0]?.message?.content?.trim();
-    return txt && txt.length > 0 ? txt : null; // 空 → null,不缓存,下次重试
+    if (!txt || txt.length === 0) return null; // 空 → null,不缓存,下次重试
+    // 合规代码级强制(铁律③):早报是每天自动发给用户的内容,含盘面禁词 / 具体涨跌数字
+    // → 判非合规,当生成失败处理(返回 null → 调用方走模板兜底,不缓存违规内容)。
+    if (scanBannedWords(txt).length > 0 || hasSpecificMove(txt)) return null;
+    return txt;
   } catch {
     return null; // LLM 失败 → null,不缓存,下次重试
   }

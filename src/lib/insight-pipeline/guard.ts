@@ -1,9 +1,11 @@
 // insight 管线 · 护栏(PRD §7.1 + 增补#4:阻断型/警告型两级)。
 // 阻断型(blockers 非空):弃 + 飞书告警,不进审核队列。
 // 警告型(warnings):照常进审,审核页与飞书标注。
-import { hasSpecificMove } from "@/lib/generate";
+import { hasSpecificMove, scanBannedWords } from "@/lib/content-guard";
 import type { ChainSegment } from "@/data/chains";
 import { validateDailyPayload, type DailyInsightPayload } from "./schema";
+
+export { scanBannedWords }; // 兼容既有从 guard 引用的位置
 
 export interface GuardResult {
   blockers: string[];
@@ -20,16 +22,7 @@ export interface GuardResult {
   };
 }
 
-// 禁词全集(PRD §9.2 + 盘面词);产业语义白名单先行剥离再扫描
-const INDUSTRIAL_WHITELIST = /出货量|放量节奏|订单放量|业务放量|产品放量|真正放量|批量出货|出货节奏/g;
-const BANNED =
-  /买入|卖出|建议买|抄底|满仓|加仓|清仓|减仓|低吸|接飞刀|站岗|目标价|建议参与|短线机会|回调关注|等回调|上车|别急着接|往里冲|追高|追涨|追板|低开|高开|企稳|放量|缩量|破位|补跌|超跌反弹|止跌|杀跌|洗盘|获利盘|兑现盘|错杀|出货|值得多看一眼|开盘盯|盘中盯/g;
-
-export function scanBannedWords(text: string): string[] {
-  const cleaned = text.replace(INDUSTRIAL_WHITELIST, "");
-  const hits = cleaned.match(BANNED) ?? [];
-  return Array.from(new Set(hits));
-}
+// 禁词 / 数字检查统一走 content-guard(单一来源,含全角/中文数字与产业白名单)
 
 // 我们生成的散文(数字红线 + 禁词都扫这部分)
 function ourProse(p: DailyInsightPayload): string {

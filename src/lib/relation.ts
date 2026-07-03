@@ -7,14 +7,22 @@ import { INSIGHT_CHAINS, type Relation } from "@/data/insight-chains";
 const ORDER: Relation[] = ["直接", "间接", "情绪映射", "弱"];
 
 const codeRel = new Map<string, Relation>();
+const codeSeg = new Map<string, string>(); // code → insight 核定 segment(精细,优先于 sector 粗分)
 for (const ins of Object.values(INSIGHT_CHAINS)) {
   for (const m of ins.mappings) {
     if (!m.code) continue;
     const prev = codeRel.get(m.code);
     if (!prev || ORDER.indexOf(m.relation) < ORDER.indexOf(prev)) {
       codeRel.set(m.code, m.relation);
+      codeSeg.set(m.code, m.segment); // 关系升档时同步取该条的 segment(与 relation 同源,口径一致)
     }
   }
+}
+
+// 单只票的 insight 核定环节(精细,如澜起=「服务器内存接口/DDR5」而非粗分「存储/HBM」)。
+// 没核过返回 null。用于消除 watch-relation 按 sector 粗分与 insight 核定的口径矛盾(V-1)。
+export function segmentForCode(code: string): string | null {
+  return codeSeg.get(code) ?? null;
 }
 
 export const RELATION_FALLBACK = "产业链相关";

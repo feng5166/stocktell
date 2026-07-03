@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 // 判断+热力两段 LLM + 检索 + URL 实测,给足;独立 cron 不挤 07:01 主流程预算(PRD §5)
 export const maxDuration = 120;
 
-// 链级每日推理生成(07:05 北京;07:45 backup 幂等补跑同一入口)。
+// 链级每日推理生成(07:05 北京;07:40 briefing-backup 兜底补跑同一入口)。
 // 流程:读当日已发布条目 → 五段生成 → 护栏 → draft 落库 → 飞书待审。
 // 阻断型护栏不过 = 弃+告警不进审;人审未完成时页面自动走地板内容(拍板 D5)。
 export async function GET(req: NextRequest) {
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
         results[chain.id] = "blocked";
         await alertCron(
           "insight-daily(护栏阻断)",
-          `${date} ${chain.name} 每日推理被阻断:${r.guard!.blockers.join(";")} —— 未进审核队列,07:45 会补跑;连续阻断请查 prompt/数据`
+          `${date} ${chain.name} 每日推理被阻断:${r.guard!.blockers.join(";")} —— 未进审核队列,07:40 补位会重试;连续阻断请查 prompt/数据`
         );
         continue;
       }

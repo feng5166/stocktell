@@ -23,6 +23,9 @@ export async function bochaSearch(
 ): Promise<BochaHit[] | null> {
   const key = process.env.BOCHA_API_KEY;
   if (!key) return null;
+  // 硬超时:博查偶发挂起会拖住无人值守的 cron(insight-daily/why),8s 未返回即放弃。
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
     const resp = await fetch(BOCHA_ENDPOINT, {
       method: "POST",
@@ -37,6 +40,7 @@ export async function bochaSearch(
         count: opts.count ?? 8,
       }),
       cache: "no-store",
+      signal: ctrl.signal,
     });
     if (!resp.ok) {
       // 别再静默:401=key 无效/错产品、402=余额不足、429=限流,写日志方便线上排查
@@ -68,5 +72,7 @@ export async function bochaSearch(
   } catch (e) {
     console.warn("[bocha] web-search error", String(e));
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }

@@ -8,6 +8,7 @@
 import { chatTimed } from "@/lib/llm";
 import { getLLMFor } from "@/lib/llm-provider";
 import { getPrisma } from "@/lib/prisma";
+import { scanBannedWords, hasSpecificMove } from "@/lib/content-guard";
 import { STOCK_MAP } from "@/data/stocks";
 import type { BriefingItem } from "@/lib/briefings";
 
@@ -87,7 +88,11 @@ export async function buildChainTake(
       )
     );
     const txt = resp.choices[0]?.message?.content?.trim();
-    return txt && txt.length > 0 ? txt : null;
+    if (!txt || txt.length === 0) return null;
+    // 合规代码级强制(铁律③):链级判断展示在首页/链页,含盘面禁词 / 具体涨跌数字
+    // → 判非合规,返回 null → 调用方走 fallbackChainTake 规则兜底,不缓存违规内容。
+    if (scanBannedWords(txt).length > 0 || hasSpecificMove(txt)) return null;
+    return txt;
   } catch {
     return null;
   }

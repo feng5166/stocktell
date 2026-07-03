@@ -126,7 +126,7 @@ AI 链首版环节(与 ai-infra insight 热力对齐):光模块/高速互连、�
 ## 5. 管线编排
 
 - **独立 cron `GET /api/cron/insight-daily`(07:05 北京,CRON_SECRET)**:不挤 07:01 主流程的 300s 预算。流程:读当日 published items → 逐链生成(M1 仅 ai)→ 护栏 → 落库 draft → 飞书卡片。幂等:当日该链已有 draft/published 则跳过(`?force=1` 重生成)。
-- **07:45 backup**:幂等补跑(主 cron 漏触发/生成失败时)。
+- **07:40 backup(并入 briefing-backup)**:幂等补跑(主 cron 漏触发/生成失败时)。
 - **08:30 watchdog 并入现有看门狗**:交易日无当日 daily(draft 或 published)→ ❌ 飞书告警。
 - **手动端点**:`POST /api/admin/insight-daily?date=&chain=&force=1`(重生成,复用管线函数)。
 - 与 replace 的联动:`briefing/generate?replace=1` 重生成条目后,自动 force 重生成当日 daily draft(已发布的降回 draft?**不**——已发布的保持在线,新 draft 生成后由人审决定是否替换发布)。
@@ -163,7 +163,7 @@ AI 链首版环节(与 ai-infra insight 热力对齐):光模块/高速互连、�
 
 ### 7.3 降级与可靠性(拍板 D5)
 - 人审未完成:页面照常显示地板内容(事件条目 + chain-take + 规则 risk),**不空窗、不显示未审草稿**
-- 生成失败/护栏全弃:飞书告警 + 07:45 补跑;当天最终无 daily → 看门狗 ❌,页面维持地板
+- 生成失败/护栏全弃:飞书告警 + 07:40 兜底补跑;当天最终无 daily → 看门狗 ❌,页面维持地板
 - 页面读取优先级:当日 published daily → chain-take → 规则兜底(现有链路不动,daily 是"加厚层")
 
 ## 8. 页面消费(M1 范围)
