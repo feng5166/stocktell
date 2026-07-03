@@ -28,6 +28,7 @@ export function BriefingFeed({
   insightHref,
   chainName,
   chainHref,
+  relations,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
@@ -35,6 +36,7 @@ export function BriefingFeed({
   insightHref?: string | null; // 事件卡「看这条链怎么传导」的链级因果链入口(P0 全部事件属 AI 链)
   chainName?: string; // 事件卡「影响链」chip 文案(评审:字段顺序 变了啥→影响链→A股映射→怎么验证)
   chainHref?: string; // 影响链 chip 跳转 /chain/[id]
+  relations?: Record<string, string>; // 条目id → 关系标签(直接相关/间接相关/情绪映射/产业链相关),替代「高影响」
 }) {
   const wl = useWatchlist(initialCodes);
   const isMine = (it: BriefingItem) =>
@@ -67,7 +69,10 @@ export function BriefingFeed({
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
         />
         {!wl.ready ? (
-          <Hint>加载你的自选…</Hint>
+          <Hint>
+            <span className="font-medium text-gray-700">添加自选,查看今天哪些全球事件影响你的股票</span>
+            <span className="mt-1 block text-xs text-gray-400">正在读取你的自选…</span>
+          </Hint>
         ) : wl.codes.size === 0 ? (
           <QuickAddWatch wl={wl} />
         ) : (
@@ -87,6 +92,7 @@ export function BriefingFeed({
                 insightHref={insightHref}
                 chainName={chainName}
                 chainHref={chainHref}
+                relations={relations}
                 mine
               />
             )}
@@ -109,6 +115,7 @@ export function BriefingFeed({
             insightHref={insightHref}
             chainName={chainName}
             chainHref={chainHref}
+            relations={relations}
             collapsed
           />
         </section>
@@ -274,6 +281,7 @@ function CardFeed({
   insightHref,
   chainName,
   chainHref,
+  relations,
   collapsed = false,
 }: {
   items: BriefingItem[];
@@ -284,6 +292,7 @@ function CardFeed({
   insightHref?: string | null;
   chainName?: string;
   chainHref?: string;
+  relations?: Record<string, string>;
   collapsed?: boolean; // 首页事件区:默认只放 5 条,其余手动「查看更多」——首页是分发台不是事件库(评审)
 }) {
   const STEP = 6;
@@ -324,6 +333,7 @@ function CardFeed({
             insightHref={insightHref}
             chainName={chainName}
             chainHref={chainHref}
+            relation={relations?.[it.id]}
           />
         ) : (
           <LockedCard key={it.id} item={it} />
@@ -491,6 +501,33 @@ function renderRich(text: string): JSX.Element[] {
   return blocks;
 }
 
+// 关系标签配色(评审:事件卡用关系分级替代「高影响」,与 insight 页同色系)
+const REL_LABEL_CLS: Record<string, string> = {
+  直接相关: "bg-rose-100 text-rose-700",
+  间接相关: "bg-amber-100 text-amber-700",
+  情绪映射: "bg-slate-100 text-slate-500",
+  弱映射: "bg-gray-200 text-gray-500",
+  产业链相关: "bg-gray-100 text-gray-600",
+};
+
+// 四段式正文(**这次变了啥**…):按段拆行渲染;旧格式(自由文案)整段渲染
+const TAKE_SECTIONS = /(?=\*\*(?:这次变了啥|影响哪条链|A股怎么映射|后续怎么验证)\*\*)/;
+function TakeBody({ text }: { text: string }) {
+  if (!text.includes("**这次变了啥**")) {
+    return <p className="text-sm leading-relaxed text-gray-800">{inlineBold(text, "rt-")}</p>;
+  }
+  const parts = text.split(TAKE_SECTIONS).filter((seg) => seg.trim());
+  return (
+    <div className="space-y-1">
+      {parts.map((seg, i) => (
+        <p key={i} className="text-sm leading-relaxed text-gray-800">
+          {inlineBold(seg.trim(), "rt-" + i)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function BriefingCard({
   item,
   mine,
@@ -498,6 +535,7 @@ function BriefingCard({
   insightHref,
   chainName,
   chainHref,
+  relation,
 }: {
   item: BriefingItem;
   mine?: boolean;
@@ -505,6 +543,7 @@ function BriefingCard({
   insightHref?: string | null;
   chainName?: string;
   chainHref?: string;
+  relation?: string; // 关系标签(评审:替代「高影响」,不用影响强弱暗示结果)
 }) {
   const meta = IMPACT_META[item.impact];
   const [deep, setDeep] = useState("");
@@ -560,9 +599,11 @@ function BriefingCard({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="flex flex-wrap items-center gap-1.5">
           <span
-            className={`inline-flex rounded px-1.5 py-0.5 text-meta font-medium ${meta.tagClass}`}
+            className={`inline-flex rounded px-1.5 py-0.5 text-meta font-medium ${
+              relation ? REL_LABEL_CLS[relation] ?? "bg-gray-100 text-gray-600" : meta.tagClass
+            }`}
           >
-            {meta.label}
+            {relation ?? meta.label}
           </span>
           {/* 影响链 chip(评审字段:变了啥→影响链→A股映射→怎么验证) */}
           {chainName &&
@@ -589,7 +630,7 @@ function BriefingCard({
       {mine && item.triggerCode && <WhyLine code={item.triggerCode} />}
       {item.beneficiaries.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-gray-400">关联 A 股</span>
+          <span className="text-xs text-gray-400">A 股映射</span>
           {item.beneficiaries.map((b) => {
             const watched = watchedCodes?.has(b.code);
             return (
@@ -611,8 +652,10 @@ function BriefingCard({
         </div>
       )}
       <div className="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
-        <div className="mb-1 text-xs font-medium text-gray-500">这条逻辑怎么验证</div>
-        <p className="text-sm leading-relaxed text-gray-800">{inlineBold(item.retailTake, "rt-")}</p>
+        {!item.retailTake.includes("**这次变了啥**") && (
+          <div className="mb-1 text-xs font-medium text-gray-500">这条逻辑怎么验证</div>
+        )}
+        <TakeBody text={item.retailTake} />
 
         {/* 底部双入口(拍板⑤):主=链级因果框架(insight),次=实时拆解(原深读,能力保留换文案) */}
         {!deepStarted && (

@@ -11,10 +11,19 @@ import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
-import { IMPACT_META } from "@/lib/impact";
+import { relationLabelFor } from "@/lib/relation";
 import { DISCLAIMER } from "@/lib/constants";
 
 export const revalidate = 60;
+
+// 关系标签配色(与 insight/首页事件卡同一套)
+const RELATION_CHIP_CLS: Record<string, string> = {
+  直接相关: "bg-rose-100 text-rose-700",
+  间接相关: "bg-amber-100 text-amber-700",
+  情绪映射: "bg-slate-100 text-slate-500",
+  弱映射: "bg-gray-200 text-gray-500",
+  产业链相关: "bg-gray-100 text-gray-600",
+};
 
 const pct1 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 const pct2 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
@@ -163,15 +172,17 @@ export default async function ChainPage({
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${IMPACT_META[it.impact].tagClass}`}
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                        RELATION_CHIP_CLS[relationLabelFor(it)] ?? "bg-gray-100 text-gray-600"
+                      }`}
                     >
-                      {IMPACT_META[it.impact].label}
+                      {relationLabelFor(it)}
                     </span>
                     <span className="font-medium text-gray-900">{it.title}</span>
                   </div>
                   {it.beneficiaries.length > 0 && (
                     <div className="mt-1 text-xs text-gray-500">
-                      涉及:
+                      A 股映射:
                       {it.beneficiaries.map((b, bi) => (
                         <span key={b.code}>
                           {bi > 0 && "、"}

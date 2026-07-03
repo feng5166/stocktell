@@ -3,6 +3,7 @@
 // 首页「和我相关」冷启动:还没自选时,直接在这儿搜票加自选,不用跳去股票池。
 // 复用调用方传入的 useWatchlist 实例(同一份状态),加完即时反映到「和我相关」。
 import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { STOCKS } from "@/data/stocks";
 import type { UseWatchlist } from "@/components/useWatchlist";
@@ -12,6 +13,12 @@ const A_SHARE_COUNT = STOCKS.filter((s) => s.market === "A股").length;
 
 export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
   const [q, setQ] = useState("");
+  // 三态文案(评审):未登录=价值说明;已登录无自选=引导先加几只
+  const { status } = useSession();
+  const title =
+    status === "authenticated"
+      ? "先添加几只股票,StockTell 才能告诉你「和我相关」👇"
+      : "添加自选,查看今天哪些全球事件影响你的股票 👇";
 
   const matches = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -24,9 +31,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
 
   return (
     <div className="rounded-xl border border-brand-100 bg-white p-3 sm:p-4">
-      <div className="text-sm font-medium text-gray-800">
-        添加自选,查看今天哪些全球事件影响你的股票 👇
-      </div>
+      <div className="text-sm font-medium text-gray-800">{title}</div>
       <div className="mt-1 text-xs text-gray-500">
         搜代码或名称加自选,以后这儿只给你看跟你票相关的动态。
       </div>

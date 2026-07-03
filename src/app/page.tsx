@@ -9,6 +9,7 @@ import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
+import { relationLabelFor } from "@/lib/relation";
 import { getChain } from "@/data/chains";
 import {
   listBriefing,
@@ -57,6 +58,10 @@ export default async function Home() {
   const cards = await buildReasoningCards(items, shownDate, stale).catch(() => []);
   const aiChain = getChain("ai");
   const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
+  // 事件卡关系标签(替代「高影响」):服务端按 insight 人工核过的关系分级推导
+  const relations = Object.fromEntries(
+    items.map((it) => [it.id, relationLabelFor(it)])
+  );
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -95,6 +100,7 @@ export default async function Home() {
               insightHref={insightHref}
               chainName={aiChain?.name}
               chainHref={aiChain ? `/chain/${aiChain.id}` : undefined}
+              relations={relations}
             />
           </div>
         )}

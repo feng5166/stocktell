@@ -220,6 +220,10 @@ export function ChainSentiment({
           </p>
         )
       )}
+      {/* 常显口径(评审):防止本卡被读成行情面板 */}
+      <p className="mt-1.5 text-meta text-gray-400">
+        行情只是触发源,不代表产业链关系强弱。
+      </p>
       {/* 右下角可选入口(首页塞"看/分享";落地页不传)——样式对齐"深读这条" */}
       {action && <div className="mt-2 text-right">{action}</div>}
     </div>
