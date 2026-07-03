@@ -19,8 +19,9 @@ export async function GET(req: NextRequest) {
 
   const date = req.nextUrl.searchParams.get("date") ?? todayISO();
   const full = req.nextUrl.searchParams.get("full") === "1";
+  // key 形如 vN:YYYY-MM-DD:hash,按中段日期匹配(兼容 v3/v4 各版本)
   const rows = await db.morningBriefCache.findMany({
-    where: { key: { startsWith: `v3:${date}:` } },
+    where: { key: { contains: `:${date}:` } },
     orderBy: { updatedAt: "asc" },
   });
   return NextResponse.json({

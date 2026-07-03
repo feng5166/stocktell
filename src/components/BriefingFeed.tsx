@@ -14,6 +14,7 @@ import { RiskSummary } from "@/components/RiskSummary";
 import { WatchOverview } from "@/components/WatchOverview";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
+import { todayISO } from "@/lib/date";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
@@ -217,9 +218,17 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
       </div>
     );
   if (!brief) return null;
+  // 今日简报生成前(00:00~约07:00)首页回退展示最近一期,此时早报也是基于那期生成的,
+  // 标题别自称"今日"——和顶部"以下为最近一期"的口径保持一致。
+  const itemsDate = items[0]?.date;
+  const staleBrief = !!itemsDate && itemsDate !== todayISO();
   return (
     <div className="rounded-xl bg-amber-50 px-4 py-3">
-      <div className="mb-1 text-xs font-medium text-amber-700">☀️ 你的今日早报</div>
+      <div className="mb-1 text-xs font-medium text-amber-700">
+        {staleBrief
+          ? `☀️ 你的早报(最近一期 · ${itemsDate.slice(5)})`
+          : "☀️ 你的今日早报"}
+      </div>
       <p className="text-sm leading-relaxed text-gray-800">
         {linkifyBrief(brief, items)}
       </p>

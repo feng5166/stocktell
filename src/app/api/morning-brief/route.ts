@@ -9,7 +9,8 @@ export const maxDuration = 30;
 
 // 网页「和我相关」顶部的个性化早报。
 // 前端传自选 codes + 它本来就有的相关简报条目(items),服务端不再重查简报。
-// 缓存(getMorningBrief 内,key=当天+自选组合)命中时直接秒回,不打 LLM、不查库。
+// 缓存(getMorningBrief 内,key=条目日期+自选组合)命中时直接秒回,不打 LLM、不查库。
+// 凌晨首页回退展示昨日简报时,条目日期=昨日 → 命中昨日缓存,不会污染今天的早报。
 export const POST = withMetrics("morning-brief", _POST);
 async function _POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));

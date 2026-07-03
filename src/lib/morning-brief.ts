@@ -103,16 +103,24 @@ export async function buildMorningBrief(
   }
 }
 
-// 带每日缓存:key = 当天日期 + 自选组合 hash。
-// 同一天、同一组自选只真正生成一次(走 DB 全局缓存 morning_brief_cache),不重复打大模型。
+// 带每日缓存:key = 条目所属日期 + 自选组合 hash。
+// 同一期、同一组自选只真正生成一次(走 DB 全局缓存 morning_brief_cache),不重复打大模型。
+// ⚠️ key 必须用「条目自己的 date」而非 todayISO():00:00~07:00 首页回退展示昨日简报,
+// 若按"今天"缓存,会把昨日内容钉死成今天的早报,07:01 邮件也命中同一条错缓存
+// (2026-07-03 事故:Meta 昨涨今跌,早报一整天说"Meta大涨是利好")。
+// 凌晨用昨日条目算出的 key = 昨日 key,通常直接命中昨天已生成的缓存,零成本且与页面
+// "以下为最近一期"的回退展示一致;今天简报发布后条目换新,key 随之切到今天。
 export async function getMorningBrief(
   codes: string[],
   items: BriefingItem[]
 ): Promise<string> {
-  const date = todayISO();
+  const today = todayISO();
+  const itemsDate = items[0]?.date;
+  // 条目日期只允许 ≤ 今天(ISO 字符串可直接比较),挡住伪造未来日期预写缓存
+  const date = itemsDate && itemsDate <= today ? itemsDate : today;
   const sig = Array.from(new Set(codes)).sort().join(",");
   const hash = crypto.createHash("sha256").update(sig).digest("hex").slice(0, 24);
-  const key = `v3:${date}:${hash}`; // v3:不缓存模板回退,清掉之前误缓存的简版
+  const key = `v4:${date}:${hash}`; // v4:date 改用条目日期,并作废 v3 里被昨日内容污染的当天缓存
 
   const db = getPrisma();
   if (db) {
