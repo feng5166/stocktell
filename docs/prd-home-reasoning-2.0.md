@@ -40,3 +40,15 @@ home_view{date,user_status,has_watchlist} / home_cta_add_watchlist_click / home_
 - 组件:`components/home/HomeHero.tsx`(三态 CTA:全部滚 #mine——游客可直接加自选,localStorage 登录合并,不设登录墙,与 PRD 6.1.3"未登录先登录"的差异是沿用既有游客优先决策)、`components/home/ReasoningCards.tsx`、`lib/home-feed.ts`(buildReasoningCards)。
 - 事件卡:`BriefingFeed.tsx`(insightHref 由首页从 chains.ts 注入,不把股票池数据拖进客户端包)。
 - 验收:本地 16/16 自动检查全过(主标题/CTA/卡片字段/标签替换/禁词/免责/SEO/导航)。
+
+---
+
+## P0 验收记录(2026-07-03,负责人)
+
+**结论:首页 Beta 版验收通过。**
+- 验收范围:首页信息架构、今日事件呈现、产业链映射卡片、自选空态、风险提示与免责声明。
+- 不验收范围:因果链详情页、真实数据生产管线、个股自选真实匹配。
+- 验收时列出的两条遗留,复核时均已上线:①主卡"AI 变便宜"样板风险已改今日侧方向化文案(06327ee) ②标签已统一"直接映射/间接映射/情绪映射"(e5ec49d)。
+- 批准进入下一阶段:接真实数据、补详情页(第2/3条 insight)、做自选股闭环(和我相关结构化)。
+
+P0 全程迭代:439b534(骨架)→8e07610(评审8点)→79c0597(文案5点+四段式+关系标签)→e5ec49d(状态标签/空态/映射语系)→06327ee(风险今日化);生成器口径同步 main(6984cbb+ff51d2a),存量数据已重生成为四段式。
