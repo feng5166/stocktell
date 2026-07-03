@@ -120,7 +120,7 @@ export async function runWeixinPush(): Promise<{
     let text: string | null = null;
     if (relevant.length > 0) {
       // 有相关简报:个性化早报 + 要注意 + 相关动态
-      const brief = await getMorningBrief(Array.from(codes), relevant);
+      const brief = await getMorningBrief(Array.from(codes), relevant, { trusted: true });
       text = formatBriefMessage(date, relevant, brief, alerts);
     } else if (alerts.length > 0) {
       // 无相关简报:只要持仓有雷区/资金面异动就提醒

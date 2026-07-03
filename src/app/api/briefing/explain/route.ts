@@ -5,7 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { getLLMFor } from "@/lib/llm-provider";
 import { fetchQuotes } from "@/lib/quotes";
+import crypto from "crypto";
 import { STOCK_MAP, resolvePeer } from "@/data/stocks";
+import { resolveMorningItems } from "@/lib/morning-brief";
+import { fundFlowFor } from "@/lib/fund-flow";
 import { todayISO } from "@/lib/date";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
@@ -54,10 +57,15 @@ async function _POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return new Response("登录后才能看「StockTell 解读」哦。", { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
-  const id: string | undefined = body.id;
-  const code: string | undefined = body.code;
-  const kind: string | undefined = body.kind;
+  // JSON 字面量 null 也是合法 JSON(catch 不接管),直接取属性会 500
+  const rawBody = await req.json().catch(() => ({}));
+  const body = (rawBody && typeof rawBody === "object" ? rawBody : {}) as Record<
+    string,
+    unknown
+  >;
+  const id = typeof body.id === "string" ? body.id : undefined;
+  const code = typeof body.code === "string" ? body.code : undefined;
+  const kind = typeof body.kind === "string" ? body.kind : undefined;
 
   const db = getPrisma();
   if (!db) return new Response("no database", { status: 500 });
@@ -84,8 +92,10 @@ ${peerLines || "(无)"}
 
 请给这条出一份"散户角度的完整解读"。`;
   } else if (code) {
+    // hasOwnProperty:挡 "constructor" 等原型链属性名混进缓存 key/LLM 输入
+    if (!Object.prototype.hasOwnProperty.call(STOCK_MAP, code))
+      return new Response("not found", { status: 404 });
     const s = STOCK_MAP[code];
-    if (!s) return new Response("not found", { status: 404 });
     cacheKey = `stock:${code}:${todayISO()}`;
     const related = (s.relations || [])
       .map((t) => resolvePeer(t))
@@ -104,25 +114,47 @@ ${relLines || "(无)"}
 
 今天它没有专门的简报事件,请给这只票出一份"现在散户该怎么看"的完整解读。`;
   } else if (kind === "morning") {
-    // 今日早报深读:对"我的自选相关动态"做整体解读(不逐条复述)
-    type Bene = { code: string; name: string };
-    type MItem = {
-      title?: string;
-      triggerName?: string;
-      triggerCode?: string;
-      triggerChange?: number;
-      retailTake?: string;
-      beneficiaries?: Bene[];
-    };
-    const items: MItem[] = Array.isArray(body.items) ? body.items : [];
-    if (items.length === 0) return new Response("missing items", { status: 400 });
+    // 今日早报深读:对"我的自选相关动态"做整体解读(不逐条复述)。
+    // 条目一律服务端解析(登录用户自选 → 相关简报),不信客户端传的 items:
+    // 缓存按 codes 组合跨用户共享,客户端可控的 items 会让编造内容进共享缓存;
+    // 且缓存 key 用条目所属日期而非"今天"——凌晨回退展示昨日简报时,深读基于昨日条目,
+    // 若按今天缓存,07:01 换新后同 codes 组合会全天命中昨日叙事(与早报 v4 修复同因)。
+    const ws = await db.watchlist.findMany({
+      where: { userId: session.user.id },
+      select: { code: true },
+    });
+    // date hint 同早报卡:让深读和用户正读的那期一致(校验+确有该期才生效)
+    const hint = typeof body.date === "string" ? body.date : undefined;
+    const { date: issueDate, items } = await resolveMorningItems(
+      ws.map((w) => w.code),
+      hint
+    );
+    if (items.length === 0)
+      return new Response("你的自选这一期没有相关动态,暂时没有可深读的内容。", {
+        status: 404,
+      });
     const codeSet = new Set<string>();
     for (const it of items) {
       if (it.triggerCode) codeSet.add(it.triggerCode);
       for (const b of it.beneficiaries ?? []) if (b?.code) codeSet.add(b.code);
     }
     const codes = Array.from(codeSet).sort();
-    cacheKey = `morning:${todayISO()}:${codes.join(",")}`;
+    // key 带条目 id:同一组 codes 可能由不同条目子集凑出(内容不同,不能共享缓存)。
+    // 前缀 morningv2:此前 items 可由客户端伪造,老 morning: 行可能已被污染,升版整体作废
+    // (老行由看门狗 TTL 清理;读路径从此不碰)。
+    const idSig = items.map((it) => it.id).sort().join(",");
+    const mHash = crypto
+      .createHash("sha256")
+      .update(`${idSig}|${codes.join(",")}`)
+      .digest("hex")
+      .slice(0, 24);
+    cacheKey = `morningv2:${issueDate}:${mHash}`;
+    // 熔断:同一期深读生成封顶(登录用户改自选也能磨新 key,每次都是 2000 token 的流式生成)。
+    // 503(非 404):前端 DeepRead 对 503 走"服务繁忙+重试",对 404 是终态。
+    const mCount = await db.deepAnalysisCache
+      .count({ where: { briefingId: { startsWith: `morningv2:${issueDate}:` } } })
+      .catch(() => 0);
+    if (mCount >= 150) return new Response("深读今天有点忙,稍后再试。", { status: 503 });
     const { quotes } = await fetchQuotes(codes);
     const lines = items
       .map((it) => {
@@ -141,21 +173,30 @@ ${lines}
 
 请给我一份"今天我这些自选整体该怎么看"的完整解读:哪几条最值得关注、彼此有没有联动/共振、是题材还是业绩驱动、有没有联动落差(没跟上)或超跌、今天盯盘该重点看哪些信号。要有重点和取舍,别逐条复述。`;
   } else if (kind === "fundflow") {
-    // 资金面深读:对"我的自选"A股主力/融资/龙虎榜做整体解读
-    type FItem = {
-      code: string;
-      name?: string;
-      netMf?: number | null;
-      rzChgYi?: number | null;
-      longhu?: { net: number; reason: string } | null;
-    };
-    const items: FItem[] = Array.isArray(body.items) ? body.items : [];
-    if (items.length === 0) return new Response("missing items", { status: 400 });
-    const date =
-      typeof body.date === "string" && body.date ? body.date : todayISO();
-    const codes = items.map((it) => it.code).filter(Boolean).sort();
-    cacheKey = `fundflow:${date}:${codes.join(",")}`;
-    const lines = items
+    // 资金面深读:对"我的自选"A股主力/融资/龙虎榜做整体解读。
+    // 数据一律服务端取真(登录用户自选 → fundFlowFor),不信客户端传的 items:
+    // 解读缓存按(日期+codes)跨用户共享,客户端可控的数字意味着任何登录用户都能让
+    // "主力净流入+99亿"这类编造结论进共享缓存(与早报投毒同因);codes 也不再可自由组合刷 key。
+    const ws = await db.watchlist.findMany({
+      where: { userId: session.user.id },
+      select: { code: true },
+    });
+    const ff = await fundFlowFor(ws.map((w) => w.code));
+    // 503(非 404):瞬时源失败要给前端"重试"语义——DeepRead 对 404 是终态没有重试按钮
+    if (ff.complete === false)
+      return new Response("资金面数据源暂不完整,稍后再试。", { status: 503 });
+    const fitems = ff.items.filter(
+      (x) => x.netMf !== null || x.longhu || x.rzChgYi !== null
+    );
+    if (fitems.length === 0)
+      return new Response("你的自选暂无显著资金面数据,数据出来后再来看。", {
+        status: 404,
+      });
+    const date = ff.date ?? todayISO();
+    const codes = fitems.map((it) => it.code).sort();
+    // 前缀 fundflowv2:老 fundflow: 行可能已被客户端编造数据污染,升版作废(TTL 清理)
+    cacheKey = `fundflowv2:${date}:${codes.join(",")}`;
+    const lines = fitems
       .map((it) => {
         const parts: string[] = [];
         if (it.netMf != null)

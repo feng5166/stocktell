@@ -103,20 +103,49 @@ DEEP=$(curl -s -m 60 -b "$JAR" -X POST "$BASE/api/briefing/explain" \
   -H 'Content-Type: application/json' -d '{"code":"300308"}')
 [ "${#DEEP}" -gt 50 ] && ok "个股深读返回内容(${#DEEP} 字)" || ng "个股深读无内容"
 
-# ---------- 登录态:今日早报(没异动空态契约 + 有异动生成) ----------
+# ---------- 登录态:今日早报(服务端自查条目;客户端 items 一律忽略) ----------
 echo "[今日早报]"
-# 没异动(items 为空):后端返回 brief:null,前端据此渲染常驻「守望」早报卡片
+# 无效 codes → 空态契约:brief:null,count:0(前端据此渲染常驻「守望」早报卡片)
 curl -s -m 20 -b "$JAR" -X POST "$BASE/api/morning-brief" \
-  -H 'Content-Type: application/json' -d '{"codes":["300308"],"items":[]}' |
+  -H 'Content-Type: application/json' -d '{"codes":["999999"]}' |
   assert_json _ "d.get('brief') is None and d.get('count') == 0" \
-  && ok "空态契约正常(brief=null → 前端走守望早报)" || ng "空态契约异常"
-# 有异动:传一条相关条目,应生成非空早报(LLM 命中/兜底都为字符串)
-MB=$(curl -s -m 30 -b "$JAR" -X POST "$BASE/api/morning-brief" \
+  && ok "空态契约正常(无效 codes → brief=null)" || ng "空态契约异常"
+# 有相关条目 ⇒ 必有早报内容:从当期简报里取一个真实受益/触发码,用它请求必须产出非空早报
+# (LLM 或模板都行)。防"解析条件写错 → 全员恒 brief:null 静默消失"这类回归被全绿放过。
+RCODE=$(curl -s -m 20 "$BASE/api/briefing" | python3 -c "
+import sys,json
+try:
+  d=json.load(sys.stdin)
+  for it in d.get('items',[]):
+    for b in it.get('beneficiaries',[]):
+      if b.get('code'): print(b['code']); raise SystemExit
+except SystemExit: pass
+except Exception: pass" 2>/dev/null)
+if [ -n "$RCODE" ]; then
+  MB=$(curl -s -m 45 -b "$JAR" -X POST "$BASE/api/morning-brief" \
+    -H 'Content-Type: application/json' -d "{\"codes\":[\"$RCODE\"]}")
+  echo "$MB" | assert_json _ "d.get('count',0) > 0 and isinstance(d.get('brief'), str) and len(d['brief']) > 0 and isinstance(d.get('date'), str)" \
+    && ok "相关码($RCODE)必出早报($(echo "$MB" | python3 -c "import sys,json;print(len(json.load(sys.stdin).get('brief') or ''))" 2>/dev/null) 字)" \
+    || ng "相关码($RCODE)未产出早报"
+else
+  ok "跳过:当期无简报条目,无法取相关码(非交易日/清晨属正常)"
+fi
+# 投毒回归(2026-07-03 评审):伪造 items 必须被服务端整体忽略——不 500,且返回的早报
+# 绝不能包含伪造标题(旧漏洞实现会把伪造条目喂给 LLM/模板,正文必带这个标记词)。
+curl -s -m 30 -b "$JAR" -X POST "$BASE/api/morning-brief" \
   -H 'Content-Type: application/json' \
-  -d '{"codes":["300308"],"items":[{"id":"smoke-1","title":"算力需求超预期(冒烟测试)","impact":"利好","beneficiaries":[{"name":"中际旭创"}],"retailTake":"测试占位"}]}')
-echo "$MB" | assert_json _ "isinstance(d.get('brief'), str) and len(d['brief']) > 0" \
-  && ok "有异动生成早报($(echo "$MB" | python3 -c "import sys,json;print(len(json.load(sys.stdin).get('brief') or ''))" 2>/dev/null) 字)" \
-  || ng "有异动早报为空"
+  -d '{"codes":["300308"],"items":[{"title":"投毒测试XX暴雷","date":"0001-junk"}]}' |
+  assert_json _ "('brief' in d) and (d.get('brief') is None or '投毒测试' not in d['brief'])" \
+  && ok "伪造 items 被忽略(正文不含投毒标记)" || ng "伪造 items 进入了早报正文!"
+# JSON null 请求体:合法 JSON,不能 500(评审#2 回归)
+NB=$(curl -s -m 20 -b "$JAR" -o /dev/null -w '%{http_code}' -X POST "$BASE/api/morning-brief" \
+  -H 'Content-Type: application/json' -d 'null')
+[ "$NB" = "200" ] && ok "null 请求体不 500(HTTP $NB)" || ng "null 请求体返回 HTTP $NB"
+# 原型链属性名当 codes:必须被 hasOwnProperty 挡掉,不改变 key、不烧 LLM(评审#2 回归)
+curl -s -m 20 -b "$JAR" -X POST "$BASE/api/morning-brief" \
+  -H 'Content-Type: application/json' -d '{"codes":["constructor","toString"]}' |
+  assert_json _ "d.get('brief') is None and d.get('count') == 0" \
+  && ok "原型链属性名被过滤(constructor/toString)" || ng "原型链属性名未被过滤"
 
 echo
 echo "== 结果:$PASS_N 过 / $FAIL_N 败 =="

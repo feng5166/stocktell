@@ -69,7 +69,7 @@ export function BriefingFeed({
             {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
             {mine.length === 0 ? (
               <>
-                <QuietMorningBrief />
+                <QuietMorningBrief issueDate={items[0]?.date} />
                 <WatchOverview codes={wl.codes} />
               </>
             ) : (
@@ -183,23 +183,35 @@ function linkifyBrief(text: string, items: BriefingItem[]): React.ReactNode[] {
 }
 
 // 「和我相关」顶部的个性化早报:LLM 综合你今天相关动态写一段人话。
-// 把已算好的相关条目 items 一并传给接口,服务端不再重查简报,命中缓存即秒回。
+// 接口只收 codes,相关条目由服务端自查(客户端传 items 曾是缓存投毒入口,已废除);
+// 标题的"今日/最近一期"跟随接口返回的 date/stale——标题和正文永远描述同一期内容,
+// 不用本地时钟判断(设备日期偏差不会错标),也不会出现"标题换了正文没换"。
 function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingItem[] }) {
-  const [brief, setBrief] = useState<string | null>(null);
+  const [brief, setBrief] = useState<{
+    text: string;
+    date?: string;
+    stale?: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const codeKey = Array.from(codes).sort().join(",");
+  // 条目日期变化(如页面跨 07:00 重渲染换到今天这期)时重新拉取,正文跟上新一期
+  const itemsDate = items[0]?.date;
   useEffect(() => {
     let active = true;
     setLoading(true);
     fetch("/api/morning-brief", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codes: codeKey ? codeKey.split(",") : [], items }),
+      // date=页面正在展示那期的日期:服务端按同一期解析,卡片与信息流不打架
+      body: JSON.stringify({
+        codes: codeKey ? codeKey.split(",") : [],
+        date: itemsDate,
+      }),
     })
       .then((r) => r.json())
       .then((d) => {
         if (active) {
-          setBrief(d.brief ?? null);
+          setBrief(d.brief ? { text: d.brief, date: d.date, stale: d.stale } : null);
           setLoading(false);
         }
       })
@@ -207,32 +219,28 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
     return () => {
       active = false;
     };
-    // items 跟随 codes 变化,用 codeKey 作依赖即可(避免 mine 数组引用每次变导致重复请求)
+    // mine 数组引用每次渲染都变,用 codeKey+itemsDate 作稳定依赖(避免重复请求)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [codeKey]);
+  }, [codeKey, itemsDate]);
 
   if (loading)
     return (
       <div className="rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-3 text-sm text-gray-400">
-        ☀️ 正在为你生成今日早报…
+        ☀️ 正在为你生成早报…
       </div>
     );
   if (!brief) return null;
-  // 今日简报生成前(00:00~约07:00)首页回退展示最近一期,此时早报也是基于那期生成的,
-  // 标题别自称"今日"——和顶部"以下为最近一期"的口径保持一致。
-  const itemsDate = items[0]?.date;
-  const staleBrief = !!itemsDate && itemsDate !== todayISO();
   return (
     <div className="rounded-xl bg-amber-50 px-4 py-3">
       <div className="mb-1 text-xs font-medium text-amber-700">
-        {staleBrief
-          ? `☀️ 你的早报(最近一期 · ${itemsDate.slice(5)})`
+        {brief.stale && brief.date
+          ? `☀️ 你的早报(最近一期 · ${brief.date.slice(5)})`
           : "☀️ 你的今日早报"}
       </div>
       <p className="text-sm leading-relaxed text-gray-800">
-        {linkifyBrief(brief, items)}
+        {linkifyBrief(brief.text, items)}
       </p>
-      <DeepRead payload={{ kind: "morning", items }} />
+      <DeepRead payload={{ kind: "morning", date: itemsDate }} />
     </div>
   );
 }
@@ -362,15 +370,33 @@ const QUIET_COPY: Record<MarketPhase, string> = {
 };
 // 没异动时的「今日早报」:沿用早报卡片样式(始终在场,不因没动态整块消失),
 // 正文用时段感知的守望文案。默认通用文案(SSR/水合前),挂载后按北京时段切换。
-function QuietMorningBrief() {
-  const [copy, setCopy] = useState(QUIET_COPY.open);
+// issueDate=页面当前展示那期简报的日期:回退展示最近一期时(如 00:00~07:00 今日未生成),
+// 标题不自称"今日"、断言也只对"最近一期"负责——今天这期出来后结论可能不同,别把话说死。
+function QuietMorningBrief({ issueDate }: { issueDate?: string }) {
+  const [copy, setCopy] = useState<string | null>(null);
+  const [staleView, setStaleView] = useState(false);
   useEffect(() => {
-    setCopy(QUIET_COPY[marketPhase(new Date())]);
-  }, []);
+    const phase = marketPhase(new Date());
+    // 周末回退展示上周五那期属正常节奏,守望文案本身就是"本周"口径,不当作陈旧
+    const stale =
+      !!issueDate && issueDate !== todayISO() && phase !== "weekend";
+    setStaleView(stale);
+    // 措辞不许诺"今天会有新一期":工作日节假日(如国庆)不是交易日,phase 却非 weekend,
+    // 说"约 07:00 生成"会落空;改成有新一期再对的中性口径,平日/节假日都成立。
+    setCopy(
+      stale
+        ? `今日暂无新简报,最近一期(${issueDate!.slice(5)})里你的票没有相关动态;有新一期我第一时间帮你对一遍 👀`
+        : QUIET_COPY[phase]
+    );
+  }, [issueDate]);
   return (
     <div className="rounded-xl bg-amber-50 px-4 py-3">
-      <div className="mb-1 text-xs font-medium text-amber-700">☀️ 你的今日早报</div>
-      <p className="text-sm leading-relaxed text-gray-800">{copy}</p>
+      <div className="mb-1 text-xs font-medium text-amber-700">
+        {staleView && issueDate
+          ? `☀️ 你的早报(最近一期 · ${issueDate.slice(5)})`
+          : "☀️ 你的今日早报"}
+      </div>
+      <p className="text-sm leading-relaxed text-gray-800">{copy ?? QUIET_COPY.open}</p>
     </div>
   );
 }

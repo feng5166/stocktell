@@ -310,7 +310,7 @@ export async function runPreOpenDigest(opts?: {
     if (relevant.length > 0) {
       // 有相关简报:个性化早报 + 你的票要注意 + 相关动态
       candidates++;
-      const brief = await getMorningBrief(Array.from(codes), relevant);
+      const brief = await getMorningBrief(Array.from(codes), relevant, { trusted: true });
       const ok = await trySend(() =>
         sendDigest(u.email!, u.id, date, relevant, brief, alerts)
       );
@@ -383,7 +383,7 @@ export async function sendDigestToUser(
   const alerts = await buildWatchAlerts(Array.from(codes));
 
   if (relevant.length > 0) {
-    const brief = await getMorningBrief(Array.from(codes), relevant);
+    const brief = await getMorningBrief(Array.from(codes), relevant, { trusted: true });
     const sent = await sendDigest(to, u.id, date, relevant, brief, alerts);
     // 发到用户本人地址=真实投递,计入当日已发;带 deliverTo 的抽查/预览不计
     if (sent && !deliverTo) await markDigestSent(db, date, u.id, "digest");

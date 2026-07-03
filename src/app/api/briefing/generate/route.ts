@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDrafts } from "@/lib/generate";
 import { insertDrafts } from "@/lib/briefings";
+import { generateChainTake } from "@/lib/chain-take";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// replace 全链路 = 生成(LLM)+重写缓存+链级判断(LLM),60s 会重演"跑一半被硬杀"(07-03 事故同款)
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date") || undefined; // YYYY-MM-DD,指定日期生成
@@ -45,7 +47,55 @@ export async function POST(req: NextRequest) {
       const created = await insertDrafts(
         drafts.map((x) => ({ ...x, status: "published" as const }))
       );
-      return NextResponse.json({ ok: true, date: d, engine, usMarketClosed, replaced: true, count: created.length });
+      // 该日派生缓存全部基于被删掉的旧条目生成,必须一并作废,否则重刷等于白刷:
+      // 早报(v5:{date}:)、早报深读(morningv2:{date}:)继续给用户讲旧叙事讲到午夜。
+      // 链级判断(chaintake:{date}:)删后立刻按新条目重生成,链页无空窗。
+      // purged 如实上报:删失败要让管理员知道(否则以为重刷完成,旧缓存其实还在服务)。
+      let purged = true;
+      const purgeDerived = async (withChainTake: boolean) => {
+        if (!db) return;
+        const keys = [
+          { key: { startsWith: `v5:${d}:` } },
+          { key: { startsWith: `v4:${d}:` } }, // 上一版 key 的残留行一并清
+          // 只清会随后重生成的 ai 链:若清全部链却只重生成 ai,其他链的判断会被误删不补
+          ...(withChainTake ? [{ key: { startsWith: `chaintake:${d}:ai:` } }] : []),
+        ];
+        await db.morningBriefCache
+          .deleteMany({ where: { OR: keys } })
+          .catch(() => {
+            purged = false;
+          });
+        await db.deepAnalysisCache
+          .deleteMany({
+            where: {
+              OR: [
+                { briefingId: { startsWith: `morningv2:${d}:` } },
+                { briefingId: { startsWith: `morning:${d}:` } },
+              ],
+            },
+          })
+          .catch(() => {
+            purged = false;
+          });
+      };
+      await purgeDerived(true);
+      const chainTake = await generateChainTake("ai", d, created, { force: true })
+        .then((r) => !!r.take)
+        .catch(() => false);
+      // 二次清扫(不含刚重生成的 chaintake):replace 进行中,可能有请求已读到旧条目、
+      // 正在 LLM 里(10~22s),会在第一次清扫后把旧叙事写回;到这里已过链级判断的几十秒,
+      // 再扫一遍把竞态写回的旧行清掉。
+      await purgeDerived(false);
+      return NextResponse.json({
+        ok: true,
+        date: d,
+        engine,
+        usMarketClosed,
+        replaced: true,
+        count: created.length,
+        purgedDerived: purged,
+        chainTake,
+      });
     }
 
     const created = await insertDrafts(drafts);

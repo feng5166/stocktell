@@ -7,7 +7,61 @@ import { getLLMFor } from "@/lib/llm-provider";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
 import { fundFlowFor } from "@/lib/fund-flow";
-import type { BriefingItem } from "@/lib/briefings";
+import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
+
+function matchByCodes(all: BriefingItem[], codes: string[]): BriefingItem[] {
+  const set = new Set(codes);
+  return all.filter(
+    (b) =>
+      (b.triggerCode != null && set.has(b.triggerCode)) ||
+      b.beneficiaries.some((x) => set.has(x.code))
+  );
+}
+
+// 服务端解析「与该自选相关」的简报条目:优先今天已发布,没有则回退最近一期(与首页口径一致)。
+// ⚠️ 这是早报的唯一合法数据源——绝不能信客户端传来的 items:早报缓存按(日期+自选组合)全局共享,
+// 客户端可控的 items 意味着任何匿名请求都能预写/污染其他用户的早报(内容投毒),
+// 也能用垃圾日期字符串刷出无限新 key 白烧 LLM。
+// dateHint = 页面正在展示那期的日期:仅当该日确有已发布简报才按它解析,让早报卡与页面
+// 讲同一期(07:01 发布/重刷后 ISR 60s 窗口内新旧期并存时,卡片和信息流不打架)。
+// 查询失败一律往上抛(失败≠"今天没简报",静默回退会把今天错标成"最近一期")。
+export async function resolveMorningItems(
+  codes: string[],
+  dateHint?: string
+): Promise<{
+  date: string; // 条目所属日期(回退时=最近一期的日期)
+  stale: boolean; // true=这期不是今天的(回退/hint 到历史期)
+  items: BriefingItem[]; // 与 codes 相关的条目(可能为空)
+}> {
+  const today = todayISO();
+  // hint 只认「最近一期」:UI 合法展示的只有今天或最近一期,放开任意历史期会给匿名方
+  // 一个乘法器(熔断预算×历史期数,且 TTL 清扫会重置各期计数)。hint=今天等价默认路径。
+  if (dateHint && dateHint !== today && /^\d{4}-\d{2}-\d{2}$/.test(dateHint)) {
+    const latest = await latestBriefing();
+    if (latest?.date === dateHint && latest.items.length > 0)
+      return {
+        date: dateHint,
+        stale: true,
+        items: matchByCodes(latest.items, codes),
+      };
+    // hint 不是最近一期(含伪造/过老日期):忽略,走默认解析
+  }
+  let all = await listBriefing({ date: today, status: "published" });
+  let issueDate = today;
+  if (all.length === 0) {
+    const latest = await latestBriefing();
+    if (latest?.date && latest.items.length > 0) {
+      all = latest.items;
+      issueDate = latest.date;
+    }
+  }
+  // stale 按「这期是不是今天的」判定,而非「是否走了回退」——两者在异常路径下会背离
+  return {
+    date: issueDate,
+    stale: issueDate !== today,
+    items: matchByCodes(all, codes),
+  };
+}
 
 const BRIEF_PROMPT = `你是 StockTell 的盘前早报助手,面向看不懂产业链的散户。你的角色是"懂行、靠谱、会说人话的盯盘搭子",帮用户稳住情绪,而不是制造焦虑。
 我会给你某用户今天「和他自选相关」的简报条目,你写一段个性化早报:
@@ -22,7 +76,9 @@ const BRIEF_PROMPT = `你是 StockTell 的盘前早报助手,面向看不懂产�
 
 function fallback(items: BriefingItem[]): string {
   const list = items.map((it) => it.title).join(";");
-  return `今天你的自选有 ${items.length} 条相关动态:${list}。(以上为信息整理,不构成投资建议)`;
+  // 措辞不说"今天":items 可能是回退/最近一期,卡片标题按 stale 写"最近一期"时,
+  // 正文再自称"今天"就是同卡两种日期口径(标题正文绑定同期的修复不能在兜底路径漏网)
+  return `这一期你的自选有 ${items.length} 条相关动态:${list}。(以上为信息整理,不构成投资建议)`;
 }
 
 // 纯生成(无缓存)。调用方一般用 getMorningBrief 走每日缓存。
@@ -33,12 +89,14 @@ export async function buildMorningBrief(
 ): Promise<string | null> {
   if (items.length === 0) return fallback(items);
   const llm = await getLLMFor("fast");
-  if (!llm) return fallback(items);
+  // 没配 LLM → null:让调用方走"不缓存的模板回退"。若在这里直接返回模板文本,
+  // getMorningBrief 会把降级模板当正文永久缓存,key 恢复后也不自愈(v3 升版就是修这个)。
+  if (!llm) return null;
 
   const payload = items.map((it) => ({
     impact: it.impact,
     title: it.title,
-    beneficiaries: it.beneficiaries.map((b) => b.name),
+    beneficiaries: (it.beneficiaries ?? []).map((b) => b.name),
     retailTake: it.retailTake,
   }));
 
@@ -103,8 +161,8 @@ export async function buildMorningBrief(
   }
 }
 
-// 带每日缓存:key = 条目所属日期 + 自选组合 hash。
-// 同一期、同一组自选只真正生成一次(走 DB 全局缓存 morning_brief_cache),不重复打大模型。
+// 带每日缓存:key = 条目所属日期 + (条目id+相关自选) hash。
+// 同一期、同一组相关内容只真正生成一次(走 DB 全局缓存 morning_brief_cache),不重复打大模型。
 // ⚠️ key 必须用「条目自己的 date」而非 todayISO():00:00~07:00 首页回退展示昨日简报,
 // 若按"今天"缓存,会把昨日内容钉死成今天的早报,07:01 邮件也命中同一条错缓存
 // (2026-07-03 事故:Meta 昨涨今跌,早报一整天说"Meta大涨是利好")。
@@ -112,15 +170,38 @@ export async function buildMorningBrief(
 // "以下为最近一期"的回退展示一致;今天简报发布后条目换新,key 随之切到今天。
 export async function getMorningBrief(
   codes: string[],
-  items: BriefingItem[]
+  items: BriefingItem[],
+  opts?: { trusted?: boolean } // trusted=服务端定时/推送路径:不受熔断限制(熔断只防匿名刷组合)
 ): Promise<string> {
   const today = todayISO();
   const itemsDate = items[0]?.date;
-  // 条目日期只允许 ≤ 今天(ISO 字符串可直接比较),挡住伪造未来日期预写缓存
-  const date = itemsDate && itemsDate <= today ? itemsDate : today;
-  const sig = Array.from(new Set(codes)).sort().join(",");
+  // 兜底校验:date 只接受严格 YYYY-MM-DD 且 ≤ 今天,否则按今天。正常调用方(本文件的
+  // resolveMorningItems / digest)给的都是服务端日期,这里防的是任何残留的不可信入口
+  // 把垃圾字符串写进 key(每个垃圾值=一个永不复用的新 key=一次白烧的 LLM)。
+  const okFmt =
+    typeof itemsDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(itemsDate);
+  const date = okFmt && itemsDate <= today ? itemsDate : today;
+  // key 归一化:只由「条目 id + 与条目相关的自选」构成——与今天叙事无关的自选码既不改变
+  // 早报内容,也不该改变 key(否则匿名方拿 1 个命中码 × 任意池内码组合就能刷出无限新 key,
+  // 每个都白烧一次 LLM)。资金面同样只讲相关票:其余持仓的资金/雷区提醒由 digest 的
+  // watch alerts 单独负责,这里不重复。条目 id 也进 key:同一组 codes 命中不同条目子集时
+  // 内容不同,不能共享缓存。
+  const itemCodes = new Set<string>();
+  for (const it of items) {
+    if (it.triggerCode) itemCodes.add(it.triggerCode);
+    for (const b of it.beneficiaries ?? []) itemCodes.add(b.code);
+  }
+  const relevant = Array.from(new Set(codes))
+    .filter((c) => itemCodes.has(c))
+    .sort();
+  const ids = items
+    .map((it) => it.id)
+    .slice()
+    .sort()
+    .join(",");
+  const sig = `${ids}|${relevant.join(",")}`;
   const hash = crypto.createHash("sha256").update(sig).digest("hex").slice(0, 24);
-  const key = `v4:${date}:${hash}`; // v4:date 改用条目日期,并作废 v3 里被昨日内容污染的当天缓存
+  const key = `v5:${date}:${hash}`; // v5:key 归一化(条目id+相关自选),作废 v4 及此前可被预写的旧行
 
   const db = getPrisma();
   if (db) {
@@ -130,9 +211,23 @@ export async function getMorningBrief(
     } catch {
       /* 读缓存失败不致命,继续实时生成 */
     }
+    // 熔断:同一期生成条数封顶(只拦不可信入口;digest/微信等服务端路径带 trusted 直通,
+    // 匿名刷组合刷满预算时真实用户的邮件不受影响)。正常一天 = 用户数 × 1~2 个组合,远够;
+    // 被恶意刷时最多烧到上限就全部走模板兜底(不缓存)。注意这是软顶:先查数后生成,
+    // 并发窗口内可能少量超发,作为花费保险丝足够,不为它上原子计数器。
+    if (!opts?.trusted) {
+      try {
+        const n = await db.morningBriefCache.count({
+          where: { key: { startsWith: `v5:${date}:` } },
+        });
+        if (n >= 300) return fallback(items);
+      } catch {
+        /* 计数失败不拦生成 */
+      }
+    }
   }
 
-  const built = await buildMorningBrief(codes, items);
+  const built = await buildMorningBrief(relevant, items);
 
   // LLM 没出来(null):返回模板兜底,但不缓存——下次请求自动重试 LLM,自愈成完整早报。
   if (built == null) return fallback(items);

@@ -92,6 +92,14 @@ export function DeepRead({
           setStarted(false);
           return;
         }
+        if (res.status === 404) {
+          // 404 带的是给用户看的说明(如"这一期没有相关动态"),照原文展示为终态,
+          // 不能落进"服务繁忙+重试"——重试永远不会成功。
+          const msg = await res.text().catch(() => "");
+          setDeep(msg || "这一期暂时没有可深读的内容。");
+          setLoading(false);
+          return;
+        }
         setErrored(true);
         setLoading(false);
         return;
