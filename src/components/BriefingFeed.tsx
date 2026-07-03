@@ -417,18 +417,30 @@ function MineEmpty({ guest, onAdd }: { guest: boolean; onAdd: () => void }) {
   );
 }
 
-// P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系三档/影响强度/验证点)。
+// P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系三档/今日触发/验证点)。
 // 静态映射(chainMap)+ 今日事件叠加(items),模板化解释,不逐股打 LLM(拍板⑨)。
 const REL_EXPLAIN: Record<string, string> = {
-  直接映射: "是这条链传导最直接的环节之一,和海外事件关系紧,但仍要看订单落地。",
-  间接映射: "受链条带动,但中间隔了几环,幅度看具体订单/客户/收入占比。",
-  情绪映射: "更多是情绪/主题带动,不等于这次事件的直接受益方,真金白银看订单兑现。",
+  直接映射: "「{seg}」是这条链传导最直接的环节之一,和海外事件关系紧,但仍要看订单落地。",
+  间接映射: "「{seg}」受链条带动,但中间隔了几环,幅度看具体订单/客户/收入占比。",
+  情绪映射: "「{seg}」更多是情绪/主题带动,不等于这次事件的直接受益方,真金白银看订单兑现。",
 };
-const IMPACT_STRENGTH: Record<string, { label: string; cls: string }> = {
-  高: { label: "影响强", cls: "bg-rose-100 text-rose-700" },
-  中: { label: "影响中", cls: "bg-amber-100 text-amber-700" },
-  低: { label: "影响弱", cls: "bg-gray-100 text-gray-500" },
+// 「今日触发」颜色(定稿②):去掉"影响"字样,只用深浅传递触发强度,供排序/视觉;不暗示股价
+const TRIGGER_CLS: Record<string, string> = {
+  高: "bg-rose-100 text-rose-700",
+  中: "bg-amber-100 text-amber-700",
+  低: "bg-slate-100 text-slate-500",
 };
+const TRIGGER_ORDER = { 高: 3, 中: 2, 低: 1 } as const;
+const REL_ORDER: Record<string, number> = { 直接映射: 0, 间接映射: 1, 情绪映射: 2 };
+
+interface CoveredRow {
+  code: string;
+  name: string;
+  info: WatchChainInfo;
+  impact: "高" | "中" | "低" | null;
+  event: string | null;
+  hit: boolean;
+}
 
 function MyWatchRelations({
   codes,
@@ -440,52 +452,55 @@ function MyWatchRelations({
   chainMap: Record<string, WatchChainInfo>;
 }) {
   const viewed = useRef(false);
-  // 每只自选股:链身份(静态)+ 今日是否被事件点名(items 叠加)
-  const rows = Array.from(codes)
-    .map((code) => {
-      const info = chainMap[code];
-      if (!info) return null; // 非本链池(美股/其它板块)不展示
-      const name = STOCK_MAP[code]?.name ?? code;
-      const hits = items.filter(
-        (it) => it.triggerCode === code || it.beneficiaries.some((b) => b.code === code)
-      );
-      // 影响强度 = 命中它的条目里最高影响力
-      const impact = hits.reduce<"高" | "中" | "低" | null>((acc, it) => {
-        const order = { 高: 3, 中: 2, 低: 1 } as const;
-        if (!acc || order[it.impact] > order[acc]) return it.impact;
-        return acc;
-      }, null);
-      const event = hits[0]?.title ?? null;
-      return { code, name, info, impact, event, hit: hits.length > 0 };
-    })
-    .filter(Boolean) as {
-    code: string;
-    name: string;
-    info: WatchChainInfo;
-    impact: "高" | "中" | "低" | null;
-    event: string | null;
-    hit: boolean;
-  }[];
+  const covered: CoveredRow[] = [];
+  const uncovered: { code: string; name: string }[] = []; // 非本链池(定稿③:必须展示,不消失)
+  for (const code of Array.from(codes)) {
+    const info = chainMap[code];
+    const name = STOCK_MAP[code]?.name ?? code;
+    if (!info) {
+      uncovered.push({ code, name });
+      continue;
+    }
+    const hits = items.filter(
+      (it) => it.triggerCode === code || it.beneficiaries.some((b) => b.code === code)
+    );
+    const impact = hits.reduce<"高" | "中" | "低" | null>((acc, it) => {
+      if (!acc || TRIGGER_ORDER[it.impact] > TRIGGER_ORDER[acc]) return it.impact;
+      return acc;
+    }, null);
+    covered.push({ code, name, info, impact, event: hits[0]?.title ?? null, hit: hits.length > 0 });
+  }
 
+  const total = covered.length + uncovered.length;
   useEffect(() => {
-    if (viewed.current || rows.length === 0) return;
+    if (viewed.current || total === 0) return;
     viewed.current = true;
     track("home_related_to_me_view", {
-      watched: rows.length,
-      affected: rows.filter((r) => r.hit).length,
+      watched: total,
+      affected: covered.filter((r) => r.hit).length,
+      uncovered: uncovered.length,
     });
-  }, [rows]);
+  }, [total, covered, uncovered.length]);
 
-  if (rows.length === 0) return null;
-  const affected = rows.filter((r) => r.hit);
-  const quiet = rows.filter((r) => !r.hit);
+  if (total === 0) return null;
+  // 排序(定稿 §6.1):点名在前 → 触发强度降序 → 关系类型(直接>间接>情绪)
+  const affected = covered
+    .filter((r) => r.hit)
+    .sort(
+      (a, b) =>
+        TRIGGER_ORDER[b.impact ?? "低"] - TRIGGER_ORDER[a.impact ?? "低"] ||
+        (REL_ORDER[a.info.relation] ?? 3) - (REL_ORDER[b.info.relation] ?? 3)
+    );
+  const quiet = covered
+    .filter((r) => !r.hit)
+    .sort((a, b) => (REL_ORDER[a.info.relation] ?? 3) - (REL_ORDER[b.info.relation] ?? 3));
 
   return (
     <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
       <div className="mb-2 text-sm font-semibold text-gray-900">
         {affected.length > 0
-          ? `你的自选里,今天有 ${affected.length} 只被全球事件影响`
-          : "你的自选今天没踩到全球事件"}
+          ? `你的自选里,今天有 ${affected.length} 只被产业链事件点名`
+          : "你的自选今天没被产业链事件点名"}
       </div>
       <div className="space-y-2">
         {affected.map((r) => (
@@ -495,7 +510,7 @@ function MyWatchRelations({
       {quiet.length > 0 && (
         <details className="mt-2">
           <summary className="cursor-pointer text-xs text-gray-400">
-            其余 {quiet.length} 只今日无直接事件(仍显示链身份)
+            其余自选 {quiet.length} 只(今日无直接事件,仍显示链身份)
           </summary>
           <div className="mt-2 space-y-2">
             {quiet.map((r) => (
@@ -504,25 +519,34 @@ function MyWatchRelations({
           </div>
         </details>
       )}
+      {uncovered.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs text-gray-400">
+            暂未覆盖 {uncovered.length} 只
+          </summary>
+          <div className="mt-2 space-y-1.5">
+            {uncovered.map((u) => (
+              <div key={u.code} className="flex items-center gap-2 rounded-lg bg-gray-50/60 px-3 py-2">
+                <Link href={`/stock/${u.code}`} className="text-sm font-medium text-gray-700 hover:underline">
+                  {u.name}
+                </Link>
+                <span className="text-[11px] text-gray-400">暂未纳入当前产业链覆盖</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      {affected.length > 0 && (
+        <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+          「今日触发」= 你的票今天被产业链事件点名,强弱仅表示事件相关度,不代表股价影响或收益预期。
+        </p>
+      )}
     </div>
   );
 }
 
-function WatchRelationCard({
-  row,
-  quiet,
-}: {
-  row: {
-    code: string;
-    name: string;
-    info: WatchChainInfo;
-    impact: "高" | "中" | "低" | null;
-    event: string | null;
-  };
-  quiet?: boolean;
-}) {
+function WatchRelationCard({ row, quiet }: { row: CoveredRow; quiet?: boolean }) {
   const { code, name, info, impact, event } = row;
-  const strength = impact ? IMPACT_STRENGTH[impact] : null;
   return (
     <div className={`rounded-lg px-3 py-2.5 ${quiet ? "bg-gray-50/60" : "bg-gray-50"}`}>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -542,9 +566,12 @@ function WatchRelationCard({
         >
           {info.relation}
         </span>
-        {strength && (
-          <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${strength.cls}`}>
-            {strength.label}
+        {impact && (
+          <span
+            className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${TRIGGER_CLS[impact]}`}
+            title="今日触发强弱=事件相关度,不代表股价影响或收益"
+          >
+            今日触发
           </span>
         )}
         <span className="text-[11px] text-gray-400">{info.segment}</span>
@@ -554,8 +581,9 @@ function WatchRelationCard({
           <span className="font-medium text-gray-600">今日触发</span>:{event}
         </p>
       )}
+      {/* 一句话解释(定稿④:去股票名,只留环节解释) */}
       <p className="mt-1 text-xs leading-relaxed text-gray-600">
-        {name}在「{info.segment}」环节,{REL_EXPLAIN[info.relation]}
+        {REL_EXPLAIN[info.relation].replace("{seg}", info.segment)}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-gray-500">
         <span className="font-medium text-gray-600">需要验证</span>:{info.verify.join(" · ")}
