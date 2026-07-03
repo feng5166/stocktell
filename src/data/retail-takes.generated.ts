@@ -1,4 +1,4 @@
-// 自动生成,勿手改。LLM(deepseek-v4-flash)逐只生成的"散户怎么想"人话结论。
+// 自动生成,勿手改。LLM(deepseek-v4-flash)逐只生成的"人话结论"(定位+观察点)。
 // 重新生成:node scripts/gen-retail-takes.mjs。手写 RETAIL_TAKES 优先级高于此。
 // 2026-07-03 人工下调交易化用语(追高/回调/重仓/别急着接 → 观察/验证口径,链页评审拍板 P0.5-1);重生成时提示词需带同样禁语。
 export const GEN_RETAIL_TAKES: Record<string, string> = {

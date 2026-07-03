@@ -186,7 +186,7 @@ export default async function ChainPage({
                     </div>
                   )}
                   {it.retailTake && (
-                    <div className="mt-1 text-xs text-gray-600">怎么想:{it.retailTake}</div>
+                    <div className="mt-1 text-xs text-gray-600">这条逻辑怎么验证:{it.retailTake}</div>
                   )}
                   {/* 深读出口:把分享页与 insight 因果链打通(评审拍板 P0-2) */}
                   {chain.insightSlug && (

@@ -13,9 +13,9 @@ const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC;
 const UMAMI_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 
 export const metadata: Metadata = {
-  title: "StockTell · AI产业链股票池",
+  title: "StockTell｜今日产业链推理:把全球事件翻译成 A 股产业链映射",
   description:
-    "面向 A 股散户的 AI 金融信息工具:把复杂的 AI 产业链动态,翻译成『这条新闻跟你的持仓有什么关系』。",
+    "StockTell 不是新闻聚合,也不提供买卖建议。我们把全球事件拆解为产业链传导、A 股映射、关系强弱和可核实依据,帮助用户理解今天哪些产业链值得关注。",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

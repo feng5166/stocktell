@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
-import { FeedbackLink } from "@/components/FeedbackLink";
+import { HomeHero } from "@/components/home/HomeHero";
+import { ReasoningCards } from "@/components/home/ReasoningCards";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
+import { buildReasoningCards } from "@/lib/home-feed";
+import { getChain } from "@/data/chains";
 import {
   listBriefing,
   latestBriefing,
@@ -15,9 +18,8 @@ import {
 import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
 
-// 首页简报是全局内容(各人相同),改 ISR 走 Vercel 边缘缓存(大陆用户 TTFB 大幅下降)。
-// 个性化「和我相关」与管理员入口都交给客户端按需取(BriefingFeed 客户端拉自选;
-// AdminHomeFooter 客户端问 /api/me/is-admin)—— 代价是「和我相关」首屏会短暂"加载中"。
+// 首页 = 今日产业链推理台(首页改版 PRD):先看因果链,再看触发源,再看和我相关。
+// 全局内容走 ISR(大陆 TTFB 约定,零 fetch 零 LLM);个性化(和我相关/自选)全部客户端按需取。
 export const revalidate = 60;
 
 export default async function Home() {
@@ -34,7 +36,7 @@ export default async function Home() {
   if (briefingsRes === null) errored = true;
   else items = briefingsRes;
 
-  // 今天还没生成简报时,回退展示最近一期(0 点清零到次日 07:00 生成之间、以及周末/节假日,
+  // 今天还没生成时,回退展示最近一期(0 点清零到次日 07:00 生成之间、以及周末/节假日,
   // 都不该给用户一片空白)。stale=true 时明确标注"今日尚未更新,以下为 X 日"。
   let shownDate = date;
   let stale = false;
@@ -51,49 +53,51 @@ export default async function Home() {
     }
   }
 
+  // 因果链卡:结构读 insight,今日判断读 chain-take(纯 DB 读;失败降级为空数组,不炸页不显假0)
+  const cards = await buildReasoningCards(items, shownDate, stale).catch(() => []);
+  const aiChain = getChain("ai");
+  const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <SiteHeader active="今日简报" />
+      <SiteHeader active="今日推理" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-h1 font-semibold tracking-tight">今日简报</h1>
-              <FeedbackLink />
-            </div>
-            <p className="mt-1 text-xs text-gray-400">
-              {shownDate} · AI 产业链动态,跟你的持仓有什么关系
-            </p>
-          </div>
-        </div>
+        <HomeHero shownDate={shownDate} insightHref={insightHref} />
 
         {stale && (
           <div className="mb-3 rounded-lg bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
-            今日简报尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · {shownDate}。
+            今日推理尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · {shownDate}。
           </div>
         )}
 
-        {/* 今天大盘体感(归入今日简报模块,先看情绪再看条目)。右下角塞 AI 链落地页入口。
-            快照过期(refresh)→ 先渲染旧值再后台刷新,不空窗 */}
-        <ChainSentiment
-          initial={snap?.data}
-          refresh={snap ? !snap.fresh : false}
-          action={<ChainHomeEntry />}
-        />
+        {/* 1. 今日最重要的因果链(P0 一张真卡;chains.ts 加链自动进卡位) */}
+        <ReasoningCards cards={cards} />
 
-        {/* 跨市场预期差雷达:隔夜美股已涨、对应 A 股暂未跟上 → 一屏直达(无 live 信号时自隐藏) */}
+        {/* 2. 降位保留(拍板⑦):链情绪 + 隔夜事件雷达(今日触发源;P2 热力上线后评估去留) */}
+        <div className="mt-5">
+          <ChainSentiment
+            initial={snap?.data}
+            refresh={snap ? !snap.fresh : false}
+            action={<ChainHomeEntry />}
+          />
+        </div>
         <OvernightRadar />
 
+        {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
-          <BriefingFeed items={items} loggedIn={false} />
+          <div className="mt-5">
+            <BriefingFeed items={items} loggedIn={false} insightHref={insightHref} />
+          </div>
         )}
 
-        <p className="mt-6 text-center text-xs text-gray-400">
-          {DISCLAIMER}
+        <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
+          我们不做新闻堆叠,也不推荐买卖。StockTell 只回答一个问题:这件事会沿着哪条产业链传导,哪些
+          A 股是直接相关,哪些只是情绪映射。
         </p>
+        <p className="mt-2 text-center text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
         <AdminHomeFooter />
       </main>
     </div>
@@ -102,16 +106,16 @@ export default async function Home() {
 
 function EmptyState({ errored }: { errored: boolean }) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-white py-14 text-center">
+    <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-white py-14 text-center">
       <div className="text-sm font-medium text-gray-500">
-        {errored ? "简报暂时读取不到,稍后再来看看" : "今日简报还没生成"}
+        {errored ? "推理数据暂时读取不到,稍后再来看看" : "今日推理还没生成"}
       </div>
       <div className="mt-1 text-xs text-gray-400">
         每个交易日北京时间约 07:00 生成。先去{" "}
         <Link href="/stocks" className="text-brand-600 hover:underline">
           股票池
         </Link>{" "}
-        添加自选,简报来了第一时间看跟你相关的。
+        添加自选,推理来了第一时间看跟你相关的。
       </div>
     </div>
   );

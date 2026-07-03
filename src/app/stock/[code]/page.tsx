@@ -79,7 +79,7 @@ export default async function StockDetail({
     (it) => it.triggerCode === s.code || it.beneficiaries.some((b) => b.code === s.code)
   );
 
-  // 真实「散户怎么想」:优先取今天提到这只票的简报条目(retailTake 真实、可深读);没有则退回静态文案
+  // 真实「需要验证什么」:优先取今天提到这只票的简报条目(retailTake 真实、可拆解);没有则退回静态文案
   const newsItem =
     todayNews.find((it) => it.triggerCode === s.code) ?? todayNews[0] ?? null;
 
@@ -293,7 +293,7 @@ export default async function StockDetail({
             )}
         </Section>
 
-        <Section icon="💭" title="散户怎么想" highlight>
+        <Section icon="🔍" title="需要验证什么" highlight>
           <StockTellTake
             itemId={newsItem?.id}
             code={s.code}

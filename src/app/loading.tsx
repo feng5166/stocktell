@@ -1,5 +1,5 @@
 import { PageSkeleton } from "@/components/PageSkeleton";
 
 export default function Loading() {
-  return <PageSkeleton active="今日简报" />;
+  return <PageSkeleton active="今日推理" />;
 }

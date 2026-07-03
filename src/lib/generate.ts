@@ -228,7 +228,7 @@ export function neutralizeNumbers(t: string): string {
     .trim();
 }
 
-// 模板兜底的「散户怎么想」:按方向 + A股相对美股的强弱定性,给"所以呢"+一句真提醒(非买卖)。
+// 模板兜底的「这条逻辑怎么验证」:按方向 + A股相对美股的强弱定性,给"所以呢"+一句真提醒(非买卖)。
 // 一律不写具体涨跌数字(美股幅度也只用定性"大跌/重挫/微跌"),避免与页面实时行情打架。
 function buildTake(m: Mover): string {
   const abs = Math.abs(m.change);
@@ -299,7 +299,7 @@ interface LLMItem {
   retailTake: string;
 }
 
-const JSON_SPEC = `只输出一个 JSON 对象:{"impact":"高|中|低","title":"标题","beneficiaryCodes":["A股代码",...],"retailTake":"散户怎么想,2-4句"}。不要输出 JSON 以外任何文字。`;
+const JSON_SPEC = `只输出一个 JSON 对象:{"impact":"高|中|低","title":"标题","beneficiaryCodes":["A股代码",...],"retailTake":"这条逻辑怎么验证(观察点/传导判断),2-4句"}。不要输出 JSON 以外任何文字。`;
 
 // 单条 LLM 生成(并行调用的单元)。失败/超时/空内容由调用方按条回退模板。
 async function llmOneItem(

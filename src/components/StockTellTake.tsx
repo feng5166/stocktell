@@ -1,6 +1,6 @@
 "use client";
 
-// 共享:「散户怎么想」正文 + 「StockTell 解读」按需流式深度解读。
+// 共享:「这条逻辑怎么验证」正文 + 「StockTell 解读」按需流式拆解(原深读)。
 // 首页简报卡、个股页都用它(传 itemId 才显示解读按钮;itemId=对应简报条目 id)。
 import { useState } from "react";
 import { useSession } from "next-auth/react";
@@ -127,7 +127,7 @@ export function StockTellTake({
             onClick={loadDeep}
             className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
           >
-            🔍 让 StockTell 深读这条 →
+            🔍 拆开这条事件 →
           </button>
         </div>
       )}

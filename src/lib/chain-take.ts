@@ -27,9 +27,17 @@ export function fallbackChainTake(items: BriefingItem[]): string | null {
   const triggers = Array.from(
     new Set(items.map((it) => it.triggerName).filter(Boolean))
   ).slice(0, 3) as string[];
+  const ups = items.filter((it) => (it.triggerChange ?? 0) > 0).length;
   const downs = items.filter((it) => (it.triggerChange ?? 0) < 0).length;
+  // 方向数据缺失(up=down=0)时不妄断强弱,用中性词——别把"没数据"说成"偏强"
   const tone =
-    downs === 0 ? "偏强" : downs === items.length ? "偏弱" : "分化";
+    ups > 0 && downs === 0
+      ? "偏强"
+      : downs > 0 && ups === 0
+      ? "偏弱"
+      : ups === 0 && downs === 0
+      ? "有新动态"
+      : "分化";
   const sectorCount = new Map<string, number>();
   for (const it of items)
     for (const b of it.beneficiaries) {
@@ -40,7 +48,8 @@ export function fallbackChainTake(items: BriefingItem[]): string | null {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([s]) => s);
-  return `今天 AI 链情绪${tone},主要来自隔夜 ${triggers.join("、")} 的变动;映射最集中的环节是${topSectors.join("、")}。个股是否只是情绪跟随,开盘后看量能与订单逻辑验证。`;
+  const head = tone === "有新动态" ? "今天 AI 链有新动态" : `今天 AI 链情绪${tone}`;
+  return `${head},主要来自隔夜 ${triggers.join("、")} 的变动;映射最集中的环节是${topSectors.join("、")}。个股是否只是情绪跟随,开盘后看量能与订单逻辑验证。`;
 }
 
 // LLM 生成(纯生成,无缓存)。失败/为空返回 null,让调用方不缓存、下次重试。

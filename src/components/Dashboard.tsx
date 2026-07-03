@@ -695,7 +695,7 @@ function Chip({
   );
 }
 
-/* ============ 股票列表(行可展开看「散户怎么想」) ============ */
+/* ============ 股票列表(行可展开看「为什么在这条链里」) ============ */
 function StockTable({
   rows,
   newsCodes,
@@ -944,7 +944,7 @@ function StockCard({
         onClick={toggle}
         className="mt-1.5 text-xs text-gray-400 hover:text-gray-600"
       >
-        {isOpen ? "收起 ▲" : "散户怎么想 ▾"}
+        {isOpen ? "收起 ▲" : "为什么在这条链里 ▾"}
       </button>
       {isOpen && (
         <div className="mt-2 rounded-lg bg-amber-50/70 p-2.5">
@@ -1056,7 +1056,7 @@ function ReactFragmentRow({
           <StatusBadge status={status} />
         </Td>
         <Td className="whitespace-nowrap text-xs text-gray-400">
-          {isOpen ? "收起 ▲" : "散户怎么想 ▾"}
+          {isOpen ? "收起 ▲" : "为什么在这条链里 ▾"}
         </Td>
       </tr>
       {isOpen && (

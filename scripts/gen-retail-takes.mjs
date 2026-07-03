@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 给池内每只(未手写人话结论的)标的,用 LLM 生成一句"散户怎么想"的人话结论。
+// 给池内每只(未手写人话结论的)标的,用 LLM 生成一句「定位+观察点」的人话结论。
 // 并发池 8;输出 src/data/retail-takes.generated.ts(makeRetailTake 优先级:手写 > 生成 > 模板)。
 // 用法:node scripts/gen-retail-takes.mjs   (从 .env.local 读 LLM_API_KEY/LLM_BASE_URL)
 //   可选:GEN_MODEL=deepseek-v4-flash(默认)  CONCURRENCY=8  LIMIT=0(0=全量)
@@ -100,7 +100,7 @@ console.log(`生成成功 ${Object.keys(out).length}/${todo.length}`);
 const sorted = Object.keys(out).sort();
 const body = sorted.map((c) => `  "${c}": ${JSON.stringify(out[c])},`).join("\n");
 const file =
-  `// 自动生成,勿手改。LLM(${MODEL})逐只生成的"散户怎么想"人话结论。\n` +
+  `// 自动生成,勿手改。LLM(${MODEL})逐只生成的"人话结论"(定位+观察点)。\n` +
   `// 重新生成:node scripts/gen-retail-takes.mjs。手写 RETAIL_TAKES 优先级高于此。\n` +
   `export const GEN_RETAIL_TAKES: Record<string, string> = {\n${body}\n};\n`;
 fs.writeFileSync(path.join(ROOT, "src/data/retail-takes.generated.ts"), file);

@@ -66,10 +66,10 @@ export interface Stock extends StockBase {
   price: number;
   change: number; // 日涨跌 %
   live: boolean; // 是否为真实行情(否则为模拟)
-  retailTake: string; // 散户怎么想:人话结论
+  retailTake: string; // 这条逻辑怎么验证:人话结论
 }
 
-// 散户怎么想:核心标的的人工结论(没命中则按板块模板生成)
+// 人话结论:核心标的的人工结论(没命中则按板块模板生成)
 const RETAIL_TAKES: Record<string, string> = {
   NVDA: "全球算力的总开关。它一动,A股光模块、服务器、PCB 第二天大概率跟着波动,是看 A股 AI 行情最重要的风向标。",
   "688041": "国产算力禁令下关联度最高的标的,情绪来时弹性大。但 PE 高、波动剧烈,涨跌更多由情绪驱动,真实受益要看订单与生态兑现。",

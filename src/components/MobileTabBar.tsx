@@ -13,7 +13,7 @@ const sw = (a: boolean) => (a ? 2.4 : 1.8);
 
 const TABS: Tab[] = [
   {
-    label: "简报",
+    label: "今日",
     href: "/",
     icon: (a) => (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw(a)} className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round">

@@ -109,7 +109,7 @@ async function sendAlertsDigest(
   });
 }
 
-// 把「散户怎么想」压成推送里的一句话:取前 1-2 句、去掉免责尾巴、封顶 ~60 字。
+// 把「今天需要观察什么」(retailTake)压成推送里的一句话:取前 1-2 句、去掉免责尾巴、封顶 ~60 字。
 // 微信(push-weixin)与邮件共用,保证两边一致。
 export function oneLineTake(take: string | null | undefined): string {
   if (!take) return "";

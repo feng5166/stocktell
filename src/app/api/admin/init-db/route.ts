@@ -152,7 +152,7 @@ const T_QUOTES_CACHE = `CREATE TABLE IF NOT EXISTS "quotes_cache" (
   CONSTRAINT "quotes_cache_pkey" PRIMARY KEY ("id")
 )`;
 
-// 「散户怎么想·详细解读」缓存表(幂等)
+// 「事件拆解(原深读)」缓存表(幂等)
 const T_DEEP_CACHE = `CREATE TABLE IF NOT EXISTS "deep_analysis_cache" (
   "briefing_id" text NOT NULL,
   "content" text NOT NULL,

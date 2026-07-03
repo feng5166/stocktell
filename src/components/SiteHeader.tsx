@@ -8,7 +8,7 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { InstalledBadge } from "@/components/InstalledBadge";
 
 const NAV = [
-  { href: "/", label: "今日简报" },
+  { href: "/", label: "今日推理" },
   { href: "/stocks", label: "股票池" },
   { href: "/track", label: "复盘" },
   { href: "/about", label: "关于我们" },

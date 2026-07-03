@@ -126,7 +126,7 @@ export function OvernightRadar() {
     <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
       <div className="mb-1 flex items-center gap-2">
         <span className="text-sm font-semibold text-gray-800">
-          ⚡ 隔夜美股 · 跟你 A 股的联动
+          ⚡ 隔夜事件雷达 · 今天 A 股跟没跟
         </span>
         <button
           onClick={() => setShowHelp((v) => !v)}

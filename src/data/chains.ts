@@ -32,7 +32,7 @@ export interface RosterItem {
   name: string;
   sector: string;
   gloss: string; // 板块大白话
-  take: string; // 散户怎么想(一句话)
+  take: string; // 为什么在这条链里(一句话)
   tier: "龙头" | "二线" | null;
 }
 

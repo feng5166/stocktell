@@ -15,6 +15,7 @@ import { WatchOverview } from "@/components/WatchOverview";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
 import { todayISO } from "@/lib/date";
+import { track } from "@/lib/analytics";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
@@ -24,10 +25,12 @@ export function BriefingFeed({
   items,
   loggedIn,
   initialCodes,
+  insightHref,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
   initialCodes?: string[]; // 服务端预取的登录用户自选,首屏即按它切分,省 /api/watchlist 一跳
+  insightHref?: string | null; // 事件卡「看这条链怎么传导」的链级因果链入口(P0 全部事件属 AI 链)
 }) {
   const wl = useWatchlist(initialCodes);
   const isMine = (it: BriefingItem) =>
@@ -77,6 +80,7 @@ export function BriefingFeed({
                 items={mine}
                 loggedIn={loggedIn}
                 watchedCodes={wl.codes}
+                insightHref={insightHref}
                 mine
               />
             )}
@@ -86,13 +90,14 @@ export function BriefingFeed({
 
       {others.length > 0 && (
         <section className="rounded-2xl bg-gray-100/50 p-3 sm:p-4">
-          <SectionHead title="其他市场动态" />
+          <SectionHead title="今天这些事件,正在影响 A 股产业链" />
           {/* 付费分层暂未开启:所有用户简报功能一致,不再上免费墙(gated 默认 false)。
               仅自选保存、推送订阅需登录;LockedCard/FREE_LIMIT 基础设施保留,日后分层再开。 */}
           <CardFeed
             items={others}
             loggedIn={loggedIn}
             watchedCodes={wl.codes}
+            insightHref={insightHref}
           />
         </section>
       )}
@@ -254,12 +259,14 @@ function CardFeed({
   watchedCodes,
   gated = false,
   mine = false,
+  insightHref,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
   watchedCodes: Set<string>;
   gated?: boolean;
   mine?: boolean;
+  insightHref?: string | null;
 }) {
   const STEP = 6;
   const [visible, setVisible] = useState(STEP);
@@ -293,6 +300,7 @@ function CardFeed({
             item={it}
             mine={mine}
             watchedCodes={watchedCodes}
+            insightHref={insightHref}
           />
         ) : (
           <LockedCard key={it.id} item={it} />
@@ -453,10 +461,12 @@ function BriefingCard({
   item,
   mine,
   watchedCodes,
+  insightHref,
 }: {
   item: BriefingItem;
   mine?: boolean;
   watchedCodes?: Set<string>;
+  insightHref?: string | null;
 }) {
   const meta = IMPACT_META[item.impact];
   const [deep, setDeep] = useState("");
@@ -547,16 +557,33 @@ function BriefingCard({
         </div>
       )}
       <div className="mt-3 rounded-lg bg-gray-50/70 px-3 py-2">
-        <div className="mb-1 text-xs font-medium text-gray-500">散户怎么想</div>
+        <div className="mb-1 text-xs font-medium text-gray-500">这条逻辑怎么验证</div>
         <p className="text-sm leading-relaxed text-gray-800">{inlineBold(item.retailTake, "rt-")}</p>
 
+        {/* 底部双入口(拍板⑤):主=链级因果框架(insight),次=实时拆解(原深读,能力保留换文案) */}
         {!deepStarted && (
-          <div className="mt-2 text-right">
+          <div className="mt-2 flex items-center justify-between gap-2">
+            {insightHref ? (
+              <Link
+                href={insightHref}
+                onClick={() =>
+                  track("home_event_card_click", {
+                    event_id: item.id,
+                    insight_id: insightHref.split("/").pop() ?? "",
+                  })
+                }
+                className="text-xs font-medium text-brand-600 hover:underline"
+              >
+                看这条链怎么传导 →
+              </Link>
+            ) : (
+              <span className="text-xs text-gray-300">该链因果链生成中</span>
+            )}
             <button
               onClick={loadDeep}
               className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
             >
-              🔍 让 StockTell 深读这条 →
+              🔍 拆开这条事件
             </button>
           </div>
         )}

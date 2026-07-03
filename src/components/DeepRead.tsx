@@ -1,6 +1,6 @@
 "use client";
 
-// 通用「让 StockTell 深读这条 →」:点按后向 /api/briefing/explain 流式拉一段解读。
+// 通用「让 StockTell 拆一下 →」(原深读):点按后向 /api/briefing/explain 流式拉一段解读。
 // payload 即请求体(如 {kind:"morning",items} / {kind:"fundflow",items,date} / {id} / {code})。
 // 与个股页 StockTellTake 的解读区一致;此处不绑定具体内容,任何模块都能复用。
 import { useState } from "react";
@@ -56,7 +56,7 @@ function renderRich(text: string): JSX.Element[] {
 
 export function DeepRead({
   payload,
-  label = "🔍 让 StockTell 深读这条 →",
+  label = "🔍 让 StockTell 拆一下 →",
 }: {
   payload: Record<string, unknown>;
   label?: string;
