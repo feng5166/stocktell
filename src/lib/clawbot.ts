@@ -2,7 +2,9 @@
 const BASE = process.env.CLAWBOT_BASE_URL; // 如 http://47.84.8.167:8787
 const SECRET = process.env.CLAWBOT_SECRET;
 
-const CLAWBOT_TIMEOUT_MS = 6000;
+// 10s(非 6s):iLink 桥本就偏慢,6s 会把"慢但活着"的桥误判成失败、丢掉本可送达的推送。
+// 只要挡住"半死挂起到平台上限"即可,不必卡太紧。
+const CLAWBOT_TIMEOUT_MS = 10_000;
 
 export async function clawbot<T = unknown>(
   path: string,

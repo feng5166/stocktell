@@ -18,8 +18,9 @@ export async function GET(req: NextRequest) {
   // 只在 A 股交易日记账(fail-closed;unknown 跳过并告警)。dedupe=false:15:30 与盘前不同时段、
   // 不同关切(战绩数据),自己独立告警,不被盘前的当日去重压掉。
   const date = todayISO();
-  const gate = await tradingDayGate(date, "outcome(记账)", {
-    recoveryHint: `收盘后用 /api/admin/backfill-outcomes?date=${date} 补记`,
+  const gate = await tradingDayGate(date, "outcome(收盘记账)", {
+    onUnknown: "skip",
+    recoveryHint: `Tushare 恢复后用 /api/admin/backfill-outcomes?date=${date} 补记`,
   });
   if (gate) return NextResponse.json({ ok: true, ...gate });
 

@@ -14,11 +14,10 @@ export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  // 交易日闸门(fail-closed;unknown 跳过并告警,当天全局去重)。
+  // 交易日闸门:只在确定休市(周末/确认节假日)跳过;unknown 照常交付(同 risk-radar,评审)。
   const date = todayISO();
   const gate = await tradingDayGate(date, "push-weixin(微信推送)", {
-    dedupeUnknown: true,
-    recoveryHint: "手动触发 GET /api/cron/push-weixin",
+    onUnknown: "proceed",
   });
   if (gate) return NextResponse.json({ ok: true, ...gate });
   try {

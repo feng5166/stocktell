@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   // 但 unknown 必须告警——否则真交易日的 Tushare 抖动会被静默跳过。unknown 告警当天全局去重。
   const date = todayISO();
   const gate = await tradingDayGate(date, "briefing(简报生成)", {
-    dedupeUnknown: true,
+    onUnknown: "skip",
     recoveryHint:
       "①发布 POST /api/briefing/generate?replace=1&llm=1 ②补推 GET /api/cron/briefing(会补 digest/webpush)",
   });
@@ -67,7 +67,15 @@ export async function GET(req: NextRequest) {
         "briefing(简报生成)",
         `交易日 ${date} 判定"美股休市"跳过 —— 若非美股真节假日,多半是 07:00 美股行情源抖动致 asOf 陈旧的误判,需手动重发(/api/admin… 或 generate?replace=1)`
       );
-      return NextResponse.json({ ok: true, date, skipped: "us-market-closed" });
+      // 没有隔夜简报,但用户持仓的资金面/雷区提醒(digest 的 alerts-only 分支)不依赖美股,
+      // 照常发——否则美股源抖动的早上,这批高信号提醒被连带静默跳过(评审确认)。
+      const digest = await runDigest(date, "");
+      return NextResponse.json({
+        ok: true,
+        date,
+        skipped: "us-market-closed",
+        digest: digestSummary(digest),
+      });
     }
     // 方案 B:生成后直接发布上线
     const created = await insertDrafts(
