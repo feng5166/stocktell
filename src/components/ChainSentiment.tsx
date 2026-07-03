@@ -125,8 +125,12 @@ export function ChainSentiment({
             实时 {a.pctAsOf}
           </span>
         ) : (
-          d.date && (
-            <span className="ml-auto text-meta text-gray-400">{d.date.slice(5)} 收盘</span>
+          // 收盘标签跟家数/均涨跌的时点(pctAsOf)走:盘后 pctAsOf=今天(今日收盘),
+          // 而 d.date 是主力资金的 EOD 日(傍晚前还停在昨日),两者此时不同日
+          (a?.pctAsOf || d.date) && (
+            <span className="ml-auto text-meta text-gray-400">
+              {(a?.pctAsOf || d.date || "").slice(5)} 收盘
+            </span>
           )
         )}
       </div>
@@ -189,18 +193,25 @@ export function ChainSentiment({
           </div>
         )}
       </div>
-      {a?.pctLive
-        ? a.netMfYi != null &&
-          a.netMfDate && (
-            <p className="mt-2 text-meta text-gray-400">
-              涨跌为盘中实时;主力净流入为 {a.netMfDate} 收盘数据(今日盘后更新)
-            </p>
-          )
-        : aStale && (
-            <p className="mt-2 text-meta text-gray-400">
-              A股为 {d.date} 收盘数据 · 今日盘后数据约傍晚更新
-            </p>
-          )}
+      {a?.pctLive ? (
+        a.netMfYi != null &&
+        a.netMfDate && (
+          <p className="mt-2 text-meta text-gray-400">
+            涨跌为盘中实时;主力净流入为 {a.netMfDate} 收盘数据(今日盘后更新)
+          </p>
+        )
+      ) : a && !a.pctLive && a.pctAsOf && d.date && a.pctAsOf !== d.date ? (
+        // 盘后混合态:家数/均涨跌已是今日收盘,主力还停在上一交易日(Tushare 傍晚出数)
+        <p className="mt-2 text-meta text-gray-400">
+          涨跌为今日收盘;主力净流入为 {a.netMfDate ?? d.date} 收盘数据(约傍晚更新)
+        </p>
+      ) : (
+        aStale && (
+          <p className="mt-2 text-meta text-gray-400">
+            A股为 {d.date} 收盘数据 · 今日盘后数据约傍晚更新
+          </p>
+        )
+      )}
       {/* 右下角可选入口(首页塞"看/分享";落地页不传)——样式对齐"深读这条" */}
       {action && <div className="mt-2 text-right">{action}</div>}
     </div>
