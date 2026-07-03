@@ -218,19 +218,55 @@ export interface DigestUserResult {
   sent: boolean; // sendMail 是否成功
 }
 
-export async function runPreOpenDigest(): Promise<{
+// 发送成功后落每用户当日记录(digest_send_log)。写失败不阻断发送——记录是幂等优化,不是发送前提。
+async function markDigestSent(
+  db: NonNullable<ReturnType<typeof getPrisma>>,
+  date: string,
+  userId: string,
+  mode: "digest" | "alerts"
+) {
+  try {
+    await db.digestSendLog.upsert({
+      where: { date_userId: { date, userId } },
+      create: { date, userId, mode },
+      update: { mode },
+    });
+  } catch {
+    /* 表未建/写失败:不影响发送本身 */
+  }
+}
+
+export async function runPreOpenDigest(opts?: {
+  force?: boolean; // true=忽略当日已发记录全量重发(默认只发没发过的)
+}): Promise<{
   ok: boolean;
   skipped?: string;
   date?: string;
   candidates: number; // 有相关动态、该收到的用户数
   sent: number; // 实际发出数(Resend 没配时为 0)
   failed?: number; // 该发但发送失败的数量
+  alreadySent?: number; // 当日已发过而跳过的用户数(补发幂等,2026-07-03 复盘产物)
   results?: DigestUserResult[]; // 逐用户结果(供后台记录失败)
 }> {
   const db = getPrisma();
   if (!db) return { ok: true, skipped: "no-db", candidates: 0, sent: 0 };
 
   const date = todayISO();
+
+  // 当日已发过的用户(重跑/补发时跳过,除非 force)。表还没建时当作无记录。
+  let sentBefore = new Set<string>();
+  if (!opts?.force) {
+    try {
+      const logs = await db.digestSendLog.findMany({
+        where: { date },
+        select: { userId: true },
+      });
+      sentBefore = new Set(logs.map((l) => l.userId));
+    } catch {
+      /* 表未建 → 全量发 */
+    }
+  }
+  let alreadySent = 0;
   // 没简报也继续:资金面异动可独立触发推送
   const briefings = await listBriefing({ date, status: "published" });
 
@@ -258,6 +294,10 @@ export async function runPreOpenDigest(): Promise<{
     if (!u.email) continue;
     const codes = codesByUser.get(u.id);
     if (!codes || codes.size === 0) continue;
+    if (sentBefore.has(u.id)) {
+      alreadySent++;
+      continue; // 今天已发过:补发/重跑只补漏,不重复打扰
+    }
     const relevant = briefings.filter(
       (b) =>
         (b.triggerCode != null && codes.has(b.triggerCode)) ||
@@ -275,7 +315,10 @@ export async function runPreOpenDigest(): Promise<{
         sendDigest(u.email!, u.id, date, relevant, brief, alerts)
       );
       results.push({ userId: u.id, email: u.email, mode: "digest", sent: ok });
-      if (ok) sent++;
+      if (ok) {
+        sent++;
+        await markDigestSent(db, date, u.id, "digest");
+      }
       await sleep(DIGEST_THROTTLE_MS);
       continue;
     }
@@ -285,7 +328,10 @@ export async function runPreOpenDigest(): Promise<{
     candidates++;
     const ok = await trySend(() => sendAlertsDigest(u.email!, u.id, alerts));
     results.push({ userId: u.id, email: u.email, mode: "alerts", sent: ok });
-    if (ok) sent++;
+    if (ok) {
+      sent++;
+      await markDigestSent(db, date, u.id, "alerts");
+    }
     await sleep(DIGEST_THROTTLE_MS);
   }
   const failed = results.filter((r) => !r.sent).length;
@@ -296,7 +342,7 @@ export async function runPreOpenDigest(): Promise<{
       results.filter((r) => !r.sent).map((r) => r.email).join(", ")
     );
   }
-  return { ok: true, date, candidates, sent, failed, results };
+  return { ok: true, date, candidates, sent, failed, alreadySent, results };
 }
 
 // 给单个用户发一封真·digest(复用与全量推送完全相同的 sendDigest/sendAlertsDigest 模板)。
@@ -339,10 +385,13 @@ export async function sendDigestToUser(
   if (relevant.length > 0) {
     const brief = await getMorningBrief(Array.from(codes), relevant);
     const sent = await sendDigest(to, u.id, date, relevant, brief, alerts);
+    // 发到用户本人地址=真实投递,计入当日已发;带 deliverTo 的抽查/预览不计
+    if (sent && !deliverTo) await markDigestSent(db, date, u.id, "digest");
     return { ok: true, mode: "digest", sent, email: to, sourceEmail: u.email, relevant: relevant.length };
   }
   if (alerts.length === 0)
     return { ok: false, reason: "nothing-relevant", email: to, sourceEmail: u.email, relevant: 0 };
   const sent = await sendAlertsDigest(to, u.id, alerts);
+  if (sent && !deliverTo) await markDigestSent(db, date, u.id, "alerts");
   return { ok: true, mode: "alerts", sent, email: to, sourceEmail: u.email, relevant: 0 };
 }

@@ -181,6 +181,18 @@ const T_API_METRIC = `CREATE TABLE IF NOT EXISTS "api_metric" (
   CONSTRAINT "api_metric_pkey" PRIMARY KEY ("route","ymd")
 )`;
 
+// 早报每用户当日发送记录表(幂等):补发只补没发过的,重跑幂等
+const T_DIGEST_SEND_LOG = `CREATE TABLE IF NOT EXISTS "digest_send_log" (
+  "id" text NOT NULL,
+  "date" text NOT NULL,
+  "user_id" text NOT NULL,
+  "mode" text NOT NULL,
+  "sent_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "digest_send_log_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_DIGEST_SEND_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "digest_send_log_date_user_id_key" ON "digest_send_log" ("date", "user_id")`;
+const IDX_DIGEST_SEND_DATE = `CREATE INDEX IF NOT EXISTS "digest_send_log_date_idx" ON "digest_send_log" ("date")`;
+
 // 用户反馈表(幂等)
 const T_FEEDBACK = `CREATE TABLE IF NOT EXISTS "feedback" (
   "id" text NOT NULL,
@@ -247,6 +259,9 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(T_API_METRIC);
         await tx.$executeRawUnsafe(T_FEEDBACK);
         await tx.$executeRawUnsafe(IDX_FEEDBACK_CREATED);
+        await tx.$executeRawUnsafe(T_DIGEST_SEND_LOG);
+        await tx.$executeRawUnsafe(IDX_DIGEST_SEND_UNIQUE);
+        await tx.$executeRawUnsafe(IDX_DIGEST_SEND_DATE);
       },
       { timeout: 30000 }
     );

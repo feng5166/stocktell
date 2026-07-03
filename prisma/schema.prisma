@@ -194,6 +194,19 @@ model MorningBriefCache {
   @@map("morning_brief_cache")
 }
 
+// 早报每用户当日发送记录:补发只补没发过的、重跑幂等;也是看门狗"邮件流程当天跑过"的证据。
+model DigestSendLog {
+  id     String   @id @default(cuid())
+  date   String // YYYY-MM-DD(北京)
+  userId String   @map("user_id")
+  mode   String // digest | alerts
+  sentAt DateTime @default(now()) @map("sent_at")
+
+  @@unique([date, userId])
+  @@index([date])
+  @@map("digest_send_log")
+}
+
 // 其他产业链「我想要」投票:收集用户最想先看哪条链(去重:一人一链一票)。
 model ChainInterest {
   id        String   @id @default(cuid())
