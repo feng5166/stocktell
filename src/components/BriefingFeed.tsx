@@ -17,6 +17,8 @@ import { IMPACT_META } from "@/lib/impact";
 import { todayISO } from "@/lib/date";
 import { track } from "@/lib/analytics";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
+import { STOCK_MAP } from "@/data/stocks";
+import type { WatchChainInfo } from "@/lib/watch-relation";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
 const FREE_LIMIT = 3;
@@ -29,6 +31,7 @@ export function BriefingFeed({
   chainName,
   chainHref,
   relations,
+  watchChainMap,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
@@ -37,6 +40,7 @@ export function BriefingFeed({
   chainName?: string; // 事件卡「影响链」chip 文案(评审:字段顺序 变了啥→影响链→A股映射→怎么验证)
   chainHref?: string; // 影响链 chip 跳转 /chain/[id]
   relations?: Record<string, string>; // 条目id → 关系标签(直接相关/间接相关/情绪映射/产业链相关),替代「高影响」
+  watchChainMap?: Record<string, WatchChainInfo>; // 全A股→链身份(服务端算,P1 和我相关结构化)
 }) {
   const wl = useWatchlist(initialCodes);
   const { status: sessionStatus } = useSession();
@@ -87,6 +91,14 @@ export function BriefingFeed({
           <div className="space-y-3">
             <RiskSummary codes={wl.codes} />
             {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
+            {/* P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系/验证点) */}
+            {watchChainMap && (
+              <MyWatchRelations
+                codes={wl.codes}
+                items={items}
+                chainMap={watchChainMap}
+              />
+            )}
             {mine.length === 0 ? (
               <>
                 <QuietMorningBrief issueDate={items[0]?.date} />
@@ -401,6 +413,153 @@ function MineEmpty({ guest, onAdd }: { guest: boolean; onAdd: () => void }) {
       >
         {guest ? "登录并添加" : "⭐ 添加自选"}
       </button>
+    </div>
+  );
+}
+
+// P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系三档/影响强度/验证点)。
+// 静态映射(chainMap)+ 今日事件叠加(items),模板化解释,不逐股打 LLM(拍板⑨)。
+const REL_EXPLAIN: Record<string, string> = {
+  直接映射: "是这条链传导最直接的环节之一,和海外事件关系紧,但仍要看订单落地。",
+  间接映射: "受链条带动,但中间隔了几环,幅度看具体订单/客户/收入占比。",
+  情绪映射: "更多是情绪/主题带动,不等于这次事件的直接受益方,真金白银看订单兑现。",
+};
+const IMPACT_STRENGTH: Record<string, { label: string; cls: string }> = {
+  高: { label: "影响强", cls: "bg-rose-100 text-rose-700" },
+  中: { label: "影响中", cls: "bg-amber-100 text-amber-700" },
+  低: { label: "影响弱", cls: "bg-gray-100 text-gray-500" },
+};
+
+function MyWatchRelations({
+  codes,
+  items,
+  chainMap,
+}: {
+  codes: Set<string>;
+  items: BriefingItem[];
+  chainMap: Record<string, WatchChainInfo>;
+}) {
+  const viewed = useRef(false);
+  // 每只自选股:链身份(静态)+ 今日是否被事件点名(items 叠加)
+  const rows = Array.from(codes)
+    .map((code) => {
+      const info = chainMap[code];
+      if (!info) return null; // 非本链池(美股/其它板块)不展示
+      const name = STOCK_MAP[code]?.name ?? code;
+      const hits = items.filter(
+        (it) => it.triggerCode === code || it.beneficiaries.some((b) => b.code === code)
+      );
+      // 影响强度 = 命中它的条目里最高影响力
+      const impact = hits.reduce<"高" | "中" | "低" | null>((acc, it) => {
+        const order = { 高: 3, 中: 2, 低: 1 } as const;
+        if (!acc || order[it.impact] > order[acc]) return it.impact;
+        return acc;
+      }, null);
+      const event = hits[0]?.title ?? null;
+      return { code, name, info, impact, event, hit: hits.length > 0 };
+    })
+    .filter(Boolean) as {
+    code: string;
+    name: string;
+    info: WatchChainInfo;
+    impact: "高" | "中" | "低" | null;
+    event: string | null;
+    hit: boolean;
+  }[];
+
+  useEffect(() => {
+    if (viewed.current || rows.length === 0) return;
+    viewed.current = true;
+    track("home_related_to_me_view", {
+      watched: rows.length,
+      affected: rows.filter((r) => r.hit).length,
+    });
+  }, [rows]);
+
+  if (rows.length === 0) return null;
+  const affected = rows.filter((r) => r.hit);
+  const quiet = rows.filter((r) => !r.hit);
+
+  return (
+    <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+      <div className="mb-2 text-sm font-semibold text-gray-900">
+        {affected.length > 0
+          ? `你的自选里,今天有 ${affected.length} 只被全球事件影响`
+          : "你的自选今天没踩到全球事件"}
+      </div>
+      <div className="space-y-2">
+        {affected.map((r) => (
+          <WatchRelationCard key={r.code} row={r} />
+        ))}
+      </div>
+      {quiet.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs text-gray-400">
+            其余 {quiet.length} 只今日无直接事件(仍显示链身份)
+          </summary>
+          <div className="mt-2 space-y-2">
+            {quiet.map((r) => (
+              <WatchRelationCard key={r.code} row={r} quiet />
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function WatchRelationCard({
+  row,
+  quiet,
+}: {
+  row: {
+    code: string;
+    name: string;
+    info: WatchChainInfo;
+    impact: "高" | "中" | "低" | null;
+    event: string | null;
+  };
+  quiet?: boolean;
+}) {
+  const { code, name, info, impact, event } = row;
+  const strength = impact ? IMPACT_STRENGTH[impact] : null;
+  return (
+    <div className={`rounded-lg px-3 py-2.5 ${quiet ? "bg-gray-50/60" : "bg-gray-50"}`}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Link
+          href={`/stock/${code}`}
+          onClick={() =>
+            track("home_related_stock_click", { code, relation: info.relation, chain_id: info.chainId })
+          }
+          className="text-sm font-medium text-gray-900 hover:text-brand-700 hover:underline"
+        >
+          {name}
+        </Link>
+        <span
+          className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
+            REL_LABEL_CLS[info.relation] ?? "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {info.relation}
+        </span>
+        {strength && (
+          <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${strength.cls}`}>
+            {strength.label}
+          </span>
+        )}
+        <span className="text-[11px] text-gray-400">{info.segment}</span>
+      </div>
+      {event && (
+        <p className="mt-1 text-xs text-gray-500">
+          <span className="font-medium text-gray-600">今日触发</span>:{event}
+        </p>
+      )}
+      <p className="mt-1 text-xs leading-relaxed text-gray-600">
+        {name}在「{info.segment}」环节,{REL_EXPLAIN[info.relation]}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-gray-500">
+        <span className="font-medium text-gray-600">需要验证</span>:{info.verify.join(" · ")}
+      </p>
     </div>
   );
 }

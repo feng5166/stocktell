@@ -10,6 +10,7 @@ import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
 import { relationLabelFor } from "@/lib/relation";
+import { buildWatchChainMap } from "@/lib/watch-relation";
 import { getChain } from "@/data/chains";
 import {
   listBriefing,
@@ -62,6 +63,8 @@ export default async function Home() {
   const relations = Object.fromEntries(
     items.map((it) => [it.id, relationLabelFor(it)])
   );
+  // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
+  const watchChainMap = buildWatchChainMap();
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -101,6 +104,7 @@ export default async function Home() {
               chainName={aiChain?.name}
               chainHref={aiChain ? `/chain/${aiChain.id}` : undefined}
               relations={relations}
+              watchChainMap={watchChainMap}
             />
           </div>
         )}
