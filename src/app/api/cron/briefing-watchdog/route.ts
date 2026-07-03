@@ -10,6 +10,13 @@ import { getPrisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 心跳 + 缓存清扫(清扫在心跳之后,永远不挤占本职)
 
+// morning_brief_cache 被复用成通用 KV,里面混着两类东西:①可再生的缓存(早报 v3/v4/v5、链级
+// 判断 chaintake:)——TTL 清扫的对象;②持久控制/状态位——**绝不能被 TTL 扫掉**。目前控制位有
+// insight 管线的「同图谱自动暂停」标记 insight-paused:{chain}(docs.ts),它必须人工恢复;若被
+// 14 天 TTL 删掉,暂停态会静默自恢复(2026-07-03 评审 C-4;且它的 updatedAt 是 @default(now())
+// 不刷新,暂停一放久必过期)。清扫一律排除这些控制键前缀。新增控制键往这里加。
+const CONTROL_KEY_PREFIXES = ["insight-paused:"];
+
 // 缓存日常清扫(放在心跳之后执行:清扫慢——比如被灌表后的首次大扫除——绝不能饿死看门狗本职)。
 // - morning_brief_cache 14 天 TTL:表按(日期×组合×版本)只增不减,升版作废的旧版本行
 //   (v3 污染行、v4 残留)没有别的清理路径;14 天足够覆盖复盘取证。
@@ -21,7 +28,13 @@ async function sweepCaches() {
   if (!db) return;
   const day = 24 * 3600 * 1000;
   await db.morningBriefCache
-    .deleteMany({ where: { updatedAt: { lt: new Date(Date.now() - 14 * day) } } })
+    .deleteMany({
+      where: {
+        updatedAt: { lt: new Date(Date.now() - 14 * day) },
+        // NOT [A,B,…] = 排除命中任一控制键前缀的行,别把持久状态位当缓存扫掉
+        NOT: CONTROL_KEY_PREFIXES.map((p) => ({ key: { startsWith: p } })),
+      },
+    })
     .catch(() => {});
   // 30 天 TTL 只扫按日生成的 key 家族(morningv2/fundflowv2/stock:);条目 id 键的深读不扫——
   // 那是对历史事件的解读存档,删了会在用户翻旧简报时按"今天的行情"重新生成,时代错乱。
