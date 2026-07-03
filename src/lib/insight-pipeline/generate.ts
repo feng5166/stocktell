@@ -243,6 +243,9 @@ function buildMappingsDelta(
   const seen = new Set<string>();
   const out: DailyInsightPayload["mappingsDelta"] = [];
   for (const it of items) {
+    // 触发概述:用触发标的名 + 方向(不回显原标题——标题可能含具体涨跌数字,会触发数字红线)
+    const dir = (it.triggerChange ?? 0) >= 0 ? "隔夜走强" : "隔夜走弱";
+    const why = it.triggerName ? `受海外${it.triggerName}${dir}带动` : "受隔夜链上事件带动";
     for (const b of it.beneficiaries) {
       if (seen.has(b.code) || out.length >= 12) continue;
       seen.add(b.code);
@@ -253,7 +256,7 @@ function buildMappingsDelta(
         name: b.name,
         segment: segName,
         relation: relationForCode(b.code) ?? seg?.defaultRelation ?? "情绪映射",
-        todayWhy: `被「${it.title.slice(0, 30)}」点名`,
+        todayWhy: why,
         verify: (seg?.verifyTemplate ?? ["订单与客户验证", "板块共振"]).slice(0, 3),
       });
     }

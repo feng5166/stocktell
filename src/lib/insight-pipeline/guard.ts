@@ -31,16 +31,21 @@ export function scanBannedWords(text: string): string[] {
   return Array.from(new Set(hits));
 }
 
-// 汇总 payload 全部用户可见文本
-function allText(p: DailyInsightPayload): string {
+// 我们生成的散文(数字红线 + 禁词都扫这部分)
+function ourProse(p: DailyInsightPayload): string {
   return [
     p.trigger.summary,
     p.judgment,
     ...p.heat.map((h) => h.reason),
     ...p.mappingsDelta.flatMap((m) => [m.todayWhy, ...m.verify]),
     p.risk,
-    ...p.references.map((r) => `${r.name} ${r.supports}`),
+    ...p.references.map((r) => r.supports), // supports 是我们写的,name 是外部标题
   ].join("\n");
+}
+
+// 外部来源标题:只做禁词扫描,不做数字红线(真实新闻标题可能含「Q3 营收增 20%」等合法数字)
+function externalText(p: DailyInsightPayload): string {
+  return p.references.map((r) => r.name).join("\n");
 }
 
 export function runGuards(
@@ -55,13 +60,13 @@ export function runGuards(
   const schemaErrors = validateDailyPayload(payload, segments, { fromGenerator: true });
   if (schemaErrors.length) blockers.push(`schema 校验失败(${schemaErrors.length} 项)`);
 
-  // 2. 禁词
-  const text = allText(payload);
-  const bannedHits = scanBannedWords(text);
+  // 2. 禁词(我们的散文 + 外部标题都扫)
+  const prose = ourProse(payload);
+  const bannedHits = scanBannedWords(prose + "\n" + externalText(payload));
   if (bannedHits.length) blockers.push(`禁词命中:${bannedHits.join("、")}`);
 
-  // 3. 具体涨跌数字
-  const numberHits = hasSpecificMove(text);
+  // 3. 具体涨跌数字红线:只扫我们生成的散文,不扫外部来源标题
+  const numberHits = hasSpecificMove(prose);
   if (numberHits) blockers.push("命中具体涨跌数字红线");
 
   // 4. references 可达性(增补#4:警告型)
