@@ -112,11 +112,16 @@ curl -s -m 20 -b "$JAR" -X POST "$BASE/api/morning-brief" \
   && ok "空态契约正常(无效 codes → brief=null)" || ng "空态契约异常"
 # 有相关条目 ⇒ 必有早报内容:从当期简报里取一个真实受益/触发码,用它请求必须产出非空早报
 # (LLM 或模板都行)。防"解析条件写错 → 全员恒 brief:null 静默消失"这类回归被全绿放过。
-RCODE=$(curl -s -m 20 "$BASE/api/briefing" | python3 -c "
+# /api/briefing 不带 date 返回全部历史;取码必须限定「最新一期 published」,
+# 与服务端 resolveMorningItems(今天,否则最近一期)口径一致,否则拿到老期次的码必然空手
+RCODE=$(curl -s -m 20 "$BASE/api/briefing?status=published" | python3 -c "
 import sys,json
 try:
   d=json.load(sys.stdin)
-  for it in d.get('items',[]):
+  items=d.get('items',[])
+  latest=max((it.get('date','') for it in items), default='')
+  for it in items:
+    if it.get('date')!=latest: continue
     for b in it.get('beneficiaries',[]):
       if b.get('code'): print(b['code']); raise SystemExit
 except SystemExit: pass
