@@ -10,6 +10,13 @@ import { getPrisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 心跳 + 缓存清扫(清扫在心跳之后,永远不挤占本职)
 
+// morning_brief_cache 被复用成通用 KV,里面混着两类东西:①可再生的缓存(早报 v3/v4/v5、链级
+// 判断 chaintake:)——TTL 清扫的对象;②持久控制/状态位——**绝不能被 TTL 扫掉**。目前控制位有
+// insight 管线的「同图谱自动暂停」标记 insight-paused:{chain}(docs.ts),它必须人工恢复;若被
+// 14 天 TTL 删掉,暂停态会静默自恢复(2026-07-03 评审 C-4;且它的 updatedAt 是 @default(now())
+// 不刷新,暂停一放久必过期)。清扫一律排除这些控制键前缀。新增控制键往这里加。
+const CONTROL_KEY_PREFIXES = ["insight-paused:"];
+
 // 缓存日常清扫(放在心跳之后执行:清扫慢——比如被灌表后的首次大扫除——绝不能饿死看门狗本职)。
 // - morning_brief_cache 14 天 TTL:表按(日期×组合×版本)只增不减,升版作废的旧版本行
 //   (v3 污染行、v4 残留)没有别的清理路径;14 天足够覆盖复盘取证。
@@ -24,9 +31,8 @@ async function sweepCaches() {
     .deleteMany({
       where: {
         updatedAt: { lt: new Date(Date.now() - 14 * day) },
-        // CR-2:insight 管线暂停标记(insight-paused:)复用本表,绝不能被 TTL 清掉——
-        // 否则暂停的管线 14 天后自动恢复,绕过"人工 force 才恢复"的红线。
-        key: { not: { startsWith: "insight-paused:" } },
+        // NOT [A,B,…] = 排除命中任一控制键前缀的行,别把持久状态位当缓存扫掉(CR-2/C-4)
+        NOT: CONTROL_KEY_PREFIXES.map((p) => ({ key: { startsWith: p } })),
       },
     })
     .catch(() => {});
@@ -77,7 +83,7 @@ export async function GET(req: NextRequest) {
       : -1;
     if (dailyCount === 0) {
       await sendFeishu(
-        `❌ StockTell 链级每日推理缺失 · ${date} · 08:30 仍无 draft(07:05 主跑+07:45 补跑都没产出)。手动:POST /api/admin/insight-daily?force=1(Bearer ADMIN_TOKEN)`
+        `❌ StockTell 链级每日推理缺失 · ${date} · 08:30 仍无 draft(07:05 主跑+07:40 补跑都没产出)。手动:POST /api/admin/insight-daily?force=1(Bearer ADMIN_TOKEN)`
       );
       await alertCron("insight-daily 看门狗", `交易日 ${date} 无当日每日推理草稿,管线疑似断产`);
     }
