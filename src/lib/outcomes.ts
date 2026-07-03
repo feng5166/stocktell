@@ -54,6 +54,8 @@ export async function recordOutcomes(
   skipped?: string;
   evaluated: number;
   source?: string;
+  judged?: number; // 真正判定了涨跌(change 非 null)的条数
+  staleSkipped?: number; // 实时路径下 asOf≠记账日 被判未定的条数(停牌 or 源漂移)
 }> {
   const db = getPrisma();
   if (!db) return { ok: true, skipped: "no-db", evaluated: 0 };
@@ -67,6 +69,8 @@ export async function recordOutcomes(
     new Set(briefings.flatMap((b) => b.beneficiaries.map((x) => x.code)))
   );
 
+  let judged = 0; // 真正判定涨跌(change 非 null)的条数
+  let staleSkipped = 0; // 实时:asOf≠记账日 被判未定的条数
   // 取价:historical 用 Tushare 当日收盘(裸代码→pct_chg),否则用实时行情
   let changeOf: (code: string) => number | null;
   if (opts.historical) {
@@ -75,7 +79,19 @@ export async function recordOutcomes(
     changeOf = (c) => (hist.has(c) ? hist.get(c)! : null);
   } else {
     const { quotes } = await fetchQuotes(codes);
-    changeOf = (c) => quotes[c]?.change ?? null;
+    // ⚠️ 校验 asOf==记账日:停牌/半日休市的票,行情源返回的是停牌前的陈旧快照
+    // (change=停牌前末日涨跌、asOf=旧日期)。不校验会把陈旧涨跌当"当日收盘"写进战绩、
+    // 把 hit 错判成 true/false(应为 null=未判定)。asOf 缺失也视为不可信 → null。
+    // 同时统计"asOf 不匹配"的比例:少数=正常停牌;大面积=行情源格式漂移/故障(调用方据此告警)。
+    changeOf = (c) => {
+      const q = quotes[c];
+      if (!q) return null;
+      if (q.asOf !== date) {
+        staleSkipped++;
+        return null;
+      }
+      return q.change ?? null;
+    };
   }
 
   let evaluated = 0;
@@ -84,6 +100,7 @@ export async function recordOutcomes(
     const expected: "涨" | "跌" = (b.triggerChange ?? 0) < 0 ? "跌" : "涨";
     for (const ben of b.beneficiaries) {
       const change = changeOf(ben.code);
+      if (change !== null) judged++;
       const hit =
         change === null
           ? null
@@ -114,7 +131,13 @@ export async function recordOutcomes(
       evaluated++;
     }
   }
-  return { ok: true, evaluated, source: opts.historical ? "tushare-daily" : "realtime" };
+  return {
+    ok: true,
+    evaluated,
+    judged,
+    staleSkipped,
+    source: opts.historical ? "tushare-daily" : "realtime",
+  };
 }
 
 // 查账:近若干条结果明细(按日期倒序)。backtest 省略=全部;true=仅回测;false=仅实盘。

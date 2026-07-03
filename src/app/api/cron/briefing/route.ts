@@ -5,9 +5,10 @@ import { generateChainTake } from "@/lib/chain-take";
 import { runPreOpenDigest } from "@/lib/digest";
 import { runWebPush } from "@/lib/push-web";
 import { todayISO } from "@/lib/date";
-import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
+import { getPrisma } from "@/lib/prisma";
+import { tradingDayGate } from "@/lib/trading-gate";
 
 export const dynamic = "force-dynamic";
 // 生成(LLM 几十秒)+ 逐用户早报(每人 LLM+Tushare+节流)同函数串行,60s 必被 Vercel 硬杀,
@@ -20,24 +21,43 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  // 只在 A 股交易日生成(Tushare 交易日历,含节假日;不可用时回退周末判断)
+  // 只在 A 股交易日生成。fail-closed:Tushare 不可用无法确认交易日时不生成(假日误发不可撤回),
+  // 但 unknown 必须告警——否则真交易日的 Tushare 抖动会被静默跳过。unknown 告警当天全局去重。
   const date = todayISO();
-  if (!(await isAshareTradingDay(date))) {
-    return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
-  }
-
-  // 幂等:当天已生成过就不重复
-  const existing = await listBriefing({ date });
-  if (existing.length > 0) {
-    return NextResponse.json({
-      ok: true,
-      skipped: "already-exists",
-      date,
-      count: existing.length,
-    });
-  }
+  const gate = await tradingDayGate(date, "briefing(简报生成)", {
+    dedupeUnknown: true,
+    recoveryHint:
+      "①发布 POST /api/briefing/generate?replace=1&llm=1 ②补推 GET /api/cron/briefing(会补 digest/webpush)",
+  });
+  if (gate) return NextResponse.json({ ok: true, ...gate });
 
   try {
+    // 幂等看「已发布」而非「任何状态」:管理员预览产生的 draft 不该让主/补位 cron 全天跳过。
+    const published = await listBriefing({ date, status: "published" });
+    if (published.length > 0) {
+      // 简报已在,但推送段可能被上一跑的超时截断没发出去(2026-07-03 事故)→ 补跑推送段。
+      // 这里天然幂等、无需"跳过"分支:digest 按用户幂等(send_log,已发的跳过),webpush 由
+      // maybeWebPush 用自己的当日广播标记去重,链级判断 generateChainTake 已有缓存则秒回。
+      // 主跑已成功时,这里 = 一次廉价 no-op;主跑发布后被截断时,这里把三样都补齐。
+      const chainTake = await generateChainTake("ai", date, published).catch(
+        async (e) => {
+          await alertCron("briefing(链级判断·补位)", e);
+          return null;
+        }
+      );
+      const digest = await runDigest(date, "补位");
+      const webpush = await maybeWebPush(date, "补位");
+      return NextResponse.json({
+        ok: true,
+        recovered: true,
+        date,
+        count: published.length,
+        chainTake: chainTake ? !!chainTake.take : false,
+        digest: digestSummary(digest),
+        webpush,
+      });
+    }
+
     const { drafts, engine, usMarketClosed } = await generateDrafts();
     // 美股休市(节假日):不硬拿旧数据生成隔夜映射,明说跳过。
     // 但交易日早上判到"美股休市"多半是行情源抖动导致 asOf 陈旧的误判 → 告警(别静默),
@@ -69,34 +89,89 @@ export async function GET(req: NextRequest) {
         return null;
       }
     );
-    // 盘前推送:发布后,给有自选+有相关动态的用户推一条(同一 cron 内做,省一个 cron 额度)。
-    // 失败不影响主流程,但必须告警——简报在而邮件没发是最难察觉的静默失败。
-    const digest = await runPreOpenDigest().catch(async (e) => {
-      await alertCron("briefing(盘前邮件)", e);
-      return null;
-    });
-    if (digest?.failed) {
-      await alertCron(
-        "briefing(盘前邮件)",
-        `${date} 邮件部分失败 ${digest.failed}/${digest.candidates},可补:POST /api/admin/push-digest`
-      );
-    }
-    // Web Push:发布后给所有浏览器订阅者推一条通用提醒(点击落地 /#mine)。失败不影响主流程。
-    const webpush = await runWebPush().catch(async (e) => {
-      await alertCron("briefing(网页推送)", e);
-      return null;
-    });
+    // 盘前推送:digest 总是跑——它的 alerts-only 分支(雷区/资金面提醒)不依赖简报,
+    // 0 条发布的交易日照样要给持仓有异动的用户发提醒(created>0 才跑会静默漏掉这批,评审确认)。
+    const digest = await runDigest(date, "");
+    // Web Push 是"今日简报"通用广播,0 条发布无内容可播 → 不广播。
+    const webpush = created.length > 0 ? await maybeWebPush(date, "") : null;
     return NextResponse.json({
       ok: true,
       date,
       engine,
       published: created.length,
       chainTake: chainTake ? !!chainTake.take : false,
-      digest,
+      digest: digestSummary(digest),
       webpush,
     });
   } catch (e) {
     await alertCron("briefing(简报生成)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
+}
+
+// 只回计数,绝不把 runPreOpenDigest 的 results(内含每个订户 email/userId)放进响应体——
+// cron 响应会进平台日志/任何抓到它的地方,等于泄露全体订户 PII。
+function digestSummary(
+  d: { candidates?: number; sent?: number; failed?: number; alreadySent?: number } | null
+) {
+  if (!d) return null;
+  return {
+    candidates: d.candidates ?? 0,
+    sent: d.sent ?? 0,
+    failed: d.failed ?? 0,
+    alreadySent: d.alreadySent ?? 0,
+  };
+}
+
+// 邮件 digest:按用户幂等(digest_send_log,已发的跳过),所以主跑/补位重复调用都安全。
+// 抛错/部分失败都告警(tag 区分主跑 vs 补位)。
+async function runDigest(date: string, tag: string) {
+  const label = `briefing(盘前邮件${tag ? "·" + tag : ""})`;
+  const digest = await runPreOpenDigest().catch(async (e) => {
+    await alertCron(label, e);
+    return null;
+  });
+  if (digest?.failed) {
+    await alertCron(
+      label,
+      `${date} 邮件部分失败 ${digest.failed}/${digest.candidates},可补:POST /api/admin/push-digest`
+    );
+  }
+  return digest;
+}
+
+// Web Push 是「全体订阅广播」,不像 digest 有 per-user 幂等——重复调用会重复弹通知。
+// 用当天专属广播标记去重:只有确实广播成功(runWebPush 跑了发送循环,非 skip 非抛错)才落标记;
+// 标记在 → 补位再调直接跳过(不重复骚扰);标记不在(截断/抛错/0条发布)→ 补位会补广播一次。
+// 残留:极小概率「广播成功但标记写失败」→ 补位重播一次(仅一条重复通知,低危,可接受)。
+type DB = NonNullable<ReturnType<typeof getPrisma>>;
+async function webpushDoneToday(db: DB | null, date: string): Promise<boolean> {
+  if (!db) return false;
+  const row = await db.quotesCache
+    .findUnique({ where: { id: `webpush-done:${date}` } })
+    .catch(() => null);
+  return !!row;
+}
+async function maybeWebPush(date: string, tag: string) {
+  const db = getPrisma();
+  if (await webpushDoneToday(db, date)) return { skipped: "already-broadcast" };
+  const r = await runWebPush().catch(async (e) => {
+    await alertCron(`briefing(网页推送${tag ? "·" + tag : ""})`, e);
+    return null;
+  });
+  // 只在"真投递出去了"才落标记:订阅者=0(无内容可播,补也没用)或至少 1 条 sent 成功。
+  // 广播循环跑了但 sent=0(推送服务瞬时全挂,sendPush 吞错返回 error 不抛)= 全军覆没,
+  // 不落标记 → 07:40 补位会补广播(此前误落标记会永久压制补位重播,评审确认的回归)。
+  const delivered =
+    !!r && typeof r.subs === "number" && (r.subs === 0 || (r.sent ?? 0) > 0);
+  if (db && delivered) {
+    await db.quotesCache
+      .upsert({
+        where: { id: `webpush-done:${date}` },
+        create: { id: `webpush-done:${date}`, data: { done: true } },
+        update: { data: { done: true } },
+      })
+      .catch(() => {});
+  }
+  return r;
 }

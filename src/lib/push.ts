@@ -27,6 +27,12 @@ export interface PushPayload {
   url?: string;
 }
 
+// web-push 内置 socket timeout(超时即 destroy 请求并 reject),用它防止黑洞 endpoint 把
+// 串行循环拖满调用方 maxDuration。不再自己 Promise.race——那会:①留下未 clear 的定时器泄漏
+// ②在 web-push 已接受(8s)与 race 兜底(9s)之间把"其实成功"误报成 error。
+// 不设 TTL(用默认 4 周):强设短 TTL 会让离线设备重连后收不到当天提醒(评审 finding 12)。
+const PUSH_TIMEOUT_MS = 8000;
+
 // 返回 "ok" | "gone"(订阅失效需删除)| "error"
 export async function sendPush(
   sub: SubLike,
@@ -37,7 +43,8 @@ export async function sendPush(
   try {
     await webpush.sendNotification(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-      JSON.stringify(payload)
+      JSON.stringify(payload),
+      { timeout: PUSH_TIMEOUT_MS }
     );
     return "ok";
   } catch (e: unknown) {

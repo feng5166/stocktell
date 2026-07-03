@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordOutcomes } from "@/lib/outcomes";
 import { todayISO } from "@/lib/date";
-import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
+import { tradingDayGate } from "@/lib/trading-gate";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,11 +15,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  // 只在 A 股交易日记账(Tushare 交易日历,含节假日;不可用时回退周末判断)
+  // 只在 A 股交易日记账(fail-closed;unknown 跳过并告警)。dedupe=false:15:30 与盘前不同时段、
+  // 不同关切(战绩数据),自己独立告警,不被盘前的当日去重压掉。
   const date = todayISO();
-  if (!(await isAshareTradingDay(date))) {
-    return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
-  }
+  const gate = await tradingDayGate(date, "outcome(记账)", {
+    recoveryHint: `收盘后用 /api/admin/backfill-outcomes?date=${date} 补记`,
+  });
+  if (gate) return NextResponse.json({ ok: true, ...gate });
 
   try {
     const res = await recordOutcomes(date);
@@ -29,6 +31,17 @@ export async function GET(req: NextRequest) {
       await alertCron(
         "outcome(记账)",
         `交易日 ${date} 收盘记账时无已发布简报 —— 当天早盘简报很可能没发出来,需补发并用 /api/admin/backfill-outcomes?date=${date} 补回查账`
+      );
+    }
+    // 判定率异常低:大多数受益股拿不到当日有效行情(源全挂 → quotes 空、缺 q;或源漂移 → asOf≠当日),
+    // 当天战绩几乎全 null,但 evaluated>0 会显得"记了" → 必须告警,否则静默缺一天(评审确认的回归)。
+    // 用 judged 分母而非只看 staleSkipped——后者漏了"quotes 完全为空"这种全缺价的情况。
+    const evaluated = res.evaluated ?? 0;
+    const judged = res.judged ?? 0;
+    if (evaluated > 3 && judged < evaluated * 0.5) {
+      await alertCron(
+        "outcome(记账)",
+        `交易日 ${date} 记账仅判定 ${judged}/${evaluated} 只(其中 asOf 不匹配 ${res.staleSkipped ?? 0} 只)—— 疑似行情源全挂/漂移或大面积停牌,当天战绩几乎未判定。请核查行情源并 backfill-outcomes?date=${date} 重记`
       );
     }
     return NextResponse.json({ date, ...res });
