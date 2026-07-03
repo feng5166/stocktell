@@ -14,7 +14,6 @@ import { RiskSummary } from "@/components/RiskSummary";
 import { WatchOverview } from "@/components/WatchOverview";
 import { DeepRead } from "@/components/DeepRead";
 import { IMPACT_META } from "@/lib/impact";
-import { beijingHM } from "@/lib/date";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
@@ -425,7 +424,6 @@ function BriefingCard({
   watchedCodes?: Set<string>;
 }) {
   const meta = IMPACT_META[item.impact];
-  const publishedHM = beijingHM(item.createdAt);
   const [deep, setDeep] = useState("");
   const [deepLoading, setDeepLoading] = useState(false);
   const [deepStarted, setDeepStarted] = useState(false);
@@ -482,11 +480,9 @@ function BriefingCard({
         >
           {meta.label}
         </span>
-        {publishedHM && (
-          <span className="shrink-0 text-meta text-gray-400">
-            {publishedHM} 发布
-          </span>
-        )}
+        <span className="shrink-0 text-meta text-gray-400">
+          {item.date.slice(5)} 发布
+        </span>
       </div>
       <h2 className="text-title font-semibold leading-snug text-gray-900">
         {item.title}
