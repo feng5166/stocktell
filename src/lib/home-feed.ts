@@ -17,7 +17,19 @@ export interface HomeReasoningCard {
   trigger: string | null; // 今日触发概述,如「泛林半导体、迈威尔、相干 隔夜集体走弱」
   humanSummary: string | null; // 今日人话判断(chain-take);null=生成中
   tiers: { emoji: string; level: string; what: string; rel?: Relation }[]; // 三层环节(insight 结构)
-  risk: string; // 一句话风险(insight 结构)
+  risk: string; // 一句话风险(今日侧:按当日触发方向生成,不再用 insight 演示事件的静态风险)
+}
+
+// 今日一句话风险(评审:不再用 insight 的演示事件静态风险——"AI 变便宜"前提和
+// 当日集体下跌语境错位)。按当日触发方向给验证口径,下跌日文案=负责人定稿原句。
+function dailyRisk(items: BriefingItem[]): string {
+  const ups = items.filter((it) => (it.triggerChange ?? 0) > 0).length;
+  const downs = items.filter((it) => (it.triggerChange ?? 0) < 0).length;
+  if (downs > 0 && ups === 0)
+    return "海外下跌不等于国内订单恶化,需要订单、毛利率、资本开支验证。";
+  if (ups > 0 && downs === 0)
+    return "海外上涨不等于国内订单改善,映射能否兑现要看订单、毛利率、资本开支验证。";
+  return "海外涨跌不直接等于国内订单变化,每条映射都要用订单、毛利率、资本开支验证。";
 }
 
 // 今日触发概述:取影响力最高的前 3 个触发标的 + 方向词。items 为空返回 null。
@@ -65,7 +77,7 @@ export async function buildReasoningCards(
         what: t.what,
         rel: t.rel,
       })),
-      risk: insight.tldr.risk,
+      risk: dailyRisk(items),
     });
   }
   return cards;
