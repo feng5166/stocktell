@@ -50,12 +50,22 @@ export async function getRecentHeatSignatures(
 ): Promise<string[]> {
   const db = getPrisma();
   if (!db) return [];
+  // 按「日」去重(#8):同一天可能有多个修订(-r2/-r3),不能当作多天比对,否则同图谱
+  // 检测会拿同日修订当"连续天"误触暂停。多取一些行,按 date 取每天最新一条,再取前 n 天。
   const rows = await db.insightDoc.findMany({
     where: { chainId, kind: "daily", date: { lt: beforeDate }, status: { in: ["published", "draft"] } },
-    orderBy: { date: "desc" },
-    take: n,
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    take: n * 4,
   });
-  return rows.map((r) => heatSignature(r.payload as unknown as DailyInsightPayload));
+  const seenDate = new Set<string>();
+  const perDay: DailyInsightPayload[] = [];
+  for (const r of rows) {
+    if (seenDate.has(r.date)) continue;
+    seenDate.add(r.date);
+    perDay.push(r.payload as unknown as DailyInsightPayload);
+    if (perDay.length >= n) break;
+  }
+  return perDay.map(heatSignature);
 }
 
 /* ---------- 管线暂停开关(同图谱连续告警未处理→自动暂停,§7.2-6) ---------- */
@@ -130,6 +140,8 @@ export async function publishDoc(id: string): Promise<InsightDocRow | null> {
   if (!db) return null;
   const doc = await db.insightDoc.findUnique({ where: { id } });
   if (!doc) return null;
+  // #7:只有 draft / published(重新发布)可发;rejected / superseded 不能经发布复活。
+  if (doc.status !== "draft" && doc.status !== "published") return null;
   const [, row] = await db.$transaction([
     db.insightDoc.updateMany({
       where: {

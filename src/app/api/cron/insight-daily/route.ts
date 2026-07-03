@@ -10,7 +10,7 @@ import { CHAINS } from "@/data/chains";
 
 export const dynamic = "force-dynamic";
 // 判断+热力两段 LLM + 检索 + URL 实测,给足;独立 cron 不挤 07:01 主流程预算(PRD §5)
-export const maxDuration = 120;
+export const maxDuration = 180; // #12:两段LLM+检索+URL实测叠加,给足余量(bocha 已加超时)
 
 // 链级每日推理生成(07:05 北京;07:40 briefing-backup 兜底补跑同一入口)。
 // 流程:读当日已发布条目 → 五段生成 → 护栏 → draft 落库 → 飞书待审。
@@ -29,14 +29,13 @@ export async function GET(req: NextRequest) {
   for (const chain of Object.values(CHAINS)) {
     if (!chain.segments?.length) continue;
     try {
-      // 同图谱连续告警未处理 → 管线暂停(§7.2-6):跳过生成,等人工 force 恢复
+      // 同图谱连续告警未处理 → 管线暂停(§7.2-6):跳过生成,等人工 force 恢复。
+      // #13:已暂停是"已知态",不每天飞书刷屏(暂停当天已在 streak≥3 分支告过一次);
+      // 这里只记日志,08:30 看门狗仍会兜"无当日草稿"告警,不会漏。
       const paused = await isPipelinePaused(chain.id);
       if (paused) {
         results[chain.id] = "paused";
-        await alertCron(
-          "insight-daily(已暂停)",
-          `${date} ${chain.name} 管线处于暂停态(${paused})。确认非预制图谱后手动恢复:POST /api/admin/insight-daily?force=1&chain=${chain.id}`
-        );
+        console.log(`[insight-daily] ${chain.id} paused(${paused}),skip;force=1 恢复`);
         continue;
       }
       if (await hasDaily(chain.id, date)) {

@@ -72,15 +72,15 @@ export async function buildReasoningCards(
     // 读取优先级(PRD §7.3):当日 published daily(人审过的加厚层)→ chain-take → 规则兜底。
     const daily = await getPublishedDaily(chain.id, shownDate).catch(() => null);
 
-    // 三层关系:有 daily 用真实热力前 3(方向/关系),否则回落 insight 静态三行
-    const tiers = daily
-      ? topHeatTiers(daily.payload.heat)
-      : insight.tldr.tiers.map((t) => ({
-          emoji: t.emoji,
-          level: t.level,
-          what: t.what,
-          rel: t.rel,
-        }));
+    // 三层关系:有 daily 且当日有明显升温/降温环节时,用真实热力前 3;
+    // 清淡日(热力全「观察」,#14)不把「观察」环节冒充「最直接」,回落 insight 静态三行。
+    const staticTiers = insight.tldr.tiers.map((t) => ({
+      emoji: t.emoji,
+      level: t.level,
+      what: t.what,
+      rel: t.rel,
+    }));
+    const tiers = (daily && topHeatTiers(daily.payload.heat)) || staticTiers;
 
     const take =
       daily?.payload.judgment ||
@@ -102,14 +102,16 @@ export async function buildReasoningCards(
   return cards;
 }
 
-// daily heat → 因果链卡三层:取"升温/降温/分化"里映射最强的前 3(观察靠后),
-// 转成 最直接/跟着热/沾热度 + 环节名。
+// daily heat → 因果链卡三层:取"升温/降温/分化"里映射最强的前 3。
+// #14:清淡日(有明显方向的环节 <2)返回 null,让调用方回落 insight 静态三层,
+// 不把「观察」环节冒充「最直接」。
 function topHeatTiers(
   heat: { segment: string; direction: string; relation: string }[]
-): { emoji: string; level: string; what: string; rel?: Relation }[] {
+): { emoji: string; level: string; what: string; rel?: Relation }[] | null {
   const relRank: Record<string, number> = { 直接映射: 0, 间接映射: 1, 情绪映射: 2 };
   const active = heat.filter((h) => h.direction !== "观察");
-  const pool = (active.length >= 3 ? active : heat)
+  if (active.length < 2) return null; // 清淡日:回落静态三层
+  const pool = active
     .slice()
     .sort((a, b) => (relRank[a.relation] ?? 3) - (relRank[b.relation] ?? 3))
     .slice(0, 3);

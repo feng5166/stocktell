@@ -74,6 +74,7 @@ export function validateDailyPayload(
   else {
     const seen = new Set<string>();
     for (const h of d.heat) {
+      if (!h || typeof h !== "object") { errs.push("heat 含空元素"); continue; }
       if (!segNames.has(h.segment)) errs.push(`heat 环节名不在枚举:${h.segment}`);
       if (!DIRECTIONS.includes(h.direction)) errs.push(`heat 方向非法:${String(h.direction)}`);
       if (!RELATIONS.includes(h.relation)) errs.push(`heat 关系非法:${String(h.relation)}`);
@@ -88,6 +89,7 @@ export function validateDailyPayload(
   if (!Array.isArray(d.mappingsDelta)) errs.push("缺 mappingsDelta");
   else
     for (const m of d.mappingsDelta) {
+      if (!m || typeof m !== "object") { errs.push("mappingsDelta 含空元素"); continue; }
       if (!m.code || !m.name) errs.push("mappingsDelta 缺 code/name");
       if (!MAPPING_RELATIONS.includes(m.relation))
         errs.push(`mappingsDelta[${m.name}] relation 非法:${String(m.relation)}`);
@@ -102,6 +104,7 @@ export function validateDailyPayload(
   if (!Array.isArray(d.references)) errs.push("缺 references");
   else
     for (const r of d.references) {
+      if (!r || typeof r !== "object") { errs.push("references 含空元素"); continue; }
       if (!r.url || !/^https?:\/\//.test(r.url)) errs.push(`references[${r.name}] url 非法`);
       if (!r.supports) errs.push(`references[${r.name}] 缺 supports`);
     }

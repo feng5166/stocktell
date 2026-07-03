@@ -21,7 +21,14 @@ async function sweepCaches() {
   if (!db) return;
   const day = 24 * 3600 * 1000;
   await db.morningBriefCache
-    .deleteMany({ where: { updatedAt: { lt: new Date(Date.now() - 14 * day) } } })
+    .deleteMany({
+      where: {
+        updatedAt: { lt: new Date(Date.now() - 14 * day) },
+        // CR-2:insight 管线暂停标记(insight-paused:)复用本表,绝不能被 TTL 清掉——
+        // 否则暂停的管线 14 天后自动恢复,绕过"人工 force 才恢复"的红线。
+        key: { not: { startsWith: "insight-paused:" } },
+      },
+    })
     .catch(() => {});
   // 30 天 TTL 只扫按日生成的 key 家族(morningv2/fundflowv2/stock:);条目 id 键的深读不扫——
   // 那是对历史事件的解读存档,删了会在用户翻旧简报时按"今天的行情"重新生成,时代错乱。
