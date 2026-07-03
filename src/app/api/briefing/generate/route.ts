@@ -14,12 +14,9 @@ export async function POST(req: NextRequest) {
   const useLLM = req.nextUrl.searchParams.get("llm") === "1"; // 预览默认用模板(快);要 LLM 文案加 llm=1
   const replace = req.nextUrl.searchParams.get("replace") === "1"; // 重刷:删该日旧简报→新口径重生成并发布
 
-  // 指定日期 / 预览 / 重刷 属管理操作,需管理员
-  if (
-    (date || dryRun || replace) &&
-    !isAdminAuthorized(req) &&
-    !(await isAdminSession())
-  ) {
+  // 生成一律属管理操作(烧 LLM、写库)。此前不带参数的 POST 不鉴权,任何人可刷 draft
+  // (2026-07-03 早上 07:54 出现过一批来路不明的 draft),现收紧:所有 POST 都要管理员。
+  if (!isAdminAuthorized(req) && !(await isAdminSession())) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 

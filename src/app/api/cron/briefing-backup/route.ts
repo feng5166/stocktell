@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 90; // 要等主流程(生成+推送)跑完
+export const maxDuration = 300; // 要等主流程(生成+推送)跑完,主流程上限已放宽到 300s
 
 // 补位:主简报 cron(07:00 北京)若漏触发 / 当时隔夜行情抓空,40 分钟后再戳一次主流程。
 // 主流程幂等(当天已生成→跳过),所以主 cron 成功时这里是 no-op;漏了/抓空则由它补上并推送。

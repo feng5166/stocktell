@@ -9,7 +9,9 @@ import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // LLM 生成可能要几十秒
+// 生成(LLM 几十秒)+ 逐用户早报(每人 LLM+Tushare+节流)同函数串行,60s 必被 Vercel 硬杀,
+// 邮件/推送在生成之后 → 简报在、推送无声丢(2026-07-03 事故)。Pro 上限给足。
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   // 鉴权:Vercel cron 会带 Authorization: Bearer ${CRON_SECRET}
@@ -58,10 +60,23 @@ export async function GET(req: NextRequest) {
         `交易日 ${date} 生成 0 条简报(movers 为空,疑似美股行情抓取失败/陈旧)—— 需手动重发`
       );
     }
-    // 盘前推送:发布后,给有自选+有相关动态的用户推一条(同一 cron 内做,省一个 cron 额度)
-    const digest = await runPreOpenDigest().catch(() => null);
+    // 盘前推送:发布后,给有自选+有相关动态的用户推一条(同一 cron 内做,省一个 cron 额度)。
+    // 失败不影响主流程,但必须告警——简报在而邮件没发是最难察觉的静默失败。
+    const digest = await runPreOpenDigest().catch(async (e) => {
+      await alertCron("briefing(盘前邮件)", e);
+      return null;
+    });
+    if (digest?.failed) {
+      await alertCron(
+        "briefing(盘前邮件)",
+        `${date} 邮件部分失败 ${digest.failed}/${digest.candidates},可补:POST /api/admin/push-digest`
+      );
+    }
     // Web Push:发布后给所有浏览器订阅者推一条通用提醒(点击落地 /#mine)。失败不影响主流程。
-    const webpush = await runWebPush().catch(() => null);
+    const webpush = await runWebPush().catch(async (e) => {
+      await alertCron("briefing(网页推送)", e);
+      return null;
+    });
     return NextResponse.json({
       ok: true,
       date,
