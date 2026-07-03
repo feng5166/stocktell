@@ -481,7 +481,7 @@ function BriefingCard({
           {meta.label}
         </span>
         <span className="shrink-0 text-meta text-gray-400">
-          {item.date.slice(5)} 发布
+          {item.date.slice(5)}
         </span>
       </div>
       <h2 className="text-title font-semibold leading-snug text-gray-900">
