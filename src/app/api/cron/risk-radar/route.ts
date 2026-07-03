@@ -15,11 +15,11 @@ export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  // 交易日闸门(fail-closed;unknown 跳过并告警,当天全局去重)。
+  // 交易日闸门:只在确定休市(周末/确认节假日)跳过;unknown(Tushare 抖动)照常交付——
+  // 本路由加闸门前本就无条件交付、不依赖 trade_cal,不能因闸门凭空多出"Tushare 挂就漏发"(评审)。
   const date = todayISO();
   const gate = await tradingDayGate(date, "risk-radar(雷区提醒)", {
-    dedupeUnknown: true,
-    recoveryHint: "手动触发 GET /api/cron/risk-radar",
+    onUnknown: "proceed",
   });
   if (gate) return NextResponse.json({ ok: true, ...gate });
   try {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (result.candidates > 0 && result.pushed === 0) {
       await alertCron(
         "risk-radar(雷区提醒)",
-        `${date} 雷区推送 candidates=${result.candidates} 但 pushed=0(桥/Resend 双双失败?)`
+        `${date} 雷区推送 candidates=${result.candidates} 但 pushed=0(桥慢/挂 或 Resend 失败,需核查——非必然双双失败)`
       );
     }
     return NextResponse.json(result);
