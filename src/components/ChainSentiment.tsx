@@ -84,15 +84,30 @@ export function ChainSentiment({
   }
   const a = d.a;
 
+  // 状态标签综合两端(评审):隔夜明显走弱时,A股哪怕家数中性也不能标「中性」——
+  // 用户刚在上面读完"链整体承压",这里写中性会显得前后矛盾。隔夜压力/动力优先表达。
   let mood: { t: string; c: string } | null = null;
   if (a) {
     const ratio = a.up / (a.up + a.down || 1);
-    mood =
-      ratio >= 0.6 && a.avgPct > 0
-        ? { t: "偏强", c: "bg-rose-50 text-rose-600" }
-        : ratio <= 0.4 && a.avgPct < 0
-        ? { t: "偏弱", c: "bg-emerald-50 text-emerald-600" }
-        : { t: "中性", c: "bg-gray-100 text-gray-500" };
+    const aTone =
+      ratio >= 0.6 && a.avgPct > 0 ? "强" : ratio <= 0.4 && a.avgPct < 0 ? "弱" : "平";
+    const us = d.us;
+    const usRatio = us && us.up + us.down > 0 ? us.up / (us.up + us.down) : null;
+    const usWeak = usRatio !== null && usRatio <= 0.35 && (us?.avgPct ?? 0) <= -1.5;
+    const usStrong = usRatio !== null && usRatio >= 0.65 && (us?.avgPct ?? 0) >= 1.5;
+    mood = usWeak
+      ? aTone === "弱"
+        ? { t: "整体承压", c: "bg-emerald-50 text-emerald-600" }
+        : { t: "承压但分化", c: "bg-emerald-50 text-emerald-600" }
+      : usStrong
+      ? aTone === "强"
+        ? { t: "共振偏强", c: "bg-rose-50 text-rose-600" }
+        : { t: "隔夜偏强", c: "bg-rose-50 text-rose-600" }
+      : aTone === "强"
+      ? { t: "偏强", c: "bg-rose-50 text-rose-600" }
+      : aTone === "弱"
+      ? { t: "偏弱", c: "bg-emerald-50 text-emerald-600" }
+      : { t: "中性", c: "bg-gray-100 text-gray-500" };
   }
 
   // A股 EOD(涨跌/主力净流入)Tushare 傍晚才发布。交易日盘后、数据还停在上一交易日时,

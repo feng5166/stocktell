@@ -39,6 +39,8 @@ export function BriefingFeed({
   relations?: Record<string, string>; // 条目id → 关系标签(直接相关/间接相关/情绪映射/产业链相关),替代「高影响」
 }) {
   const wl = useWatchlist(initialCodes);
+  const { status: sessionStatus } = useSession();
+  const { open: openAuth } = useAuthModal();
   const isMine = (it: BriefingItem) =>
     (it.triggerCode != null && wl.has(it.triggerCode)) ||
     it.beneficiaries.some((b) => wl.has(b.code));
@@ -69,12 +71,18 @@ export function BriefingFeed({
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
         />
         {!wl.ready ? (
-          <Hint>
-            <span className="font-medium text-gray-700">添加自选,查看今天哪些全球事件影响你的股票</span>
-            <span className="mt-1 block text-xs text-gray-400">正在读取你的自选…</span>
-          </Hint>
+          <MineEmpty
+            guest={false}
+            onAdd={() => {
+              if (sessionStatus === "unauthenticated") openAuth(AUTH_ADD_HINT);
+            }}
+          />
         ) : wl.codes.size === 0 ? (
-          <QuickAddWatch wl={wl} />
+          sessionStatus === "authenticated" ? (
+            <QuickAddWatch wl={wl} />
+          ) : (
+            <MineEmpty guest onAdd={() => openAuth(AUTH_ADD_HINT)} />
+          )
         ) : (
           <div className="space-y-3">
             <RiskSummary codes={wl.codes} />
@@ -371,6 +379,32 @@ function CardFeed({
   );
 }
 
+const AUTH_ADD_HINT =
+  "登录后添加自选,StockTell 每天告诉你:哪些全球事件正在影响你的股票。";
+
+// 「和我相关」空态(评审定稿):未登录=登录引导,读取中=同壳(永不裸 loading)。
+// 已登录无自选走 QuickAddWatch(带添加搜索框)。
+function MineEmpty({ guest, onAdd }: { guest: boolean; onAdd: () => void }) {
+  return (
+    <div className="rounded-xl border border-brand-100 bg-white p-4 text-center sm:p-5">
+      <div className="text-sm font-medium text-gray-800">
+        {guest ? "登录后添加自选股" : "添加你的自选股"}
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-gray-500">
+        {guest
+          ? "查看今天哪些全球事件影响你的股票。"
+          : "StockTell 会告诉你:今天哪些全球事件正在影响它们。"}
+      </p>
+      <button
+        onClick={onAdd}
+        className="mt-3 inline-flex min-h-[40px] items-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+      >
+        {guest ? "登录并添加" : "⭐ 添加自选"}
+      </button>
+    </div>
+  );
+}
+
 function SectionHead({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -378,14 +412,6 @@ function SectionHead({ title, hint }: { title: string; hint?: string }) {
         {title}
       </h2>
       {hint && <span className="text-xs text-gray-400">{hint}</span>}
-    </div>
-  );
-}
-
-function Hint({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-sm text-gray-500">
-      {children}
     </div>
   );
 }
@@ -503,8 +529,8 @@ function renderRich(text: string): JSX.Element[] {
 
 // 关系标签配色(评审:事件卡用关系分级替代「高影响」,与 insight 页同色系)
 const REL_LABEL_CLS: Record<string, string> = {
-  直接相关: "bg-rose-100 text-rose-700",
-  间接相关: "bg-amber-100 text-amber-700",
+  直接映射: "bg-rose-100 text-rose-700",
+  间接映射: "bg-amber-100 text-amber-700",
   情绪映射: "bg-slate-100 text-slate-500",
   弱映射: "bg-gray-200 text-gray-500",
   产业链相关: "bg-gray-100 text-gray-600",

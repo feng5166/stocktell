@@ -18,8 +18,8 @@ export const revalidate = 60;
 
 // 关系标签配色(与 insight/首页事件卡同一套)
 const RELATION_CHIP_CLS: Record<string, string> = {
-  直接相关: "bg-rose-100 text-rose-700",
-  间接相关: "bg-amber-100 text-amber-700",
+  直接映射: "bg-rose-100 text-rose-700",
+  间接映射: "bg-amber-100 text-amber-700",
   情绪映射: "bg-slate-100 text-slate-500",
   弱映射: "bg-gray-200 text-gray-500",
   产业链相关: "bg-gray-100 text-gray-600",

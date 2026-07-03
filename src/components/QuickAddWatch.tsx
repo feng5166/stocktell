@@ -17,8 +17,12 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
   const { status } = useSession();
   const title =
     status === "authenticated"
-      ? "先添加几只股票,StockTell 才能告诉你「和我相关」👇"
+      ? "添加你的自选股 👇"
       : "添加自选,查看今天哪些全球事件影响你的股票 👇";
+  const desc =
+    status === "authenticated"
+      ? "StockTell 会告诉你:今天哪些全球事件正在影响它们。搜代码或名称即可加入。"
+      : "搜代码或名称加自选,以后这儿只给你看跟你票相关的动态。";
 
   const matches = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -32,9 +36,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
   return (
     <div className="rounded-xl border border-brand-100 bg-white p-3 sm:p-4">
       <div className="text-sm font-medium text-gray-800">{title}</div>
-      <div className="mt-1 text-xs text-gray-500">
-        搜代码或名称加自选,以后这儿只给你看跟你票相关的动态。
-      </div>
+      <div className="mt-1 text-xs text-gray-500">{desc}</div>
 
       <input
         value={q}

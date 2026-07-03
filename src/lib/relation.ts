@@ -28,10 +28,11 @@ export function relationLabelFor(item: {
     if (r && (!best || ORDER.indexOf(r) < ORDER.indexOf(best))) best = r;
   }
   if (!best) return RELATION_FALLBACK;
+  // 语言资产定稿(评审):映射层级统一为 直接映射/间接映射/情绪映射(/弱映射),全站复用
   return best === "直接"
-    ? "直接相关"
+    ? "直接映射"
     : best === "间接"
-    ? "间接相关"
+    ? "间接映射"
     : best === "弱"
     ? "弱映射"
     : "情绪映射";

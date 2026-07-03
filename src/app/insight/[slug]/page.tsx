@@ -33,9 +33,9 @@ const CONF: Record<Confidence, string> = {
   假设: "bg-rose-50 text-rose-600",
 };
 const REL_GROUPS: { rel: Relation; label: string; hint: string }[] = [
-  { rel: "直接", label: "🟥 直接相关", hint: "和这次事件、这些环节的关系最直接(比如给北美云厂供货)" },
-  { rel: "间接", label: "🟨 间接相关", hint: "受益链条存在,但中间隔了几环,要看具体订单/客户/收入占比" },
-  { rel: "情绪映射", label: "⬜ 沾热度(情绪映射)", hint: "可能被热度带动,但不等于这次事件的直接受益方,真金白银看订单" },
+  { rel: "直接", label: "🟥 直接映射", hint: "和这次事件、这些环节的关系最直接(比如给北美云厂供货)" },
+  { rel: "间接", label: "🟨 间接映射", hint: "受益链条存在,但中间隔了几环,要看具体订单/客户/收入占比" },
+  { rel: "情绪映射", label: "⬜ 情绪映射(沾热度)", hint: "可能被热度带动,但不等于这次事件的直接受益方,真金白银看订单" },
   { rel: "弱", label: "弱关联", hint: "" },
 ];
 
