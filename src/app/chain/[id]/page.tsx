@@ -9,6 +9,7 @@ import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
+import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
 import { relationLabelFor } from "@/lib/relation";
@@ -71,8 +72,11 @@ export default async function ChainPage({
 
   // 链级「今日一句话判断」:只读 07:01 cron 写的缓存(零 LLM,保 ISR);
   // 缺失(cron 失败/回退期)用规则兜底文案,页面永不在渲染路径打模型。
+  // 读取优先级(PRD §7.3):当日 published daily 判断 → chain-take → 规则兜底
+  const daily = await getPublishedDaily(chain.id, shownDate).catch(() => null);
   const chainTake =
-    (await getChainTake(chain.id, shownDate).catch(() => null)) ??
+    daily?.payload.judgment ||
+    (await getChainTake(chain.id, shownDate).catch(() => null)) ||
     fallbackChainTake(items);
 
   // 成分股「今天为什么被提到」:今天的简报条目里出现过的受益股 → code 到条目标题。

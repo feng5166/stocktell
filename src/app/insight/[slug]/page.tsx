@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { STOCK_MAP } from "@/data/stocks";
 import { CHAINS } from "@/data/chains";
+import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
+import { todayISO } from "@/lib/date";
 import {
   INSIGHT_CHAINS,
   type InsightChain,
@@ -15,7 +17,9 @@ import {
 
 // 推理链详情页(内核最小可证 · Beta)。静态预生成,不进导航/首页。
 // 层级(默认人话、展开专业):10秒卡 → 真正关键就两步 → 热力(人话层常显/专业层折叠)→ 票名单 → 易看错 → CTA。
-export const dynamic = "force-static";
+// SSG + ISR:骨架静态,顶部「今日更新」区读当日 published daily(60s 重算)。
+// 无 daily / 未审时不渲染该区,正文骨架照常(地板保证)。
+export const revalidate = 60;
 export function generateStaticParams() {
   return Object.keys(INSIGHT_CHAINS).map((slug) => ({ slug }));
 }
@@ -126,11 +130,15 @@ function MappingRow({ m }: { m: StockMap }) {
   );
 }
 
-export default function InsightPage({ params }: { params: { slug: string } }) {
+export default async function InsightPage({ params }: { params: { slug: string } }) {
   const c: InsightChain | undefined = INSIGHT_CHAINS[params.slug];
   if (!c) notFound();
-  // 这条因果链对应的链页(chains.ts 里 insightSlug 指到本页的那条),CTA 回链用
+  // 这条因果链对应的链页(chains.ts 里 insightSlug 指到本页的那条),CTA 回链 + 今日更新读库用
   const chainPage = Object.values(CHAINS).find((ch) => ch.insightSlug === c.slug);
+  // 今日更新(PRD §8):当日 published daily 判断 + 热力摘要;无则不渲染(骨架照常)
+  const daily = chainPage
+    ? await getPublishedDaily(chainPage.id, todayISO()).catch(() => null)
+    : null;
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -147,6 +155,29 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
             一件全球事件,如何一路传到 A 股 · 更新 {c.updatedAt}
           </p>
         </header>
+
+        {daily && (
+          <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-brand-100">
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <span className="text-xs font-medium text-brand-600">📡 今日更新 · {daily.date}</span>
+              <span className="text-meta text-gray-400">链级每日推理</span>
+            </div>
+            <p className="text-sm leading-relaxed text-gray-800">{daily.payload.judgment}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {daily.payload.heat
+                .filter((h) => h.direction !== "观察")
+                .slice(0, 5)
+                .map((h) => (
+                  <span key={h.segment} className="rounded bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-600">
+                    {h.segment} {h.direction}
+                  </span>
+                ))}
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-gray-500">
+              <span className="font-medium text-gray-600">今日风险</span>:{daily.payload.risk}
+            </p>
+          </section>
+        )}
 
         {/* ===== 10 秒层:事件一行 + 钩子 + 三行短句 + 风险 + 看票 ===== */}
         <div className="mb-3 rounded-2xl bg-brand-50/40 px-4 py-4 shadow-sm">

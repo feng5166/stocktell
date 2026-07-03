@@ -5,8 +5,17 @@
 import { CHAINS } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
+import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import type { BriefingItem } from "@/lib/briefings";
 import type { Relation } from "@/data/insight-chains";
+
+// heat 方向 → 因果链卡三层"关系级别"文案(有 daily 时用真实热力替换静态三行)
+const HEAT_EMOJI: Record<string, string> = { 升温: "🔥", 降温: "🧊", 分化: "🌡️", 观察: "👀" };
+const REL_TO_LEVEL: Record<string, string> = {
+  直接映射: "最直接",
+  间接映射: "跟着热",
+  情绪映射: "沾热度",
+};
 
 export interface HomeReasoningCard {
   chainId: string;
@@ -59,26 +68,57 @@ export async function buildReasoningCards(
     if (!chain.insightSlug) continue;
     const insight = INSIGHT_CHAINS[chain.insightSlug];
     if (!insight) continue;
-    // 今日判断:优先 cron 写的缓存;缺失用规则兜底;都没有则 null(卡片显示"生成中",不显示假内容)
+
+    // 读取优先级(PRD §7.3):当日 published daily(人审过的加厚层)→ chain-take → 规则兜底。
+    const daily = await getPublishedDaily(chain.id, shownDate).catch(() => null);
+
+    // 三层关系:有 daily 用真实热力前 3(方向/关系),否则回落 insight 静态三行
+    const tiers = daily
+      ? topHeatTiers(daily.payload.heat)
+      : insight.tldr.tiers.map((t) => ({
+          emoji: t.emoji,
+          level: t.level,
+          what: t.what,
+          rel: t.rel,
+        }));
+
     const take =
-      (await getChainTake(chain.id, shownDate).catch(() => null)) ??
+      daily?.payload.judgment ||
+      (await getChainTake(chain.id, shownDate).catch(() => null)) ||
       fallbackChainTake(items);
+
     cards.push({
       chainId: chain.id,
       chainName: chain.name,
       insightSlug: chain.insightSlug,
       date: shownDate,
       stale,
-      trigger: triggerSummary(items),
+      trigger: daily?.payload.trigger.summary ?? triggerSummary(items),
       humanSummary: take,
-      tiers: insight.tldr.tiers.map((t) => ({
-        emoji: t.emoji,
-        level: t.level,
-        what: t.what,
-        rel: t.rel,
-      })),
-      risk: dailyRisk(items),
+      tiers,
+      risk: daily?.payload.risk ?? dailyRisk(items),
     });
   }
   return cards;
+}
+
+// daily heat → 因果链卡三层:取"升温/降温/分化"里映射最强的前 3(观察靠后),
+// 转成 最直接/跟着热/沾热度 + 环节名。
+function topHeatTiers(
+  heat: { segment: string; direction: string; relation: string }[]
+): { emoji: string; level: string; what: string; rel?: Relation }[] {
+  const relRank: Record<string, number> = { 直接映射: 0, 间接映射: 1, 情绪映射: 2 };
+  const active = heat.filter((h) => h.direction !== "观察");
+  const pool = (active.length >= 3 ? active : heat)
+    .slice()
+    .sort((a, b) => (relRank[a.relation] ?? 3) - (relRank[b.relation] ?? 3))
+    .slice(0, 3);
+  const relOf = (r: string): Relation | undefined =>
+    r === "直接映射" ? "直接" : r === "间接映射" ? "间接" : r === "情绪映射" ? "情绪映射" : undefined;
+  return pool.map((h) => ({
+    emoji: HEAT_EMOJI[h.direction] ?? "•",
+    level: REL_TO_LEVEL[h.relation] ?? "相关",
+    what: h.segment,
+    rel: relOf(h.relation),
+  }));
 }
