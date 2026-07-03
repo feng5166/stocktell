@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
-import { FeedbackLink } from "@/components/FeedbackLink";
 import { STOCK_MAP } from "@/data/stocks";
+import { CHAINS } from "@/data/chains";
 import {
   INSIGHT_CHAINS,
   type InsightChain,
@@ -130,6 +130,8 @@ function MappingRow({ m }: { m: StockMap }) {
 export default function InsightPage({ params }: { params: { slug: string } }) {
   const c: InsightChain | undefined = INSIGHT_CHAINS[params.slug];
   if (!c) notFound();
+  // 这条因果链对应的链页(chains.ts 里 insightSlug 指到本页的那条),CTA 回链用
+  const chainPage = Object.values(CHAINS).find((ch) => ch.insightSlug === c.slug);
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -154,28 +156,36 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
             {c.eventPlain}
           </p>
           <p className="mt-2 text-[15px] font-medium leading-relaxed text-gray-900">{c.tldr.hook}</p>
+          {/* 三层关系:一层一张小卡,固定结构 = 关系级别 / 环节 / 为什么(评审:别挤一行) */}
           <div className="mt-3 space-y-1.5">
             {c.tldr.tiers.map((t) => {
-              const line = (
-                <p className="text-sm leading-relaxed">
-                  <span className="mr-1">{t.emoji}</span>
-                  <span
-                    className={`mr-1.5 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                      t.rel ? REL[t.rel] : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    {t.level}
-                  </span>
-                  <b className="font-semibold text-gray-900">{t.what}</b>
-                  <span className="text-gray-500">{" —— "}{t.why}</span>
-                </p>
+              const card = (
+                <div className="rounded-lg bg-white/80 px-3 py-2 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>{t.emoji}</span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                        t.rel ? REL[t.rel] : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {t.level}
+                    </span>
+                    <b className="text-sm font-semibold text-gray-900">{t.what}</b>
+                    {t.rel && (
+                      <span className="ml-auto shrink-0 text-[11px] text-brand-400">
+                        看这级的票 →
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs leading-relaxed text-gray-500">{t.why}</p>
+                </div>
               );
               return t.rel ? (
                 <a key={t.level} href={`#rel-${t.rel}`} className="block">
-                  {line}
+                  {card}
                 </a>
               ) : (
-                <div key={t.level}>{line}</div>
+                <div key={t.level}>{card}</div>
               );
             })}
           </div>
@@ -262,6 +272,10 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
             {REL_GROUPS.map((g) => {
               const items = c.mappings.filter((m) => m.relation === g.rel);
               if (items.length === 0) return null;
+              // 每组默认只展开前 3 只,其余折叠(评审:16 只全展开页面太长)
+              const HEAD = 3;
+              const head = items.slice(0, HEAD);
+              const rest = items.slice(HEAD);
               return (
                 <div key={g.rel} id={`rel-${g.rel}`} className="scroll-mt-16">
                   <p className="text-xs font-semibold text-gray-700">{g.label}</p>
@@ -269,10 +283,22 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
                     <p className="mb-0.5 text-[11px] leading-relaxed text-gray-400">{g.hint}</p>
                   )}
                   <ul>
-                    {items.map((m) => (
+                    {head.map((m) => (
                       <MappingRow key={m.name} m={m} />
                     ))}
                   </ul>
+                  {rest.length > 0 && (
+                    <details>
+                      <summary className="cursor-pointer px-2 py-1 text-xs font-medium text-brand-600">
+                        展开其余 {rest.length} 只
+                      </summary>
+                      <ul className="mt-0.5">
+                        {rest.map((m) => (
+                          <MappingRow key={m.name} m={m} />
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                   <details>
                     <summary className="cursor-pointer text-[11px] text-gray-400">
                       为什么是这几只 · 关系依据
@@ -323,44 +349,48 @@ export default function InsightPage({ params }: { params: { slug: string } }) {
                       常设入口
                     </span>
                   )}
+                  {ref.supports && (
+                    <span className="ml-1 rounded bg-brand-50 px-1 py-0.5 text-[11px] text-brand-700">
+                      支撑:{ref.supports}
+                    </span>
+                  )}
                   <span className="block text-gray-500">{ref.note}</span>
                 </li>
               ))}
             </ul>
             <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
-              「已核实」= 真实文档/披露页,链接实测可达;「常设入口」= 官方长期页面。正式版每一步会挂当天来源与时间戳。
+              「已核实」= 真实文档/披露页,链接实测可达;「常设入口」= 官方长期页面;「支撑」= 这条来源对应推理链的哪一跳/哪个环节。正式版每跳挂当天具体引用(季报/公告段落)+ 时间戳。
             </p>
           </details>
         </Section>
 
         {/* ===== CTA:真按钮,不做交易导向 ===== */}
         <div className="mb-3 rounded-xl bg-white px-4 py-3.5 shadow-sm">
-          <p className="text-sm font-semibold text-gray-800">接下来</p>
+          <p className="text-sm font-semibold text-gray-800">接下来,跟住这条链</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             <a
               href="#mappings"
               className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
             >
-              ⭐ 挑几只加进自选盯起来
+              ⭐ 把相关的票加进自选,跟踪后续验证
             </a>
+            {chainPage && (
+              <Link
+                href={`/chain/${chainPage.id}`}
+                className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-100 px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+              >
+                📡 看这条链今天怎么动
+              </Link>
+            )}
             <Link
               href="/settings"
               className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-100 px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
             >
-              📬 订阅每日提醒
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-100 px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
-            >
-              📰 看今日简报
+              📬 订阅这条链的每日变化
             </Link>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
-            不喊单:这些动作只是帮你持续跟着这条链。想要「订阅这条链」的更新?
-            <span className="ml-1 inline-flex align-middle">
-              <FeedbackLink />
-            </span>
+            不喊单:这些动作只是帮你持续跟着这条链的验证节奏,不构成任何操作建议。
           </p>
         </div>
 

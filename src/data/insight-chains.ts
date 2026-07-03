@@ -68,8 +68,9 @@ export interface InsightChain {
   mappings: StockMap[];
   uncertainties: string[]; // 已知不确定性(深度)
   // 去哪核实:kind=具体来源(真实文档/披露页,URL 已实测可达)或 常设入口(官方 IR/定价页);
-  // 正式上线时每跳另挂当天具体来源+时间戳。绝不编造链接。
-  references: { kind: "具体来源" | "常设入口"; name: string; url: string; type: string; note: string; date?: string }[];
+  // supports=这条来源支撑推理链的哪一跳/哪个环节(评审拍板:references 要对得上跳)。
+  // 正式上线时每跳另挂当天具体来源+时间戳(1.0=具体季报/公告段落+具体日期)。绝不编造链接。
+  references: { kind: "具体来源" | "常设入口"; name: string; url: string; type: string; note: string; date?: string; supports?: string }[];
   disclaimer: string;
 }
 
@@ -193,12 +194,12 @@ const AI_INFRA: InsightChain = {
     "有没有被资金提前炒过头(price-in)没校验,需结合当日行情与资金面再看。",
   ],
   references: [
-    { kind: "具体来源", date: "2025-11-19", name: "英伟达 2026 财年 Q3 财报新闻稿", url: "https://nvidianews.nvidia.com/news/nvidia-announces-financial-results-for-third-quarter-fiscal-2026", type: "事件来源", note: "数据中心分部收入与下季指引原文(本演示事件的原型)" },
-    { kind: "具体来源", date: "2025-10", name: "微软 2026 财年 Q1 业绩发布页", url: "https://www.microsoft.com/en-us/investor/earnings/FY-2026-Q1/press-release-webcast", type: "云厂 capex", note: "云厂资本开支与「AI/数据中心投入」口径(Alphabet/Meta/亚马逊同理)" },
-    { kind: "具体来源", name: "中际旭创 · 巨潮资讯法定披露页", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=300308", type: "光模块厂财报", note: "定期报告与业绩/订单公告原文,以此为准" },
-    { kind: "常设入口", name: "OpenAI 官方定价页", url: "https://openai.com/api/pricing/", type: "官方定价", note: "核实「AI 算一次更便宜」:每百万 token 价格逐代变化" },
-    { kind: "常设入口", name: "美光投资者关系", url: "https://investors.micron.com", type: "财报", note: "HBM 产能与预定情况(SK 海力士同理)" },
-    { kind: "常设入口", name: "台积电投资者关系(法说会)", url: "https://investor.tsmc.com", type: "法说会", note: "CoWoS 先进封装扩产表述" },
+    { kind: "具体来源", date: "2025-11-19", name: "英伟达 2026 财年 Q3 财报新闻稿", url: "https://nvidianews.nvidia.com/news/nvidia-announces-financial-results-for-third-quarter-fiscal-2026", type: "事件来源", supports: "事件本身 · 主线第2步(算力需求还在涨)", note: "数据中心分部收入与下季指引原文(本演示事件的原型)" },
+    { kind: "具体来源", date: "2025-10", name: "微软 2026 财年 Q1 业绩发布页", url: "https://www.microsoft.com/en-us/investor/earnings/FY-2026-Q1/press-release-webcast", type: "云厂 capex", supports: "主线第2步(云厂买更多芯片、建更多数据中心)", note: "云厂资本开支与「AI/数据中心投入」口径(Alphabet/Meta/亚马逊同理)" },
+    { kind: "具体来源", name: "中际旭创 · 巨潮资讯法定披露页", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=300308", type: "光模块厂财报", supports: "光模块环节 · 直接相关票的订单验证", note: "定期报告与业绩/订单公告原文,以此为准" },
+    { kind: "常设入口", name: "OpenAI 官方定价页", url: "https://openai.com/api/pricing/", type: "官方定价", supports: "主线第1步(AI 算一次更便宜)", note: "核实「AI 算一次更便宜」:每百万 token 价格逐代变化" },
+    { kind: "常设入口", name: "美光投资者关系", url: "https://investors.micron.com", type: "财报", supports: "HBM/存储环节", note: "HBM 产能与预定情况(SK 海力士同理)" },
+    { kind: "常设入口", name: "台积电投资者关系(法说会)", url: "https://investor.tsmc.com", type: "法说会", supports: "先进封装(CoWoS)环节", note: "CoWoS 先进封装扩产表述" },
   ],
   disclaimer:
     "本内容为 AI 推理基础设施产业链的关联梳理,基于公开、公认的行业因果逻辑与证据类型示例;「证据举例」仅说明真实上线时应引用何种来源,不含真实实时数字与 URL,种子事件为占位演示需替换为当日真事件。文中所有关系均为「关联/映射/受影响」,属非确认因果关系、仅统计非预测,不构成任何投资建议、不含买卖指令、目标价或涨跌预测。多跳链为「逻辑 + 证据」框架,非回测统计胜率。本工具不提供证券投资咨询服务,所列个股仅为产业链关联的说明性示例,不构成任何推荐;个股波动风险自负。",
