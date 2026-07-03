@@ -8,6 +8,7 @@ import { ChainRoster } from "@/components/chain/ChainRoster";
 import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert";
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
+import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
 import { IMPACT_META } from "@/lib/impact";
@@ -59,6 +60,19 @@ export default async function ChainPage({
   }
   const topItems = items.slice(0, 3);
 
+  // 链级「今日一句话判断」:只读 07:01 cron 写的缓存(零 LLM,保 ISR);
+  // 缺失(cron 失败/回退期)用规则兜底文案,页面永不在渲染路径打模型。
+  const chainTake =
+    (await getChainTake(chain.id, shownDate).catch(() => null)) ??
+    fallbackChainTake(items);
+
+  // 成分股「今天为什么被提到」:今天的简报条目里出现过的受益股 → code 到条目标题。
+  // 直接复用已取到的 items,零额外请求;roster 行内渲染,让清单每天有变化。
+  const mentioned: Record<string, string> = {};
+  for (const it of items)
+    for (const b of it.beneficiaries)
+      if (!mentioned[b.code]) mentioned[b.code] = it.title;
+
   // 分享卡摘要(服务端算好)
   const a = sentiment.a;
   const us = sentiment.us;
@@ -99,6 +113,33 @@ export default async function ChainPage({
         <div className="mt-4">
           <ChainSentiment initial={sentiment} refresh={snap ? !snap.fresh : false} />
         </div>
+
+        {/* 链级一句话判断:为什么强/弱、传导到哪些环节、哪些只是情绪映射(评审拍板 P0-1) */}
+        {chainTake && (
+          <div className="mt-4 rounded-xl bg-white p-4 shadow-sm">
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <span className="text-xs font-medium text-brand-600">
+                今天怎么看这条链
+              </span>
+              {stale && (
+                <span className="shrink-0 text-meta text-gray-400">
+                  最近一期 · {shownDate}
+                </span>
+              )}
+            </div>
+            <p className="text-sm leading-relaxed text-gray-800">{chainTake}</p>
+            {chain.insightSlug && (
+              <div className="mt-2 text-right">
+                <Link
+                  href={`/insight/${chain.insightSlug}`}
+                  className="text-xs font-medium text-brand-600 hover:underline"
+                >
+                  这条链是怎么传导的?看完整因果链 →
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 隔夜美股 · A股联动 */}
         <div className="mt-4">
@@ -147,6 +188,17 @@ export default async function ChainPage({
                   {it.retailTake && (
                     <div className="mt-1 text-xs text-gray-600">怎么想:{it.retailTake}</div>
                   )}
+                  {/* 深读出口:把分享页与 insight 因果链打通(评审拍板 P0-2) */}
+                  {chain.insightSlug && (
+                    <div className="mt-1.5 text-right">
+                      <Link
+                        href={`/insight/${chain.insightSlug}`}
+                        className="text-xs font-medium text-brand-600 hover:underline"
+                      >
+                        看它怎么传到 A 股 →
+                      </Link>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -162,8 +214,8 @@ export default async function ChainPage({
           summary={summary}
         />
 
-        {/* 成分股 + 加自选 */}
-        <ChainRoster chainId={chain.id} members={roster} />
+        {/* 成分股 + 加自选(mentioned=今天简报点名过的票,行内标注让清单每天有变化) */}
+        <ChainRoster chainId={chain.id} members={roster} mentioned={mentioned} />
 
         <p className="mt-8 text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
       </main>

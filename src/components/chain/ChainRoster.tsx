@@ -11,9 +11,11 @@ import type { RosterItem } from "@/data/chains";
 export function ChainRoster({
   chainId,
   members,
+  mentioned,
 }: {
   chainId: string;
   members: RosterItem[];
+  mentioned?: Record<string, string>; // code → 今天点名它的简报标题(让清单每天有变化)
 }) {
   const wl = useWatchlist();
 
@@ -24,13 +26,14 @@ export function ChainRoster({
       g.rows.push(it);
       m.set(it.sector, g);
     }
-    // 龙头排前
+    // 今天被简报点名的排最前(清单每天跟着动态变),其次龙头
+    const rank = (x: RosterItem) =>
+      (mentioned?.[x.code] ? -2 : 0) + (x.tier === "龙头" ? -1 : 0);
     for (const g of Array.from(m.values()))
-      g.rows.sort(
-        (a, b) => (a.tier === "龙头" ? -1 : 0) - (b.tier === "龙头" ? -1 : 0)
-      );
+      g.rows.sort((a, b) => rank(a) - rank(b));
     return Array.from(m.entries());
-  }, [members]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, mentioned && Object.keys(mentioned).join(",")]);
 
   const addedCount = members.filter((m) => wl.has(m.code)).length;
 
@@ -88,6 +91,12 @@ export function ChainRoster({
                       </div>
                       {it.take && (
                         <div className="mt-0.5 line-clamp-2 text-xs text-gray-500">{it.take}</div>
+                      )}
+                      {mentioned?.[it.code] && (
+                        <div className="mt-0.5 text-xs">
+                          <span className="font-medium text-brand-600">今日被提到</span>
+                          <span className="text-gray-500"> · {mentioned[it.code]}</span>
+                        </div>
                       )}
                     </Link>
                     <button

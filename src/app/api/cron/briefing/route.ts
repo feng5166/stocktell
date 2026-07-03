@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDrafts } from "@/lib/generate";
 import { insertDrafts, listBriefing } from "@/lib/briefings";
+import { generateChainTake } from "@/lib/chain-take";
 import { runPreOpenDigest } from "@/lib/digest";
 import { runWebPush } from "@/lib/push-web";
 import { todayISO } from "@/lib/date";
@@ -60,6 +61,14 @@ export async function GET(req: NextRequest) {
         `交易日 ${date} 生成 0 条简报(movers 为空,疑似美股行情抓取失败/陈旧)—— 需手动重发`
       );
     }
+    // 链级「今日一句话判断」(链页顶部用):放在推送段之前,推送段再出事它也已生成。
+    // 失败不致命(链页有规则兜底文案),但告警知晓。
+    const chainTake = await generateChainTake("ai", date, created).catch(
+      async (e) => {
+        await alertCron("briefing(链级判断)", e);
+        return null;
+      }
+    );
     // 盘前推送:发布后,给有自选+有相关动态的用户推一条(同一 cron 内做,省一个 cron 额度)。
     // 失败不影响主流程,但必须告警——简报在而邮件没发是最难察觉的静默失败。
     const digest = await runPreOpenDigest().catch(async (e) => {
@@ -82,6 +91,7 @@ export async function GET(req: NextRequest) {
       date,
       engine,
       published: created.length,
+      chainTake: chainTake ? !!chainTake.take : false,
       digest,
       webpush,
     });

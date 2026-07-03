@@ -8,6 +8,7 @@ export interface ChainConfig {
   short: string; // "AI 链"
   tagline: string;
   aMembers: Stock[]; // A 股成分(游客也能加自选)
+  insightSlug?: string; // 对应 /insight/[slug] 因果链深读(链页「看它怎么传到 A 股」出口)
 }
 
 export const CHAINS: Record<string, ChainConfig> = {
@@ -17,6 +18,7 @@ export const CHAINS: Record<string, ChainConfig> = {
     short: "AI 链",
     tagline: "隔夜美股 AI 涨了,今天 A 股哪条链、哪只票跟着动——一页看懂。",
     aMembers: STOCKS.filter((s) => s.market === "A股"),
+    insightSlug: "ai-infra",
   },
 };
 

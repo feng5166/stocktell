@@ -174,10 +174,10 @@ export function ChainConvert({
     <>
       <section className="mt-6 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
         <div className="text-title font-semibold text-gray-900">
-          每天早上,{chainName}怎么动一眼看懂
+          订阅{chainName}每日推理
         </div>
         <p className="mt-1 text-xs text-gray-500">
-          订阅后每个交易日早盘前收到解读邮件(隔夜联动 + 你自选的票要注意)。随时可退订。
+          每个交易日开盘前收到:隔夜事件怎么传到这条链、哪些票只是情绪映射,以及你自选的票要注意什么。随时可退订。
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -186,11 +186,11 @@ export function ChainConvert({
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
           >
             {sub === "done"
-              ? "✓ 已订阅每日解读"
+              ? "✓ 已订阅这条链"
               : sub === "loading"
               ? "订阅中…"
               : session?.user
-              ? "订阅每日解读"
+              ? "订阅这条链"
               : "登录并订阅"}
           </button>
           <button
