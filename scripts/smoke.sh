@@ -152,6 +152,27 @@ curl -s -m 20 -b "$JAR" -X POST "$BASE/api/morning-brief" \
   assert_json _ "d.get('brief') is None and d.get('count') == 0" \
   && ok "原型链属性名被过滤(constructor/toString)" || ng "原型链属性名未被过滤"
 
+# ===== insight 生产管线(M1;需 ADMIN_TOKEN 环境变量才跑写操作,否则只测未授权) =====
+echo "-- insight 管线 --"
+# 未授权:审核接口与生成端点必须 401(红线:后台鉴权)
+IC=$(curl -s -m 20 -o /dev/null -w '%{http_code}' "$BASE/api/admin/insights")
+[ "$IC" = "401" ] && ok "未授权 GET /api/admin/insights → 401" || ng "审核接口未授权返回 $IC(应 401)"
+GC=$(curl -s -m 20 -o /dev/null -w '%{http_code}' -X POST "$BASE/api/admin/insight-daily")
+[ "$GC" = "401" ] && ok "未授权 POST /api/admin/insight-daily → 401" || ng "生成端点未授权返回 $GC(应 401)"
+if [ -n "$ADMIN_TOKEN" ]; then
+  AUTH="Authorization: Bearer $ADMIN_TOKEN"
+  # 幂等:当日已有 daily 时不带 force 应 skip(不重复烧 LLM)
+  IDEM=$(curl -s -m 30 -X POST "$BASE/api/admin/insight-daily?chain=ai" -H "$AUTH")
+  echo "$IDEM" | assert_json _ "d.get('skipped')=='already-exists' or d.get('ok')==True" \
+    && ok "生成幂等(已有则 skip 或产出)" || ng "生成幂等异常:$IDEM"
+  # 同链同日 published 至多一条(superseded 不变量)
+  curl -s -m 20 "$BASE/api/admin/insights" -H "$AUTH" |
+    assert_json _ "len([x for x in d.get('items',[]) if x['date']==x['date'] and x['kind']=='daily' and x['status']=='published']) <= len(set(x['date'] for x in d.get('items',[]) if x['kind']=='daily'))" \
+    && ok "published daily 每链每日至多一条(superseded 不变量)" || ng "存在同日多 published"
+else
+  ok "跳过 insight 写操作用例(未设 ADMIN_TOKEN)"
+fi
+
 echo
 echo "== 结果:$PASS_N 过 / $FAIL_N 败 =="
 [ "$FAIL_N" -eq 0 ]
