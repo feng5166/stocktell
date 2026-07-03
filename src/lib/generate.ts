@@ -38,12 +38,18 @@ function impactFromChange(abs: number): Impact {
   return "低";
 }
 
-// 美东最近一个工作日(YYYY-MM-DD)。无需节假日表:美股休市的节日本身是工作日、
-// 但当天没有新行情,asOf 会落在前一交易日 → 自然被判为 stale。周末由 cron 跳过。
+// 美东最近一个「应已收盘」的工作日(YYYY-MM-DD)。无需节假日表:美股休市的节日本身是
+// 工作日、但当天没有新行情,asOf 会落在前一交易日 → 自然被判为 stale。周末由 cron 跳过。
+// ⚠️ 回拨 18 小时再取工作日:美东过了午夜就翻新工作日,但新一天的行情要 9:30 开盘后才有——
+// 不回拨的话,北京时间 12:00(=美东午夜)之后跑生成/replace,会把"今天还没开盘"误判成
+// "美股休市"而生成 0 条(2026-07-03 中午 replace 实踩:删了 8 条只回填 0 条)。
+// 18h 的含义:上一交易日收盘(16:00 ET)后 2 小时内仍指向上一日,不影响 07:00 北京主 cron
+// (=19:00 ET,回拨后仍是当日)与真节假日判定。
 function mostRecentUSWeekday(now: Date): string {
   const dayMs = 86400000;
+  const anchor = new Date(now.getTime() - 18 * 3600000);
   for (let i = 0; i < 7; i++) {
-    const t = new Date(now.getTime() - i * dayMs);
+    const t = new Date(anchor.getTime() - i * dayMs);
     const wd = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
       weekday: "short",

@@ -159,16 +159,17 @@ export function ChainSentiment({
             extra={
               a.netMfYi != null ? (
                 <>
-                  {" · 主力"}
+                  {" · 主力 "}
+                  <span className={changeClass(a.netMfYi)}>{fmtYi(a.netMfYi)}</span>
                   {/* 主力是 EOD、涨跌是实时/今日收盘时,时点不同必须就地标清(用户反馈:
-                      只靠底部脚注不明显,数字挨着实时涨跌摆会被当成同一时点) */}
+                      只靠底部脚注不明显;格式定稿=数字后跟「(M/D收盘)」) */}
                   {a.netMfDate &&
                     (a.pctLive || (a.pctAsOf && a.pctAsOf !== a.netMfDate)) && (
                       <span className="text-meta text-gray-400">
-                        ({a.netMfDate.slice(5)}收)
+                        ({Number(a.netMfDate.slice(5, 7))}/
+                        {Number(a.netMfDate.slice(8, 10))}收盘)
                       </span>
-                    )}{" "}
-                  <span className={changeClass(a.netMfYi)}>{fmtYi(a.netMfYi)}</span>
+                    )}
                 </>
               ) : undefined
             }
