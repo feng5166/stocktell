@@ -10,7 +10,8 @@ import { INSIGHT_CHAINS } from "./insight-chains";
 import { CHAINS } from "./chains";
 import { STOCKS, STOCK_MAP } from "./stocks";
 import { AI_INFRA_UPGRADES, TRIGGER_CLASS } from "./chain-relations-audit.generated";
-import { DIRECT_EVIDENCE } from "./direct-evidence";
+import { DIRECT_EVIDENCE, REASON_APPEND } from "./direct-evidence";
+import { INDIRECT_EVIDENCE } from "./indirect-evidence.generated";
 
 export type RelationType =
   | "trigger" // 触发源:美股/海外公司(NVDA/PLTR/NOW),非 A 股映射标的
@@ -225,16 +226,21 @@ for (const st of STOCKS) {
   });
 }
 
-// 4) direct 证据层(负责人 2026-07-04 起草待审):补 references + 验证点 + 证据状态,
-//    清审阅台"direct 缺证据"红旗。references 指向法定披露页(不自产 URL),诚实标注证据状态。
+// 4) 证据层(负责人 2026-07-04 审阅通过):direct + indirect 补 references + 四段式验证点 + 证据状态,
+//    清审阅台"缺证据"红/黄旗。references 指向法定披露入口(不自产 URL),诚实标注证据状态。
+const CONCEPT_RE = /受益|机会|龙头|弹性|空间|景气/;
+const VERIFY_RE = /后续看|验证|订单|客户|收入|毛利|占比|交付|披露|财报|供货|营收/;
 for (const r of relations) {
-  if (r.relationType !== "direct") continue;
-  const ev = DIRECT_EVIDENCE[r.code];
-  if (!ev) continue;
-  r.references = ev.references;
-  r.verificationPoints = ev.verificationPoints;
-  if (ev.evidenceStatus) r.evidenceStatus = ev.evidenceStatus;
-  if (ev.reasonAppend && !r.reason.includes(ev.reasonAppend.replace(/^[;；]/, ""))) r.reason += ev.reasonAppend;
+  const ev = r.relationType === "direct" ? DIRECT_EVIDENCE[r.code] : r.relationType === "indirect" ? INDIRECT_EVIDENCE[r.code] : undefined;
+  if (ev) {
+    r.references = ev.references;
+    r.verificationPoints = ev.verificationPoints;
+    if (ev.evidenceStatus) r.evidenceStatus = ev.evidenceStatus;
+    if (ev.reasonAppend && !r.reason.includes(ev.reasonAppend.replace(/^[;；]/, ""))) r.reason += ev.reasonAppend;
+  }
+  // 概念词无验证点 → 补 reason 验证点(guard:仅补真含概念词且无验证点的那条,不误伤同 code 另一关系)
+  const app = REASON_APPEND[r.code];
+  if (app && CONCEPT_RE.test(r.reason) && !VERIFY_RE.test(r.reason)) r.reason += app;
 }
 
 // ================= 访问器(页面统一入口) =================

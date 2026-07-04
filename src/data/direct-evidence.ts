@@ -35,6 +35,14 @@ export type DirectEvidence = {
   reasonAppend?: string; // 追加到 reason(清"概念词无验证点"旗标)
 };
 
+// 概念词无验证点的关系补 reason 验证点(清审阅台"概念词无验证点"旗)。派生侧带 guard:
+// 仅当该关系 reason 确含概念词且无验证点时才补,避免误伤同 code 的另一条关系(如英维克电力链 direct)。
+export const REASON_APPEND: Record<string, string> = {
+  "688008": ";后续看 DDR5 / 内存接口订单、服务器客户、收入占比、毛利率。", // 澜起科技(indirect,龙头)
+  "002837": ";后续看液冷 / 温控订单、数据中心客户、收入占比、毛利率。", // 英维克(ai-infra indirect,龙头)
+  "300475": ";后续看存储代理收入占比、上游客户结构与下游需求。", // 香农芯创(sentiment,景气)
+};
+
 export const DIRECT_EVIDENCE: Record<string, DirectEvidence> = {
   // —— ai-infra ——
   "300308": {
