@@ -105,5 +105,36 @@
 
 ---
 
+# 第三批评审(2026-07-04 · 复核第二批修复 + 新功能 AI 应用事件路由 + DRY 重构)
+
+> 评审对象:第二批修复(`7f0f352`)之后的四批工作——① 生成侧 B2-2 漏网补修 + 飞书待审增强(`66977c9`);② 清留待项 B2-6 安全 / B2-11 / P2 一批(`c4020d6`);③ 新功能 P1.1 AI 应用事件触发源路由(`2a0f09c`,新 `trigger-sources.ts`);④ DRY 关系配色单一真源(`5e03b8a`,新 `relation-rank.ts`)。
+> 基线 `7f0f352` → HEAD `5e03b8a`。6 维度多智能体 + 对抗验证 + 人工抽验关键项(19 候选→18 存活)。
+> **先说结论:B2-2 生成侧越级收敛(relationForCodeInChain)与 B2-6 防越级核心(relation 一律从核定源重算、绝不用客户端值)真到位;新 AI 应用路由功能合规定位安全;DRY 重构无现网 UI 回归。** 但有 2 处合规红线 + 数处修复未竟,详下。
+> **B2-7(我上批引入的回归)已由我方 `f5f0c5f` 补全 catch 内 sibling 分支,第二批已闭环。**
+
+## 第三批 · 合规红线(人工抽验确认属实)
+
+| # | 文件:行 | 问题 | 建议 |
+|---|---|---|---|
+| B3-1 合规·中 | `content-guard.ts:31` | **「成」正则是净回归**——实际 `/[一二三四五六七八九十两]+\s*成(?![功语交色本长熟就)])/`,两头翻车:**漏拦**「两成**就**见顶」(就被前瞻排除)、「回撤**3**成/跌去**５**成」(这支只吃中文数字、不吃半/全角阿拉伯);**误伤**「一成不变/毛利率三成/九成新」(当成具体涨跌数字→正当产业解读被弃回退+假红线告警)。 | 改白名单剥离法:先 `replace(/成功|成交|成本|成色|成语|成长|成熟|成就|一成不变/g,'')` 再 `/[0-9０-９一二三四五六七八九十两]+\s*成/` 命中,统一半/全/中文数字口径、不误伤成词。**(合规红线路径,建议优先修)** |
+| B3-2 合规·低-中 | `admin/insights/route.ts:69` | admin save/publish 只跑 `validateDailyPayload`(结构/schema),**不跑 content-guard**(禁词/涨跌数字)。持 ADMIN_TOKEN POST「建议买入,目标价50元,今日涨了5%」绕过生成侧 runGuards 硬闸、发布后原样上 insight 页。**人审是主闸,这是代码级纵深缺失**(生成侧有、人审发布侧没有)。 | updatePayload/publishDoc 前对 clean 跑 runGuards(或 isComplianceClean),blockers 非空返 400,与生成侧同一道护栏。 |
+
+## 第三批 · 修复未竟 / 漏洞
+
+| # | 文件:行 | 问题 | 建议 |
+|---|---|---|---|
+| B3-3 中(风险可控) | `insight-pipeline/generate.ts:295` | **P2 SSRF ::ffff: 补丁对 WHATWG 归一化形同死代码**——URL 把 `[::ffff:169.254.169.254]` 归一化成十六进制 `[::ffff:a9fe:a9fe]`,「剥前缀+点分正则」生产走不到→元数据/内网仍放行。所幸盲探无回显、输入须过相关性过滤,危害有限。 | host 以 `::ffff:` 开头一律拦,或把末两 hextet 还原成点分 IPv4 再判;补 `[::ffff:169.254.169.254]/[::ffff:10.0.0.1]` 回归用例。 |
+| B3-4 低(修复未竟) | `trigger-sources.ts:44` | AI 路由「纯涨跌不触」护栏生产失效——判定吃 `title+retailTake`,模板 retailTake 注入领头 peer 的 AI 词(PLTR 的 peer 科大讯飞恒含「大模型」)→ 纯涨跌也弹「反误判」入口;单测只喂合成干净文本给虚假信心。 | 路由判定只用事件字段(title/triggerName),别吃 peer 派生文本;单测改真实模板 retailTake 输入。 |
+| B3-5 低 | `admin/insights/route.ts:75` | publish 不校验 publishDoc 返回值——对 rejected/superseded 稿返 null,接口仍报 `{ok:true,status:"published"}` 且已覆盖打回稿 payload → 谎报「已发布」实则仍 rejected。 | publish 前按 doc.status 校验(非 draft/published 直接 409 并跳过 updatePayload)。 |
+| B3-6 低 | `admin/insights/route.ts:90/96` | enforceReadonlyRelations 用 `getChain(prev.chainId)` 重算、validateDailyPayload 用 `getChain(payload.chainId)`,接口不断言两者一致;mappingsDelta[].segment 既不被 enforce 收敛也不被 schema 校验 → 留跨链改标签+伪造 segment 缝(仅 admin UI+飞书,不进公开页)。 | POST 断言 `payload.chainId===doc.payload.chainId`;enforce 一并重算 segment(segmentForCodeInChain);schema 增 `segment∈chain.segments`。 |
+| B3-7 低(漏洞) | `trigger-sources.ts:28` | AI 关键词无词界锚定——`/AI/i` 命中拉丁词内 ai(gains/chain/retail/email),「智能体」是「智能体验」子串 → 普通软件股事件误路由,违模块自身注释。 | 英文 `(?<![A-Za-z])AI(?![A-Za-z])`;「智能体」加负向前瞻 `智能体(?!验|系|征)`。 |
+
+## 第三批 · 优化(低)
+- `trigger-sources.ts:29` AI_COMMERCIAL 召回偏低:`AI\s*(收入|订单)` 要求紧邻,「AI云收入/AI相关订单」隔开漏命中——放宽为 `AI[\s\S]{0,4}?(收入|营收|订单|付费|订阅|ARR|商业化)`,并把触发源 observation 纳入匹配文本。
+- `BriefingFeed.tsx:752`+`ReasoningCards.tsx:12` DRY 没抽干净:首页事件卡 REL_LABEL_CLS、因果链卡 REL_CLS 仍是独立副本(与新真源逐字节相同),模块注释 overclaims——直接 import 新真源(键完全一致可直换),或缩小注释声称范围。
+- `relation-rank.ts:32` REL_CHIP_CLS_SHORT 类型收窄成 `Record<string,string>`,丢 Relation 穷尽性检查(加第 5 档不补键仍编译过)——改回 `Record<Relation,string>` 或消费点补兜底色。
+
+---
+
 ## 附:未采纳/驳回的候选(供参考,不必处理)
-两批共 65+ 候选,经对抗验证驳回约 13 条(行号对不上 / 场景不可达 / 已有兜底 / 属文档已接受的设计),已剔除。上表为存活项。第二批人工抽验确认了两条 HIGH(title 未过护栏、relation 跨链越级)与 briefing-backup 的 insight 无超时 fetch 均属实。
+三批共 84+ 候选,经对抗验证驳回约 14 条(行号对不上 / 场景不可达 / 已有兜底 / 属文档已接受的设计),已剔除。上表为存活项。人工抽验累计确认:第二批两条 HIGH(title 未过护栏、relation 跨链越级)+ briefing-backup insight 无超时 fetch;第三批两条合规(content-guard「成」净回归、admin 发布侧缺 content-guard)均属实。
