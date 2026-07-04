@@ -20,6 +20,7 @@ import { SECTOR_ALIASES } from "@/lib/sector-alias";
 import { STOCK_MAP } from "@/data/stocks";
 import { TakeBody } from "@/components/RetailTake";
 import { routeInsightForItem } from "@/data/trigger-sources";
+import { REL_CHIP_CLS } from "@/lib/relation-rank";
 import type { WatchChainInfo } from "@/lib/watch-relation";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
@@ -595,7 +596,7 @@ function WatchRelationCard({ row, quiet }: { row: CoveredRow; quiet?: boolean })
         </Link>
         <span
           className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
-            REL_LABEL_CLS[info.relation] ?? "bg-gray-100 text-gray-600"
+            REL_CHIP_CLS[info.relation] ?? "bg-gray-100 text-gray-600"
           }`}
         >
           {info.relation}
@@ -749,14 +750,6 @@ function renderRich(text: string): JSX.Element[] {
 }
 
 // 关系标签配色(评审:事件卡用关系分级替代「高影响」,与 insight 页同色系)
-const REL_LABEL_CLS: Record<string, string> = {
-  直接映射: "bg-rose-100 text-rose-700",
-  间接映射: "bg-amber-100 text-amber-700",
-  情绪映射: "bg-slate-100 text-slate-500",
-  弱映射: "bg-gray-200 text-gray-500",
-  产业链相关: "bg-gray-100 text-gray-600",
-};
-
 // TakeBody 迁到 components/RetailTake.tsx(共享,链页等消费点复用);顶部已 import。
 
 function BriefingCard({
@@ -833,7 +826,7 @@ function BriefingCard({
         <span className="flex flex-wrap items-center gap-1.5">
           <span
             className={`inline-flex rounded px-1.5 py-0.5 text-meta font-medium ${
-              relation ? REL_LABEL_CLS[relation] ?? "bg-gray-100 text-gray-600" : meta.tagClass
+              relation ? REL_CHIP_CLS[relation] ?? "bg-gray-100 text-gray-600" : meta.tagClass
             }`}
           >
             {relation ?? meta.label}

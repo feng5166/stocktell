@@ -7,14 +7,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { track } from "@/lib/analytics";
 import type { HomeReasoningCard } from "@/lib/home-feed";
-
-// 关系层级配色与 insight 页一致(直接=rose/间接=amber/情绪映射=slate)
-const REL_CLS: Record<string, string> = {
-  直接: "bg-rose-100 text-rose-700",
-  间接: "bg-amber-100 text-amber-700",
-  情绪映射: "bg-slate-100 text-slate-500",
-  弱: "bg-gray-200 text-gray-500",
-};
+import { REL_CHIP_CLS_SHORT } from "@/lib/relation-rank";
 
 export function ReasoningCards({ cards }: { cards: HomeReasoningCard[] }) {
   if (cards.length === 0) return null;
@@ -100,7 +93,7 @@ function Card({ c, rank }: { c: HomeReasoningCard; rank: number }) {
               <span>{t.emoji}</span>
               <span
                 className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                  t.rel ? REL_CLS[t.rel] : "bg-gray-100 text-gray-500"
+                  t.rel ? REL_CHIP_CLS_SHORT[t.rel] : "bg-gray-100 text-gray-500"
                 }`}
               >
                 {t.level}

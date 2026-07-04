@@ -1,6 +1,8 @@
 // 关系档 UI 常量(零依赖模块——server 与 client 都可 import,不把 insight 数据拖进客户端包)。
-// 单一真源:排序权重 + 配色都在这里改,所有关系标签(ChainRoster/链页/insight 页/home-feed)跟着变,
-// 杜绝"改一处配色漏几处"(本会话已在 3 处各抄一份同色表)。
+// 单一真源:排序权重 + 配色都在这里改,所有关系标签(ChainRoster/链页/insight 页/home-feed/
+// 首页事件卡)跟着变,杜绝"改一处配色漏几处"。
+// import type 编译期擦除、不产生运行时依赖,故仍是零依赖(用于短键映射的穷尽性检查)。
+import type { Relation } from "@/data/insight-chains";
 
 // 前台关系档排序权重(直接>间接>情绪>弱)。
 export const FRONT_RELATION_RANK: Record<string, number> = {
@@ -28,8 +30,9 @@ export const REL_CHIP_CLS: Record<string, string> = {
   产业链相关: TIER_CLS.generic,
 };
 
-// 短标签键(insight 页 Relation 类型:直接/间接/情绪映射/弱)。
-export const REL_CHIP_CLS_SHORT: Record<string, string> = {
+// 短标签键(insight 页 Relation 类型)。用 Record<Relation,string> 拿穷尽性检查:
+// 将来 Relation 加第 5 档而这里不补键 → 编译报错(而非 chip 静默掉底色)。
+export const REL_CHIP_CLS_SHORT: Record<Relation, string> = {
   直接: TIER_CLS.direct,
   间接: TIER_CLS.indirect,
   情绪映射: TIER_CLS.sentiment,

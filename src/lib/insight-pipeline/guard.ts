@@ -41,6 +41,18 @@ function externalText(p: DailyInsightPayload): string {
   return p.references.map((r) => r.name).join("\n");
 }
 
+// 发布/保存前的合规扫描(禁词 + 具体涨跌数字),供 admin 人审路径做代码级纵深:生成侧有
+// runGuards 硬闸,人审侧也要兜——持 ADMIN_TOKEN 提交 judgment=「建议买入,涨了5%」不能绕过。
+// 不含 schema / confidence 封顶(人审可给「高」),只查铁律③的禁词与涨跌数字红线。
+export function complianceBlockers(payload: DailyInsightPayload): string[] {
+  const b: string[] = [];
+  const prose = ourProse(payload);
+  const bannedHits = scanBannedWords(prose + "\n" + externalText(payload));
+  if (bannedHits.length) b.push(`禁词命中:${bannedHits.join("、")}`);
+  if (hasSpecificMove(prose)) b.push("命中具体涨跌数字红线");
+  return b;
+}
+
 export function runGuards(
   payload: DailyInsightPayload,
   segments: ChainSegment[],

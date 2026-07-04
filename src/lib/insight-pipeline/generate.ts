@@ -290,10 +290,11 @@ function isBlockedHost(host: string): boolean {
   const h = host.toLowerCase().replace(/^\[|\]$/g, ""); // 去 IPv6 括号
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) return true;
   if (h === "metadata.google.internal") return true;
-  // P2:剥离 IPv4-mapped IPv6 前缀(::ffff:169.254.169.254 → 169.254.169.254)再按 IPv4 判,
-  // 否则 [::ffff:169.254.169.254] 绕过下面的 IPv4 私网/元数据检查。
-  const v4 = h.replace(/^::ffff:/i, "");
-  const m = v4.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  // IPv4-mapped IPv6 一律拦:合法外部 URL 从不用 ::ffff: 字面量,而 WHATWG URL 会把
+  // [::ffff:169.254.169.254] 归一化成十六进制 [::ffff:a9fe:a9fe]——"剥前缀+点分正则"在生产走不到。
+  // 直接按前缀拦,同时覆盖点分与十六进制两种形态(元数据/内网地址不放行)。
+  if (h.startsWith("::ffff:")) return true;
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (m) {
     const [a, b] = [Number(m[1]), Number(m[2])];
     if (a === 10 || a === 127 || a === 0) return true;
