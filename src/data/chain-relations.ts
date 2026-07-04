@@ -88,6 +88,43 @@ const CHAIN_META: Record<string, { chainId: string; chainName: string }> = {
 const chainNameOf = (chainId: string) =>
   chainId === "data-center-power" ? "AI 数据中心电力基础设施链" : "AI 推理基础设施链";
 
+// 电力链标准环节 enum(负责人 2026-07-04 拍板归并:原 37 个近义变体 → 8 标准环节;前台筛选只展示这 8 个)。
+// 【硬约束】后续新增电力链关系必须从这里选,不允许自由文本 segment 名(杜绝"每票自造一个环节名")。
+export const DC_POWER_SEGMENTS = [
+  "UPS / 数据中心电源",
+  "HVDC",
+  "温控",
+  "液冷",
+  "供配电 / 变压器",
+  "备用电源 / 储能",
+  "输配电 / 电网侧外溢",
+  "能源侧外溢",
+] as const;
+// 电力链 code → 标准环节(按主业务归一;只改 segment 名,不动关系档/reason/relationType)。
+const DC_SEG_BY_CODE: Record<string, string> = {
+  "300693": "UPS / 数据中心电源", // 盛弘股份
+  "002518": "UPS / 数据中心电源", // 科士达
+  "300870": "UPS / 数据中心电源", // 欧陆通(服务器电源)
+  "002335": "UPS / 数据中心电源", // 科华数据
+  "002851": "UPS / 数据中心电源", // 麦格米特(电源平台)
+  "002364": "HVDC", // 中恒电气
+  "002837": "温控", // 英维克(主业务=精密温控)
+  "301018": "温控", // 申菱环境
+  "300249": "温控", // 依米康
+  "603912": "温控", // 佳力图
+  "300499": "液冷", // 高澜股份
+  "300990": "液冷", // 同飞股份
+  "920808": "液冷", // 曙光数创
+  "300602": "液冷", // 飞荣达
+  "688676": "供配电 / 变压器", // 金盘科技
+  "002922": "供配电 / 变压器", // 伊戈尔(变压器/磁性器件)
+  "300068": "备用电源 / 储能", // 南都电源
+  "002028": "输配电 / 电网侧外溢", // 思源电气
+  "600875": "能源侧外溢", // 东方电气
+  "601985": "能源侧外溢", // 中国核电
+  "003816": "能源侧外溢", // 中国广核
+};
+
 const segId = (name: string) => name.replace(/[\s/()（）]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 const mktOf = (m?: string): "CN" | "HK" | "US" => (m === "美股" ? "US" : m === "港股" ? "HK" : "CN");
 
@@ -111,14 +148,16 @@ for (const ins of Object.values(INSIGHT_CHAINS)) {
     if (seen.has(key)) continue; // 同 code 同链只留最先(insight 内已去重)
     seen.add(key);
     const st = STOCK_MAP[m.code];
+    // 电力链:segment 归并到标准环节(只改名,verify 模板仍按原 segment 查)
+    const segName = meta.chainId === "data-center-power" && DC_SEG_BY_CODE[m.code] ? DC_SEG_BY_CODE[m.code] : m.segment;
     relations.push({
       code: m.code,
       name: m.name,
       market: mktOf(st?.market),
       chainId: meta.chainId,
       chainName: meta.chainName,
-      segmentId: segId(m.segment),
-      segmentName: m.segment,
+      segmentId: segId(segName),
+      segmentName: segName,
       relationType: REL_MAP[m.relation] ?? "candidate",
       confidence: CONF_MAP[m.confidence] ?? "medium",
       reason: m.reason,
