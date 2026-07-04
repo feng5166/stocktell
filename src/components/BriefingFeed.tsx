@@ -19,6 +19,7 @@ import { track } from "@/lib/analytics";
 import { SECTOR_ALIASES } from "@/lib/sector-alias";
 import { STOCK_MAP } from "@/data/stocks";
 import { TakeBody } from "@/components/RetailTake";
+import { routeInsightForItem } from "@/data/trigger-sources";
 import type { WatchChainInfo } from "@/lib/watch-relation";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 
@@ -772,6 +773,8 @@ function BriefingCard({
   relation?: string; // 关系标签(评审:替代「高影响」,不用影响强弱暗示结果)
 }) {
   const meta = IMPACT_META[item.impact];
+  // P1.1:海外 AI 应用事件(Palantir/ServiceNow 等 + AI 商业化内容)→ 引到「为什么不等于国内受益」
+  const appRoute = routeInsightForItem(item);
   const [deep, setDeep] = useState("");
   const [deepLoading, setDeepLoading] = useState(false);
   const [deepStarted, setDeepStarted] = useState(false);
@@ -882,6 +885,18 @@ function BriefingCard({
           <div className="mb-1 text-xs font-medium text-gray-500">这条逻辑怎么验证</div>
         )}
         <TakeBody text={item.retailTake} />
+
+        {/* P1.1:海外 AI 应用事件的"反误判"入口——点破"同题材≠国内受益"(与链级 insight 不同语义) */}
+        {appRoute && (
+          <Link
+            href={`/insight/${appRoute.slug}`}
+            onClick={() => track("home_event_app_route_click", { event_id: item.id })}
+            className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 hover:bg-amber-100"
+          >
+            <span className="text-xs font-medium text-amber-800">🔍 {appRoute.label}</span>
+            <span className="shrink-0 text-xs text-amber-500">→</span>
+          </Link>
+        )}
 
         {/* 底部双入口(拍板⑤):主=链级因果框架(insight),次=实时拆解(原深读,能力保留换文案) */}
         {!deepStarted && (

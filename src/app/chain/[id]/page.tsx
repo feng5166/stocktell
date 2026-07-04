@@ -15,6 +15,7 @@ import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { relationLabelFor, relationForCodeInChain } from "@/lib/relation";
+import { routeInsightForItem } from "@/data/trigger-sources";
 import { DISCLAIMER } from "@/lib/constants";
 
 export const revalidate = 60;
@@ -258,6 +259,19 @@ export default async function ChainPage({
                       <TakeBody text={it.retailTake} />
                     </div>
                   )}
+                  {/* P1.1:海外 AI 应用事件的"反误判"入口 */}
+                  {(() => {
+                    const ar = routeInsightForItem(it);
+                    return ar ? (
+                      <Link
+                        href={`/insight/${ar.slug}`}
+                        className="mt-1.5 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 hover:bg-amber-100"
+                      >
+                        <span className="text-xs font-medium text-amber-800">🔍 {ar.label}</span>
+                        <span className="shrink-0 text-xs text-amber-500">→</span>
+                      </Link>
+                    ) : null;
+                  })()}
                   {/* 深读出口:把分享页与 insight 因果链打通(评审拍板 P0-2) */}
                   {chain.insightSlug && (
                     <div className="mt-1.5 text-right">
