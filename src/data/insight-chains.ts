@@ -349,6 +349,10 @@ const DATACENTER_POWER: InsightChain = {
 };
 
 // ============================================================================
+// AI 应用链 · ai-application insight v1.0(2026-07-03 合生产)。
+// 上线范围:静态 insight + AI 链页入口(/chain/ai → 本页);首页事件自动联动【后续接入】
+//   (P1.1「AI 应用事件触发源分类与 insight 路由」:Palantir/ServiceNow 强触发、
+//    Adobe/Salesforce/MSFT/Oracle/Snowflake/Datadog 中触发需 AI 商业化关键词才路由)。
 // AI 应用链(第三条手工 insight;2026-07-03 排期,沿用 ai-infra 模板)。
 // 诚实核心(与硬件链的根本差异):海外 AI 应用和国内 AI 应用是「同题材、不同公司、无供货关系」,
 // 不是产业链传导而是情绪映射。这条链 A 股【几乎没有直接映射】——把海外应用大涨读成国内应用
