@@ -172,7 +172,7 @@ const AI_INFRA: InsightChain = {
   mappingNote:
     "每条均为「研究框架梳理·非确认关系」,不构成对该证券的推荐或买卖建议;所列个股仅为产业链关联的说明性示例。关系(直接/间接/情绪映射)= 产业链传导层级(供货/配套距离),不代表受益程度。",
   mappings: [
-    { name: "中际旭创", code: "300308", segment: "光模块/高速互连", relation: "直接", reason: "全球光模块龙头,英伟达及北美四大云厂核心供应商,与集群扩展、速率迭代强绑定", confidence: "高" },
+    { name: "中际旭创", code: "300308", segment: "光模块/高速互连", relation: "直接", reason: "全球光模块龙头,英伟达及北美四大云厂核心供应商,AI 数据中心网络升级的短传导环节;后续看 800G/1.6T 订单、海外云厂客户导入、收入占比与毛利率。", confidence: "高" },
     { name: "新易盛", code: "300502", segment: "光模块/高速互连", relation: "直接", reason: "北美云厂 800G/1.6T 主力二供,海外订单占比高,映射海外算力投入", confidence: "高" },
     { name: "天孚通信", code: "300394", segment: "光模块/高速互连", relation: "间接", reason: "向旭创/新易盛/Fabrinet 供光器件与光引擎,是「供应商的供应商」,对海外事件隔一层传导", confidence: "中" },
     { name: "工业富联", code: "601138", segment: "服务器/算力代工", relation: "直接", reason: "全球 AI 服务器代工龙头,绑定英伟达/云厂出货,是 capex 出货的风向标", confidence: "高" },

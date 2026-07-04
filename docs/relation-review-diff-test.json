@@ -1,0 +1,42 @@
+{
+ "count": 2,
+ "reviewedAt": "2026-07-04T12:00:00.000Z",
+ "rows": [
+  {
+   "code": "000977",
+   "name": "浪潮信息",
+   "chainId": "ai-infra",
+   "segmentId": "服务器-算力代工",
+   "segment": "服务器/算力代工",
+   "oldType": "direct",
+   "newType": "",
+   "oldReason": "服务器整机环节，后续看 AI 服务器订单、运营商/云厂/政企客户、收入和毛利率",
+   "newReason": "AI 服务器整机环节,推理算力落地的直接承载,传导路径短、业务入口明确;后续看 AI 服务器订单、云厂/运营商/政企客户导入、收入占比与毛利率。",
+   "action": "edit_reason",
+   "note": "测试审阅闭环:确认浪潮信息为 AI 服务器环节 direct,reason 补充「为什么是 direct(短传导+业务入口)」与订单/客户/收入毛利验证点。",
+   "evidenceStatus": "needs_review",
+   "refs": "none",
+   "triggerCat": "",
+   "source": "manual",
+   "reviewedAt": "2026-07-04T12:00:00.000Z"
+  },
+  {
+   "code": "300308",
+   "name": "中际旭创",
+   "chainId": "ai-infra",
+   "segmentId": "光模块-高速互连",
+   "segment": "光模块/高速互连",
+   "oldType": "direct",
+   "newType": "",
+   "oldReason": "全球光模块龙头,英伟达及北美四大云厂核心供应商,与集群扩展、速率迭代强绑定",
+   "newReason": "全球光模块龙头,英伟达及北美四大云厂核心供应商,AI 数据中心网络升级的短传导环节;后续看 800G/1.6T 订单、海外云厂客户导入、收入占比与毛利率。",
+   "action": "edit_reason",
+   "note": "测试审阅闭环:确认中际旭创为光模块短传导 direct,reason 补充 800G/1.6T 订单/海外云厂客户/收入毛利验证点。",
+   "evidenceStatus": "verified",
+   "refs": "none",
+   "triggerCat": "",
+   "source": "insight",
+   "reviewedAt": "2026-07-04T12:00:00.000Z"
+  }
+ ]
+}

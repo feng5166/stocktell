@@ -6,7 +6,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "direct",
     "confidence": "low",
-    "reason": "服务器整机环节，后续看 AI 服务器订单、运营商/云厂/政企客户、收入和毛利率"
+    "reason": "AI 服务器整机环节,推理算力落地的直接承载,传导路径短、业务入口明确;后续看 AI 服务器订单、云厂/运营商/政企客户导入、收入占比与毛利率。"
   },
   {
     "code": "002281",

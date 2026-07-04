@@ -103,27 +103,29 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
     return { red, yellow };
   }, [relations]);
 
-  // ---- 导出 diff(仅改动行;审核 schema,可直接回灌)----
-  function buildDiff() {
+  // ---- 导出 diff(仅改动行;含 old/new 审计对 + 回灌所需列,可直接回灌)----
+  function buildDiff(reviewedAt: string) {
     return changed.map((r) => {
       const ed = edits[keyOf(r)]!;
       const newType = ed.newType && ed.newType !== "remove" ? ed.newType : "";
       const action = ed.action || deriveAction(r.relationType, ed.newType ?? r.relationType) || (ed.newReason ? "edit_reason" : "");
       return {
-        chain: r.chainId,
-        segment: r.segmentName,
         code: r.code,
         name: r.name,
-        curType: r.relationType,
-        reason: r.reason,
-        evidenceStatus: r.evidenceStatus ?? "",
-        refs: refsOf(r.evidenceStatus),
-        triggerCat: r.triggerGroup ?? "",
-        candStatus: r.relationType === "candidate" ? "needs_evidence" : "",
+        chainId: r.chainId,
+        segmentId: r.segmentId,
+        segment: r.segmentName,
+        oldType: r.relationType,
         newType,
+        oldReason: r.reason,
         newReason: ed.newReason ?? "",
         action,
         note: ed.note ?? "",
+        evidenceStatus: r.evidenceStatus ?? "",
+        refs: refsOf(r.evidenceStatus),
+        triggerCat: r.triggerGroup ?? "",
+        source: r.source,
+        reviewedAt,
       };
     });
   }
@@ -137,13 +139,17 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
     URL.revokeObjectURL(url);
   }
   function exportCSV() {
-    const H = ["chain", "segment", "code", "name", "curType", "reason", "evidenceStatus", "refs", "triggerCat", "candStatus", "【审】newType", "【审】newReason", "【审】action", "【审】note"];
+    const reviewedAt = new Date().toISOString();
+    const H = ["code", "name", "chainId", "segmentId", "segment", "oldType", "newType", "oldReason", "newReason", "action", "note", "evidenceStatus", "refs", "triggerCat", "source", "reviewedAt"];
     const q = (s: unknown) => `"${String(s ?? "").replace(/"/g, '""')}"`;
-    const rows = buildDiff().map((d) => [d.chain, d.segment, d.code, d.name, d.curType, d.reason, d.evidenceStatus, d.refs, d.triggerCat, d.candStatus, d.newType, d.newReason, d.action, d.note].map(q).join(","));
+    const rows = buildDiff(reviewedAt).map((d) =>
+      [d.code, d.name, d.chainId, d.segmentId, d.segment, d.oldType, d.newType, d.oldReason, d.newReason, d.action, d.note, d.evidenceStatus, d.refs, d.triggerCat, d.source, d.reviewedAt].map(q).join(",")
+    );
     download("relation-review-diff.csv", "﻿" + [H.map(q).join(","), ...rows].join("\r\n"), "text/csv;charset=utf-8");
   }
   function exportJSON() {
-    download("relation-review-diff.json", JSON.stringify({ count: changed.length, rows: buildDiff() }, null, 1), "application/json");
+    const reviewedAt = new Date().toISOString();
+    download("relation-review-diff.json", JSON.stringify({ count: changed.length, reviewedAt, rows: buildDiff(reviewedAt) }, null, 1), "application/json");
   }
 
   // ---- 分组:chain → relationType ----
