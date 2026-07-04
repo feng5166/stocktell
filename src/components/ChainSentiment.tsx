@@ -38,10 +38,12 @@ export function ChainSentiment({
   initial,
   action,
   refresh,
+  title = "AI 链今日状态",
 }: {
   initial?: Data;
   action?: ReactNode; // 右下角可选插槽(首页塞"看/分享"入口;落地页不传)
   refresh?: boolean; // 服务端快照已过期 → 即便有 initial 也后台拉一次最新(顺带触发服务端回写缓存)
+  title?: string; // 卡片标题(链页传"这条链今日状态",不写死 AI;数据仍是 AI 池触发源口径)
 }) {
   // 只把"有实际数据"的 initial 当作可用;服务端那次冷算超时返回的空 initial 不算,
   // 否则会卡在"数据生成中"且不再客户端兜底(空态自愈不了)。
@@ -67,7 +69,7 @@ export function ChainSentiment({
   if (!d && !errored) {
     return (
       <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-gray-800">AI 链今日状态</div>
+        <div className="text-sm font-semibold text-gray-800">{title}</div>
         <div className="mt-2.5 h-3 w-2/3 animate-pulse rounded bg-gray-100" />
         <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-gray-100" />
       </div>
@@ -77,7 +79,7 @@ export function ChainSentiment({
   if (errored || !d || (!d.a && !d.us)) {
     return (
       <div className="mb-4 rounded-xl bg-white px-4 py-3 text-sm text-gray-400 shadow-sm">
-        <span className="font-semibold text-gray-800">AI 链今日状态</span>
+        <span className="font-semibold text-gray-800">{title}</span>
         <span className="ml-2">数据生成中,稍后刷新看看</span>
       </div>
     );
@@ -130,7 +132,7 @@ export function ChainSentiment({
   return (
     <div className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
       <div className="mb-2.5 flex items-center gap-2">
-        <span className="text-sm font-semibold text-gray-800">AI 链今日状态</span>
+        <span className="text-sm font-semibold text-gray-800">{title}</span>
         {mood && (
           <span className={`rounded px-1.5 py-0.5 text-meta ${mood.c}`}>{mood.t}</span>
         )}

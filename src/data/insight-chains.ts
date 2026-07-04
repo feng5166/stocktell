@@ -313,7 +313,7 @@ const DATACENTER_POWER: InsightChain = {
     { name: "金盘科技", code: "688676", segment: "供配电 / 干式变压器", relation: "直接", reason: "数据中心供配电 / 干式变压器 / 数字化电力设备的直接映射样本;需看数据中心客户、干变订单、数字化电力收入与交付节奏验证(当前池内变压器环节仅此样本,后续按披露补充,详见分级说明)", confidence: "中" },
     { name: "依米康", code: "300249", segment: "数据中心温控 / 机房环境控制", relation: "直接", reason: "数据中心精密空调与机房环境控制属散热基础设施核心环节,传导路径直接;需看数据中心温控订单、客户项目、收入占比验证", confidence: "中" },
     { name: "佳力图", code: "603912", segment: "数据中心精密空调 / 温控", relation: "直接", reason: "机房精密空调是数据中心散热基础设施,传导路径直接;仍需数据中心客户、精密空调订单、收入占比验证", confidence: "中" },
-    { name: "中恒电气", code: "002364", segment: "HVDC / 数据中心电源", relation: "直接", reason: "HVDC / 数据中心电源业务暴露明确则传导直接;置信不给高,若证据仅停留在产品概念、无数据中心客户或订单披露则应降间接。看 HVDC 项目、数据中心客户、电源系统收入与订单交付", confidence: "中" },
+    { name: "中恒电气", code: "002364", segment: "电源 / HVDC", relation: "间接", reason: "HVDC 与数据中心供电系统相关,但仍需通过数据中心客户、项目订单和收入占比验证,先按间接映射处理(证据充分再上调直接)", confidence: "中" },
     { name: "欧陆通", code: "300870", segment: "服务器电源", relation: "间接", reason: "服务器电源属服务器配套,给 AI 服务器供电但机房供配电暴露间接、传导多一跳,数据中心收入占比待验证", confidence: "中" },
     { name: "高澜股份", code: "300499", segment: "液冷", relation: "间接", reason: "纯水冷却 / 液冷,数据中心 AI 暴露纯度与订单验证不足,需更多证据确认", confidence: "中" },
     { name: "同飞股份", code: "300990", segment: "液冷 / CDU", relation: "间接", reason: "冷板及浸没液冷、CDU,数据中心 AI 暴露纯度与收入占比待验证", confidence: "中" },

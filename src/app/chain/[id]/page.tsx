@@ -13,7 +13,8 @@ import { TakeBody } from "@/components/RetailTake";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
-import { relationLabelFor } from "@/lib/relation";
+import { INSIGHT_CHAINS } from "@/data/insight-chains";
+import { relationLabelFor, relationForCode } from "@/lib/relation";
 import { DISCLAIMER } from "@/lib/constants";
 
 export const revalidate = 60;
@@ -69,15 +70,26 @@ export default async function ChainPage({
     shownDate = latest.date ?? date;
     stale = true;
   }
-  const topItems = items.slice(0, 3);
+  // 链页事件排序:优先展示命中【本链成分】的事件(数据中心电力链页别把 AI/半导体/机器人
+  // 事件当主动态)。命中本链 aMembers 的排前,其余降权;都不命中时给"暂无直接事件"提示。
+  const chainCodes = new Set(chain.aMembers.map((s) => s.code));
+  const hitsChain = (it: BriefingItem) =>
+    (it.triggerCode != null && chainCodes.has(it.triggerCode)) ||
+    it.beneficiaries.some((b) => chainCodes.has(b.code));
+  const sortedItems = [...items].sort(
+    (a, b) => Number(hitsChain(b)) - Number(hitsChain(a))
+  );
+  const directItems = sortedItems.filter(hitsChain);
+  const topItems = (directItems.length > 0 ? directItems : sortedItems).slice(0, 3);
+  const noDirectEvent = directItems.length === 0; // 无命中本链的直接事件
 
-  // 链级「今日一句话判断」:只读 07:01 cron 写的缓存(零 LLM,保 ISR);
-  // 缺失(cron 失败/回退期)用规则兜底文案,页面永不在渲染路径打模型。
-  // 读取优先级(PRD §7.3):当日 published daily 判断 → chain-take → 规则兜底
+  // 链级「今日一句话判断」:优先 published daily → chain-take;非 ai 链(无专属 cron/事件)
+  // 用链配置的静态口径 todayFraming,不用 AI 事件兜底的 fallbackChainTake(否则说的是 AI 链的话)。
   const daily = await getPublishedDaily(chain.id, shownDate).catch(() => null);
   const chainTake =
     daily?.payload.judgment ||
     (await getChainTake(chain.id, shownDate).catch(() => null)) ||
+    chain.todayFraming ||
     fallbackChainTake(items);
 
   // 成分股「今天为什么被提到」:今天的简报条目里出现过的受益股 → code 到条目标题。
@@ -108,7 +120,19 @@ export default async function ChainPage({
     })),
   };
 
-  const roster = rosterOf(chain);
+  // 成分股一句话:优先用 insight 核定的 reason(链专属、合规、带验证点),覆盖 AI 口径的
+  // 模板 retailTake(否则电力链票会显示"跟 AI 主线情绪同步/别当压舱石"等交易语感+错链文案)。
+  // 在 roster 数据里就替换掉,不把 AI take 序列化进客户端 payload。
+  const insightForChain = chain.insightSlug ? INSIGHT_CHAINS[chain.insightSlug] : undefined;
+  const reasonByCode = new Map(
+    (insightForChain?.mappings ?? [])
+      .filter((m) => m.code)
+      .map((m) => [m.code as string, m.reason])
+  );
+  const roster = rosterOf(chain).map((r) => ({
+    ...r,
+    take: reasonByCode.get(r.code) ?? r.take,
+  }));
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -125,7 +149,11 @@ export default async function ChainPage({
 
         {/* 今日情绪(快照过期 → 先渲染旧值再后台刷新) */}
         <div className="mt-4">
-          <ChainSentiment initial={sentiment} refresh={snap ? !snap.fresh : false} />
+          <ChainSentiment
+            initial={sentiment}
+            refresh={snap ? !snap.fresh : false}
+            title={chain.sentimentTitle}
+          />
         </div>
 
         {/* 链级一句话判断:为什么强/弱、传导到哪些环节、哪些只是情绪映射(评审拍板 P0-1) */}
@@ -169,6 +197,12 @@ export default async function ChainPage({
                 <span className="text-xs text-gray-400">最近一期 · {shownDate}</span>
               )}
             </div>
+            {/* 无命中本链的直接事件时明说,不硬把 AI/半导体/机器人事件当本链主动态 */}
+            {noDirectEvent && (
+              <p className="mt-1.5 text-xs leading-relaxed text-gray-400">
+                今日暂无直接命中本链的事件,以下为相关外溢触发源(AI 基础设施 / 算力链)。
+              </p>
+            )}
             <div className="mt-3 space-y-2">
               {topItems.map((it) => (
                 <div
@@ -235,7 +269,16 @@ export default async function ChainPage({
         />
 
         {/* 成分股 + 加自选(mentioned=今天简报点名过的票,行内标注让清单每天有变化) */}
-        <ChainRoster chainId={chain.id} members={roster} mentioned={mentioned} />
+        <ChainRoster
+          chainId={chain.id}
+          members={roster}
+          mentioned={mentioned}
+          relations={Object.fromEntries(
+            roster.map((r) => [r.code, relationForCode(r.code) ?? "产业链相关"])
+          )}
+          sectorLabels={{ "能源/核电": "能源侧外溢(弱 / 情绪映射)" }}
+          bottomSectors={["能源/核电"]}
+        />
 
         <p className="mt-8 text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
       </main>

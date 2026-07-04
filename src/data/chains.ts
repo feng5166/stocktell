@@ -18,13 +18,15 @@ export interface ChainConfig {
   aMembers: Stock[]; // A 股成分(游客也能加自选)
   insightSlug?: string; // 对应 /insight/[slug] 因果链深读(链页「看它怎么传到 A 股」出口)
   segments?: ChainSegment[]; // 每日推理的环节枚举(insight 管线 PRD §4.3);「其他链上环节」为兜底段不进 heat
+  todayFraming?: string; // 非 ai 链的「今天怎么看这条链」静态口径(该链无专属 cron/事件,不用 AI 事件兜底)
+  sentimentTitle?: string; // 链页情绪卡标题(不写死 AI)
 }
 
 // AI 数据中心电力基础设施链成分(显式清单,与 AI 主链隔离)。这条链是 AI 基础设施的外溢链,
 // 关注 AI 数据中心扩张对供配电/UPS/HVDC/温控/液冷/备用电源/电网侧的传导——不是 AI 主链本身。
 // 关系分级见 insight「datacenter-power」mappings(单一来源)。
 const DC_POWER_CODES = [
-  "300693", "002518", "002335", "002837", "301018", "688676", "300870", // 供配电/温控(部分已在 AI 池,两链共用)
+  "300693", "002518", "002335", "002837", "301018", "688676", "300870", "920808", // 供配电/温控/液冷基础设施(部分已在 AI 池,两链共用)
   "300499", "300990", "300602", "002028", "002851", "600875", "601985", "003816",
   "300249", "603912", "002364", "300068", "002922", // 本批新增专属标的
 ];
@@ -60,6 +62,9 @@ export const CHAINS: Record<string, ChainConfig> = {
     tagline: "AI 数据中心扩张的外溢链:供配电、UPS、HVDC、温控、液冷、备用电源怎么跟着传导——不是 AI 主链本身。",
     aMembers: STOCKS.filter((s) => s.market === "A股" && DC_POWER_CODES.includes(s.code)),
     insightSlug: "datacenter-power",
+    sentimentTitle: "这条链今日状态",
+    todayFraming:
+      "今天这条链的触发源主要来自 AI 基础设施投资预期和海外算力链波动。短期价格表现可能受市场情绪影响,但真正需要验证的是:数据中心建设是否继续推进,高功率机柜是否提升供配电、温控、液冷和备用电源需求,以及相关公司能否形成订单和收入确认。",
     segments: [
       { name: "数据中心供配电/UPS/HVDC", plain: "给机房稳定供电、配电、后备(UPS)、高效供电(HVDC)", sectors: ["电源/HVDC"], defaultRelation: "直接映射", verifyTemplate: ["数据中心客户", "UPS/HVDC 订单", "电源系统收入占比"] },
       { name: "数据中心温控/液冷", plain: "给数据中心降温的专用空调与液冷系统", sectors: ["液冷/温控"], defaultRelation: "直接映射", verifyTemplate: ["数据中心温控/液冷订单", "客户项目", "收入占比"] },

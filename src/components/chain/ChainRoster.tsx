@@ -8,14 +8,30 @@ import { useWatchlist } from "@/components/useWatchlist";
 import { track } from "@/lib/analytics";
 import type { RosterItem } from "@/data/chains";
 
+const REL_CHIP: Record<string, string> = {
+  直接映射: "bg-rose-100 text-rose-700",
+  间接映射: "bg-amber-100 text-amber-700",
+  情绪映射: "bg-slate-100 text-slate-500",
+  弱映射: "bg-gray-200 text-gray-500",
+  产业链相关: "bg-gray-100 text-gray-600",
+};
+
 export function ChainRoster({
   chainId,
   members,
   mentioned,
+  relations,
+  sectorLabels,
+  bottomSectors,
+  takeOverride,
 }: {
   chainId: string;
   members: RosterItem[];
   mentioned?: Record<string, string>; // code → 今天点名它的简报标题(让清单每天有变化)
+  relations?: Record<string, string>; // code → 关系标(直接/间接/情绪/弱映射),电力链页展示
+  sectorLabels?: Record<string, string>; // 板块组名改写(如 能源/核电 → 能源侧外溢)
+  bottomSectors?: string[]; // 这些板块置底(如发电/核电类外溢环节)
+  takeOverride?: Record<string, string>; // code → 一句话(覆盖 AI 口径的 retailTake,电力链用 insight 核定 reason)
 }) {
   const wl = useWatchlist();
 
@@ -31,9 +47,13 @@ export function ChainRoster({
       (mentioned?.[x.code] ? -2 : 0) + (x.tier === "龙头" ? -1 : 0);
     for (const g of Array.from(m.values()))
       g.rows.sort((a, b) => rank(a) - rank(b));
-    return Array.from(m.entries());
+    const entries = Array.from(m.entries());
+    // bottomSectors 里的板块置底(发电/核电类外溢环节)
+    const bottom = new Set(bottomSectors ?? []);
+    entries.sort((a, b) => Number(bottom.has(a[0])) - Number(bottom.has(b[0])));
+    return entries;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [members, mentioned && Object.keys(mentioned).join(",")]);
+  }, [members, mentioned && Object.keys(mentioned).join(","), bottomSectors?.join(",")]);
 
   const addedCount = members.filter((m) => wl.has(m.code)).length;
 
@@ -61,7 +81,7 @@ export function ChainRoster({
         {groups.map(([sector, g]) => (
           <div key={sector}>
             <div className="mb-1.5 flex items-baseline gap-2">
-              <span className="text-title font-medium text-gray-800">{sector}</span>
+              <span className="text-title font-medium text-gray-800">{sectorLabels?.[sector] ?? sector}</span>
               {g.gloss && <span className="text-xs text-gray-400">· {g.gloss}</span>}
             </div>
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -82,15 +102,17 @@ export function ChainRoster({
                         <span className="font-medium text-gray-900 group-hover:text-brand-700 group-hover:underline">
                           {it.name}
                         </span>
-                        {it.tier === "龙头" && (
-                          <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700">
-                            龙头
+                        {relations?.[it.code] && (
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${REL_CHIP[relations[it.code]] ?? "bg-gray-100 text-gray-600"}`}>
+                            {relations[it.code]}
                           </span>
                         )}
                         <span className="text-xs text-gray-300 group-hover:text-brand-400">›</span>
                       </div>
-                      {it.take && (
-                        <div className="mt-0.5 line-clamp-2 text-xs text-gray-500">{it.take}</div>
+                      {(takeOverride?.[it.code] || it.take) && (
+                        <div className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+                          {takeOverride?.[it.code] || it.take}
+                        </div>
                       )}
                       {mentioned?.[it.code] && (
                         <div className="mt-0.5 text-xs">
