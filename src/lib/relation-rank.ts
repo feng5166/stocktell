@@ -33,6 +33,15 @@ export const REL_CHIP_CLS: Record<string, string> = {
   产业链相关: TIER_CLS.generic,
 };
 
+// 证据状态前台友好标签(负责人拍板:前台【不显】"verified" 英文档,避免误读成"已确认受益")。
+// 后台/审阅台仍用英文档;凡前台展示 evidenceStatus 一律走这里映射。
+export const EVIDENCE_LABEL: Record<string, string> = {
+  verified: "已接入披露源",
+  partially_verified: "部分待核验",
+  needs_review: "待补来源",
+  manual_only: "待补来源",
+};
+
 // 短标签键(insight 页 Relation 类型)。用 Record<Relation,string> 拿穷尽性检查:
 // 将来 Relation 加第 5 档而这里不补键 → 编译报错(而非 chip 静默掉底色)。
 export const REL_CHIP_CLS_SHORT: Record<Relation, string> = {
