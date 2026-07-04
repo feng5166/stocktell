@@ -263,12 +263,17 @@ function buildMappingsDelta(
       if (seen.has(b.code) || out.length >= 12) continue;
       seen.add(b.code);
       const segName = toSegment(STOCK_MAP[b.code]?.sector);
+      const chainRel = relationForCodeInChain(b.code, insightSlug);
+      // 链边界(7.2 回放发现):受益股落「其他链上环节」兜底 且 非本链核定成员 → 跳过,
+      // 别把不属本链的股堆成兜底映射(如纯 AI 事件日,电力链会把 12 只 AI 股全堆成情绪映射噪音)。
+      // 保留:落兜底但确是本链核定成员的(chainRel 非空)。
+      if (segName === FALLBACK_SEGMENT && !chainRel) continue;
       const seg = segByName.get(segName);
       out.push({
         code: b.code,
         name: b.name,
         segment: segName,
-        relation: relationForCodeInChain(b.code, insightSlug) ?? seg?.defaultRelation ?? "情绪映射",
+        relation: chainRel ?? seg?.defaultRelation ?? "情绪映射",
         todayWhy: why,
         verify: (seg?.verifyTemplate ?? ["订单与客户验证", "板块共振"]).slice(0, 3),
       });
