@@ -60,6 +60,9 @@ export interface StockBase {
   status: StatusTag;
   relationTypes: RelationType[];
   relations: string[]; // 关联标的(名称)
+  // 链归属(缺省视为 ["ai"],向后兼容)。用于隔离:电力链等独立链的专属标的标本链 id,
+  // 不污染 AI 主链的成分/自选。两条链都属的标多个 id。见 chains.ts aMembers 过滤。
+  chains?: string[];
 }
 
 export interface Stock extends StockBase {
@@ -360,6 +363,14 @@ const STOCKS_BASE: StockBase[] = [
   { code: "601360", name: "三六零", market: "A股", position: "下游", sector: "大模型/应用", positioning: "安全+大模型,AI应用落地", observation: "360智脑、AI搜索/应用、政企订单", status: "行情覆盖", relationTypes: ["产业链"], relations: ["科大讯飞"] },
   { code: "002415", name: "海康威视", market: "A股", position: "下游", sector: "端侧AI/SoC", positioning: "安防+AI视觉龙头,AI落地标杆", observation: "AI视觉硬件、大模型行业落地、海外与企业数字化", status: "行情覆盖", relationTypes: ["A股映射", "产业链"], relations: ["NVDA"] },
   { code: "688362", name: "甬矽电子", market: "A股", position: "上游", sector: "封装测试/代工", positioning: "先进封装二线,SiP/倒装布局", observation: "先进封装放量、稼动率、AI/存储封装", status: "行情覆盖", relationTypes: ["产业链"], relations: ["长电科技", "通富微电"] },
+  // ===== AI 数据中心电力基础设施链 · 专属标的(chains 只含 data-center-power,不进 AI 主链)=====
+  // 负责人 2026-07-03 拍板扩池(按环节覆盖+暴露纯度分级,非概念热度)。业务描述为公认行业事实,
+  // 数据中心收入占比 / 订单以年报公告为准(验证点见电力链 insight)。
+  { code: "300249", name: "依米康", market: "A股", position: "中游", sector: "液冷/温控", positioning: "数据中心精密空调/机房环境控制", observation: "数据中心温控订单、机房环境系统、收入占比", status: "行情覆盖", relationTypes: ["电力映射"], relations: ["VRT", "英维克"], chains: ["data-center-power"] },
+  { code: "603912", name: "佳力图", market: "A股", position: "中游", sector: "液冷/温控", positioning: "机房精密空调/数据中心温控", observation: "数据中心客户、精密空调订单、收入占比", status: "行情覆盖", relationTypes: ["电力映射"], relations: ["VRT", "申菱环境"], chains: ["data-center-power"] },
+  { code: "002364", name: "中恒电气", market: "A股", position: "中游", sector: "电源/HVDC", positioning: "HVDC 高压直流/数据中心电源", observation: "HVDC 项目、数据中心客户、电源系统收入与订单", status: "行情覆盖", relationTypes: ["电力映射"], relations: ["VRT", "盛弘股份"], chains: ["data-center-power"] },
+  { code: "300068", name: "南都电源", market: "A股", position: "中游", sector: "电源/HVDC", positioning: "数据中心备用电源 + 储能", observation: "数据中心后备电源订单、储能项目客户、收入占比", status: "行情覆盖", relationTypes: ["电力映射"], relations: ["科士达"], chains: ["data-center-power"] },
+  { code: "002922", name: "伊戈尔", market: "A股", position: "中游", sector: "电源/HVDC", positioning: "电力电子 + 磁性器件 + 变压器", observation: "数据中心客户暴露、变压器/电源产品订单验证", status: "行情覆盖", relationTypes: ["电力映射"], relations: ["金盘科技"], chains: ["data-center-power"] },
 ];
 
 // 基于代码的确定性哈希,用于生成稳定的模拟行情
