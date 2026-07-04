@@ -10,6 +10,7 @@ const TABS = [
   { href: "/admin/email", label: "邮件推送" },
   { href: "/admin/briefing", label: "简报审发" },
   { href: "/admin/insights", label: "推理审发" },
+  { href: "/admin/relation-review", label: "关系模型" },
   { href: "/admin/metrics", label: "接口监控" },
   { href: "/admin/llm", label: "模型切换" },
 ];
