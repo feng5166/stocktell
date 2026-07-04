@@ -25,12 +25,23 @@ const CONF_CLS: Record<string, string> = {
 };
 const ORDER: RelationType[] = ["direct", "indirect", "sentiment", "weak", "candidate", "trigger"];
 
+// direct/indirect 但证据状态不足 → 高亮(拍板③:direct 不能没有证据状态)
+const evidenceMissing = (r: StockChainRelation) =>
+  (r.relationType === "direct" || r.relationType === "indirect") &&
+  (!r.evidenceStatus || r.evidenceStatus === "needs_review" || r.evidenceStatus === "manual_only");
+
 function RelRow({ r }: { r: StockChainRelation }) {
+  const flag = evidenceMissing(r);
   return (
-    <div className="rounded-lg bg-white p-2.5 px-3 shadow-sm">
+    <div className={`rounded-lg bg-white p-2.5 px-3 shadow-sm ${flag ? "ring-1 ring-rose-200" : ""}`}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-sm font-semibold text-gray-900">{r.name}</span>
         <span className="font-mono text-xs text-gray-400">{r.code}</span>
+        {flag && (
+          <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-600" title="direct/indirect 证据状态不足">
+            ⚠ 证据待补
+          </span>
+        )}
         <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">{r.segmentName}</span>
         <span className={`flex h-[18px] w-[18px] items-center justify-center rounded text-[11px] font-semibold ${CONF_CLS[r.confidence]}`} title="置信度">
           {CONF[r.confidence]}
@@ -73,9 +84,27 @@ export default async function RelationReviewPage() {
         <b className="text-gray-700">0 漂移</b>。Phase 1 只建源、不碰页面;改数据源本页实时反映。
       </p>
 
-      <div className="mt-4 rounded-xl bg-white p-4 text-sm leading-relaxed text-gray-500 shadow-sm">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <a
+          href="/api/admin/relation-review/export?format=csv"
+          className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          ⬇ 导出 CSV(逐条审 · 带审核空列)
+        </a>
+        <a
+          href="/api/admin/relation-review/export?format=json"
+          className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+        >
+          ⬇ 导出 JSON
+        </a>
+        <span className="text-xs text-gray-400">CSV 带「新关系档 / 处理 / reviewStatus / 改reason」空列,直接填批注发回</span>
+      </div>
+
+      <div className="mt-3 rounded-xl bg-white p-4 text-sm leading-relaxed text-gray-500 shadow-sm">
         <b className="text-gray-800">你要过的:</b>① 核定关系段的 <b className="text-gray-700">关系档</b>(直接/间接/情绪/弱)与 <b className="text-gray-700">reason</b> 口径对不对;
         ② 待验证 candidate 里哪些该升级为核定、哪些该移出;③ 触发源是否都该是美股/海外。核定 = insight 人工核过,candidate = 链成分自动派生占位。
+        <br />
+        <span className="text-rose-600">⚠ 证据待补</span> = direct/indirect 的证据状态不足(拍板③:direct 不能没有证据状态)。
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 rounded-xl bg-gray-50 p-4 text-xs">
