@@ -71,9 +71,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, backup: true, primary, insight });
   } catch (e) {
     if (aborted) {
-      // 下游 280s 未返回:多半在正常跑满生成+推送,不告警(看门狗兜底),返回中性状态
-      const insight = await backupInsightDaily(base, secret).catch(() => null);
-      return NextResponse.json({ ok: true, backup: true, inconclusive: "primary-still-running", insight });
+      // 下游 280s 未返回(abort 时在飞的 fetch 以 AbortError reject → 走这里,是 abort 的主路径):
+      // 多半在正常跑满生成+推送,不告警(看门狗兜底),返回中性状态。
+      // B2-7:同 line 46,abort=280s 预算已耗尽,【绝不能】再 await 无超时的 insight fetch
+      // (insight-daily 自身 maxDuration 300s,会吃穿 backup 剩余预算被硬杀、丢掉 inconclusive 返回)。
+      // insight 补跑由「成功/失败路径已触发」+「08:30 看门狗按链点名」双覆盖,此处跳过不漏。
+      return NextResponse.json({
+        ok: true,
+        backup: true,
+        inconclusive: "primary-still-running",
+        insight: "skipped-budget",
+      });
     }
     // 非 abort 的 fetch 异常(网络错等)才告警——与全站「cron 失败必飞书」一致
     await alertCron("briefing-backup(补位)", e);
