@@ -76,12 +76,20 @@ export async function GET(req: NextRequest) {
         );
       }
       if (doc) {
+        // 待审信息要足够判断(负责人第四点):链名/判断/命中股票/环节数/references/合规/是否自动发布
+        const p = r.payload!;
         const warn = r.guard!.warnings.length
           ? `⚠️ ${r.guard!.warnings.length} 项警告`
-          : "护栏全过";
+          : "✅ 护栏全过";
+        const hits = p.mappingsDelta.slice(0, 4).map((m) => `${m.name}(${m.relation})`).join("、");
         const base = process.env.NEXTAUTH_URL ?? "https://www.stocktell.me";
         await sendFeishu(
-          `📋 ${date} ${chain.name}每日推理待审 · ${warn}\n「${r.payload!.judgment.slice(0, 48)}…」\n审核:${base}/admin/insights`
+          `📋 ${date} ${chain.name}·每日推理待审\n` +
+            `💡 ${p.judgment.slice(0, 60)}\n` +
+            `📊 命中 ${p.mappingsDelta.length} 只:${hits || "—"}\n` +
+            `🌡️ ${p.heat.length} 环节 · 置信 ${p.confidence} · references ${p.references.length} 条\n` +
+            `🛡️ ${warn} · 未自动发布(人审通过后才上首页/邮件)\n` +
+            `审核:${base}/admin/insights`
         );
       }
     } catch (e) {

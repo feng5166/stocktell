@@ -9,7 +9,7 @@ import { bochaSearch, bochaEnabled } from "@/lib/bocha";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { getChain, type ChainSegment } from "@/data/chains";
 import { STOCK_MAP } from "@/data/stocks";
-import { relationForCode } from "@/lib/relation";
+import { relationForCodeInChain } from "@/lib/relation";
 import { fallbackChainTake } from "@/lib/chain-take";
 import { dailyRisk } from "@/lib/home-feed";
 import { runGuards, type GuardResult } from "./guard";
@@ -241,7 +241,8 @@ async function genHeat(
 function buildMappingsDelta(
   items: BriefingItem[],
   segments: ChainSegment[],
-  toSegment: (sector: string | undefined) => string
+  toSegment: (sector: string | undefined) => string,
+  insightSlug: string | undefined // 关系按【本链】核定取(B2-2 生成侧):AI 链管线不能把英维克标成电力链的「直接」
 ): DailyInsightPayload["mappingsDelta"] {
   const segByName = new Map(segments.map((s) => [s.name, s]));
   const seen = new Set<string>();
@@ -259,7 +260,7 @@ function buildMappingsDelta(
         code: b.code,
         name: b.name,
         segment: segName,
-        relation: relationForCode(b.code) ?? seg?.defaultRelation ?? "情绪映射",
+        relation: relationForCodeInChain(b.code, insightSlug) ?? seg?.defaultRelation ?? "情绪映射",
         todayWhy: why,
         verify: (seg?.verifyTemplate ?? ["订单与客户验证", "板块共振"]).slice(0, 3),
       });
@@ -381,7 +382,7 @@ export async function generateDailyInsight(
   const trigger = buildTrigger(items);
   const judgment = await genJudgment(chain.name, items, meta);
   const heat = await genHeat(chain.segments, items, toSegment, opts?.yesterdayHeat ?? null, meta);
-  const mappingsDelta = buildMappingsDelta(items, chain.segments, toSegment);
+  const mappingsDelta = buildMappingsDelta(items, chain.segments, toSegment, chain.insightSlug);
   const risk = dailyRisk(items);
   const references = await buildReferences(trigger, meta);
 
