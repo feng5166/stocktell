@@ -218,10 +218,11 @@ export function chainList(): { chainId: string; chainName: string }[] {
   for (const r of relations) m.set(r.chainId, r.chainName);
   return Array.from(m, ([chainId, chainName]) => ({ chainId, chainName }));
 }
-// 一条链的全部环节(/stocks 环节筛选)
+// 一条链的全部环节(/stocks 环节筛选)。排除 trigger 伪环节("海外事件触发源"——触发源不是产业环节)。
 export function segmentsOfChain(chainId: string): { segmentId: string; segmentName: string }[] {
   const m = new Map<string, string>();
-  for (const r of relations) if (r.chainId === chainId) m.set(r.segmentId, r.segmentName);
+  for (const r of relations)
+    if (r.chainId === chainId && r.relationType !== "trigger") m.set(r.segmentId, r.segmentName);
   return Array.from(m, ([segmentId, segmentName]) => ({ segmentId, segmentName }));
 }
 export function allRelations(): StockChainRelation[] {

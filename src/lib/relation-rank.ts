@@ -18,15 +18,18 @@ const TIER_CLS = {
   indirect: "bg-amber-100 text-amber-700",
   sentiment: "bg-slate-100 text-slate-500",
   weak: "bg-gray-200 text-gray-500",
+  trigger: "bg-indigo-100 text-indigo-700", // 触发源:美股/海外事件源,与关系模型审阅页同源
   generic: "bg-gray-100 text-gray-600",
 };
 
-// 前台长标签键(ChainRoster 成分股标 / 链页事件卡 relationLabelFor)。
+// 前台长标签键(ChainRoster 成分股标 / 链页事件卡 relationLabelFor / /stocks 关系分布)。
 export const REL_CHIP_CLS: Record<string, string> = {
   直接映射: TIER_CLS.direct,
   间接映射: TIER_CLS.indirect,
   情绪映射: TIER_CLS.sentiment,
   弱映射: TIER_CLS.weak,
+  触发源: TIER_CLS.trigger,
+  待验证: TIER_CLS.generic,
   产业链相关: TIER_CLS.generic,
 };
 

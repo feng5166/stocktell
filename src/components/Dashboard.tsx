@@ -20,7 +20,6 @@ import {
   STOCKS,
   aSharePeers,
   SECTORS,
-  RELATION_TYPES,
   TIER,
   type Market,
   type Position,
@@ -172,6 +171,8 @@ type Tab = (typeof TABS)[number];
 
 const MARKETS: ("全部" | Market)[] = ["全部", "美股", "A股"];
 const POSITIONS: ("全部" | Position)[] = ["全部", "上游", "中游", "下游"];
+// 关系筛选档 = 产业链关系档(与关系分布/relationResolver 同源,消双轨)
+const CHAIN_REL_LABELS = ["直接映射", "间接映射", "情绪映射", "弱映射", "触发源", "待验证"] as const;
 
 // 缓存行情的"截至"时间(Asia/Shanghai)
 function fmtAsOf(iso: string | null): string {
@@ -212,21 +213,28 @@ interface Quote {
   change: number;
 }
 
-// 产业链地图:每只票的核定关系/环节/reason/所属链(服务端 page.tsx 静态算好传入)。
+// 产业链地图:每只票的核定关系/环节/reason/所属链(服务端 page.tsx 从 relationResolver 静态算好传入)。
 export type StockInsight = {
   relation: string;
   segment: string;
   reason: string;
-  chainSlug: string;
+  chainSlug?: string;
   chainName: string;
   chainId?: string;
+  chains?: string[]; // 该票所在全部链(链筛选用)
+  segments?: { chainId: string; segmentId: string; segmentName: string }[]; // 所在环节(环节筛选用)
 };
 export type StockInsightMap = Record<string, StockInsight>;
+export type ChainOpt = { chainId: string; chainName: string };
 
 export default function Dashboard({
   insightMap = {},
+  chains = [],
+  segsByChain = {},
 }: {
   insightMap?: StockInsightMap;
+  chains?: ChainOpt[];
+  segsByChain?: Record<string, { segmentId: string; segmentName: string }[]>;
 }) {
   const [tab, setTab] = useState<Tab>("股票列表");
   const [market, setMarket] = useState<(typeof MARKETS)[number]>("全部");
@@ -235,6 +243,8 @@ export default function Dashboard({
   const [tier, setTier] = useState<"全部" | "龙头" | "二线">("全部");
   const [concept, setConcept] = useState<string>("全部");
   const [relation, setRelation] = useState<string>("全部关系");
+  const [chain, setChain] = useState<string>("全部"); // 产业链筛选(链→环节→关系,读 relationResolver)
+  const [segment, setSegment] = useState<string>("全部"); // 环节筛选(依赖所选链)
   const [query, setQuery] = useState("");
   const [onlyWatch, setOnlyWatch] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false); // 手机筛选区:默认折叠(桌面恒 sm:block 不受影响),首屏让位给股票列表
@@ -336,6 +346,10 @@ export default function Dashboard({
 
   // 除「市场」外的所有过滤(自选/环节/板块/梯队/概念/关系/搜索)。
   // 关联图谱、特征矩阵天生是美股↔A股对照,应吃这份"不按市场切"的数据,否则选 A股 时美股列全是"—"。
+  // 一只票的产业链关系档(与关系分布同源):模型里有就取,美股未覆盖=触发源,A股/H股未覆盖=待验证。
+  const chainRelOf = (code: string, mkt: string) =>
+    insightMap[code]?.relation ?? (mkt === "美股" ? "触发源" : "待验证");
+
   const crossMarketRows = useMemo(() => {
     return rows.filter((s) => {
       if (onlyWatch && !wl.codes.has(s.code)) return false;
@@ -343,11 +357,12 @@ export default function Dashboard({
       if (sector !== "全部" && s.sector !== sector) return false;
       if (tier !== "全部" && TIER[s.code] !== tier) return false;
       if (concept !== "全部" && !(CONCEPTS[s.code] ?? []).includes(concept)) return false;
-      if (
-        relation !== "全部关系" &&
-        !(s.relationTypes as readonly string[]).includes(relation)
-      )
+      // 产业链筛选(链 → 环节):读 relationResolver 传入的 insightMap
+      if (chain !== "全部" && !insightMap[s.code]?.chains?.includes(chain)) return false;
+      if (segment !== "全部" && !insightMap[s.code]?.segments?.some((sg) => sg.segmentId === segment))
         return false;
+      // 关系筛选:改用产业链关系档(触发源/直接/间接/情绪/弱/待验证),与关系分布同源、消双轨
+      if (relation !== "全部关系" && chainRelOf(s.code, s.market) !== relation) return false;
       if (query.trim()) {
         const q = query.trim().toLowerCase();
         const hay =
@@ -356,7 +371,8 @@ export default function Dashboard({
       }
       return true;
     });
-  }, [rows, position, sector, tier, concept, relation, query, onlyWatch, wl.codes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, position, sector, tier, concept, chain, segment, relation, query, onlyWatch, wl.codes, insightMap]);
 
   // 股票列表用的最终集 = 跨市场集再叠加市场过滤。搜索时放开市场(否则默认锁 A股 搜美股=0 结果)。
   const filtered = useMemo(
@@ -381,12 +397,11 @@ export default function Dashboard({
   const relDist = useMemo(() => {
     const d = { 触发源: 0, 直接映射: 0, 间接映射: 0, 情绪映射: 0, 弱映射: 0, 待验证: 0 };
     for (const s of filtered) {
-      const rel = insightMap[s.code]?.relation;
-      if (rel && rel in d) d[rel as keyof typeof d]++;
-      else if (s.market === "美股") d.触发源++;
-      else d.待验证++;
+      const rel = chainRelOf(s.code, s.market);
+      if (rel in d) d[rel as keyof typeof d]++;
     }
     return d;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, insightMap]);
 
   // 股票列表实际展示行:在筛选结果上再叠加统计卡选的视图
@@ -584,6 +599,43 @@ export default function Dashboard({
               filterOpen ? "space-y-3" : "hidden"
             } sm:block sm:space-y-3`}
           >
+          {chains.length > 0 && (
+            <FilterGroup label="产业链">
+              <Chip
+                active={chain === "全部"}
+                onClick={() => {
+                  setChain("全部");
+                  setSegment("全部");
+                }}
+              >
+                全部
+              </Chip>
+              {chains.map((c) => (
+                <Chip
+                  key={c.chainId}
+                  active={chain === c.chainId}
+                  onClick={() => {
+                    setChain(c.chainId);
+                    setSegment("全部");
+                  }}
+                >
+                  {c.chainName.replace("基础设施链", "")}
+                </Chip>
+              ))}
+            </FilterGroup>
+          )}
+          {chain !== "全部" && (segsByChain[chain]?.length ?? 0) > 0 && (
+            <FilterGroup label="环节">
+              <Chip active={segment === "全部"} onClick={() => setSegment("全部")}>
+                全部环节
+              </Chip>
+              {segsByChain[chain].map((sg) => (
+                <Chip key={sg.segmentId} active={segment === sg.segmentId} onClick={() => setSegment(sg.segmentId)}>
+                  {sg.segmentName}
+                </Chip>
+              ))}
+            </FilterGroup>
+          )}
           <FilterGroup label="市场">
             {MARKETS.map((m) => (
               <Chip key={m} active={market === m} onClick={() => setMarket(m)}>
@@ -613,7 +665,7 @@ export default function Dashboard({
             >
               全部关系
             </Chip>
-            {RELATION_TYPES.map((r) => (
+            {CHAIN_REL_LABELS.map((r) => (
               <Chip key={r} active={relation === r} onClick={() => setRelation(r)}>
                 {r}
               </Chip>
