@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { fetchQuotes } from "@/lib/quotes";
 import { listBriefing } from "@/lib/briefings";
 import { dailyByDate } from "@/lib/tushare";
+import { resolvePrimary } from "@/lib/relation-resolver";
 
 export const HIT_THRESHOLD = 1.0; // 同向涨跌 ≥1% 记"跟上了"
 
@@ -21,10 +22,16 @@ export interface OutcomeRow {
   hit: boolean | null; // null = 当时取不到行情
   isBacktest: boolean; // true=历史回测(明牌)
   evaluatedAt: string;
+  // P1 Phase 2【预埋】:从统一关系模型算出的链身份,供后续按 链/环节/关系档 拆"关系验证率"
+  // (如 direct 映射验证率 vs 情绪映射验证率)。读时计算,不落库、无需迁移。
+  chainId?: string;
+  segmentId?: string;
+  relationType?: string;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function fromRow(r: any): OutcomeRow {
+  const rel = resolvePrimary(r.code); // 统一关系源(唯一入口),按 code 查链身份
   return {
     id: r.id,
     briefingId: r.briefingId,
@@ -39,6 +46,9 @@ function fromRow(r: any): OutcomeRow {
     isBacktest: r.isBacktest ?? false,
     evaluatedAt:
       r.evaluatedAt instanceof Date ? r.evaluatedAt.toISOString() : r.evaluatedAt,
+    chainId: rel?.chainId,
+    segmentId: rel?.segmentId,
+    relationType: rel?.relationType,
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

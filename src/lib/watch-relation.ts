@@ -1,10 +1,10 @@
 // 自选股 → 产业链身份(P1 和我相关结构化;拍板⑨:静态映射,不逐股 LLM)。
-// 服务端算好全 A 股池的精简映射(股票→链/环节/关系三档/验证点)传客户端,
-// 客户端拿自选 codes 本地查 + 叠加今日事件(items)渲染关系卡。零额外请求,
-// 且不把 insight-chains 全文拖进客户端包(只传算好的精简 Record)。
-import { CHAINS, type ChainSegment } from "@/data/chains";
-import { STOCK_MAP } from "@/data/stocks";
-import { relationForCodeInChain, segmentForCodeInChain } from "@/lib/relation";
+// Phase 2:改读统一关系源(relationResolver → 审阅后 staticRelations),与 /stocks、stock 页同源、消双轨。
+// 服务端算好全 A 股池的精简映射(股票→链/环节/关系三档/验证点)传客户端,客户端拿自选 codes 本地查
+// + 叠加今日事件渲染关系卡。零额外请求,不把 insight-chains 全文拖进客户端包(只传算好的精简 Record)。
+// 未被核定的自选票【不进 map】→ 消费方(BriefingFeed)显"暂未覆盖",不静默消失。
+import { STOCKS } from "@/data/stocks";
+import { resolvePrimary } from "@/lib/relation-resolver";
 
 export interface WatchChainInfo {
   chainId: string;
@@ -14,44 +14,30 @@ export interface WatchChainInfo {
   verify: string[];
 }
 
-// 后台四档 → 前台三档
-function toFront(r: string): WatchChainInfo["relation"] {
-  return r === "直接映射" ? "直接映射" : r === "间接映射" ? "间接映射" : "情绪映射";
-}
+// 模型 relationType → 前台三档(弱→情绪;A 股核定关系只会是 direct/indirect/sentiment/weak)
+const FRONT3: Record<string, WatchChainInfo["relation"]> = {
+  direct: "直接映射",
+  indirect: "间接映射",
+  sentiment: "情绪映射",
+  weak: "情绪映射",
+};
 
-// sector → 环节(取该链 segments 里 sectors 命中的;命中不到落兜底段)
-function segmentOf(segments: ChainSegment[], sector: string | undefined): ChainSegment {
-  const hit = sector ? segments.find((s) => s.sectors.includes(sector)) : undefined;
-  return hit ?? segments[segments.length - 1]; // 最后一个=「其他链上环节」兜底
-}
-
-// 全池映射:code → 链身份。M1 只有 ai 一条链,一只票落一个链;后续多链时先命中先占。
+// 全池映射:code → 链身份(A 股;主关系取最强档)。走 resolvePrimary 唯一入口,读审阅后模型。
 export function buildWatchChainMap(): Record<string, WatchChainInfo> {
   const map: Record<string, WatchChainInfo> = {};
-  for (const chain of Object.values(CHAINS)) {
-    if (!chain.segments?.length) continue;
-    for (const stock of chain.aMembers) {
-      if (map[stock.code]) continue; // 已被前一条链占用
-      const seg = segmentOf(chain.segments, STOCK_MAP[stock.code]?.sector);
-      // 环节 / 关系优先取 insight 核定(精细,口径一致);消除按 sector 粗分与核定的矛盾(V-1)。
-      // 如澜起:核定「服务器内存接口/DDR5·间接」,而非 sector 粗分的「存储/HBM·直接」。
-      // B2-2:按【本链】insight 取(chain-scoped),不跨链取最强档越级(如英维克 AI 链应显间接)。
-      const insightSeg = segmentForCodeInChain(stock.code, chain.insightSlug);
-      const rel = relationForCodeInChain(stock.code, chain.insightSlug) ?? seg.defaultRelation;
-      // 验证点:insight 核定环节与 chains 环节一致时用其模板,否则用中性验证点
-      // (避免给 DDR5 标的挂上 HBM 验证——那正是核定 reason 里「别按 HBM 理解」要避免的)。
-      const verify =
-        insightSeg && insightSeg !== seg.name
-          ? ["订单 / 客户导入", "收入占比", "毛利率 / 交付节奏"]
-          : seg.verifyTemplate.slice(0, 3);
-      map[stock.code] = {
-        chainId: chain.id,
-        chainName: chain.name,
-        segment: insightSeg ?? seg.name,
-        relation: toFront(rel),
-        verify,
-      };
-    }
+  for (const s of STOCKS) {
+    if (s.market !== "A股") continue; // "和我相关"卡=A 股链身份;美股触发源不在此
+    const p = resolvePrimary(s.code);
+    if (!p) continue;
+    const front = FRONT3[p.relationType];
+    if (!front) continue; // trigger/candidate 不进三档卡;未覆盖由消费方显"暂未覆盖"
+    map[s.code] = {
+      chainId: p.chainId,
+      chainName: p.chainName,
+      segment: p.segmentName,
+      relation: front,
+      verify: p.verificationPoints.slice(0, 3),
+    };
   }
   return map;
 }
