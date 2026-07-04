@@ -30,6 +30,19 @@ type ResolvedRelation = {
 ```
 沉淀路径:dailyRelationSignals 多次命中同一 code → 进 relationReviewQueue → 人工在审阅台确认 → 回灌 staticRelations。
 
+## 0.5 Phase 3 退双轨(删 STRENGTH_BADGE)· 边界(负责人 2026-07-04 拍板后置;先写边界不动手)
+
+**目标:** 把全站"强/中/弱"彻底退场,统一为 relationType(trigger/direct/indirect/sentiment/weak/candidate)。
+**为何后置:** 涉及跨组件语义(不只换文案),等关系模型再跑 1-2 天、审阅台+diff 回灌跑通后再动,避免刚接完 resolver 就引回归。
+
+**启动前必做依赖清单:** ① STRENGTH_BADGE 用在哪些地方 ② edgeInfo 如何生成 ③ Dashboard 关联图谱怎么展示
+④ 特征矩阵是否依赖强/中/弱排序 ⑤ stock 页 peer 关系如何映射 ⑥ 旧数据无 relationType 时如何 fallback。
+
+**分步(不要直接删):** 1. 新增 relationType→displayBadge 映射,保留旧 strength fallback → 2. stock 页 peer 先切 →
+3. Dashboard 关联图谱切 → 4. 特征矩阵切 → 5. 确认无回归后删 STRENGTH_BADGE 主路径 → 6. 兼容层留一段时间再彻底删旧字段。
+
+**当前执行序:** 1.审阅台 4 功能(进行中)→ 2.观察 resolver 上线稳定性 → 3.跑一轮审阅+diff 回灌 → 4.再开 Phase 3。
+
 ## 1. 问题:关系数据现在散在 5 处、各页各取一份
 
 | 来源 | 内容 | 谁在用 |
