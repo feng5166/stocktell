@@ -23,16 +23,30 @@ const TYPE_META: Record<RelationType, { label: string; cls: string; btn: string 
 type Edit = { newType?: RelationType | "remove"; newReason?: string; action?: string; note?: string };
 type Flag = { level: "red" | "yellow" | null; msg: string };
 
-// 证据缺失规则(负责人拍板):direct 缺=红,indirect 缺=黄,trigger 缺分组=黄,candidate=黄提示。
+// 证据缺失硬规则(负责人拍板,防关系库退化成"概念理由"):
+// direct 缺证据/references=红;概念词无验证点=红(direct)/黄;reason 过短=黄;
+// indirect 缺=黄;trigger 缺分组=黄;candidate=黄。
+const CONCEPT_WORDS = /受益|机会|龙头|弹性|空间|景气/;
+const VERIFY_HINT = /后续看|验证|订单|客户|收入|毛利|占比|交付|披露|财报|供货|营收/;
 function evidenceFlag(r: StockChainRelation): Flag {
   const noRefs = !r.references || r.references.length === 0;
   const weakEv = !r.evidenceStatus || r.evidenceStatus === "needs_review" || r.evidenceStatus === "manual_only";
+  // ① direct 缺证据(最高优先级)
   if (r.relationType === "direct" && (weakEv || noRefs))
     return { level: "red", msg: weakEv && noRefs ? "direct 无证据状态且无 references" : weakEv ? "direct 证据状态不足" : "direct 缺 references" };
+  // ② 概念词无验证点(退化风险,仅查 A股映射理由;trigger 是海外定位不算):direct=红,其余=黄
+  if (r.relationType !== "trigger" && CONCEPT_WORDS.test(r.reason) && !VERIFY_HINT.test(r.reason))
+    return { level: r.relationType === "direct" ? "red" : "yellow", msg: "reason 含概念词(受益/龙头/空间…)但无验证点" };
+  // ③ reason 过短
+  if (r.reason.trim().length < 20 && r.relationType !== "trigger")
+    return { level: "yellow", msg: "reason 过短(<20 字),不足以解释传导" };
+  // ④ indirect 缺证据
   if (r.relationType === "indirect" && (weakEv || noRefs))
     return { level: "yellow", msg: "indirect 缺证据/references,需补订单/客户/收入" };
+  // ⑤ trigger 缺分组
   if (r.relationType === "trigger" && !r.triggerGroup)
     return { level: "yellow", msg: "trigger 缺分组 triggerGroup" };
+  // ⑥ candidate 待定
   if (r.relationType === "candidate")
     return { level: "yellow", msg: "candidate 待定 status(needs_evidence/needs_segment/duplicate/remove)" };
   return { level: null, msg: "" };
@@ -51,8 +65,8 @@ const refsOf = (e?: string) => (e === "verified" ? "available" : e === "partiall
 export default function RelationReviewClient({ relations }: { relations: StockChainRelation[] }) {
   const [edits, setEdits] = useState<Record<string, Edit>>({});
   const [hydrated, setHydrated] = useState(false);
-  const [onlyGap, setOnlyGap] = useState(false);
-  const [onlyChanged, setOnlyChanged] = useState(false);
+  // 审核队列(负责人拍板:第一屏先展示需处理的风险项,不铺全量)。默认 = direct 缺证据。
+  const [queue, setQueue] = useState<"direct-gap" | "candidate" | "trigger-ungrouped" | "changed" | "all">("direct-gap");
   const [editingReason, setEditingReason] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,6 +116,29 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
     }
     return { red, yellow };
   }, [relations]);
+
+  // 审核队列计数
+  const qCount = useMemo(() => {
+    const directGap = relations.filter((r) => r.relationType === "direct" && evidenceFlag(r).level === "red").length;
+    const cand = relations.filter((r) => r.relationType === "candidate").length;
+    const trigUng = relations.filter((r) => r.relationType === "trigger" && !r.triggerGroup).length;
+    return { directGap, cand, trigUng };
+  }, [relations]);
+
+  const inQueue = (r: StockChainRelation) => {
+    switch (queue) {
+      case "direct-gap":
+        return r.relationType === "direct" && evidenceFlag(r).level === "red";
+      case "candidate":
+        return r.relationType === "candidate";
+      case "trigger-ungrouped":
+        return r.relationType === "trigger" && !r.triggerGroup;
+      case "changed":
+        return hasChange(edits[keyOf(r)]);
+      default:
+        return true;
+    }
+  };
 
   // ---- 导出 diff(仅改动行;含 old/new 审计对 + 回灌所需列,可直接回灌)----
   function buildDiff(reviewedAt: string) {
@@ -163,18 +200,20 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
     return m;
   }, [relations]);
 
-  const visible = (r: StockChainRelation) => {
-    if (onlyGap && !evidenceFlag(r).level) return false;
-    if (onlyChanged && !hasChange(edits[keyOf(r)])) return false;
-    return true;
-  };
+  const QUEUES: { key: typeof queue; label: string; count: number; tone: string }[] = [
+    { key: "direct-gap", label: "Direct 缺证据", count: qCount.directGap, tone: "text-rose-600" },
+    { key: "candidate", label: "Candidate 待处理", count: qCount.cand, tone: "text-gray-600" },
+    { key: "trigger-ungrouped", label: "Trigger 未分组", count: qCount.trigUng, tone: "text-amber-600" },
+    { key: "changed", label: "最近变更待导出", count: changed.length, tone: "text-brand-600" },
+    { key: "all", label: "全部列表", count: relations.length, tone: "text-gray-500" },
+  ];
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <h1 className="text-h1 font-semibold tracking-tight text-gray-900">关系模型 · 人工校准工作台</h1>
       <p className="mt-1 text-sm text-gray-500">
-        读实时 <code className="rounded bg-gray-100 px-1 font-mono text-xs">staticRelations</code> · {relations.length} 条。改档 / 改 reason 只存本地,
-        产出 = 导出 diff → 我回灌。编辑不影响线上 /stocks·stock·watchlist·track。
+        读实时 <code className="rounded bg-gray-100 px-1 font-mono text-xs">staticRelations</code> · {relations.length} 条。第一屏 = 审核队列(先处理风险项),
+        改档 / 改 reason 只存本地,产出 = 导出 diff → 我回灌。编辑不影响线上。
       </p>
 
       {/* 工具条(sticky) */}
@@ -197,9 +236,18 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
             </span>
           </span>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-          <Toggle on={onlyGap} onClick={() => setOnlyGap((v) => !v)}>只看证据缺失</Toggle>
-          <Toggle on={onlyChanged} onClick={() => setOnlyChanged((v) => !v)}>只看已改</Toggle>
+        {/* 审核队列切换 */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+          {QUEUES.map((q) => (
+            <button
+              key={q.key}
+              onClick={() => setQueue(q.key)}
+              className={`rounded-full px-2.5 py-1 font-medium ${queue === q.key ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            >
+              {q.label}
+              <span className={`ml-1 ${queue === q.key ? "text-white/80" : q.tone}`}>{q.count}</span>
+            </button>
+          ))}
           {changed.length > 0 && (
             <button onClick={() => setEdits({})} className="ml-auto text-gray-400 hover:text-rose-600">
               清空所有改动
@@ -208,8 +256,14 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
         </div>
       </div>
 
+      {QUEUES.find((q) => q.key === queue)?.count === 0 && (
+        <div className="mt-8 rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+          ✓ 「{QUEUES.find((q) => q.key === queue)?.label}」队列已清空,无待处理项。切到其他队列或「全部列表」继续。
+        </div>
+      )}
+
       {Array.from(byChain.entries()).map(([cid, chain]) => {
-        const rows = chain.rows.filter(visible).sort((a, b) => REL_RANK[a.relationType] - REL_RANK[b.relationType]);
+        const rows = chain.rows.filter(inQueue).sort((a, b) => REL_RANK[a.relationType] - REL_RANK[b.relationType]);
         if (!rows.length) return null;
         return (
           <section key={cid} className="mt-6">
@@ -238,14 +292,6 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
         );
       })}
     </div>
-  );
-}
-
-function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick} className={`rounded-full px-2.5 py-1 font-medium ${on ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"}`}>
-      {children}
-    </button>
   );
 }
 
