@@ -10,6 +10,7 @@ import { INSIGHT_CHAINS } from "./insight-chains";
 import { CHAINS } from "./chains";
 import { STOCKS, STOCK_MAP } from "./stocks";
 import { AI_INFRA_UPGRADES, TRIGGER_CLASS } from "./chain-relations-audit.generated";
+import { DIRECT_EVIDENCE } from "./direct-evidence";
 
 export type RelationType =
   | "trigger" // 触发源:美股/海外公司(NVDA/PLTR/NOW),非 A 股映射标的
@@ -222,6 +223,18 @@ for (const st of STOCKS) {
     source: "chain",
     updatedAt: "2026-07-04",
   });
+}
+
+// 4) direct 证据层(负责人 2026-07-04 起草待审):补 references + 验证点 + 证据状态,
+//    清审阅台"direct 缺证据"红旗。references 指向法定披露页(不自产 URL),诚实标注证据状态。
+for (const r of relations) {
+  if (r.relationType !== "direct") continue;
+  const ev = DIRECT_EVIDENCE[r.code];
+  if (!ev) continue;
+  r.references = ev.references;
+  r.verificationPoints = ev.verificationPoints;
+  if (ev.evidenceStatus) r.evidenceStatus = ev.evidenceStatus;
+  if (ev.reasonAppend && !r.reason.includes(ev.reasonAppend.replace(/^[;；]/, ""))) r.reason += ev.reasonAppend;
 }
 
 // ================= 访问器(页面统一入口) =================
