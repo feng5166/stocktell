@@ -82,16 +82,29 @@ function buildTrigger(items: BriefingItem[]): DailyInsightPayload["trigger"] {
 
 /* ---------- S1:链级判断(LLM,兜底规则) ---------- */
 const JUDGMENT_PROMPT = `你是 StockTell 的产业链解读助手,面向看不懂产业链的 A 股散户。
-给你今天「{CHAIN}」相关的简报条目(盘前生成,触发=隔夜美股,A 股尚未开盘),写一段 60~140 字的链级今日判断:
-①整体偏强/偏弱/分化及来源(点名触发事件,不带具体涨跌数字) ②传导最直接的 1~3 个环节 ③哪些方向更多是情绪映射、不代表订单变化。
+「{CHAIN}」的定位:{FRAMING}
+本链【只关注这些环节】:{SEGMENTS}。
+给你今天相关的简报条目(盘前生成,触发=隔夜美股,A 股尚未开盘),写一段 60~140 字的链级今日判断:
+① 整体偏强/偏弱/分化及来源(点名触发事件,不带具体涨跌数字);
+② 判断【必须落在本链自己的环节({SEGMENTS})】,说清事件是怎么传导 / 外溢到这些环节的——不要只描述事件对别的链(比如 AI 主链的算力/光模块/半导体)的直接影响,那不是本链的判断;若本链是外溢链、今天没有直接命中本链的事件,就如实说"今天更多是外溢观察、无本链直接事件";
+③ 哪些方向更多是情绪映射、不代表订单变化。
 禁止任何操作暗示与盘口词(买卖/加减仓/抄底/接/冲/追/低开/高开/企稳/放量/缩量/破位/补跌/错杀等);用"传导/映射/承压/观察/验证/共振"。
 A 股一律前瞻口吻,不断言已经怎么走;不用吓人词;不写免责。只输出正文,一段话。`;
 
 async function genJudgment(
   chainName: string,
+  segments: ChainSegment[],
+  framing: string,
   items: BriefingItem[],
   meta: { llmCalls: number; retries: number }
 ): Promise<{ text: string; degraded: boolean }> {
+  const segNames = segments
+    .map((s) => s.name)
+    .filter((n) => n !== FALLBACK_SEGMENT)
+    .join("、");
+  const sys = JUDGMENT_PROMPT.replace(/\{CHAIN\}/g, chainName)
+    .replace("{FRAMING}", framing)
+    .replace(/\{SEGMENTS\}/g, segNames);
   const llm = await getLLMFor("fast");
   if (llm) {
     const payload = items.map((it) => ({
@@ -111,8 +124,8 @@ async function genJudgment(
               model: llm.model,
               max_tokens: 400,
               messages: [
-                { role: "system", content: JUDGMENT_PROMPT.replace("{CHAIN}", chainName) },
-                { role: "user", content: `今天的简报条目(JSON):\n${JSON.stringify(payload)}\n\n请写链级今日判断。` },
+                { role: "system", content: sys },
+                { role: "user", content: `今天的简报条目(JSON):\n${JSON.stringify(payload)}\n\n请写链级今日判断(落在本链环节)。` },
               ],
             },
             { maxRetries: 1, timeout: 12000 }
@@ -396,7 +409,7 @@ export async function generateDailyInsight(
   const toSegment = sectorToSegment(chain.segments);
 
   const trigger = buildTrigger(items);
-  const judgment = await genJudgment(chain.name, items, meta);
+  const judgment = await genJudgment(chain.name, chain.segments, chain.tagline, items, meta);
   const heat = await genHeat(chain.segments, items, toSegment, opts?.yesterdayHeat ?? null, meta);
   const mappingsDelta = buildMappingsDelta(items, chain.segments, toSegment, chain.insightSlug);
   const risk = dailyRisk(items);
