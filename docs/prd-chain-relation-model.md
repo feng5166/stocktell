@@ -4,6 +4,32 @@
 > stock / stocks / watchlist 彻底吃**同一份**关系数据,消灭"一会儿强关联、一会儿直接映射"的双轨。
 > 状态:设计待评审 → 评审过再排实施(实施不在 2.0 管线验收期动页面主干)。
 
+## 0. 三层架构 + relationResolver(负责人 2026-07-04 拍板;骨架先设计、audit 回灌后再实现)
+
+**边界铁律:每日管线关系【绝不】直接污染静态关系库。** 分三层:
+
+| 层 | 内容 | 有效期 | 来源 |
+|---|---|---|---|
+| `staticRelations` | 人工核定、长期有效(= chain-relations.ts,只吃 audit 回灌) | 长期 | manual |
+| `dailyRelationSignals` | 每日管线生成的当天事件信号 | 短期(当天) | pipeline |
+| `relationReviewQueue` | 多次出现、待人工沉淀或剔除的候选 | 过渡 | pipeline→manual |
+
+**`relationResolver` = 唯一读入口**(解决"改一处漏几处"DRY;/stocks、stock、watchlist、track、chain 页全走它):
+- 读 staticRelations + 合并当天 dailyRelationSignals + 合并 reviewQueue 必要状态;
+- 输出统一 relation view,带 `source` 标记:`static`(长期关系)/ `daily`(今日触发)/ `review`(待核定)。
+
+**硬规则(拍板③):resolver 合并时 dailyRelationSignals 【不能自动提升 relationType】。** 例:静态是 indirect、
+今日 signal 命中强事件 → 前台可显"今日触发强",但**不能把长期关系显示成 direct**。输出三字段分开、不混成一个:
+```ts
+type ResolvedRelation = {
+  relationType: RelationType;      // 长期档位(只来自 staticRelations)
+  todaySignalStrength?: '强'|'中'|'弱'|null; // 今日触发强度(来自 dailyRelationSignals,独立字段)
+  source: 'static' | 'daily' | 'review';
+  // …chainId/segment/reason/verificationPoints/confidence 同 StockChainRelation
+};
+```
+沉淀路径:dailyRelationSignals 多次命中同一 code → 进 relationReviewQueue → 人工在审阅台确认 → 回灌 staticRelations。
+
 ## 1. 问题:关系数据现在散在 5 处、各页各取一份
 
 | 来源 | 内容 | 谁在用 |
