@@ -183,6 +183,22 @@ export default async function ChainPage({
           </div>
         )}
 
+        {/* 应用侧深化 insight 入口(如「AI 应用为什么没有直接映射?」) */}
+        {chain.relatedInsights?.length ? (
+          <div className="mt-4 space-y-2">
+            {chain.relatedInsights.map((ri) => (
+              <Link
+                key={ri.slug}
+                href={`/insight/${ri.slug}`}
+                className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-brand-200 hover:bg-brand-50/40"
+              >
+                <span className="text-sm font-medium text-gray-800">{ri.label}</span>
+                <span className="shrink-0 text-xs font-medium text-brand-600">看拆解 →</span>
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
         {/* 隔夜美股 · A股联动 */}
         <div className="mt-4">
           <OvernightRadar />

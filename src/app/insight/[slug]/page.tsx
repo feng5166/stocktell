@@ -110,6 +110,11 @@ function MappingRow({ m }: { m: StockMap }) {
       <span className="text-sm font-medium text-gray-800">{m.name}</span>
       {m.code && <span className="font-mono text-xs text-gray-400">{m.code}</span>}
       <span className="text-xs text-gray-400">{m.segment}</span>
+      {m.relationNote && (
+        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+          {m.relationNote}
+        </span>
+      )}
       <Pill text={`置信 ${m.confidence}`} cls={CONF[m.confidence]} />
       {inPool && <span className="ml-auto text-[11px] text-brand-400">看个股 →</span>}
     </>

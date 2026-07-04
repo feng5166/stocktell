@@ -20,6 +20,7 @@ export interface ChainConfig {
   segments?: ChainSegment[]; // 每日推理的环节枚举(insight 管线 PRD §4.3);「其他链上环节」为兜底段不进 heat
   todayFraming?: string; // 非 ai 链的「今天怎么看这条链」静态口径(该链无专属 cron/事件,不用 AI 事件兜底)
   sentimentTitle?: string; // 链页情绪卡标题(不写死 AI)
+  relatedInsights?: { slug: string; label: string }[]; // 链页深化入口(如 AI 链 → 应用侧「为什么没有直接映射」insight)
 }
 
 // AI 数据中心电力基础设施链成分(显式清单,与 AI 主链隔离)。这条链是 AI 基础设施的外溢链,
@@ -42,6 +43,10 @@ export const CHAINS: Record<string, ChainConfig> = {
       (s) => s.market === "A股" && (!s.chains || s.chains.includes("ai"))
     ),
     insightSlug: "ai-infra",
+    // 应用侧深化 insight(不独立成 chain,应用股属 AI 主链):从链页放入口
+    relatedInsights: [
+      { slug: "ai-application", label: "AI 应用为什么没有直接映射?" },
+    ],
     segments: [
       { name: "光模块/高速互连", plain: "数据中心里机器之间高速传数据的「光接头」", sectors: ["光模块/CPO", "交换机/网络"], defaultRelation: "直接映射", verifyTemplate: ["800G/1.6T 订单", "海外云厂资本开支", "毛利率"] },
       { name: "存储/HBM", plain: "贴着 AI 芯片的「快内存」与存储", sectors: ["存储/HBM"], defaultRelation: "直接映射", verifyTemplate: ["存储合约价", "HBM 产能预订", "库存周期"] },

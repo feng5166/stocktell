@@ -35,6 +35,7 @@ export interface StockMap {
   code?: string; // 有则跳个股页(且需在股池内)
   segment: string;
   relation: Relation; // 传导层级(供货/配套距离),非受益程度
+  relationNote?: string; // 关系标后缀(如应用链间接标的加「自身商业化可验证」,防误读成海外传导)
   reason: string;
   confidence: Confidence;
 }
@@ -364,7 +365,7 @@ const AI_APPLICATION: InsightChain = {
   tldr: {
     hook: "海外 AI 应用(Palantir 这些)大涨了——国内的科大讯飞、金山办公、同花顺就受益吗?一眼看懂 👇",
     tiers: [
-      { emoji: "🟡", level: "相对靠谱", what: "有真实国内 AI 收入的(金山办公 · 同花顺 · 科大讯飞)", rel: "间接", why: "有自己的 AI 付费用户 / 政企订单,受趋势间接带动——但和海外应用没关系" },
+      { emoji: "🟡", level: "自身可验证", what: "有真实国内 AI 收入的(金山办公 · 同花顺 · 科大讯飞)", rel: "间接", why: "有自己的 AI 付费用户 / 政企订单——不是海外传导,是自身商业化更可验证" },
       { emoji: "💨", level: "沾题材", what: "AIGC / 大模型概念(昆仑万维 · 三六零)", rel: "情绪映射", why: "题材热,但 AI 收入占比小、商业化早期,多是情绪带动" },
       { emoji: "⬜", level: "同题材不同公司", what: "所有 A 股 AI 应用股", rel: "情绪映射", why: "和海外应用无供货、无业务绑定——海外涨不等于国内受益" },
     ],
@@ -378,7 +379,7 @@ const AI_APPLICATION: InsightChain = {
     "海外做 AI 应用的公司(像 Palantir、ServiceNow)业绩或股价大涨,市场认为「AI 应用终于开始赚钱了」。",
   storyPlain: [
     "海外企业级 AI 应用(Palantir、ServiceNow 这些)开始真正赚到钱。",
-    "市场就把「AI 应用能赚钱」的预期,套到国内做 AI 应用的公司头上。",
+    "市场会把海外 AI 应用商业化的预期,映射到国内 AI 应用公司身上。",
     "但国内应用和海外应用没有供货、没有业务关系——是同一个题材、完全不同的公司。",
     "所以国内应用跟着涨,大多是情绪跟风,不是真的受益传导。",
     "国内谁真受益,要看它自己的 AI 付费用户、政企订单和收入,不是看海外股价。",
@@ -393,7 +394,7 @@ const AI_APPLICATION: InsightChain = {
   whyThisEvent:
     "本链差异化不在「列一堆 AI 应用股」,而在戳破一个高频误判:海外 AI 应用大涨,散户容易读成国内 AI 应用受益,但两者【无供货、无业务绑定】,是情绪而非传导。若换成「国内大模型降价 / 政企 AI 采购放量」事件,重心才转到国内应用的真实收入侧——那才是国内应用的直接驱动。红线:若「海外应用商业化」与「国内政企 AI 采购」两类事件产出同一张映射图,即为按类别检索预制图谱,产物不成立。",
   heatmapNote:
-    "「情绪升温 / 分化」= 题材关注度,非股价涨跌预测,更非受益确认;强度 = 自身 AI 业务可验证性,非收益或涨幅。应用链 A 股多为情绪映射,直接映射基本没有。",
+    "这里的「升温」表示商业化关注度提升,不代表股价判断,更非受益确认;强度 = 自身 AI 业务可验证性,非收益或涨幅。应用链 A 股多为情绪映射,直接映射基本没有。",
   heatmap: [
     { segment: "办公 / 生产力 AI", plain: "把 AI 装进办公软件(写文档、做表格)", direction: "升温", intensity: 3, relation: "间接", confidence: "中", reason: "国内办公 AI 有真实付费用户与订阅收入,是应用链里可验证性相对高的一档;但与海外应用无业务关系,受益看自身 AI 付费转化" },
     { segment: "金融信息 AI", plain: "把 AI 装进炒股/金融信息工具", direction: "升温", intensity: 3, relation: "间接", confidence: "中", reason: "金融信息 AI 有付费用户与增值服务,受趋势间接带动;和海外应用无供货,看自身 AI 增值收入" },
@@ -401,7 +402,7 @@ const AI_APPLICATION: InsightChain = {
     { segment: "大模型 / AIGC 平台", plain: "自研大模型 + AIGC 生成应用", direction: "分化", intensity: 3, relation: "情绪映射", confidence: "低", reason: "大模型 / AIGC 题材热,但收入占比小、商业化早期,海外应用涨多为情绪带动" },
     { segment: "安全 / 垂直 AI", plain: "安全、搜索等垂直方向接大模型", direction: "分化", intensity: 2, relation: "情绪映射", confidence: "低", reason: "垂直方向接大模型,AI 收入占比小,情绪映射为主" },
     { segment: "端侧 AI 软件", plain: "手机/终端上的 AI 软件与操作系统", direction: "分化", intensity: 2, relation: "情绪映射", confidence: "中", reason: "端侧 AI 软件 / OS 与海外企业级应用不同赛道,受泛 AI 应用情绪带动,非同一驱动" },
-    { segment: "(对照)海外企业级 AI 应用", plain: "Palantir/ServiceNow 等——是触发源不是 A 股映射", direction: "升温", intensity: 4, relation: "弱", confidence: "中", reason: "海外应用商业化验证是本链触发源(事件侧),与 A 股应用无供货关系,不是 A 股映射标的" },
+    { segment: "🌍 海外对照组(触发源,非 A 股环节)", plain: "Palantir / ServiceNow——国内情绪映射的触发源,不是国内公司的收入来源", direction: "升温", intensity: 4, relation: "弱", confidence: "中", reason: "海外企业级 AI 应用商业化进展,是国内 AI 应用情绪映射的触发源,但与 A 股应用无供货 / 收入关系,不是 A 股映射标的——放此对照,别与国内环节平级理解" },
   ],
   hopsNote:
     "关键不是「传导了几跳」,而是【几乎没有传导】:国内应用和海外应用是同题材、不同公司,中间没有供货或业务关系。",
@@ -435,15 +436,15 @@ const AI_APPLICATION: InsightChain = {
   mappingNote:
     "按【自身 AI 业务可验证性】分级(非推荐、非收益排序);均为 stocks.ts 池内真实标的。核心边界:本链 A 股【无直接映射】——国内应用不给海外应用供货;有真实国内 AI 收入 / 订单的给间接,纯题材给情绪映射。海外应用(Palantir 等)是触发源、不是 A 股映射。",
   mappings: [
-    { name: "金山办公", code: "688111", segment: "办公 / 生产力 AI", relation: "间接", reason: "WPS AI 有真实付费用户与订阅收入,应用链里自身 AI 业务可验证性相对高;但与海外应用无业务关系,受益看自身 AI 付费转化", confidence: "中" },
-    { name: "同花顺", code: "300033", segment: "金融信息 AI", relation: "间接", reason: "金融信息 AI 有付费用户与增值服务,受 AI 应用趋势间接带动;和海外应用无供货,看自身 AI 增值收入兑现", confidence: "中" },
-    { name: "科大讯飞", code: "002230", segment: "语音 / 多模态 AI", relation: "间接", reason: "语音 / 多模态 AI + 政企订单有真实 AI 业务;受趋势间接带动,看政企 / 教育 / 医疗 AI 订单兑现,商业化节奏不一", confidence: "中" },
+    { name: "金山办公", code: "688111", segment: "办公 / 生产力 AI", relation: "间接", relationNote: "自身商业化可验证", reason: "WPS AI 有真实付费用户与订阅收入,应用链里自身 AI 业务可验证性相对高;但与海外应用无业务关系,受益看自身 AI 付费转化", confidence: "中" },
+    { name: "同花顺", code: "300033", segment: "金融信息 AI", relation: "间接", relationNote: "自身商业化可验证", reason: "金融信息 AI 有付费用户与增值服务,受 AI 应用趋势间接带动;和海外应用无供货,看自身 AI 增值收入兑现", confidence: "中" },
+    { name: "科大讯飞", code: "002230", segment: "语音 / 多模态 AI", relation: "间接", relationNote: "自身商业化可验证", reason: "语音 / 多模态 AI + 政企订单有真实 AI 业务;受趋势间接带动,看政企 / 教育 / 医疗 AI 订单兑现,商业化节奏不一", confidence: "中" },
     { name: "昆仑万维", code: "300418", segment: "大模型 / AIGC 平台", relation: "情绪映射", reason: "天工大模型 / AIGC 题材热,但 AI 收入占比小、商业化早期,海外应用涨多为情绪带动", confidence: "低" },
     { name: "三六零", code: "601360", segment: "安全 / 垂直 AI", relation: "情绪映射", reason: "360 智脑 / AI 搜索题材,AI 收入占比小,情绪映射为主", confidence: "低" },
     { name: "中科创达", code: "300496", segment: "端侧 AI 软件", relation: "情绪映射", reason: "端侧 AI 软件 / OS 与海外企业级应用不同赛道,受泛 AI 应用情绪带动,非同一驱动", confidence: "中" },
   ],
   uncertainties: [
-    "本链 A 股【无直接映射】是刻意结论:国内应用不给海外应用供货,别把「AI 应用概念」读成「海外应用受益方」。",
+    "最容易看错:把「同题材」误认为「有传导」。本链 A 股【无直接映射】是刻意结论——国内应用不给海外应用供货,别把「AI 应用概念」读成「海外应用受益方」。",
     "间接映射(金山 / 同花顺 / 讯飞)的 AI 收入占比、付费转化、政企订单节奏,需以各自年报 / 公告披露为准,别把「有 AI 业务」等同于「AI 已贡献主要收入」。",
     "国内应用商业化、付费习惯、政企预算、大模型成本仍在早期,映射强度不宜线性外推。",
     "有没有被资金按「AI 应用」主题提前炒过头(price-in)没校验,需结合当日行情与资金面再看。",
