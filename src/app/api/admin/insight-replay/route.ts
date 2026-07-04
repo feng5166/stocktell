@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
   }
   const date = req.nextUrl.searchParams.get("date") ?? todayISO();
   const publish = req.nextUrl.searchParams.get("publish") === "1"; // 真发布:走与 cron 完全相同的自动发布安全轨
+  // stampToday:用 date 的事件生成,但把 doc 日期盖成【今日】,好让今日 insight 页查得到(纯为验证渲染)。
+  const stampToday = req.nextUrl.searchParams.get("stampToday") === "1";
   const out: Record<string, unknown>[] = [];
   for (const chain of Object.values(CHAINS).filter((c) => c.segments?.length)) {
     try {
@@ -45,6 +47,7 @@ export async function GET(req: NextRequest) {
       };
       // publish=1:走 cron 同款安全轨(HIGH 已在生成侧挡;这里复检合规 + 退化不发)。落库并发布。
       if (publish && r.ok && !r.blocked && p) {
+        if (stampToday) p.date = todayISO(); // B:doc 日期盖成今日,让今日 insight 页显示
         const doc = await saveDraft(p, r.guard!);
         if (!doc) entry.publishStatus = "no-db";
         else {
