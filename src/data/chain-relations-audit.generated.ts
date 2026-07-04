@@ -1,4 +1,4 @@
-// AUTO-GENERATED from docs/chain-relations-review-audited.csv(负责人 2026-07-04 审阅版)。勿手改;重审后重生成。
+// AUTO-GENERATED from docs/chain-relations-review-v2-audited.csv(负责人 v2 审阅版)。勿手改;重审后重生成。
 export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; relationType:'direct'|'indirect'|'sentiment'; confidence:'low'; reason:string }[] = [
   {
     "code": "000977",
@@ -22,7 +22,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "光模块/高速互连",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "说明是上游器件，不是光模块整机直接映射。"
+    "reason": "无源光器件/光模块上游，升间接；说明是上游器件，不是光模块整机直接映射。"
   },
   {
     "code": "002463",
@@ -30,7 +30,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "不是整机直接，后续看 AI 服务器 PCB订单/客户/毛利。"
+    "reason": "AI 服务器 PCB，升间接；不是整机直接，后续看 AI 服务器 PCB订单/客户/毛利。"
   },
   {
     "code": "002916",
@@ -38,7 +38,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需 AI 服务器/封装基板收入验证。"
+    "reason": "PCB/封装基板相关，升间接；需 AI 服务器/封装基板收入验证。"
   },
   {
     "code": "300476",
@@ -46,7 +46,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需 AI 服务器订单和收入占比验证。"
+    "reason": "高阶 PCB/HDI 可升间接；需 AI 服务器订单和收入占比验证。"
   },
   {
     "code": "600183",
@@ -86,7 +86,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "光模块/高速互连",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "建议环节改“服务器/网络设备”。"
+    "reason": "新华三服务器/交换机相关，升间接；建议环节改“服务器/网络设备”。"
   },
   {
     "code": "002475",
@@ -94,7 +94,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需服务器/数据中心订单验证。"
+    "reason": "连接器/算力组件属硬件上游，升间接；需服务器/数据中心订单验证。"
   },
   {
     "code": "002261",
@@ -118,7 +118,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "光模块/高速互连",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需验证数据中心光模块收入和客户。"
+    "reason": "数通光模块/激光器相关，升间接；需验证数据中心光模块收入和客户。"
   },
   {
     "code": "688498",
@@ -126,7 +126,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "光模块/高速互连",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需订单/收入验证。"
+    "reason": "高速激光器芯片属光模块上游，升间接；需订单/收入验证。"
   },
   {
     "code": "603228",
@@ -142,7 +142,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需封装基板和 AI 服务器链条证据。"
+    "reason": "IC封装基板/高速 PCB，升间接；需封装基板和 AI 服务器链条证据。"
   },
   {
     "code": "603256",
@@ -166,7 +166,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "传导较远，需订单验证。"
+    "reason": "电子铜箔属 PCB 上游材料，升间接；传导较远，需订单验证。"
   },
   {
     "code": "301511",
@@ -190,7 +190,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "服务器/算力代工",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需整机订单和收入验证。"
+    "reason": "国产算力整机/海光关联，可升间接；需整机订单和收入验证。"
   },
   {
     "code": "300563",
@@ -198,7 +198,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "铜连接/高速互连(铜)",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需 GB/AI服务器铜连接客户验证。"
+    "reason": "高速线缆/铜连接二线，升间接；需 GB/AI服务器铜连接客户验证。"
   },
   {
     "code": "688702",
@@ -206,7 +206,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "光模块/高速互连",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需数据中心交换芯片订单/客户验证。"
+    "reason": "国产交换芯片与 AI 网络相关，升间接；需数据中心交换芯片订单/客户验证。"
   },
   {
     "code": "300620",
@@ -230,7 +230,7 @@ export const AI_INFRA_UPGRADES: { code:string; name:string; segment:string; rela
     "segment": "光模块/高速互连",
     "relationType": "indirect",
     "confidence": "low",
-    "reason": "需业务暴露验证。"
+    "reason": "光模块上游器件，升间接；需业务暴露验证。"
   }
 ];
 export const TRIGGER_CLASS: Record<string,{ group:string; chainId:string|null }> = {
