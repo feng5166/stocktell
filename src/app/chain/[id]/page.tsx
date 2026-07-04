@@ -14,7 +14,7 @@ import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
-import { relationLabelFor, relationForCode } from "@/lib/relation";
+import { relationLabelFor, relationForCodeInChain } from "@/lib/relation";
 import { DISCLAIMER } from "@/lib/constants";
 
 export const revalidate = 60;
@@ -290,17 +290,16 @@ export default async function ChainPage({
           members={roster}
           mentioned={mentioned}
           relations={Object.fromEntries(
-            roster.map((r) => [r.code, relationForCode(r.code) ?? "产业链相关"])
+            // B2-2:按【本链】核定关系(chain-scoped),不跨链取最强档把间接股越级成直接
+            roster.map((r) => [
+              r.code,
+              relationForCodeInChain(r.code, chain.insightSlug) ?? "产业链相关",
+            ])
           )}
-          groupOverride={{ "002028": "输配电 / 电网侧外溢" }}
-          sectorLabels={{ "能源/核电": "能源侧外溢(弱 / 情绪映射)" }}
-          groupNotes={{
-            "输配电 / 电网侧外溢":
-              "和 AI 数据中心电力基础设施存在外层支撑关系,但传导距离比 UPS、温控、液冷更远,需通过数据中心项目、客户和订单验证",
-            "能源/核电":
-              "算力耗电宏大叙事的最远端,与数据中心建设缺明确连接,默认弱 / 情绪映射",
-          }}
-          bottomSectors={["输配电 / 电网侧外溢", "能源/核电"]}
+          groupOverride={chain.rosterGroups?.groupOverride}
+          sectorLabels={chain.rosterGroups?.sectorLabels}
+          groupNotes={chain.rosterGroups?.groupNotes}
+          bottomSectors={chain.rosterGroups?.bottomSectors}
         />
 
         <p className="mt-8 text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>

@@ -10,7 +10,7 @@ import { CHAINS } from "@/data/chains";
 
 export const dynamic = "force-dynamic";
 // 判断+热力两段 LLM + 检索 + URL 实测,给足;独立 cron 不挤 07:01 主流程预算(PRD §5)
-export const maxDuration = 180; // #12:两段LLM+检索+URL实测叠加,给足余量(bocha 已加超时)
+export const maxDuration = 300; // B2-3:两段LLM+检索+URL实测,单链最坏~113s;多链串行须覆盖 2×单链
 
 // 链级每日推理生成(07:05 北京;07:40 briefing-backup 兜底补跑同一入口)。
 // 流程:读当日已发布条目 → 五段生成 → 护栏 → draft 落库 → 飞书待审。
@@ -25,9 +25,18 @@ export async function GET(req: NextRequest) {
   }
 
   const results: Record<string, string> = {};
+  // B2-3:多链串行的时间预算闸门。单链最坏 ~113s;剩余不够跑完一条就 break 交 07:40 补跑,
+  // 并告警——避免被 300s 硬杀在循环中段、剩下的链"无草稿无告警"静默断产。
+  const startedAt = Date.now();
+  const WORST_CHAIN_MS = 120_000;
+  const BUDGET_MS = 300_000 - 15_000; // 留 15s 收尾余量
   // M1 只有 ai 配置了 segments;M1.5 加链自动进循环(PRD D4)
-  for (const chain of Object.values(CHAINS)) {
-    if (!chain.segments?.length) continue;
+  const configured = Object.values(CHAINS).filter((c) => c.segments?.length);
+  for (const chain of configured) {
+    if (Date.now() - startedAt > BUDGET_MS - WORST_CHAIN_MS) {
+      results[chain.id] = "skip:time-budget";
+      continue; // 不 break:把剩余链都标注,循环末尾统一告警点名
+    }
     try {
       // 同图谱连续告警未处理 → 管线暂停(§7.2-6):跳过生成,等人工 force 恢复。
       // #13:已暂停是"已知态",不每天飞书刷屏(暂停当天已在 streak≥3 分支告过一次);
@@ -79,6 +88,14 @@ export async function GET(req: NextRequest) {
       results[chain.id] = "error";
       await alertCron("insight-daily(生成)", e);
     }
+  }
+  // B2-3:循环末尾核对——被时间预算跳过的链点名告警,不让它静默(07:40 补跑会重试)
+  const budgetSkipped = configured.filter((c) => results[c.id] === "skip:time-budget");
+  if (budgetSkipped.length) {
+    await alertCron(
+      "insight-daily(时间预算跳过)",
+      `${date} 时间预算不足,跳过 ${budgetSkipped.map((c) => c.name).join("、")}(未生成草稿);07:40 补跑会重试,连续跳过请拆分链或提高并发`
+    );
   }
   return NextResponse.json({ ok: true, date, results });
 }

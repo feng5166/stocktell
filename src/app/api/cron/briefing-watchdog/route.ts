@@ -6,6 +6,8 @@ import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { sendFeishu } from "@/lib/feishu";
 import { getPrisma } from "@/lib/prisma";
+import { CHAINS } from "@/data/chains";
+import { isPipelinePaused } from "@/lib/insight-pipeline/docs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 心跳 + 缓存清扫(清扫在心跳之后,永远不挤占本职)
@@ -74,18 +76,29 @@ export async function GET(req: NextRequest) {
   }
   // insight 管线心跳(PRD §5):交易日到 08:30 还没有当日链级每日推理(draft 或 published)→ 告警。
   // 人审未完成不算失败(降级发布=地板在线);完全没草稿才是管线断了。
+  // B2-4:【按链】分别核对——不能只按跨链总数判活(只要 ai 出草稿就判正常,电力链单独断产永不告警)。
+  // 区分「暂停待恢复」(预期,轻提醒)与「疑似断产」(点名 ❌ 告警)。
   try {
     const dbi = getPrisma();
-    const dailyCount = dbi
-      ? await dbi.insightDoc.count({
-          where: { date, kind: "daily", status: { in: ["draft", "published"] } },
-        })
-      : -1;
-    if (dailyCount === 0) {
-      await sendFeishu(
-        `❌ StockTell 链级每日推理缺失 · ${date} · 08:30 仍无 draft(07:05 主跑+07:40 补跑都没产出)。手动:POST /api/admin/insight-daily?force=1(Bearer ADMIN_TOKEN)`
-      );
-      await alertCron("insight-daily 看门狗", `交易日 ${date} 无当日每日推理草稿,管线疑似断产`);
+    if (dbi) {
+      for (const chain of Object.values(CHAINS).filter((c) => c.segments?.length)) {
+        const cnt = await dbi.insightDoc
+          .count({ where: { date, chainId: chain.id, kind: "daily", status: { in: ["draft", "published"] } } })
+          .catch(() => -1);
+        if (cnt !== 0) continue;
+        const paused = await isPipelinePaused(chain.id).catch(() => null);
+        if (paused) {
+          await alertCron(
+            "insight-daily 看门狗",
+            `交易日 ${date} ${chain.name} 管线暂停中(${paused}),无当日草稿属预期;确认后 POST /api/admin/insight-daily?force=1&chain=${chain.id} 恢复`
+          );
+        } else {
+          await sendFeishu(
+            `❌ StockTell ${chain.name}·链级每日推理缺失 · ${date} · 08:30 仍无 draft(07:05 主跑+07:40 补跑都没产出)。手动:POST /api/admin/insight-daily?force=1&chain=${chain.id}(Bearer ADMIN_TOKEN)`
+          );
+          await alertCron("insight-daily 看门狗", `交易日 ${date} ${chain.name} 无当日每日推理草稿,管线疑似断产`);
+        }
+      }
     }
   } catch {
     /* insight 心跳失败不影响简报看门狗主流程 */

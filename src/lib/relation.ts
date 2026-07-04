@@ -8,15 +8,48 @@ const ORDER: Relation[] = ["直接", "间接", "情绪映射", "弱"];
 
 const codeRel = new Map<string, Relation>();
 const codeSeg = new Map<string, string>(); // code → insight 核定 segment(精细,优先于 sector 粗分)
+// 按链的核定关系/环节(B2-2:同一只票在不同链关系不同,如英维克 AI 链间接、电力链直接——
+// 链页/自选卡必须按【本链】取,不能跨链取最强档把 AI 链的间接股越级成直接)。
+const chainCodeRel = new Map<string, Map<string, Relation>>(); // slug → (code → relation)
+const chainCodeSeg = new Map<string, Map<string, string>>(); // slug → (code → segment)
 for (const ins of Object.values(INSIGHT_CHAINS)) {
+  const relOf = new Map<string, Relation>();
+  const segOf = new Map<string, string>();
   for (const m of ins.mappings) {
     if (!m.code) continue;
+    // 全局最强档(事件卡跨链语义 relationLabelFor 用;别改)
     const prev = codeRel.get(m.code);
     if (!prev || ORDER.indexOf(m.relation) < ORDER.indexOf(prev)) {
       codeRel.set(m.code, m.relation);
-      codeSeg.set(m.code, m.segment); // 关系升档时同步取该条的 segment(与 relation 同源,口径一致)
+      codeSeg.set(m.code, m.segment);
+    }
+    // 本链档(链页/自选卡用;一只票一链至多一条,取更强的一条防重复)
+    const p2 = relOf.get(m.code);
+    if (!p2 || ORDER.indexOf(m.relation) < ORDER.indexOf(p2)) {
+      relOf.set(m.code, m.relation);
+      segOf.set(m.code, m.segment);
     }
   }
+  chainCodeRel.set(ins.slug, relOf);
+  chainCodeSeg.set(ins.slug, segOf);
+}
+
+const toFront = (r: Relation): "直接映射" | "间接映射" | "情绪映射" | "弱映射" =>
+  r === "直接" ? "直接映射" : r === "间接" ? "间接映射" : r === "弱" ? "弱映射" : "情绪映射";
+
+// 【本链】核定关系(链页/自选卡按 chain 取,消除跨链越级 B2-2);slug 缺省或没核过返回 null。
+export function relationForCodeInChain(
+  code: string,
+  slug: string | undefined
+): "直接映射" | "间接映射" | "情绪映射" | "弱映射" | null {
+  if (!slug) return null;
+  const r = chainCodeRel.get(slug)?.get(code);
+  return r ? toFront(r) : null;
+}
+// 【本链】核定环节;slug 缺省或没核过返回 null。
+export function segmentForCodeInChain(code: string, slug: string | undefined): string | null {
+  if (!slug) return null;
+  return chainCodeSeg.get(slug)?.get(code) ?? null;
 }
 
 // 单只票的 insight 核定环节(精细,如澜起=「服务器内存接口/DDR5」而非粗分「存储/HBM」)。
@@ -33,8 +66,7 @@ export function relationForCode(
   code: string
 ): "直接映射" | "间接映射" | "情绪映射" | "弱映射" | null {
   const r = codeRel.get(code);
-  if (!r) return null;
-  return r === "直接" ? "直接映射" : r === "间接" ? "间接映射" : r === "弱" ? "弱映射" : "情绪映射";
+  return r ? toFront(r) : null;
 }
 
 export function relationLabelFor(item: {

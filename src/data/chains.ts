@@ -21,6 +21,13 @@ export interface ChainConfig {
   todayFraming?: string; // 非 ai 链的「今天怎么看这条链」静态口径(该链无专属 cron/事件,不用 AI 事件兜底)
   sentimentTitle?: string; // 链页情绪卡标题(不写死 AI)
   relatedInsights?: { slug: string; label: string }[]; // 链页深化入口(如 AI 链 → 应用侧「为什么没有直接映射」insight)
+  // 链页 roster 分组覆写(B2-8:各链自带,不再无条件传给共用组件污染别的链)
+  rosterGroups?: {
+    groupOverride?: Record<string, string>; // code → 自定义分组键
+    sectorLabels?: Record<string, string>; // 板块组名改写
+    groupNotes?: Record<string, string>; // 组键 → 组说明
+    bottomSectors?: string[]; // 置底组(按数组顺序)
+  };
 }
 
 // AI 数据中心电力基础设施链成分(显式清单,与 AI 主链隔离)。这条链是 AI 基础设施的外溢链,
@@ -70,6 +77,16 @@ export const CHAINS: Record<string, ChainConfig> = {
     sentimentTitle: "这条链今日状态",
     todayFraming:
       "今天这条链的触发源主要来自 AI 基础设施投资预期和海外算力链波动。短期价格表现可能受市场情绪影响,但真正需要验证的是:数据中心建设是否继续推进,高功率机柜是否提升供配电、温控、液冷和备用电源需求,以及相关公司能否形成订单和收入确认。",
+    rosterGroups: {
+      groupOverride: { "002028": "输配电 / 电网侧外溢" }, // 思源:单独归组、保持间接,不混进弱/情绪
+      sectorLabels: { "能源/核电": "能源侧外溢(弱 / 情绪映射)" },
+      groupNotes: {
+        "输配电 / 电网侧外溢":
+          "和 AI 数据中心电力基础设施存在外层支撑关系,但传导距离比 UPS、温控、液冷更远,需通过数据中心项目、客户和订单验证",
+        "能源/核电": "算力耗电宏大叙事的最远端,与数据中心建设缺明确连接,默认弱 / 情绪映射",
+      },
+      bottomSectors: ["输配电 / 电网侧外溢", "能源/核电"],
+    },
     segments: [
       { name: "数据中心供配电/UPS/HVDC", plain: "给机房稳定供电、配电、后备(UPS)、高效供电(HVDC)", sectors: ["电源/HVDC"], defaultRelation: "直接映射", verifyTemplate: ["数据中心客户", "UPS/HVDC 订单", "电源系统收入占比"] },
       { name: "数据中心温控/液冷", plain: "给数据中心降温的专用空调与液冷系统", sectors: ["液冷/温控"], defaultRelation: "直接映射", verifyTemplate: ["数据中心温控/液冷订单", "客户项目", "收入占比"] },

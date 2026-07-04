@@ -44,9 +44,15 @@ export async function GET(req: NextRequest) {
     // abort 可能发生在 body 读阶段(头已到、体慢)——此时 r.json() 被 .catch 吞成 {},
     // 若不判 aborted 会把"下游还在跑"误报成成功/失败。aborted 一律走中性 inconclusive。
     if (aborted) {
-      // 主简报还在跑不代表 insight 也没跑——insight 独立,照样补一次
-      const insight = await backupInsightDaily(base, secret);
-      return NextResponse.json({ ok: true, backup: true, inconclusive: "primary-still-running", insight });
+      // B2-7:主简报 abort=已耗尽 280s 预算,这里【绝不能】再 await 无超时的 insight fetch
+      // (它自身 maxDuration 300s,会吃穿 backup 的 300s 被硬杀、丢掉 inconclusive 返回)。
+      // insight 补跑由「成功/失败路径已触发」+「08:30 看门狗按链点名」双覆盖,此处跳过不漏。
+      return NextResponse.json({
+        ok: true,
+        backup: true,
+        inconclusive: "primary-still-running",
+        insight: "skipped-budget",
+      });
     }
     // 不检查 r.ok 会把主流程 401/500/非 JSON 一律吞成"补位成功",掩盖真实失败。
     if (!r.ok) {

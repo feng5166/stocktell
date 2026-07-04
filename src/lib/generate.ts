@@ -353,7 +353,11 @@ async function llmOneItem(
   return {
     date,
     impact: it.impact ?? impactFromChange(Math.abs(m.change)),
-    title: it.title,
+    // B2-1:标题只拦盘面禁词(不去数字——「隔夜大涨15.7%」是既定的触发源事实口径);
+    // 命中禁词(如「低吸/企稳/接盘」混进标题)才回退到中性事实标题,不让禁词上头条/推送。
+    title: scanBannedWords(it.title).length === 0
+      ? it.title
+      : `${m.name}隔夜${m.change >= 0 ? "领涨" : "领跌"}${Math.abs(m.change).toFixed(1)}%`,
     triggerCode: m.code,
     triggerName: m.name,
     triggerChange: m.change,
