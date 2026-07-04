@@ -68,5 +68,42 @@
 
 ---
 
+# 第二批评审(2026-07-03 晚 · 针对维护者对上批的修复 + 新增电力链)
+
+> 评审对象:上批评审后 2.0 的两批新工作——① 维护者对上批 P0/P1 的批修(commit `50d7434`+`9213883`);② 新增「数据中心电力链」M1.5 增第二条链(`2e9c5e5`/`45b5cbe`/`b394641`/`bad538d`/`fe9a6df`)。
+> 基线 HEAD=`f7cd3b5`,评审 HEAD=`fe9a6df`。6 维度多智能体 + 对抗验证 + 人工抽验关键项(26 候选→25 存活)。
+> **结论:上批 P0/P1 大方向修到位**(bocha 超时 / content-guard 抽取共用 / RetailTake 星号 / SSRF 字面 IP 段+redirect:manual / 美股锚点分区 / segmentForCode 优先核定 / relation 只读锁重算 均落地),**但有 2 处 HIGH 合规硬伤未覆盖 + M1.5 增链未同步升级监控 + 我方 cron 加固被侵蚀 2 处**。
+
+## 第二批 · P0(合规 HIGH + 明早电力链两链产出可靠性)
+
+| # | 文件:行 | 问题 | 建议 |
+|---|---|---|---|
+| B2-1 合规HIGH | `generate.ts:356` | **简报 title 完全没过 content-guard**——P0-3 只给 retailTake 加了中性化+禁词扫描,`title:it.title` 原样落库(上头条+飞书推送+早报正文)。 | ⚠️ **不要对 title 做 number-neutralize**:标题按设计陈述触发源事实涨跌(「美光隔夜大涨15.7%」是既定安全口径)。**正确修法:title 只跑 `scanBannedWords`**(拦「低吸/企稳/接盘」进标题),不动数字。 |
+| B2-2 合规HIGH | `relation.ts:11`(+`chain/[id]/page.tsx:277`、`watch-relation.ts:38`) | **relation 跨链取最强档**——codeRel 遍历所有 insight 链取最强 relation。加电力链后英维克/盛弘/科士达在 AI 链核定「间接」却因电力链「直接」被越级,/chain/ai 和自选卡一律显「直接」,违「relation 单一核定源」(V-1 修复引入的新回归)。 | 链页/自选卡按**本链** `INSIGHT_CHAINS[slug].mappings` 取 relation(chain-scoped);事件卡的跨链最强档 relationLabelFor 另有语义、勿动。 |
+| B2-3 可靠性 | `insight-daily/route.ts:13/29` | **两链串行、maxDuration 只 120→180、无按链时间预算**——单链最坏~113s,两链~226s>180。主跑遇 LLM/bocha 逼近超时时电力链被 180s 硬杀在循环中段,**绕过 per-chain catch→无草稿无告警**(即"硬杀静默")。 | 循环内加「剩余<一条链最坏耗时则 break+alertCron」闸门,或 maxDuration 覆盖 2×单链(~300),或 Promise.allSettled 并发。 |
+| B2-4 可靠性 | `briefing-watchdog:80` | **08:30 insight 心跳只按跨链总数判活**——`insightDoc.count` 不带 chainId,只要 ai 出草稿 count≥1 就判正常,电力链单独断产/被误暂停永不告警(insight-daily 注释「看门狗兜底不会漏」在多链下失效)。 | 遍历 segments 链分别 count 当日 draft,任一为 0 即点名告警(区分「暂停待恢复」与「疑似断产」)。 |
+| B2-5 可靠性 | `insight-daily:62` | 电力链是**外溢链**(读同一份 AI 简报),多数天 4 环节全「观察」→heatSignature 逐日相同→heatStreak≥3→**误触自动暂停**。 | 外溢/非事件驱动链关掉自动暂停,或把「全观察」指纹排除出 streak 计数,或只警告不自动暂停。 |
+
+## 第二批 · P1(修复未竟 + 我方 cron 被侵蚀 + 电力链数据)
+
+| # | 文件:行 | 问题 | 建议 |
+|---|---|---|---|
+| B2-6 修复未竟 | `admin/insights/route.ts:89` | C-3 声称 P1 批修,**该文件本批零改动**——enforceReadonlyRelations 对草稿外新 code 仍 `prevMap.get ?? 客户端 relation` fail-open。持 ADMIN_TOKEN 仍能塞新 code+`relation=直接映射` 落库。 | relation 一律从核定源重算覆盖(mapping 用 relationForCode、heat 用 segment.defaultRelation),解析不到的 code 丢弃/400,不用 `??客户端值`。 |
+| B2-7 我方cron | `briefing-backup:48` | 我的加固(r.ok 检查、280s abort→inconclusive)**保留了**,但维护者在 abort 分支后加了 `await backupInsightDaily()`——**无超时/无 signal 的 fetch**。补位真正管用那天(下游跑满 280s)abort 后再 await 它可能耗到 insight 的 180s,**吃穿 backup 的 300s 被硬杀、我留的 inconclusive 返回丢失**。 | abort 分支跳过 insight 补触发(成功路径+看门狗已双覆盖),或给它 5s 短超时「派发即返回」。**(这条是改我的加固时引入的,评审侧可协助收尾)** |
+| B2-8 漏洞 | `chain/[id]/page.tsx:279` | 电力链专属 roster 覆写(groupOverride/sectorLabels/groupNotes/bottomSectors)**无 chain.id 判断**地传给共用组件,**污染 /chain/ai**(能源/核电股被改名「能源侧外溢(弱/情绪)」置底、思源被拉进虚构组)。 | 覆写按 `chain.id==='data-center-power'` 才传,或收进 ChainConfig(rosterGroups)由各链自带。 |
+| B2-9 合规 | `content-guard.ts:9` | BANNED 漏收 prompt 自身明列的操作词:接盘(chain-take 明列)、止损/止盈/建仓/补仓/重仓/半仓/空仓/打板。 | 补进 BANNED,做一次「prompt 禁语 ↔ BANNED」一致性对齐。 |
+| B2-10 合规 | `ChainRoster.tsx:52` | 电力链 roster 组内仍按全局 TIER「龙头」加权排序,间接的麦格米特(龙头)被顶到直接的盛弘/科士达之上,违 relation-grading-standard.md「不得按龙头分级」(仅排序失当,关系档本身未改)。 | 组内排序主键改关系档(直接>间接>情绪>弱)、mentioned 次之,去龙头加权。 |
+| B2-11 修复未竟 | `insight-pipeline/generate.ts:226`、`home/ReasoningCards.tsx:99`、`content-guard.ts:29` | L-4 genHeat 未按 segment 去重、L-6 React 重复 key 两条列为已修实为未改/延期;content-guard 中文数字支路强制带涨跌前缀、漏「百分之X/X个百分点/回撤两成」。 | 见上批 L-4/L-6;content-guard 中文支路去掉强制前缀单独匹配「[一二…两]+(个多?点|成)」+补「百分之X」。 |
+
+## 第二批 · P2(低危)
+- `generate.ts:290` SSRF 私网拦截留 IPv4-mapped IPv6(`[::ffff:169.254.169.254]`)与 DNS rebinding 盲点(字面 IP 段与 redirect:manual 已挡)——剥 `::ffff:` 前缀再判、纳入 `::`/`::1`。
+- `content-guard.ts:12` INDUSTRIAL_WHITELIST 漏「产能放量/开始出货/加速出货」→正当产业表述被误判违规(fail-safe 过阻)——白名单扩到动词搭配层或对 出货/放量 做上下文豁免。
+- `briefing-watchdog:86` 简报当天完全没产出时 insight 心跳误报「管线疑似断产」+无效 force=1——心跳只在「已有已发布简报却无 insight 草稿」时才判 insight 问题。
+- `BriefingFeed.tsx:535` 美股锚点组标题对全部自选美股泛称「产业链触发源」,未触发美股措辞偏松——组标题也按 isTrigger 区分。
+- `generate.ts:367` 三简单路径命中禁词静默退模板无告警——回退时打一条轻量去重告警。
+- `home-feed.ts:111`/`insight-chains.ts:259` DRY(relRank 重复)/电力链 heatmapNote 图例「观察」与实际值「中性」不一致。
+
+---
+
 ## 附:未采纳/驳回的候选(供参考,不必处理)
-两轮共 40+ 候选,经对抗验证驳回约 12 条(行号对不上 / 场景不可达 / 已有兜底 / 属文档已接受的设计),已剔除。上表为存活项。
+两批共 65+ 候选,经对抗验证驳回约 13 条(行号对不上 / 场景不可达 / 已有兜底 / 属文档已接受的设计),已剔除。上表为存活项。第二批人工抽验确认了两条 HIGH(title 未过护栏、relation 跨链越级)与 briefing-backup 的 insight 无超时 fetch 均属实。
