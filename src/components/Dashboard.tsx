@@ -375,12 +375,15 @@ export default function Dashboard({
     return { total: filtered.length, coverage, up, down };
   }, [filtered]);
 
-  // 关系分布(比涨跌更符合产品定位:先看关系,再看行情)。未被 insight 核过的 → 待验证。
+  // 关系分布(比涨跌更符合产品定位:先看关系,再看行情)。
+  // 美股是【事件触发源】不是 A 股映射标的 → 单列「触发源」,绝不混进「待验证」(否则用户
+  // 误以为一堆 A 股映射没验证,拉低可信度)。待验证 = A股/H股 里尚未被 insight 核定关系的。
   const relDist = useMemo(() => {
-    const d = { 直接映射: 0, 间接映射: 0, 情绪映射: 0, 弱映射: 0, 待验证: 0 };
+    const d = { 触发源: 0, 直接映射: 0, 间接映射: 0, 情绪映射: 0, 弱映射: 0, 待验证: 0 };
     for (const s of filtered) {
       const rel = insightMap[s.code]?.relation;
       if (rel && rel in d) d[rel as keyof typeof d]++;
+      else if (s.market === "美股") d.触发源++;
       else d.待验证++;
     }
     return d;
@@ -537,6 +540,7 @@ export default function Dashboard({
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
             <span className="font-medium text-gray-500">关系分布</span>
             {([
+              ["触发源", "text-brand-600"],
               ["直接映射", "text-rose-600"],
               ["间接映射", "text-amber-600"],
               ["情绪映射", "text-slate-500"],
@@ -552,7 +556,7 @@ export default function Dashboard({
             ))}
           </div>
           <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
-            先看关系,再看行情。涨跌只是当天市场表现,不代表产业链传导强弱。
+            美股多作为事件触发源,A 股 / H 股用于产业链映射;关系标签表示传导角色,不代表投资建议。先看关系,再看行情——涨跌只是当天市场表现,不代表产业链传导强弱。
           </p>
         </div>
 
