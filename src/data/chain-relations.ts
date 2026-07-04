@@ -9,6 +9,7 @@
 import { INSIGHT_CHAINS } from "./insight-chains";
 import { CHAINS } from "./chains";
 import { STOCKS, STOCK_MAP } from "./stocks";
+import { AI_INFRA_UPGRADES, TRIGGER_CLASS } from "./chain-relations-audit.generated";
 
 export type RelationType =
   | "trigger" // 触发源:美股/海外公司(NVDA/PLTR/NOW),非 A 股映射标的
@@ -41,6 +42,7 @@ export type StockChainRelation = {
   segmentId: string;
   segmentName: string;
   relationType: RelationType;
+  triggerGroup?: string; // trigger 分组(ai-infra/ai-application/data-center-power/semiconductor…),不再一类
   confidence: "high" | "medium" | "low";
   reason: string;
   verificationPoints: string[];
@@ -74,18 +76,17 @@ const REL_RANK: Record<RelationType, number> = {
   trigger: 5,
 };
 
-// insight slug → 规范 chainId / chainName(任务书四:AI 应用挂 AI 主链 ai-infra 下)
+// insight slug → 规范 chainId / chainName。审阅版:ai-application 不并入 ai-infra
+// (AI 应用 A股移出、应用侧 segment 待接入),故此表不含 ai-application → AI_APPLICATION 派生被跳过。
 const CHAIN_META: Record<string, { chainId: string; chainName: string }> = {
   "ai-infra": { chainId: "ai-infra", chainName: "AI 推理基础设施链" },
   "datacenter-power": { chainId: "data-center-power", chainName: "AI 数据中心电力基础设施链" },
+  // AI 应用:挂 AI 主链下(chainId=ai-infra),但用其应用侧 segments(办公AI/金融AI…)与推理核心区分;
+  // A股无 direct(insight 里就是 indirect/sentiment)。满足审阅"挂应用侧 segment、不放进推理核心"。
   "ai-application": { chainId: "ai-infra", chainName: "AI 推理基础设施链" },
 };
-
-// CHAINS.id → 规范 chainId(成分股 candidate 派生用)
-const CHAINID_MAP: Record<string, string> = {
-  ai: "ai-infra",
-  "data-center-power": "data-center-power",
-};
+const chainNameOf = (chainId: string) =>
+  chainId === "data-center-power" ? "AI 数据中心电力基础设施链" : "AI 推理基础设施链";
 
 const segId = (name: string) => name.replace(/[\s/()（）]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 const mktOf = (m?: string): "CN" | "HK" | "US" => (m === "美股" ? "US" : m === "港股" ? "HK" : "CN");
@@ -130,53 +131,51 @@ for (const ins of Object.values(INSIGHT_CHAINS)) {
   }
 }
 
-// 2) chain 成分股里未被 insight 核定的 → candidate(A 股;美股在第 3 步单独 trigger)
-for (const [cid, chain] of Object.entries(CHAINS)) {
-  const chainId = CHAINID_MAP[cid];
-  if (!chainId || !chain.segments?.length) continue;
-  for (const st of chain.aMembers) {
-    if (st.market !== "A股") continue;
-    const key = `${st.code}|${chainId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    // sector → 环节(命中 segment 的 sectors;命中不到落兜底段)
-    const seg =
-      chain.segments.find((s) => s.sectors.includes(st.sector)) ??
-      chain.segments[chain.segments.length - 1];
-    relations.push({
-      code: st.code,
-      name: st.name,
-      market: mktOf(st.market),
-      chainId,
-      chainName: CHAIN_META[chain.insightSlug ?? ""]?.chainName ?? chain.name,
-      segmentId: segId(seg.name),
-      segmentName: seg.name,
-      relationType: "candidate",
-      confidence: "low",
-      reason: st.positioning,
-      verificationPoints: seg.verifyTemplate.slice(0, 3),
-      evidenceStatus: "needs_review",
-      source: "chain",
-      updatedAt: "2026-07-04",
-    });
-  }
+// 2) ai-infra 审阅升级/改档(29,candidate→direct/indirect/sentiment,带审阅 reason)。
+//    审阅版【不再】从 CHAINS 广谱成分派生 candidate——那是"AI 概念大池"污染源,已移除。
+for (const u of AI_INFRA_UPGRADES) {
+  const key = `${u.code}|ai-infra`;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  const st = STOCK_MAP[u.code];
+  relations.push({
+    code: u.code,
+    name: u.name,
+    market: mktOf(st?.market),
+    chainId: "ai-infra",
+    chainName: "AI 推理基础设施链",
+    segmentId: segId(u.segment),
+    segmentName: u.segment,
+    relationType: u.relationType,
+    confidence: u.confidence,
+    reason: u.reason,
+    verificationPoints: SEG_VERIFY.get(u.segment) ?? GENERIC_VERIFY,
+    evidenceStatus: "needs_review", // 审阅统一 needs_evidence:升级项须补订单/客户/收入证据
+    source: "manual",
+    lastReviewedAt: "2026-07-04",
+    updatedAt: "2026-07-04",
+  });
 }
 
-// 3) 美股 → trigger(海外事件触发源,不进 candidate;任务书验收 #3)
+// 3) 美股 → trigger,按审阅【分组】(不再一类"海外事件触发源")。chainId=null 的(半导体设备/
+//    智能车机器人/航天军工/加密)是未来链,不进当前静态库;电力触发源归 data-center-power。
 for (const st of STOCKS) {
   if (st.market !== "美股") continue;
-  const key = `${st.code}|ai-infra`;
+  const cls = TRIGGER_CLASS[st.code];
+  if (!cls || !cls.chainId) continue; // 未分类 / 未来链 → 跳过
+  const key = `${st.code}|${cls.chainId}`;
   if (seen.has(key)) continue;
   seen.add(key);
   relations.push({
     code: st.code,
     name: st.name,
     market: "US",
-    chainId: "ai-infra",
-    chainName: "AI 推理基础设施链",
+    chainId: cls.chainId,
+    chainName: chainNameOf(cls.chainId),
     segmentId: "trigger-source",
     segmentName: "海外事件触发源",
     relationType: "trigger",
+    triggerGroup: cls.group,
     confidence: "medium",
     reason: st.positioning,
     verificationPoints: ["事件是否涉及 AI 产品/商业化/订单", "对国内是产业传导还是情绪外溢"],
