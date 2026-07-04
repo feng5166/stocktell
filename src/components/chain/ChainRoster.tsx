@@ -7,15 +7,7 @@ import Link from "next/link";
 import { useWatchlist } from "@/components/useWatchlist";
 import { track } from "@/lib/analytics";
 import type { RosterItem } from "@/data/chains";
-import { FRONT_RELATION_RANK } from "@/lib/relation-rank";
-
-const REL_CHIP: Record<string, string> = {
-  直接映射: "bg-rose-100 text-rose-700",
-  间接映射: "bg-amber-100 text-amber-700",
-  情绪映射: "bg-slate-100 text-slate-500",
-  弱映射: "bg-gray-200 text-gray-500",
-  产业链相关: "bg-gray-100 text-gray-600",
-};
+import { FRONT_RELATION_RANK, REL_CHIP_CLS } from "@/lib/relation-rank";
 
 export function ChainRoster({
   chainId,
@@ -118,7 +110,7 @@ export function ChainRoster({
                           {it.name}
                         </span>
                         {relations?.[it.code] && (
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${REL_CHIP[relations[it.code]] ?? "bg-gray-100 text-gray-600"}`}>
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${REL_CHIP_CLS[relations[it.code]] ?? "bg-gray-100 text-gray-600"}`}>
                             {relations[it.code]}
                           </span>
                         )}

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { STOCK_MAP } from "@/data/stocks";
 import { CHAINS } from "@/data/chains";
+import { REL_CHIP_CLS_SHORT } from "@/lib/relation-rank";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import {
@@ -24,12 +25,6 @@ export function generateStaticParams() {
   return Object.keys(INSIGHT_CHAINS).map((slug) => ({ slug }));
 }
 
-const REL: Record<Relation, string> = {
-  直接: "bg-rose-100 text-rose-700",
-  间接: "bg-amber-100 text-amber-700",
-  情绪映射: "bg-slate-100 text-slate-500",
-  弱: "bg-gray-200 text-gray-500",
-};
 const CONF: Record<Confidence, string> = {
   高: "bg-sky-100 text-sky-700",
   中: "bg-amber-50 text-amber-700",
@@ -200,7 +195,7 @@ export default async function InsightPage({ params }: { params: { slug: string }
                     <span>{t.emoji}</span>
                     <span
                       className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                        t.rel ? REL[t.rel] : "bg-gray-100 text-gray-500"
+                        t.rel ? REL_CHIP_CLS_SHORT[t.rel] : "bg-gray-100 text-gray-500"
                       }`}
                     >
                       {t.level}
@@ -268,7 +263,7 @@ export default async function InsightPage({ params }: { params: { slug: string }
                     <span className={`text-[11px] font-medium ${t.cls}`}>
                       {t.glyph} {r.direction}
                     </span>
-                    {r.relation && <Pill text={r.relation} cls={REL[r.relation]} />}
+                    {r.relation && <Pill text={r.relation} cls={REL_CHIP_CLS_SHORT[r.relation]} />}
                     {r.confidence && <Pill text={`置信 ${r.confidence}`} cls={CONF[r.confidence]} />}
                   </div>
                   <p className="mt-0.5 text-xs leading-relaxed text-gray-700">{r.plain}</p>

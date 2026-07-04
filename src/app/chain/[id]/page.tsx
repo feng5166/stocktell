@@ -15,19 +15,11 @@ import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { relationLabelFor, relationForCodeInChain } from "@/lib/relation";
+import { REL_CHIP_CLS } from "@/lib/relation-rank";
 import { routeInsightForItem } from "@/data/trigger-sources";
 import { DISCLAIMER } from "@/lib/constants";
 
 export const revalidate = 60;
-
-// 关系标签配色(与 insight/首页事件卡同一套)
-const RELATION_CHIP_CLS: Record<string, string> = {
-  直接映射: "bg-rose-100 text-rose-700",
-  间接映射: "bg-amber-100 text-amber-700",
-  情绪映射: "bg-slate-100 text-slate-500",
-  弱映射: "bg-gray-200 text-gray-500",
-  产业链相关: "bg-gray-100 text-gray-600",
-};
 
 const pct1 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 const pct2 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
@@ -229,7 +221,7 @@ export default async function ChainPage({
                   <div className="flex items-center gap-2">
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                        RELATION_CHIP_CLS[relationLabelFor(it)] ?? "bg-gray-100 text-gray-600"
+                        REL_CHIP_CLS[relationLabelFor(it)] ?? "bg-gray-100 text-gray-600"
                       }`}
                     >
                       {relationLabelFor(it)}
