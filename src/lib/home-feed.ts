@@ -4,6 +4,7 @@
 // 服务端纯 DB 读 + 内存数据,零 LLM 零 fetch,不破坏首页 ISR(大陆 TTFB 约定)。
 import { CHAINS } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
+import { FRONT_RELATION_RANK } from "@/lib/relation-rank";
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import type { BriefingItem } from "@/lib/briefings";
@@ -108,12 +109,11 @@ export async function buildReasoningCards(
 function topHeatTiers(
   heat: { segment: string; direction: string; relation: string }[]
 ): { emoji: string; level: string; what: string; rel?: Relation }[] | null {
-  const relRank: Record<string, number> = { 直接映射: 0, 间接映射: 1, 情绪映射: 2 };
   const active = heat.filter((h) => h.direction !== "观察");
   if (active.length < 2) return null; // 清淡日:回落静态三层
   const pool = active
     .slice()
-    .sort((a, b) => (relRank[a.relation] ?? 3) - (relRank[b.relation] ?? 3))
+    .sort((a, b) => (FRONT_RELATION_RANK[a.relation] ?? 3) - (FRONT_RELATION_RANK[b.relation] ?? 3))
     .slice(0, 3);
   const relOf = (r: string): Relation | undefined =>
     r === "直接映射" ? "直接" : r === "间接映射" ? "间接" : r === "情绪映射" ? "情绪映射" : undefined;

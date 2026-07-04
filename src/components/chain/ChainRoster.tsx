@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useWatchlist } from "@/components/useWatchlist";
 import { track } from "@/lib/analytics";
 import type { RosterItem } from "@/data/chains";
+import { FRONT_RELATION_RANK } from "@/lib/relation-rank";
 
 const REL_CHIP: Record<string, string> = {
   直接映射: "bg-rose-100 text-rose-700",
@@ -49,9 +50,8 @@ export function ChainRoster({
     }
     // B2-10:组内排序主键=关系档(直接>间接>情绪>弱),mentioned 次之;去掉「龙头」加权
     // (relation-grading-standard.md 明令不得按龙头分级——否则间接的龙头会被顶到直接之上)。
-    const relRank: Record<string, number> = { 直接映射: 0, 间接映射: 1, 情绪映射: 2, 弱映射: 3 };
     const rank = (x: RosterItem) =>
-      (relations?.[x.code] != null ? relRank[relations[x.code]] ?? 4 : 4) * 10 -
+      (relations?.[x.code] != null ? FRONT_RELATION_RANK[relations[x.code]] ?? 4 : 4) * 10 -
       (mentioned?.[x.code] ? 1 : 0);
     for (const g of Array.from(m.values()))
       g.rows.sort((a, b) => rank(a) - rank(b));

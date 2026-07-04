@@ -95,8 +95,8 @@ function Card({ c, rank }: { c: HomeReasoningCard; rank: number }) {
 
         {/* 三层关系:一条可换行的横排,压缩高度 */}
         <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1">
-          {c.tiers.map((t) => (
-            <span key={t.level} className="inline-flex items-center gap-1 text-xs">
+          {c.tiers.map((t, i) => (
+            <span key={`${i}-${t.level}`} className="inline-flex items-center gap-1 text-xs">
               <span>{t.emoji}</span>
               <span
                 className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${

@@ -74,13 +74,17 @@ export async function GET(req: NextRequest) {
   if (!(await isAshareTradingDay(date))) {
     return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
   }
+  // 先取当日已发布简报——既是下面简报看门狗的输入,也是 insight 心跳的前置门(P2)。
+  const items = await listBriefing({ date, status: "published" }).catch(() => []);
   // insight 管线心跳(PRD §5):交易日到 08:30 还没有当日链级每日推理(draft 或 published)→ 告警。
   // 人审未完成不算失败(降级发布=地板在线);完全没草稿才是管线断了。
   // B2-4:【按链】分别核对——不能只按跨链总数判活(只要 ai 出草稿就判正常,电力链单独断产永不告警)。
   // 区分「暂停待恢复」(预期,轻提醒)与「疑似断产」(点名 ❌ 告警)。
+  // P2:仅在【当日已有已发布简报】时判 insight 问题——简报本身没产出时 insight 无输入是必然,
+  //     那是简报断产(下面简报看门狗会报),不是 insight 管线断产,别重复/错误归因告警。
   try {
     const dbi = getPrisma();
-    if (dbi) {
+    if (dbi && items.length > 0) {
       for (const chain of Object.values(CHAINS).filter((c) => c.segments?.length)) {
         const cnt = await dbi.insightDoc
           .count({ where: { date, chainId: chain.id, kind: "daily", status: { in: ["draft", "published"] } } })
@@ -103,7 +107,6 @@ export async function GET(req: NextRequest) {
   } catch {
     /* insight 心跳失败不影响简报看门狗主流程 */
   }
-  const items = await listBriefing({ date, status: "published" }).catch(() => []);
   let payload: Record<string, unknown>;
   if (items.length > 0) {
     // 简报在 ≠ 邮件发了:生成和推送在同一函数里串行,推送段被超时截断时简报照常在库

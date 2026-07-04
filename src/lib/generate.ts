@@ -367,7 +367,14 @@ async function llmOneItem(
     // 关注企稳」也会在这里被拦回模板,不会 status:published 自动上线。
     retailTake: (() => {
       const n = neutralizeNumbers(it.retailTake);
-      const clean = n.length >= 8 && !hasSpecificMove(n) && scanBannedWords(n).length === 0;
+      const banned = scanBannedWords(n);
+      const numHit = hasSpecificMove(n);
+      const clean = n.length >= 8 && !numHit && banned.length === 0;
+      // P2:回退不静默——记一条日志(便于事后核对模型是否劣化,而非以为"内容一直干净")
+      if (!clean)
+        console.warn(
+          `[briefing] ${m.name} retailTake 回退模板:${banned.length ? "禁词" + banned.join("/") : numHit ? "数字红线" : "过短/空"}`
+        );
       return clean ? n : buildTake(m);
     })(),
     sourceUrl: null,

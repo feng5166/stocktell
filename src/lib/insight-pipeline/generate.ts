@@ -214,7 +214,7 @@ async function genHeat(
         resp.choices[0]?.message?.content
       );
       if (!Array.isArray(arr)) continue;
-      const valid = arr.filter(
+      const valid0 = arr.filter(
         (h) =>
           enumSegs.some((s) => s.name === h.segment) &&
           ["升温", "降温", "分化", "观察"].includes(h.direction) &&
@@ -222,6 +222,14 @@ async function genHeat(
           h.reason.trim().length > 0 &&
           h.reason.length <= 80
       );
+      // L-4:按 segment 去重——LLM 可能同一环节返回多行,只留第一条,否则 heat 出现
+      // 重复环节,污染 heatSignature(同图谱检测)与页面渲染
+      const seenSeg = new Set<string>();
+      const valid = valid0.filter((h) => {
+        if (seenSeg.has(h.segment)) return false;
+        seenSeg.add(h.segment);
+        return true;
+      });
       // 覆盖不全的环节用规则行补齐(保证 schema 全覆盖)
       const covered = new Set(valid.map((h) => h.segment));
       const filled = [
@@ -282,8 +290,10 @@ function isBlockedHost(host: string): boolean {
   const h = host.toLowerCase().replace(/^\[|\]$/g, ""); // 去 IPv6 括号
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) return true;
   if (h === "metadata.google.internal") return true;
-  // IPv4 私网 / 环回 / 链路本地 / 云元数据 169.254.169.254
-  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  // P2:剥离 IPv4-mapped IPv6 前缀(::ffff:169.254.169.254 → 169.254.169.254)再按 IPv4 判,
+  // 否则 [::ffff:169.254.169.254] 绕过下面的 IPv4 私网/元数据检查。
+  const v4 = h.replace(/^::ffff:/i, "");
+  const m = v4.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (m) {
     const [a, b] = [Number(m[1]), Number(m[2])];
     if (a === 10 || a === 127 || a === 0) return true;
@@ -292,8 +302,8 @@ function isBlockedHost(host: string): boolean {
     if (a === 169 && b === 254) return true; // 含 169.254.169.254 元数据
     if (a >= 224) return true; // 组播 / 保留
   }
-  // IPv6 环回 / 唯一本地 / 链路本地
-  if (h === "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80")) return true;
+  // IPv6 环回(::1)/ 未指定(::)/ 唯一本地(fc,fd)/ 链路本地(fe80)
+  if (h === "::1" || h === "::" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80")) return true;
   return false;
 }
 

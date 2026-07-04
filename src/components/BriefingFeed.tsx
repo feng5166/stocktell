@@ -533,7 +533,11 @@ function MyWatchRelations({
       {anchors.length > 0 && (
         <details className="mt-2">
           <summary className="cursor-pointer text-xs text-gray-400">
-            美股锚点 {anchors.length} 只(产业链触发源)
+            {/* P2:标题按 isTrigger 区分——不把全部锚点泛称"触发源",只有今日真触发的才叫触发源 */}
+            美股锚点 {anchors.length} 只
+            {anchors.filter((a) => a.isTrigger).length > 0
+              ? `(今日 ${anchors.filter((a) => a.isTrigger).length} 只触发)`
+              : ""}
           </summary>
           <div className="mt-2 space-y-1.5">
             {anchors.map((a) => (

@@ -10,6 +10,7 @@ import {
 } from "@/lib/insight-pipeline/docs";
 import { validateDailyPayload } from "@/lib/insight-pipeline/schema";
 import { getChain } from "@/data/chains";
+import { relationForCodeInChain } from "@/lib/relation";
 import type { DailyInsightPayload } from "@/lib/insight-pipeline/schema";
 
 export const dynamic = "force-dynamic";
@@ -77,19 +78,33 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, status: "saved" });
 }
 
-// relation 只读红线(§7.2-3):忽略前端传来的 relation,一律用库中原值
+// relation 只读红线(§7.2-3 + B2-6):忽略前端传来的 relation,一律从【核定源】重算。
+// 旧实现对「不在库中原值里的新 code/段」`?? 客户端值` fail-open——持 ADMIN_TOKEN 可塞
+// 新 code + relation=直接映射 落库。改:heat 用本链 segment.defaultRelation、mapping 用
+// relationForCodeInChain(本链核定);解析不到一律回落库中原值,最后兜最弱档「情绪映射」,
+// 【绝不用客户端值】——未核定的新 code 拿不到直接/间接,只能是情绪映射(不可越级注入)。
 function enforceReadonlyRelations(
   next: DailyInsightPayload,
   prev: DailyInsightPayload
 ): DailyInsightPayload {
+  const chain = getChain(prev.chainId);
+  const segDefault = new Map(
+    (chain?.segments ?? []).map((s) => [s.name, s.defaultRelation])
+  );
   const prevHeat = new Map(prev.heat.map((h) => [h.segment, h.relation]));
   const prevMap = new Map(prev.mappingsDelta.map((m) => [m.code, m.relation]));
   return {
     ...next,
-    heat: next.heat.map((h) => ({ ...h, relation: prevHeat.get(h.segment) ?? h.relation })),
+    heat: next.heat.map((h) => ({
+      ...h,
+      relation: segDefault.get(h.segment) ?? prevHeat.get(h.segment) ?? "情绪映射",
+    })),
     mappingsDelta: next.mappingsDelta.map((m) => ({
       ...m,
-      relation: prevMap.get(m.code) ?? m.relation,
+      relation:
+        relationForCodeInChain(m.code, chain?.insightSlug) ??
+        prevMap.get(m.code) ??
+        "情绪映射",
     })),
   };
 }
