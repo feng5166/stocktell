@@ -5,7 +5,8 @@ import { todayISO } from "@/lib/date";
 import { sendFeishu } from "@/lib/feishu";
 import { alertCron } from "@/lib/monitor";
 import { generateDailyInsight } from "@/lib/insight-pipeline/generate";
-import { saveDraft, hasDaily, getPrevHeat, isPipelinePaused, pausePipeline } from "@/lib/insight-pipeline/docs";
+import { saveDraft, publishDoc, hasDaily, getPrevHeat, isPipelinePaused, pausePipeline } from "@/lib/insight-pipeline/docs";
+import { complianceBlockers } from "@/lib/insight-pipeline/guard";
 import { CHAINS } from "@/data/chains";
 
 export const dynamic = "force-dynamic";
@@ -66,32 +67,44 @@ export async function GET(req: NextRequest) {
         continue;
       }
       const doc = await saveDraft(r.payload!, r.guard!);
-      results[chain.id] = doc ? "draft-saved" : "no-db";
-      // 同图谱连续 3 天零变化 → 设暂停标记 + 升级告警(草稿仍落库供人审判断)
-      if ((r.heatStreak ?? 1) >= 3) {
+      if (!doc) {
+        results[chain.id] = "no-db";
+        continue;
+      }
+      const p = r.payload!;
+      // 同图谱连续 3 天零变化 → 暂停 + 告警;疑似退化【不自动发布】,留 draft 待人看(安全轨)
+      const degraded = (r.heatStreak ?? 1) >= 3;
+      if (degraded) {
         await pausePipeline(chain.id, `连续 ${r.heatStreak} 天热力零变化(${date})`);
         await alertCron(
           "insight-daily(同图谱暂停)",
-          `${date} ${chain.name} 连续 ${r.heatStreak} 天热力方向零变化,疑似退化成预制图谱 → 管线已暂停。若为真实连续行情,确认后 POST /api/admin/insight-daily?force=1&chain=${chain.id} 恢复`
+          `${date} ${chain.name} 连续 ${r.heatStreak} 天热力方向零变化,疑似退化成预制图谱 → 管线已暂停+本篇留审。确认后 POST /api/admin/insight-daily?force=1&chain=${chain.id} 恢复`
         );
       }
-      if (doc) {
-        // 待审信息要足够判断(负责人第四点):链名/判断/命中股票/环节数/references/合规/是否自动发布
-        const p = r.payload!;
-        const warn = r.guard!.warnings.length
-          ? `⚠️ ${r.guard!.warnings.length} 项警告`
-          : "✅ 护栏全过";
-        const hits = p.mappingsDelta.slice(0, 4).map((m) => `${m.name}(${m.relation})`).join("、");
-        const base = process.env.NEXTAUTH_URL ?? "https://www.stocktell.me";
-        await sendFeishu(
-          `📋 ${date} ${chain.name}·每日推理待审\n` +
-            `💡 ${p.judgment.slice(0, 60)}\n` +
-            `📊 命中 ${p.mappingsDelta.length} 只:${hits || "—"}\n` +
-            `🌡️ ${p.heat.length} 环节 · 置信 ${p.confidence} · references ${p.references.length} 条\n` +
-            `🛡️ ${warn} · 未自动发布(人审通过后才上首页/邮件)\n` +
-            `审核:${base}/admin/insights`
-        );
+      // 自动发布(负责人拍板「自动化,事后审」)。安全轨:①HIGH 合规 blocked 根本不落库(前面已挡)
+      // ②发布前合规复检做纵深 ③疑似退化(同图谱)不自动发、留审。干净→publishDoc 直接上首页/insight;
+      // 否则留 draft 待人审。飞书通知已发/留审 + 一键撤下入口。
+      const holdReasons = degraded ? ["疑似退化(同图谱)"] : complianceBlockers(p);
+      let published = false;
+      if (holdReasons.length === 0) {
+        const pub = await publishDoc(doc.id).catch(() => null);
+        published = !!pub;
+        if (!pub)
+          await alertCron("insight-daily(自动发布失败)", `${date} ${chain.name} publishDoc 返回空,已留 draft 待人审`);
       }
+      results[chain.id] = published ? "auto-published" : degraded ? "draft-degraded-hold" : "draft-hold";
+
+      const warn = r.guard!.warnings.length ? `⚠️ ${r.guard!.warnings.length} 项警告` : "✅ 护栏全过";
+      const hits = p.mappingsDelta.slice(0, 4).map((m) => `${m.name}(${m.relation})`).join("、");
+      const base = process.env.NEXTAUTH_URL ?? "https://www.stocktell.me";
+      await sendFeishu(
+        `${published ? "✅" : "⚠️"} ${date} ${chain.name}·每日推理${published ? "已自动发布" : "留审"}\n` +
+          `💡 ${p.judgment.slice(0, 60)}\n` +
+          `📊 命中 ${p.mappingsDelta.length} 只:${hits || "—"}\n` +
+          `🌡️ ${p.heat.length} 环节 · 置信 ${p.confidence} · references ${p.references.length} 条\n` +
+          `🛡️ ${warn}${published ? "" : ` · 留审原因:${holdReasons.join("、")}`}\n` +
+          `${published ? "已上首页/insight,如需撤下:" : "请人审:"}${base}/admin/insights`
+      );
     } catch (e) {
       results[chain.id] = "error";
       await alertCron("insight-daily(生成)", e);
