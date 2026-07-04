@@ -37,11 +37,12 @@ export default async function TrackPage() {
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <div className="mb-4">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-h1 font-semibold tracking-tight">信号复盘 · 联动有效率</h1>
+            <h1 className="text-h1 font-semibold tracking-tight">推理复盘 · 关系有没有被验证</h1>
             <FeedbackLink />
           </div>
-          <p className="mt-1 text-xs text-gray-400">
-            每条简报关联的 A 股,当日收盘后回填实际表现,复盘这类联动过去大致的有效程度。记了就敢给你查。
+          <p className="mt-1 text-xs leading-relaxed text-gray-400">
+            复盘 StockTell 过去给出的事件、产业链关系和映射判断,看看哪些被后续市场表现验证。
+            复盘的是产业链关系,不是买卖建议;历史统计不代表未来表现。
           </p>
         </div>
 
@@ -60,7 +61,7 @@ export default async function TrackPage() {
               />
             </svg>
             <span className="font-medium">
-              判定规则 · 有效 / 未联动 / 未判定 怎么算的
+              复盘规则 · 验证成立 / 未验证 / 待观察 怎么算的
             </span>
             <svg
               viewBox="0 0 20 20"
@@ -73,28 +74,29 @@ export default async function TrackPage() {
             </svg>
           </summary>
           <p className="mt-3">
-            触发美股涨 → 预期对应 A 股涨,跌 → 预期跌。每只关联股当日收盘后,落到下面三种状态之一:
+            StockTell 不复盘买卖建议,只复盘产业链关系判断:当时判断影响哪条链、哪些是直接映射、
+            哪些只是情绪映射。复盘看后续市场表现是否与判断一致(基本面证据验证为 P1),落到三种状态之一:
           </p>
           <ul className="mt-2 space-y-1">
             <li>
               <Dot className="bg-rose-500" />
-              <b className="text-rose-600">有效</b>:实际按预期方向走、且当日涨跌幅 ≥{" "}
-              {HIT_THRESHOLD}%(联动成立)
+              <b className="text-rose-600">验证成立</b>:后续按当时判断的方向走、且当日幅度 ≥{" "}
+              {HIT_THRESHOLD}%(关系被市场表现验证)
             </li>
             <li>
               <Dot className="bg-gray-400" />
-              <b className="text-gray-600">未联动</b>:已判定,但没达到上面的标准(方向不对或幅度不够)
+              <b className="text-gray-600">未验证</b>:已复盘,但后续表现不支持当时判断(方向不对或幅度不够)
             </li>
             <li>
               <Dot className="bg-gray-300" />
-              <b className="text-gray-500">未判定</b>:还没到结算时间(每个交易日收盘后约 15:30 结算),或当日行情取不到;不计入有效率
+              <b className="text-gray-500">待观察</b>:还没到结算时间(每交易日收盘后约 15:30),或行情取不到;不计入验证率
             </li>
           </ul>
           <p className="mt-2">
             <b className="text-gray-600">
-              联动有效率 = 有效 ÷ 已判定(已判定 = 有效 + 未联动)
+              关系验证率 = 验证成立 ÷ 已复盘(已复盘 = 验证成立 + 未验证)
             </b>
-            。早期样本少会波动,仅为历史复盘、不构成投资建议。
+            。历史统计只评估推理质量、不代表未来收益,复盘的是产业链关系不是买卖建议。
           </p>
         </details>
 
@@ -179,9 +181,9 @@ function Overview({
   return (
     <div className="mb-3 rounded-xl bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-end justify-between gap-4">
-        {/* 主视觉:联动有效率(大数字) */}
+        {/* 主视觉:关系验证率(大数字) */}
         <div className="min-w-0">
-          <div className="text-xs text-gray-400">联动有效率</div>
+          <div className="text-xs text-gray-400">关系验证率</div>
           <div className="mt-0.5 text-4xl font-semibold leading-none tabular-nums text-gray-900">
             {pct === null ? "—" : `${pct}%`}
           </div>
@@ -191,16 +193,16 @@ function Overview({
             </div>
           )}
         </div>
-        {/* 旁注:已判定 / 有效联动 */}
+        {/* 旁注:已复盘 / 验证成立 */}
         <div className="shrink-0 space-y-1 text-right text-xs text-gray-500">
           <div>
-            已判定{" "}
+            已复盘{" "}
             <b className="font-semibold tabular-nums text-gray-800">
               {stats.evaluated}
             </b>
           </div>
           <div>
-            有效联动{" "}
+            验证成立{" "}
             <b className="font-semibold tabular-nums text-rose-600">
               {stats.hits}
             </b>
@@ -210,7 +212,7 @@ function Overview({
 
       {/* 常驻口径说明(不折叠):防止大数字被读成"荐股胜率/买入能赚" */}
       <p className="mt-2 text-meta leading-relaxed text-gray-500">
-        指「美股异动 → A 股」这类联动过去大致的成立比例,不是荐股胜率,也不预示你买入的收益。
+        指过去的产业链关系判断被后续市场表现验证的比例,复盘的是产业链关系、不是荐股胜率,也不预示你买入的收益。
       </p>
 
       {/* 进度条:有效率可视化 */}
@@ -230,7 +232,7 @@ function Overview({
             const showPct = s.evaluated >= SUB_MIN_SAMPLE && s.rate !== null;
             return (
               <span key={impact}>
-                {IMPACT_META[impact as Impact]?.emoji} {impact}联动{" "}
+                {IMPACT_META[impact as Impact]?.emoji} {impact}·验证{" "}
                 {showPct ? `${Math.round(s.rate! * 100)}% ` : ""}
                 <span className="text-gray-400">
                   ({s.hits}/{s.evaluated})

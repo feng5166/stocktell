@@ -64,7 +64,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                     : "bg-gray-100 text-gray-500"
                 }`}
               >
-联动 {g.hits}/{g.evaluated}
+验证 {g.hits}/{g.evaluated}
               </span>
             )}
           </div>
@@ -79,7 +79,9 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                 >
                   {r.name}
                 </Link>
-                <span className="shrink-0 text-xs text-gray-400">期待{r.expected}</span>
+                <span className="shrink-0 text-xs text-gray-400">
+                  当时{r.expected === "涨" ? "升温" : r.expected === "跌" ? "承压" : r.expected}
+                </span>
                 <span className="w-16 shrink-0 text-right font-mono tabular-nums">
                   {r.change === null ? (
                     <span className="text-gray-300">—</span>
@@ -89,11 +91,11 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                 </span>
                 <span className="w-16 shrink-0 text-right text-xs">
                   {r.hit === null ? (
-                    <span className="text-gray-300">未判定</span>
+                    <span className="text-gray-300">待观察</span>
                   ) : r.hit ? (
-                    <span className="font-medium text-brand-600">联动成立</span>
+                    <span className="font-medium text-brand-600">验证成立</span>
                   ) : (
-                    <span className="text-gray-400">未联动</span>
+                    <span className="text-gray-400">未验证</span>
                   )}
                 </span>
               </div>
