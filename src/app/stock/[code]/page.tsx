@@ -22,9 +22,18 @@ import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
-import { buildWatchChainMap } from "@/lib/watch-relation";
-import { insightBundleForCode } from "@/lib/relation";
+import { resolvePrimary } from "@/lib/relation-resolver";
 import { REL_CHIP_CLS } from "@/lib/relation-rank";
+
+// relationType → 前台关系档标签(与 /stocks、relationResolver 同源,消双轨)
+const STOCK_REL_LABEL: Record<string, string> = {
+  direct: "直接映射",
+  indirect: "间接映射",
+  sentiment: "情绪映射",
+  weak: "弱映射",
+  trigger: "触发源",
+  candidate: "待验证",
+};
 
 const TIER_CLASS: Record<string, string> = {
   龙头: "bg-amber-100 text-amber-700 font-medium",
@@ -96,12 +105,15 @@ export default async function StockDetail({
   const newsItem =
     todayNews.find((it) => it.triggerCode === s.code) ?? todayNews[0] ?? null;
 
-  // 一句话判断(产业链节点页核心):A股取链身份(所属链/环节/关系/验证点),美股=海外触发源。
-  const chainInfo = isA ? buildWatchChainMap()[s.code] : undefined;
-  const bundle = insightBundleForCode(s.code); // insight 核定 reason(有则用它当人话判断)
-  const nodeChain = isA ? chainInfo?.chainName ?? "AI 产业链" : "海外事件触发源";
-  const nodeSegment = chainInfo?.segment ?? s.sector;
-  const nodeRelation = isA ? chainInfo?.relation ?? "待验证" : "触发源";
+  // 一句话判断(产业链节点页核心):走 relationResolver(读审阅后 staticRelations,全站同源)。
+  // 取主关系:A股=最强档链身份、美股=触发源;未覆盖票 fallback 到定位/待验证,不留死胡同。
+  const primaryRel = resolvePrimary(s.code);
+  const nodeChain = primaryRel?.chainName ?? (isA ? "AI 产业链" : "海外事件触发源");
+  const nodeSegment = primaryRel?.segmentName ?? s.sector;
+  const nodeRelation = primaryRel ? STOCK_REL_LABEL[primaryRel.relationType] : isA ? "待验证" : "触发源";
+  const nodeReason = primaryRel?.reason || s.positioning;
+  const nodeVerify = primaryRel?.verificationPoints ?? [];
+  const nodeChainId = primaryRel?.chainId;
   // 今日触发:今天简报提到了 → 事件标题;否则明说只是市场行为(避免把资金异动硬解释成产业变化)
   const todayTrigger =
     todayNews.length > 0
@@ -275,9 +287,9 @@ export default async function StockDetail({
                 {nodeRelation}
               </span>
             </span>
-            {isA && chainInfo?.chainId && (
+            {nodeChainId && (
               <Link
-                href={`/chain/${chainInfo.chainId}`}
+                href={`/chain/${nodeChainId}`}
                 className="text-xs font-medium text-brand-600 hover:underline"
               >
                 看这条链 →
@@ -285,15 +297,15 @@ export default async function StockDetail({
             )}
           </div>
           <p className="mt-2 text-sm leading-relaxed text-gray-800">
-            {bundle?.reason || s.positioning}
+            {nodeReason}
           </p>
           <p className="mt-1.5 text-xs text-gray-500">
             <span className="text-gray-400">今日触发:</span>
             {todayTrigger}
           </p>
-          {isA && chainInfo?.verify && chainInfo.verify.length > 0 && (
+          {nodeVerify.length > 0 && (
             <p className="mt-1 text-xs text-gray-400">
-              后续验证:{chainInfo.verify.join(" / ")}
+              后续验证:{nodeVerify.join(" / ")}
             </p>
           )}
         </Section>
