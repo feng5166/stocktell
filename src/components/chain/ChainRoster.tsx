@@ -23,6 +23,8 @@ export function ChainRoster({
   relations,
   sectorLabels,
   bottomSectors,
+  groupOverride,
+  groupNotes,
   takeOverride,
 }: {
   chainId: string;
@@ -30,7 +32,9 @@ export function ChainRoster({
   mentioned?: Record<string, string>; // code → 今天点名它的简报标题(让清单每天有变化)
   relations?: Record<string, string>; // code → 关系标(直接/间接/情绪/弱映射),电力链页展示
   sectorLabels?: Record<string, string>; // 板块组名改写(如 能源/核电 → 能源侧外溢)
-  bottomSectors?: string[]; // 这些板块置底(如发电/核电类外溢环节)
+  bottomSectors?: string[]; // 这些组置底,且按数组顺序(靠后更底)
+  groupOverride?: Record<string, string>; // code → 分组键(把某只票从 sector 组挪到自定义组,如思源→输配电/电网侧外溢)
+  groupNotes?: Record<string, string>; // 组键 → 组说明(覆盖 sector gloss)
   takeOverride?: Record<string, string>; // code → 一句话(覆盖 AI 口径的 retailTake,电力链用 insight 核定 reason)
 }) {
   const wl = useWatchlist();
@@ -38,9 +42,10 @@ export function ChainRoster({
   const groups = useMemo(() => {
     const m = new Map<string, { gloss: string; rows: RosterItem[] }>();
     for (const it of members) {
-      const g = m.get(it.sector) ?? { gloss: it.gloss, rows: [] };
+      const key = groupOverride?.[it.code] ?? it.sector;
+      const g = m.get(key) ?? { gloss: it.gloss, rows: [] };
       g.rows.push(it);
-      m.set(it.sector, g);
+      m.set(key, g);
     }
     // 今天被简报点名的排最前(清单每天跟着动态变),其次龙头
     const rank = (x: RosterItem) =>
@@ -48,12 +53,19 @@ export function ChainRoster({
     for (const g of Array.from(m.values()))
       g.rows.sort((a, b) => rank(a) - rank(b));
     const entries = Array.from(m.entries());
-    // bottomSectors 里的板块置底(发电/核电类外溢环节)
-    const bottom = new Set(bottomSectors ?? []);
-    entries.sort((a, b) => Number(bottom.has(a[0])) - Number(bottom.has(b[0])));
+    // bottomSectors 里的组置底,且按数组顺序(靠后更底);不在数组里的排最前
+    const order = bottomSectors ?? [];
+    const rankOf = (k: string) => { const i = order.indexOf(k); return i < 0 ? -1 : i; };
+    entries.sort((a, b) => {
+      const ra = rankOf(a[0]), rb = rankOf(b[0]);
+      if (ra < 0 && rb < 0) return 0;
+      if (ra < 0) return -1;
+      if (rb < 0) return 1;
+      return ra - rb;
+    });
     return entries;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [members, mentioned && Object.keys(mentioned).join(","), bottomSectors?.join(",")]);
+  }, [members, mentioned && Object.keys(mentioned).join(","), bottomSectors?.join(","), groupOverride && Object.keys(groupOverride).join(",")]);
 
   const addedCount = members.filter((m) => wl.has(m.code)).length;
 
@@ -82,7 +94,7 @@ export function ChainRoster({
           <div key={sector}>
             <div className="mb-1.5 flex items-baseline gap-2">
               <span className="text-title font-medium text-gray-800">{sectorLabels?.[sector] ?? sector}</span>
-              {g.gloss && <span className="text-xs text-gray-400">· {g.gloss}</span>}
+              {(groupNotes?.[sector] ?? g.gloss) && <span className="text-xs text-gray-400">· {groupNotes?.[sector] ?? g.gloss}</span>}
             </div>
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               {g.rows.map((it, i) => {

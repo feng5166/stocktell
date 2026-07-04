@@ -276,8 +276,15 @@ export default async function ChainPage({
           relations={Object.fromEntries(
             roster.map((r) => [r.code, relationForCode(r.code) ?? "产业链相关"])
           )}
+          groupOverride={{ "002028": "输配电 / 电网侧外溢" }}
           sectorLabels={{ "能源/核电": "能源侧外溢(弱 / 情绪映射)" }}
-          bottomSectors={["能源/核电"]}
+          groupNotes={{
+            "输配电 / 电网侧外溢":
+              "和 AI 数据中心电力基础设施存在外层支撑关系,但传导距离比 UPS、温控、液冷更远,需通过数据中心项目、客户和订单验证",
+            "能源/核电":
+              "算力耗电宏大叙事的最远端,与数据中心建设缺明确连接,默认弱 / 情绪映射",
+          }}
+          bottomSectors={["输配电 / 电网侧外溢", "能源/核电"]}
         />
 
         <p className="mt-8 text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
