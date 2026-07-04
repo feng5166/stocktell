@@ -22,6 +22,9 @@ import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
+import { buildWatchChainMap } from "@/lib/watch-relation";
+import { insightBundleForCode } from "@/lib/relation";
+import { REL_CHIP_CLS } from "@/lib/relation-rank";
 
 const TIER_CLASS: Record<string, string> = {
   龙头: "bg-amber-100 text-amber-700 font-medium",
@@ -47,6 +50,16 @@ function cap<T>(p: Promise<T>, ms: number, fb: T): Promise<T> {
     p.catch(() => fb),
     new Promise<T>((r) => setTimeout(() => r(fb), ms)),
   ]);
+}
+
+// 一句话判断里的字段(标签 + 值)
+function NodeField({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-gray-400">{label}</span>
+      <span className="font-medium text-gray-700">{value}</span>
+    </span>
+  );
 }
 
 export default async function StockDetail({
@@ -82,6 +95,18 @@ export default async function StockDetail({
   // 真实「需要验证什么」:优先取今天提到这只票的简报条目(retailTake 真实、可拆解);没有则退回静态文案
   const newsItem =
     todayNews.find((it) => it.triggerCode === s.code) ?? todayNews[0] ?? null;
+
+  // 一句话判断(产业链节点页核心):A股取链身份(所属链/环节/关系/验证点),美股=海外触发源。
+  const chainInfo = isA ? buildWatchChainMap()[s.code] : undefined;
+  const bundle = insightBundleForCode(s.code); // insight 核定 reason(有则用它当人话判断)
+  const nodeChain = isA ? chainInfo?.chainName ?? "AI 产业链" : "海外事件触发源";
+  const nodeSegment = chainInfo?.segment ?? s.sector;
+  const nodeRelation = isA ? chainInfo?.relation ?? "待验证" : "触发源";
+  // 今日触发:今天简报提到了 → 事件标题;否则明说只是市场行为(避免把资金异动硬解释成产业变化)
+  const todayTrigger =
+    todayNews.length > 0
+      ? (newsItem ?? todayNews[0]).title
+      : `今日暂无明确产业事件,当前更多是市场资金行为;长期定位仍来自${nodeSegment}环节`;
 
   // 统一关联邻居 = 既有 relations(美股用 code、A股用名称)+ 产业链真实关联边
   // (chainEdges,双向、含 A股↔A股/美股↔美股),按代码去重。
@@ -235,6 +260,44 @@ export default async function StockDetail({
         {/* 基本面真实数据并入标题区(紧凑一行)。下方按散户心态重排:先结论/关系,资金面等支撑细节折叠靠后 */}
         <Fundamentals code={s.code} market={s.market} />
 
+        {/* 一句话判断(结论先行:所属链/环节/关系/今日触发)——把个股资料变成产业链节点解释 */}
+        <Section icon="💡" title="一句话判断" highlight>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            <NodeField label="所属链" value={nodeChain} />
+            <NodeField label="环节" value={nodeSegment} />
+            <span className="inline-flex items-center gap-1">
+              <span className="text-gray-400">关系</span>
+              <span
+                className={`rounded px-1.5 py-0.5 font-medium ${
+                  REL_CHIP_CLS[nodeRelation] ?? "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {nodeRelation}
+              </span>
+            </span>
+            {isA && chainInfo?.chainId && (
+              <Link
+                href={`/chain/${chainInfo.chainId}`}
+                className="text-xs font-medium text-brand-600 hover:underline"
+              >
+                看这条链 →
+              </Link>
+            )}
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-gray-800">
+            {bundle?.reason || s.positioning}
+          </p>
+          <p className="mt-1.5 text-xs text-gray-500">
+            <span className="text-gray-400">今日触发:</span>
+            {todayTrigger}
+          </p>
+          {isA && chainInfo?.verify && chainInfo.verify.length > 0 && (
+            <p className="mt-1 text-xs text-gray-400">
+              后续验证:{chainInfo.verify.join(" / ")}
+            </p>
+          )}
+        </Section>
+
         <Section icon="🧭" title="在产业链的位置">
           <ChainPosition
             sector={s.sector}
@@ -243,7 +306,7 @@ export default async function StockDetail({
           />
         </Section>
 
-        <Section icon="📰" title="最近发生了什么">
+        <Section icon="📰" title="今天为什么被提到">
           <ul className="space-y-1.5 text-sm text-gray-700">
             {todayNews.map((it) => (
               <li key={it.id} className="text-rose-600">
@@ -251,7 +314,7 @@ export default async function StockDetail({
               </li>
             ))}
             <li>• {s.observation}</li>
-            {/* 资金面并入:今天主力/融资/龙虎榜动向 */}
+            {/* 资金流是市场行为,不是基本面验证——降为辅助字段,不抢产业链主线 */}
             {fundItem?.netMf != null && (
               <li className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}>
                 💰 主力{fundItem.netMf >= 0 ? "净流入" : "净流出"}{" "}
@@ -280,7 +343,7 @@ export default async function StockDetail({
               <b className={fundItem.netMf >= 0 ? "text-rose-600" : "text-emerald-600"}>
                 {fundItem.netMf >= 0 ? "买" : "卖"}
               </b>
-              这只票。
+              这只票。<span className="text-gray-400">资金流是市场行为,不等于基本面验证——要不要真受益,看上面「需要验证什么」。</span>
             </p>
           )}
           {fundItem &&
@@ -306,7 +369,7 @@ export default async function StockDetail({
           )}
         </Section>
 
-        <Section icon="🔗" title="对应的股票">
+        <Section icon="🔗" title="相关触发源与映射标的">
           {!hasPeers ? (
             sameSectorPeers.length > 0 ? (
               <div className="space-y-2 text-sm">
@@ -323,10 +386,10 @@ export default async function StockDetail({
           ) : (
             <div className="space-y-3 text-sm">
               {usPeers.length > 0 && (
-                <PeerGroup label="对应美股" anchor={s} items={usPeers} />
+                <PeerGroup label="海外触发源 / 对照" anchor={s} items={usPeers} />
               )}
               {aPeers.length > 0 && (
-                <PeerGroup label="对应 A 股" anchor={s} items={aPeers} />
+                <PeerGroup label="国内映射标的" anchor={s} items={aPeers} />
               )}
               {otherPeers.length > 0 && (
                 <PeerGroup label="相关" items={otherPeers} />
@@ -335,8 +398,9 @@ export default async function StockDetail({
           )}
           {(usPeers.length > 0 || aPeers.length > 0) && (
             <p className="mt-3 text-meta leading-relaxed text-gray-400">
-              强 = 有明确供货/直接业务绑定;中 = 对标/国产替代(同类对手,无直接供货);弱
-              = 同主题、蹭概念(跟着热度涨跌)。关系为研究框架梳理,非确认的客户/供应商关系。
+              海外多为事件触发源 / 对照,A 股为国内映射标的。关系分级(强 = 直接映射:有明确供货/
+              直接业务绑定;中 = 间接映射:对标/国产替代,无直接供货;弱 = 弱 / 情绪映射:同主题、蹭热度)
+              表示【产业链关系距离,不代表股价影响】,为研究框架梳理、非确认的客户/供应商关系。
             </p>
           )}
         </Section>
@@ -392,10 +456,10 @@ export default async function StockDetail({
         )}
 
         {etfs.length > 0 && (
-          <Section icon="🧺" title="相关 ETF · 一篮子参与">
+          <Section icon="🧺" title="相关 ETF 暴露" collapsible>
             <EtfPeek etfs={etfs} stockName={s.name} />
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              看好这个方向又不想押单只,可考虑重仓它的 ETF 一篮子参与。基金季报持仓(Tushare),不构成投资建议。
+              以下 ETF 对该方向有一定持仓暴露,可作为了解产业链分布的参考,不代表投资建议。基金季报持仓(Tushare)。
             </p>
           </Section>
         )}

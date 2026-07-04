@@ -85,7 +85,7 @@ export function Similarity({ code }: { code: string }) {
       </div>
       <p className="mt-2 text-meta leading-relaxed text-gray-500">
         {small && "样本较少,仅供参考。"}口径:美股单日|涨跌|≥2% 视为异动,取
-        A 股次一交易日表现。历史统计,非预测,不构成投资建议。
+        A 股次一交易日表现。<b className="text-gray-500">历史相关性只说明过去同日表现的统计关系,不代表未来会重复,也不能作为交易依据。</b>
       </p>
     </section>
   );
