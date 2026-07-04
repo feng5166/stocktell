@@ -15,6 +15,7 @@ import { ETFS } from "@/data/etfs";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
 import { DISCLAIMER } from "@/lib/constants";
+import { REL_CHIP_CLS } from "@/lib/relation-rank";
 import {
   STOCKS,
   aSharePeers,
@@ -57,17 +58,44 @@ function ConceptChips({ code, max = 3 }: { code: string; max?: number }) {
   );
 }
 
-// 梯队徽标:龙头=琥珀金、二线=浅蓝;无标签不显示
-function TierTag({ code }: { code: string }) {
-  const t = TIER[code];
-  if (!t) return null;
+// 关系标(产业链地图主轴:直接/间接/情绪/弱映射,配色与全站关系标签同源)
+function RelChip({ insight }: { insight?: StockInsight }) {
+  if (!insight?.relation) return null;
   return (
     <span
-      className={`ml-1 shrink-0 rounded px-1 py-0.5 text-[11px] ${
-        t === "龙头" ? "bg-amber-100 font-medium text-amber-700" : "bg-sky-50 text-sky-600"
+      className={`ml-1 shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${
+        REL_CHIP_CLS[insight.relation] ?? "bg-gray-100 text-gray-600"
       }`}
+      title={insight.chainName ? `${insight.chainName} · ${insight.segment}` : insight.segment}
     >
-      {t}
+      {insight.relation}
+    </span>
+  );
+}
+
+// 分流入口:查看链 / 查看 insight(把股票池分流到链页与因果链,不做终点)
+function ChainLinks({ insight }: { insight?: StockInsight }) {
+  if (!insight) return null;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      {insight.chainId && (
+        <Link
+          href={`/chain/${insight.chainId}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs font-medium text-brand-600 hover:underline"
+        >
+          查看链 →
+        </Link>
+      )}
+      {insight.chainSlug && (
+        <Link
+          href={`/insight/${insight.chainSlug}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs font-medium text-brand-600 hover:underline"
+        >
+          看因果链 →
+        </Link>
+      )}
     </span>
   );
 }
@@ -184,7 +212,22 @@ interface Quote {
   change: number;
 }
 
-export default function Dashboard() {
+// 产业链地图:每只票的核定关系/环节/reason/所属链(服务端 page.tsx 静态算好传入)。
+export type StockInsight = {
+  relation: string;
+  segment: string;
+  reason: string;
+  chainSlug: string;
+  chainName: string;
+  chainId?: string;
+};
+export type StockInsightMap = Record<string, StockInsight>;
+
+export default function Dashboard({
+  insightMap = {},
+}: {
+  insightMap?: StockInsightMap;
+}) {
   const [tab, setTab] = useState<Tab>("股票列表");
   const [market, setMarket] = useState<(typeof MARKETS)[number]>("全部");
   const [position, setPosition] = useState<(typeof POSITIONS)[number]>("全部");
@@ -332,6 +375,17 @@ export default function Dashboard() {
     return { total: filtered.length, coverage, up, down };
   }, [filtered]);
 
+  // 关系分布(比涨跌更符合产品定位:先看关系,再看行情)。未被 insight 核过的 → 待验证。
+  const relDist = useMemo(() => {
+    const d = { 直接映射: 0, 间接映射: 0, 情绪映射: 0, 弱映射: 0, 待验证: 0 };
+    for (const s of filtered) {
+      const rel = insightMap[s.code]?.relation;
+      if (rel && rel in d) d[rel as keyof typeof d]++;
+      else d.待验证++;
+    }
+    return d;
+  }, [filtered, insightMap]);
+
   // 股票列表实际展示行:在筛选结果上再叠加统计卡选的视图
   const listRows = useMemo(() => {
     let base = filtered;
@@ -379,13 +433,12 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-h1 font-semibold tracking-tight">
-                AI产业链股票池
+                AI 产业链股票地图
               </h1>
               <FeedbackLink />
             </div>
-            <p className="mt-1 text-xs text-gray-500">
-              数据来源于研究框架梳理 · 非确认的客户/供应商/持仓关系 ·
-              不构成投资建议
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-gray-500">
+              按产业链环节和关系强弱整理相关股票。这里不是推荐名单,而是帮你理解:谁是核心节点、谁是间接映射、谁只是情绪相关。数据来源于研究框架梳理 · 非确认关系 · 不构成投资建议。
             </p>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -479,6 +532,30 @@ export default function Dashboard() {
           />
         </div>
 
+        {/* 关系分布(产品定位主轴:先看关系,再看行情) */}
+        <div className="mb-2 rounded-xl bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            <span className="font-medium text-gray-500">关系分布</span>
+            {([
+              ["直接映射", "text-rose-600"],
+              ["间接映射", "text-amber-600"],
+              ["情绪映射", "text-slate-500"],
+              ["弱映射", "text-gray-500"],
+              ["待验证", "text-gray-400"],
+            ] as const).map(([k, cls]) => (
+              <span key={k} className="inline-flex items-center gap-1">
+                <span className="text-gray-500">{k}</span>
+                <span className={`font-semibold tabular-nums ${cls}`}>
+                  {relDist[k as keyof typeof relDist]}
+                </span>
+              </span>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
+            先看关系,再看行情。涨跌只是当天市场表现,不代表产业链传导强弱。
+          </p>
+        </div>
+
         {/* 筛选区 */}
         <div className="mb-4 space-y-3 rounded-xl bg-white shadow-sm p-4">
           {/* 搜索:始终常驻——手机折叠筛选时也能直接搜票加自选(新手引导"在下方搜你拿的票"的落点)*/}
@@ -524,13 +601,7 @@ export default function Dashboard() {
               </Chip>
             ))}
           </FilterGroup>
-          <FilterGroup label="梯队">
-            {(["全部", "龙头", "二线"] as const).map((t) => (
-              <Chip key={t} active={tier === t} onClick={() => setTier(t)}>
-                {t}
-              </Chip>
-            ))}
-          </FilterGroup>
+          {/* 梯队(龙头/二线)已下线:StockTell 不以"龙头/二线"作核心判断,关系分级才是主轴 */}
           <FilterGroup label="关系">
             <Chip
               active={relation === "全部关系"}
@@ -585,7 +656,7 @@ export default function Dashboard() {
         {tab === "股票列表" && (
           <>
             <EtfStrip etfs={listEtfs} quotes={etfQuotes} wl={wl} />
-            <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} />
+            <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} insightMap={insightMap} />
           </>
         )}
         {tab === "板块ETF" && (
@@ -700,10 +771,12 @@ function StockTable({
   rows,
   newsCodes,
   wl,
+  insightMap,
 }: {
   rows: Stock[];
   newsCodes: Set<string>;
   wl: UseWatchlist;
+  insightMap: StockInsightMap;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (code: string) =>
@@ -768,6 +841,7 @@ function StockTable({
           <StockCard
             key={s.code}
             s={s}
+            insight={insightMap[s.code]}
             hasNews={newsCodes.has(s.code)}
             watched={wl.has(s.code)}
             onToggleWatch={() => wl.toggle(s.code)}
@@ -814,7 +888,7 @@ function StockTable({
               <Th className="text-right" onClick={() => toggleSort("change")}>
                 日涨跌{arrow("change")}
               </Th>
-              <Th>核心定位</Th>
+              <Th>为什么在这条链里</Th>
               <Th>状态</Th>
               <Th></Th>
             </tr>
@@ -826,6 +900,7 @@ function StockTable({
                 <ReactFragmentRow
                   key={s.code}
                   s={s}
+                  insight={insightMap[s.code]}
                   hasNews={newsCodes.has(s.code)}
                   watched={wl.has(s.code)}
                   onToggleWatch={() => wl.toggle(s.code)}
@@ -866,6 +941,7 @@ function StockTable({
 /* ============ 股票卡片(移动端;桌面用 StockTable 表格) ============ */
 function StockCard({
   s,
+  insight,
   hasNews,
   watched,
   onToggleWatch,
@@ -873,6 +949,7 @@ function StockCard({
   toggle,
 }: {
   s: Stock;
+  insight?: StockInsight;
   hasNews: boolean;
   watched: boolean;
   onToggleWatch: () => void;
@@ -903,7 +980,7 @@ function StockCard({
         </button>
         <Link href={`/stock/${s.code}`} className="min-w-0 flex-1">
           <span className="font-medium text-gray-900">{s.name}</span>
-          <TierTag code={s.code} />
+          <RelChip insight={insight} />
           <WatchDot status={status} />{" "}
           <span className="font-mono text-xs text-gray-400">{s.code}</span>
         </Link>
@@ -934,7 +1011,14 @@ function StockCard({
         <span className="text-gray-500">{s.sector}</span>
         <StatusBadge status={status} className="ml-auto" />
       </div>
-      <p className="mt-1.5 text-xs text-gray-600">{s.positioning}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
+        {insight?.segment && (
+          <span className="mr-1 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500">
+            {insight.segment}
+          </span>
+        )}
+        {insight?.reason || s.positioning}
+      </p>
       {(CONCEPTS[s.code]?.length ?? 0) > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           <ConceptChips code={s.code} />
@@ -949,12 +1033,15 @@ function StockCard({
       {isOpen && (
         <div className="mt-2 rounded-lg bg-amber-50/70 p-2.5">
           <p className="text-sm leading-relaxed text-gray-800">{s.retailTake}</p>
-          <Link
-            href={`/stock/${s.code}`}
-            className="mt-1 inline-block text-xs text-brand-600"
-          >
-            查看完整详情 →
-          </Link>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <ChainLinks insight={insight} />
+            <Link
+              href={`/stock/${s.code}`}
+              className="text-xs font-medium text-brand-600"
+            >
+              个股详情 →
+            </Link>
+          </div>
         </div>
       )}
     </div>
@@ -963,6 +1050,7 @@ function StockCard({
 
 function ReactFragmentRow({
   s,
+  insight,
   hasNews,
   watched,
   onToggleWatch,
@@ -970,6 +1058,7 @@ function ReactFragmentRow({
   toggle,
 }: {
   s: Stock;
+  insight?: StockInsight;
   hasNews: boolean;
   watched: boolean;
   onToggleWatch: () => void;
@@ -1014,7 +1103,7 @@ function ReactFragmentRow({
           >
             {s.name}
           </Link>
-          <TierTag code={s.code} />
+          <RelChip insight={insight} />
           <WatchDot status={status} />
         </Td>
         <Td>
@@ -1044,8 +1133,14 @@ function ReactFragmentRow({
         >
           {liveChange(s)}
         </Td>
-        <Td className="max-w-[260px] text-xs text-gray-600">
-          {s.positioning}
+        <Td className="max-w-[340px] text-xs text-gray-600">
+          {insight?.segment && (
+            <span className="mr-1 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500">
+              {insight.segment}
+            </span>
+          )}
+          {/* 有 insight 核定 reason 就用它(位置+为什么+验证),否则退回定位标签 */}
+          {insight?.reason || s.positioning}
           {(CONCEPTS[s.code]?.length ?? 0) > 0 && (
             <span className="mt-1 flex flex-wrap gap-1">
               <ConceptChips code={s.code} />
@@ -1068,12 +1163,16 @@ function ReactFragmentRow({
                 <p className="text-sm leading-relaxed text-gray-800">
                   {s.retailTake}
                 </p>
-                <Link
-                  href={`/stock/${s.code}`}
-                  className="mt-1 inline-block text-xs text-brand-600 hover:underline"
-                >
-                  查看完整详情 →
-                </Link>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <ChainLinks insight={insight} />
+                  <Link
+                    href={`/stock/${s.code}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs font-medium text-brand-600 hover:underline"
+                  >
+                    个股详情 →
+                  </Link>
+                </div>
               </div>
             </div>
           </td>
