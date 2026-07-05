@@ -106,6 +106,30 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
   const changed = useMemo(() => relations.filter((r) => hasChange(edits[keyOf(r)])), [relations, edits]);
   const missingNote = changed.filter((r) => !edits[keyOf(r)]?.note?.trim());
 
+  // diff dry-run 预览(#5):导出前先算清将改什么,确认再导出,防误操作。
+  const dryRun = useMemo(() => {
+    const byAction: Record<string, number> = {};
+    let retype = 0,
+      directDelta = 0,
+      newDirectNoRef = 0;
+    for (const r of changed) {
+      const ed = edits[keyOf(r)]!;
+      const action = ed.action || deriveAction(r.relationType, ed.newType ?? r.relationType) || (ed.newReason ? "edit_reason" : "");
+      byAction[action] = (byAction[action] ?? 0) + 1;
+      const removed = ed.newType === "remove";
+      const newType = removed ? null : ed.newType ?? r.relationType;
+      if (ed.newType && ed.newType !== r.relationType) retype++;
+      const wasDirect = r.relationType === "direct";
+      const isDirect = newType === "direct";
+      if (wasDirect && !isDirect) directDelta--;
+      if (!wasDirect && isDirect) {
+        directDelta++;
+        if (!r.references || r.references.length === 0) newDirectNoRef++;
+      }
+    }
+    return { byAction, retype, directDelta, newDirectNoRef, removed: byAction["remove"] ?? 0, editReason: byAction["edit_reason"] ?? 0 };
+  }, [changed, edits]);
+
   const evSummary = useMemo(() => {
     let red = 0,
       yellow = 0;
@@ -255,6 +279,31 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
           )}
         </div>
       </div>
+
+      {/* diff dry-run 预览(导出前先看清将改什么) */}
+      {changed.length > 0 && (
+        <div className="mt-4 rounded-xl bg-brand-50 p-4 shadow-sm ring-1 ring-brand-200">
+          <div className="text-sm font-semibold text-brand-800">导出前预览 · dry-run · {changed.length} 处变更</div>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-700">
+            <span>改档 <b>{dryRun.retype}</b></span>
+            <span>移出 <b>{dryRun.removed}</b></span>
+            <span>改 reason <b>{dryRun.editReason}</b></span>
+            <span>
+              direct 数量变化 <b>{dryRun.directDelta >= 0 ? "+" : ""}{dryRun.directDelta}</b>
+            </span>
+            <span>
+              daily signals 影响:<b className="text-emerald-700">否</b>
+            </span>
+            {missingNote.length > 0 && <span className="font-medium text-rose-600">缺 note {missingNote.length}</span>}
+            {dryRun.newDirectNoRef > 0 && (
+              <span className="font-medium text-rose-600">⚠ {dryRun.newDirectNoRef} 条新 direct 缺 references(回灌后会亮红旗)</span>
+            )}
+          </div>
+          <div className="mt-1.5 text-[11px] text-gray-400">
+            确认无误后点上方「导出 diff」。导出 = 只产生 diff 文件、不改线上;回灌由负责人确认后进行。
+          </div>
+        </div>
+      )}
 
       {QUEUES.find((q) => q.key === queue)?.count === 0 && (
         <div className="mt-8 rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
