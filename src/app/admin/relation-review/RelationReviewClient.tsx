@@ -68,6 +68,12 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
   // 审核队列(负责人拍板:第一屏先展示需处理的风险项,不铺全量)。默认 = direct 缺证据。
   const [queue, setQueue] = useState<"direct-gap" | "candidate" | "trigger-ungrouped" | "changed" | "all">("direct-gap");
   const [editingReason, setEditingReason] = useState<string | null>(null);
+  // C7 筛选维度(在队列之上再收窄)+ 批量选择
+  const [fChain, setFChain] = useState("全部");
+  const [fType, setFType] = useState("全部");
+  const [fEvidence, setFEvidence] = useState("全部");
+  const [fSource, setFSource] = useState("全部");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     try {
@@ -163,6 +169,38 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
         return true;
     }
   };
+
+  // C7 筛选(在队列之上收窄)+ 批量
+  const chainOpts = useMemo(() => Array.from(new Set(relations.map((r) => r.chainId))), [relations]);
+  const passesFilters = (r: StockChainRelation) => {
+    if (fChain !== "全部" && r.chainId !== fChain) return false;
+    if (fType !== "全部" && r.relationType !== fType) return false;
+    if (fEvidence !== "全部" && (r.evidenceStatus ?? "none") !== fEvidence) return false;
+    if (fSource !== "全部" && r.source !== fSource) return false;
+    return true;
+  };
+  const visibleRow = (r: StockChainRelation) => inQueue(r) && passesFilters(r);
+  const applyBatch = (action: "needs_evidence" | "keep" | "remove") => {
+    const patch: Partial<Edit> =
+      action === "remove"
+        ? { newType: "remove", action: "remove", note: "批量:移出待验证" }
+        : action === "keep"
+          ? { action: "keep", note: "批量:保留" }
+          : { action: "needs_evidence", note: "批量:标记待补证据" };
+    setEdits((e) => {
+      const n = { ...e };
+      for (const k of Array.from(selected)) n[k] = { ...n[k], ...patch };
+      return n;
+    });
+    setSelected(new Set());
+  };
+  const toggleSel = (k: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
+      return n;
+    });
 
   // ---- 导出 diff(仅改动行;含 old/new 审计对 + 回灌所需列,可直接回灌)----
   function buildDiff(reviewedAt: string) {
@@ -278,6 +316,23 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
             </button>
           )}
         </div>
+        {/* C7 筛选维度(队列之上再收窄) */}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <FilterSel label="链" value={fChain} onChange={setFChain} opts={["全部", ...chainOpts]} />
+          <FilterSel label="关系" value={fType} onChange={setFType} opts={["全部", "direct", "indirect", "sentiment", "weak", "trigger", "candidate"]} />
+          <FilterSel label="证据" value={fEvidence} onChange={setFEvidence} opts={["全部", "verified", "partially_verified", "needs_review", "manual_only", "none"]} />
+          <FilterSel label="来源" value={fSource} onChange={setFSource} opts={["全部", "insight", "manual", "chain", "auto_generated"]} />
+        </div>
+        {/* C7 批量标记(勾选行后出现) */}
+        {selected.size > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs">
+            <span className="font-semibold text-amber-800">已选 {selected.size} 条 · 批量标记</span>
+            <button onClick={() => applyBatch("needs_evidence")} className="rounded bg-white px-2 py-1 font-medium text-gray-700 shadow-sm">待补证据</button>
+            <button onClick={() => applyBatch("keep")} className="rounded bg-white px-2 py-1 font-medium text-gray-700 shadow-sm">保留</button>
+            <button onClick={() => applyBatch("remove")} className="rounded bg-white px-2 py-1 font-medium text-rose-600 shadow-sm">移出</button>
+            <button onClick={() => setSelected(new Set())} className="ml-auto text-gray-400 hover:text-gray-700">取消选择</button>
+          </div>
+        )}
       </div>
 
       {/* diff dry-run 预览(导出前先看清将改什么) */}
@@ -312,7 +367,7 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
       )}
 
       {Array.from(byChain.entries()).map(([cid, chain]) => {
-        const rows = chain.rows.filter(inQueue).sort((a, b) => REL_RANK[a.relationType] - REL_RANK[b.relationType]);
+        const rows = chain.rows.filter(visibleRow).sort((a, b) => REL_RANK[a.relationType] - REL_RANK[b.relationType]);
         if (!rows.length) return null;
         return (
           <section key={cid} className="mt-6">
@@ -334,6 +389,8 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
                   onNote={(v) => patch(r, { note: v })}
                   onEditReason={() => setEditingReason(editingReason === keyOf(r) ? null : keyOf(r))}
                   onReset={() => resetEdit(r)}
+                  sel={selected.has(keyOf(r))}
+                  onSel={() => toggleSel(keyOf(r))}
                 />
               ))}
             </div>
@@ -341,6 +398,21 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
         );
       })}
     </div>
+  );
+}
+
+function FilterSel({ label, value, onChange, opts }: { label: string; value: string; onChange: (v: string) => void; opts: string[] }) {
+  return (
+    <label className="inline-flex items-center gap-1 text-gray-500">
+      {label}
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded border border-gray-300 bg-white px-1.5 py-1 text-xs outline-none focus:border-brand-500">
+        {opts.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -354,6 +426,8 @@ function Row({
   onNote,
   onEditReason,
   onReset,
+  sel,
+  onSel,
 }: {
   r: StockChainRelation;
   edit?: Edit;
@@ -364,6 +438,8 @@ function Row({
   onNote: (v: string) => void;
   onEditReason: () => void;
   onReset: () => void;
+  sel: boolean;
+  onSel: () => void;
 }) {
   const changed = !!(edit?.newType || edit?.newReason || edit?.action);
   const noteMissing = changed && !edit?.note?.trim();
@@ -373,6 +449,7 @@ function Row({
   return (
     <div className={`rounded-lg bg-white p-2.5 px-3 shadow-sm ${changedRing}`}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <input type="checkbox" checked={sel} onChange={onSel} className="h-3.5 w-3.5 shrink-0 accent-brand-600" title="选中做批量标记" />
         <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${TYPE_META[r.relationType].cls}`}>{TYPE_META[r.relationType].label}</span>
         <span className="text-sm font-semibold text-gray-900">{r.name}</span>
         <span className="font-mono text-xs text-gray-400">{r.code}</span>
