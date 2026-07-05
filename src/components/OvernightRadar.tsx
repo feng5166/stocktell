@@ -6,7 +6,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { STOCKS, aSharePeers } from "@/data/stocks";
-import { edgeInfo, STRENGTH_BADGE, type Strength } from "@/data/relations";
+import { edgeInfo, type Strength } from "@/data/relations";
+import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType } from "@/lib/relation-rank";
 import { useWatchlist } from "@/components/useWatchlist";
 import { TapBadge } from "@/components/TapBadge";
 import { fmtChange, changeClass } from "@/lib/format";
@@ -40,7 +41,7 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
   );
 }
 
-export function OvernightRadar() {
+export function OvernightRadar({ relMap = {} }: { relMap?: Record<string, string> }) {
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [live, setLive] = useState(false);
   const [linkage, setLinkage] = useState<Record<string, LinkageStat | null>>({});
@@ -154,15 +155,15 @@ export function OvernightRadar() {
           <p>
             <b className="text-gray-800">怎么选的</b>:从我们的 AI 产业链股票池里,挑
             <b>隔夜涨超 1%</b> 的美股,且它<b>领先对应 A 股今日涨幅 ≥1.5 个点</b>才上榜;每天
-            <b>最多 4 只</b>美股(按隔夜涨幅排),下面的 A 股按关联强度排。你的自选 A 股会 ★ 高亮。
+            <b>最多 4 只</b>美股(按隔夜涨幅排),下面的 A 股按产业链关联排序。你的自选 A 股会 ★ 高亮。
           </p>
           <p>
             <b className="text-gray-800">怎么读</b>:「美股名 隔夜+X%」→ 下面是它关联的 A
             股和今日涨跌;A 股越落后,背离越大。
           </p>
           <p>
-            <b className="text-gray-800">强/中/弱</b>
-            :关联强度——强=真供货、中=对标/替代、弱=蹭概念。
+            <b className="text-gray-800">关系档</b>:直接映射 / 间接映射 / 情绪映射 / 弱映射 / 触发源 / 待验证——每档含义见{" "}
+            <a href="/relations" className="text-brand-600 hover:underline">关系说明</a>。
           </p>
           <p>
             <b className="text-gray-800">同向X%</b>(历史同向统计):历史统计——过去 2
@@ -214,11 +215,10 @@ export function OvernightRadar() {
                         : "border-gray-200 hover:border-gray-400"
                     }`}
                   >
-                    <TapBadge
-                      label={l.strength}
-                      cls={STRENGTH_BADGE[l.strength]}
-                      detail={`${l.strength}关联:${info?.basis ?? "—"}`}
-                    />
+                    {(() => {
+                      const rl = relMap[l.code] ?? relationTypeToDisplayBadge(strengthToRelationType(l.strength)).label;
+                      return <TapBadge label={rl} cls={REL_CHIP_CLS[rl] ?? "bg-gray-100 text-gray-600"} detail={`${rl} · ${info?.basis ?? "—"}`} />;
+                    })()}
                     <LinkageBadge stat={linkage[`${s.code}:${l.code}`]} />
                     <span className="font-medium text-gray-800">
                       {watched && <span className="text-amber-500">★</span>}

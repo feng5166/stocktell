@@ -17,6 +17,7 @@ import {
   relationsInChain,
   chainList,
   segmentsOfChain,
+  allRelations,
   type StockChainRelation,
   type RelationType,
 } from "@/data/chain-relations";
@@ -94,3 +95,22 @@ export function resolveInChain(code: string, chainId: string | undefined, date?:
 
 // 静态维度查询(/stocks 链/环节筛选、下拉)——静态库口径,直接透传(daily 不影响集合归属)。
 export { relationsInChain, chainList, segmentsOfChain };
+
+// code → 主关系前台标签(Phase 3-D:给 OvernightRadar 等 client 组件用,服务端算好传入,
+// 避免把 chain-relations/insight-chains 拖进客户端包)。
+const FRONT_LABEL: Record<RelationType, string> = {
+  direct: "直接映射",
+  indirect: "间接映射",
+  sentiment: "情绪映射",
+  weak: "弱映射",
+  trigger: "触发源",
+  candidate: "待验证",
+};
+export function buildRelLabelMap(): Record<string, string> {
+  const m: Record<string, string> = {};
+  for (const c of Array.from(new Set(allRelations().map((r) => r.code)))) {
+    const p = primaryRelation(c);
+    if (p) m[c] = FRONT_LABEL[p.relationType];
+  }
+  return m;
+}

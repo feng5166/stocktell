@@ -72,8 +72,5 @@ export function edgeInfo(codeA: string, codeB: string): EdgeInfo | null {
   return { strength: "弱", basis: "同属 AI 主题,无直接业务绑定" };
 }
 
-export const STRENGTH_BADGE: Record<Strength, string> = {
-  强: "bg-rose-50 text-rose-700",
-  中: "bg-amber-50 text-amber-700",
-  弱: "bg-gray-100 text-gray-500",
-};
+// Phase 3-E(2026-07-04):STRENGTH_BADGE 主路径已删——全站关系展示统一 relationType(退双轨)。
+// edgeInfo().strength(强/中/弱)只保留作内部排序权重(RelationMap/OvernightRadar 按供货强弱排),不再作展示徽章。

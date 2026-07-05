@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
+import { buildRelLabelMap } from "@/lib/relation-resolver";
 import { ChainRoster } from "@/components/chain/ChainRoster";
 import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert";
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
@@ -194,7 +195,7 @@ export default async function ChainPage({
 
         {/* 隔夜美股 · A股联动 */}
         <div className="mt-4">
-          <OvernightRadar />
+          <OvernightRadar relMap={buildRelLabelMap()} />
         </div>
 
         {/* 今日关键动态 */}

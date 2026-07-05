@@ -11,6 +11,7 @@ import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
 import { relationLabelFor } from "@/lib/relation";
 import { buildWatchChainMap } from "@/lib/watch-relation";
+import { buildRelLabelMap } from "@/lib/relation-resolver";
 import { getChain } from "@/data/chains";
 import {
   listBriefing,
@@ -65,6 +66,7 @@ export default async function Home() {
   );
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();
+  const relLabelMap = buildRelLabelMap(); // Phase 3-D:OvernightRadar peer 关系档(服务端算好传客户端)
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -90,7 +92,7 @@ export default async function Home() {
             action={<ChainHomeEntry />}
           />
         </div>
-        <OvernightRadar />
+        <OvernightRadar relMap={relLabelMap} />
 
         {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
         {items.length === 0 ? (
