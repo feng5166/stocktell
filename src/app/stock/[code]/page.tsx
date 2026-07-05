@@ -170,6 +170,8 @@ export default async function StockDetail({
     market: string;
     strength: string;
     basis?: string;
+    relLabel?: string; // Phase 3-A:上下游 peer 也读 relationType(退强/中/弱)
+    relDesc?: string;
   };
   const upPeers: ChainPeer[] = [];
   const downPeers: ChainPeer[] = [];
@@ -177,12 +179,20 @@ export default async function StockDetail({
     const p = STOCK_MAP[n.code];
     if (!p) continue;
     const ei = edgeInfo(s.code, p.code);
+    const peerRel = (nodeChainId ? resolveInChain(p.code, nodeChainId) : null) ?? resolvePrimary(p.code);
+    let peerBadge = peerRel ? relationTypeToDisplayBadge(peerRel.relationType) : null;
+    if (!peerBadge && ei) {
+      console.warn("[Phase3 fallback] chainpos peer strength used without relationType", { anchor: s.code, peer: p.code, strength: ei.strength });
+      peerBadge = relationTypeToDisplayBadge(strengthToRelationType(ei.strength));
+    }
     const item: ChainPeer = {
       code: p.code,
       name: p.name,
       market: p.market,
       strength: ei?.strength ?? "弱",
       basis: ei?.basis,
+      relLabel: peerBadge?.label,
+      relDesc: peerBadge?.description,
     };
     (n.dir === "up" ? upPeers : downPeers).push(item);
   }

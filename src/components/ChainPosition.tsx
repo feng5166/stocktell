@@ -5,21 +5,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { SECTOR_GLOSS } from "@/data/stocks";
+import { REL_CHIP_CLS } from "@/lib/relation-rank";
 
 interface Peer {
   code: string;
   name: string;
   market: string;
-  strength?: string; // 强/中/弱(来自 chainEdges 的关联强度)
+  strength?: string; // 强/中/弱(来自 chainEdges,仅内部排序用,不再主展示)
   basis?: string; // 关联依据(chainEdges 的 basis:为什么算关联)
+  relLabel?: string; // Phase 3-A:relationType 展示档(直接映射/间接映射…),服务端算好传入
+  relDesc?: string; // 该档说明(tooltip)
 }
-
-// 关联强度配色:强=真供货/深度绑定,中=对标/替代/配套,弱=主题映射
-const STR_BADGE: Record<string, string> = {
-  强: "bg-rose-100 text-rose-700",
-  中: "bg-amber-100 text-amber-700",
-  弱: "bg-gray-200 text-gray-500",
-};
 
 export function ChainPosition({
   sector,
@@ -111,13 +107,12 @@ export function ChainPosition({
               href={`/stock/${x.code}`}
               className="-mx-1 flex flex-wrap items-center gap-1.5 rounded px-1 py-1 transition-colors hover:bg-gray-50 active:bg-gray-50"
             >
-              {x.strength && (
+              {x.relLabel && (
                 <span
-                  className={`shrink-0 rounded px-1 text-[11px] ${
-                    STR_BADGE[x.strength] ?? STR_BADGE["弱"]
-                  }`}
+                  title={x.relDesc}
+                  className={`shrink-0 rounded px-1 text-[11px] ${REL_CHIP_CLS[x.relLabel] ?? "bg-gray-100 text-gray-600"}`}
                 >
-                  {x.strength}
+                  {x.relLabel}
                 </span>
               )}
               <span className="text-xs font-medium text-gray-800">
