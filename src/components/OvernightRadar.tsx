@@ -27,15 +27,15 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
       <TapBadge
         label={`样本${stat.events}`}
         cls="bg-gray-100 text-gray-500"
-        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。联动有效率·非预测,历史不代表未来。`}
+        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。历史同向统计·非预测,历史不代表未来。`}
       />
     );
   const pct = Math.round(stat.rate * 100);
   return (
     <TapBadge
-      label={`联动${pct}%`}
+      label={`同向${pct}%`}
       cls="bg-sky-50 text-sky-600"
-      detail={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
+      detail={`历史同向统计:过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例 ${pct}%(样本${stat.events}次)。历史统计·非预测,历史不代表未来。`}
     />
   );
 }
@@ -165,12 +165,12 @@ export function OvernightRadar() {
             :关联强度——强=真供货、中=对标/替代、弱=蹭概念。
           </p>
           <p>
-            <b className="text-gray-800">联动X%</b>:历史统计——过去 2
+            <b className="text-gray-800">同向X%</b>(历史同向统计):历史统计——过去 2
             年该美股单日≥2%异动后,次一交易日 A 股同向且≥1% 的比例;
             <b>样本&lt;12 次只显示样本数、不给百分比</b>。
           </p>
           <p className="text-gray-400">
-            仅供观察对比,<b>非预测、非买卖建议</b>;联动有效率≠准确率,历史规律不代表这次一定补涨。
+            仅供观察对比,<b>历史统计 · 非预测、非买卖建议</b>;历史同向统计≠准确率,历史规律不代表这次一定补涨。
           </p>
         </div>
       ) : (
@@ -235,7 +235,7 @@ export function OvernightRadar() {
         ))}
       </div>
       <p className="mt-2.5 text-[11px] leading-relaxed text-gray-500">
-        历史规律不代表未来,不意味 A 股一定补涨。联动有效率为历史统计,非预测。
+        历史规律不代表未来,不意味 A 股一定补涨。同向比例为历史同向统计,非预测。
       </p>
     </div>
   );

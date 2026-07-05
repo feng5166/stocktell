@@ -143,15 +143,15 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
       <TapBadge
         label={`样本${stat.events}`}
         cls="bg-gray-100 text-gray-500"
-        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。联动有效率·非预测,历史不代表未来。`}
+        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。历史同向统计·非预测,历史不代表未来。`}
       />
     );
   const pct = Math.round(stat.rate * 100);
   return (
     <TapBadge
-      label={`联动${pct}%`}
+      label={`同向${pct}%`}
       cls="bg-sky-50 text-sky-600"
-      detail={`过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。联动有效率·非预测,历史不代表未来。`}
+      detail={`历史同向统计:过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。历史统计·非预测,历史不代表未来。`}
     />
   );
 }
