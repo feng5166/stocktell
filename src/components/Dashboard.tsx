@@ -15,7 +15,7 @@ import { ETFS } from "@/data/etfs";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
 import { DISCLAIMER } from "@/lib/constants";
-import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType } from "@/lib/relation-rank";
+import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType, chainRouteId } from "@/lib/relation-rank";
 import {
   STOCKS,
   aSharePeers,
@@ -79,7 +79,7 @@ function ChainLinks({ insight }: { insight?: StockInsight }) {
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
       {insight.chainId && (
         <Link
-          href={`/chain/${insight.chainId}`}
+          href={`/chain/${chainRouteId(insight.chainId)}`}
           onClick={(e) => e.stopPropagation()}
           className="text-xs font-medium text-brand-600 hover:underline"
         >

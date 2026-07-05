@@ -23,7 +23,7 @@ import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
 import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
-import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType } from "@/lib/relation-rank";
+import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType, chainRouteId } from "@/lib/relation-rank";
 
 // relationType → 前台关系档标签(与 /stocks、relationResolver 同源,消双轨)
 const STOCK_REL_LABEL: Record<string, string> = {
@@ -299,7 +299,7 @@ export default async function StockDetail({
             </span>
             {nodeChainId && (
               <Link
-                href={`/chain/${nodeChainId}`}
+                href={`/chain/${chainRouteId(nodeChainId)}`}
                 className="text-xs font-medium text-brand-600 hover:underline"
               >
                 看这条链 →
