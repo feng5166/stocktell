@@ -53,7 +53,7 @@ check("trigger 全分组", R.filter((r) => r.relationType === "trigger" && !r.tr
 
 // 6. daily 未污染 static(getDailySignals 空 + resolver 输出全 static)
 check("dailyRelationSignals 空(未污染 static)", getDailySignals("2026-07-04").length === 0);
-const codes = [...new Set(R.map((r) => r.code))];
+const codes = Array.from(new Set(R.map((r) => r.code)));
 const nonStatic = codes.map((c) => resolvePrimary(c)).filter((p) => p && p.resolvedSource !== "static");
 check("resolver 输出全 static(无 daily 自动升降级)", nonStatic.length === 0);
 
