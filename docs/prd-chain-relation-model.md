@@ -35,13 +35,25 @@ type ResolvedRelation = {
 **目标:** 把全站"强/中/弱"彻底退场,统一为 relationType(trigger/direct/indirect/sentiment/weak/candidate)。
 **为何后置:** 涉及跨组件语义(不只换文案),等关系模型再跑 1-2 天、审阅台+diff 回灌跑通后再动,避免刚接完 resolver 就引回归。
 
-**启动前必做依赖清单:** ① STRENGTH_BADGE 用在哪些地方 ② edgeInfo 如何生成 ③ Dashboard 关联图谱怎么展示
-④ 特征矩阵是否依赖强/中/弱排序 ⑤ stock 页 peer 关系如何映射 ⑥ 旧数据无 relationType 时如何 fallback。
+**★核心拍板(2026-07-04):edgeInfo 要拆两个概念,不能一起退。**
+| 类 | 字段 | 是什么 | Phase 3 处理 |
+|---|---|---|---|
+| **A 关系档** | `edgeInfo.strength`(强/中/弱)、`STRENGTH_BADGE`、`StrengthTag`、`Strength` | 两标的**产业链关系远近** | **退**:换 relationType(强→direct、中→indirect、弱→weak/sentiment;主展示取 peer 自己的 relationType,旧 strength 仅作 fallback) |
+| **B 历史统计** | `LinkageBadge`、`LinkageStat`、`/api/linkage`、"联动有效率/联动X%" | 海外触发源异动后**国内标的次日是否同向**的历史比例 | **不删**:改名"历史同向统计/历史联动统计"+降权+加"历史统计·非预测";永不反向改 relationType |
 
-**分步(不要直接删):** 1. 新增 relationType→displayBadge 映射,保留旧 strength fallback → 2. stock 页 peer 先切 →
-3. Dashboard 关联图谱切 → 4. 特征矩阵切 → 5. 确认无回归后删 STRENGTH_BADGE 主路径 → 6. 兼容层留一段时间再彻底删旧字段。
+**依赖清单(2026-07-04 扫描实测):**
+- A 关系档展示点:`stock/[code]/page.tsx:579`(peer 强/中/弱)、`OvernightRadar.tsx:219`、`Dashboard.tsx:133/1346/1537`(StrengthTag,关联图谱/特征矩阵);数据源 `data/relations.ts` edgeInfo + `data/chainEdges.ts`。
+- B 历史统计展示点:`OvernightRadar.tsx:222`(LinkageBadge)、`Dashboard.tsx:139-168`(LinkageBadge);文案散在 OvernightRadar 4/30/36/38/168/173/238 + Dashboard 139/140/156/162/164;数据 `/api/linkage`。
+- fallback:旧数据无 relationType 时用 strength→relationType 映射兜底。
 
-**当前执行序:** 1.审阅台 4 功能(进行中)→ 2.观察 resolver 上线稳定性 → 3.跑一轮审阅+diff 回灌 → 4.再开 Phase 3。
+**7 执行规则(负责人拍板):** ①关系展示统一 relationType ②历史统计改名"历史同向/历史联动统计" ③历史统计旁必显"历史统计·非预测"
+④弃用"联动有效率/高联动/中联动/有效信号" ⑤历史统计不影响 relationType、不自动升降级 ⑥要按历史统计调档必须进 relationReviewQueue 人工审改 staticRelations ⑦relationType 与 linkageStats 分开展示、不混一个 badge。
+
+**验收:** 全站主关系展示无"强/中/弱关联";LinkageBadge 不删、文案改历史同向/联动统计;任何历史统计带"历史统计·非预测";relationType 与 linkageStats 两字段两组件;不出现"有效率"作主标题。
+
+**分步(不要直接删):** 1. 加 relationType→displayBadge 映射 + strength→relationType fallback → 2. stock 页 peer 切 → 3. Dashboard 关联图谱切 → 4. 特征矩阵切 → 5. OvernightRadar 切 + 历史统计改名降权 → 6. 确认无回归删 STRENGTH_BADGE 主路径 → 7. 兼容层留一段再彻底删旧字段。
+
+**当前执行序:** 1.审阅台 4 功能 ✅ → 2.direct/indirect 证据补齐 ✅ → 3.观察 resolver 稳定性 → 4.开 Phase 3(A 退双轨 + B 改名降权)。
 
 ## 1. 问题:关系数据现在散在 5 处、各页各取一份
 
