@@ -4,7 +4,7 @@ import { STOCK_MAP, STOCKS, resolvePeer, type Stock } from "@/data/stocks";
 import { ChainPosition } from "@/components/ChainPosition";
 import { SiteHeader } from "@/components/SiteHeader";
 import { chainNeighbors } from "@/data/chainEdges";
-import { edgeInfo, STRENGTH_BADGE } from "@/data/relations";
+import { edgeInfo } from "@/data/relations";
 import { listBriefing } from "@/lib/briefings";
 import { WatchStar } from "@/components/WatchStar";
 import { FeedbackLink } from "@/components/FeedbackLink";
@@ -22,8 +22,8 @@ import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
-import { resolvePrimary } from "@/lib/relation-resolver";
-import { REL_CHIP_CLS } from "@/lib/relation-rank";
+import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
+import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType } from "@/lib/relation-rank";
 
 // relationType → 前台关系档标签(与 /stocks、relationResolver 同源,消双轨)
 const STOCK_REL_LABEL: Record<string, string> = {
@@ -410,9 +410,9 @@ export default async function StockDetail({
           )}
           {(usPeers.length > 0 || aPeers.length > 0) && (
             <p className="mt-3 text-meta leading-relaxed text-gray-400">
-              海外多为事件触发源 / 对照,A 股为国内映射标的。关系分级(强 = 直接映射:有明确供货/
-              直接业务绑定;中 = 间接映射:对标/国产替代,无直接供货;弱 = 弱 / 情绪映射:同主题、蹭热度)
-              表示【产业链关系距离,不代表股价影响】,为研究框架梳理、非确认的客户/供应商关系。
+              海外多为事件触发源 / 对照,A 股为国内映射标的。关系档(直接映射 / 间接映射 / 情绪映射 / 弱映射 / 待验证)
+              表示【产业链关系距离,不代表股价影响】,为研究框架梳理、非确认的客户 / 供应商关系。看每档含义 →{" "}
+              <Link href="/relations" className="text-brand-600 hover:underline">关系说明</Link>。
             </p>
           )}
         </Section>
@@ -557,15 +557,28 @@ function PeerGroup({
   anchor?: Stock;
   items: { token: string; peer: Stock | null }[];
 }) {
-  const CAP = 12; // 龙头(如英伟达)关联众多,封顶展示强关联,其余折叠计数
+  const CAP = 12; // 龙头(如英伟达)关联众多,封顶展示,其余折叠计数
   const shownItems = items.slice(0, CAP);
   const hidden = items.length - shownItems.length;
+  // Phase 3-A:锚点所属链(用于按本链取 peer 关系,防串链);算一次
+  const anchorChainId = anchor ? resolvePrimary(anchor.code)?.chainId : undefined;
   return (
     <div>
       <div className="mb-1.5 text-xs text-gray-400">{label}</div>
       <div className="space-y-1.5">
         {shownItems.map(({ token, peer }) => {
           const info = anchor && peer ? edgeInfo(anchor.code, peer.code) : null;
+          // Phase 3-A:peer 主展示读 relationType(退强/中/弱)。优先本链关系 > 主关系 > 旧 strength fallback(带 warning)。
+          let badge = null;
+          if (peer) {
+            const peerRel = (anchorChainId ? resolveInChain(peer.code, anchorChainId) : null) ?? resolvePrimary(peer.code);
+            if (peerRel) {
+              badge = relationTypeToDisplayBadge(peerRel.relationType);
+            } else if (info) {
+              console.warn("[Phase3 fallback] peer strength used without relationType", { anchor: anchor?.code, peer: peer.code, strength: info.strength });
+              badge = relationTypeToDisplayBadge(strengthToRelationType(info.strength));
+            }
+          }
           return (
             <div key={peer?.code ?? token}>
               {peer ? (
@@ -574,11 +587,12 @@ function PeerGroup({
                   href={`/stock/${peer.code}`}
                   className="-mx-2 flex min-h-[44px] flex-wrap items-center gap-2 rounded-lg px-2 py-1.5 active:bg-brand-50/60 hover:bg-gray-50 sm:min-h-0 sm:py-1"
                 >
-                  {info && (
+                  {badge && (
                     <span
-                      className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-meta ${STRENGTH_BADGE[info.strength]}`}
+                      className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-meta ${REL_CHIP_CLS[badge.label] ?? "bg-gray-100 text-gray-600"}`}
+                      title={badge.description}
                     >
-                      {info.strength}关联
+                      {badge.label}
                     </span>
                   )}
                   <span className="font-medium text-gray-800">{peer.name}</span>

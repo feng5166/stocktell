@@ -3,6 +3,34 @@
 // 首页事件卡)跟着变,杜绝"改一处配色漏几处"。
 // import type 编译期擦除、不产生运行时依赖,故仍是零依赖(用于短键映射的穷尽性检查)。
 import type { Relation } from "@/data/insight-chains";
+import type { RelationType } from "@/data/chain-relations";
+
+// ============================================================================
+// Phase 3-A 退双轨 adapter(负责人 2026-07-04 拍板)。全站关系主展示统一读 relationType,
+// 强/中/弱退场。此 adapter 是唯一"relationType → 展示徽章"映射,zero-dep(仅 type import)。
+// ============================================================================
+export type RelationBadge = {
+  label: string;
+  shortLabel: string;
+  description: string;
+  tone: RelationType;
+  priority: number;
+};
+const REL_BADGE: Record<RelationType, RelationBadge> = {
+  trigger: { label: "触发源", shortLabel: "触发", tone: "trigger", priority: 5, description: "海外或上游事件触发源,不等于国内公司直接受益。" },
+  direct: { label: "直接映射", shortLabel: "直接", tone: "direct", priority: 0, description: "产业链传导路径较短,仍需订单、客户、收入占比、毛利率等公开信息验证。" },
+  indirect: { label: "间接映射", shortLabel: "间接", tone: "indirect", priority: 1, description: "存在产业链间接关系,需要结合环节变化和公司业务披露验证。" },
+  sentiment: { label: "情绪映射", shortLabel: "情绪", tone: "sentiment", priority: 2, description: "更多是市场情绪或同题材映射,不代表基本面传导。" },
+  weak: { label: "弱映射", shortLabel: "弱", tone: "weak", priority: 3, description: "关系较弱,仅作为观察线索,不作为核心产业链映射。" },
+  candidate: { label: "待验证", shortLabel: "待验证", tone: "candidate", priority: 4, description: "待验证关系,尚未进入正式静态关系库。" },
+};
+export function relationTypeToDisplayBadge(rt: RelationType): RelationBadge {
+  return REL_BADGE[rt] ?? REL_BADGE.candidate;
+}
+// fallback:旧 strength(强/中/弱)→ relationType,仅用于无 relationType 的旧数据。调用侧要打 warning。
+export function strengthToRelationType(strength: string): RelationType {
+  return strength === "强" ? "direct" : strength === "中" ? "indirect" : "weak";
+}
 
 // 前台关系档排序权重(直接>间接>情绪>弱)。
 export const FRONT_RELATION_RANK: Record<string, number> = {
