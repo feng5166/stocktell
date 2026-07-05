@@ -397,6 +397,12 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
           </section>
         );
       })}
+
+      <p className="mt-8 border-t border-gray-200 pt-4 text-xs leading-relaxed text-gray-400">
+        变更历史(审计日志)见 <code className="rounded bg-gray-100 px-1">docs/relation-changelog.md</code>(每次回灌追加)。
+        回灌前跑 <code className="rounded bg-gray-100 px-1">resolver-health</code> / <code className="rounded bg-gray-100 px-1">relation-lint</code> /{" "}
+        <code className="rounded bg-gray-100 px-1">resolver-samples</code> 全过 · 健康面板 <a href="/admin/resolver-health" className="text-brand-600 hover:underline">/admin/resolver-health</a>。
+      </p>
     </div>
   );
 }
