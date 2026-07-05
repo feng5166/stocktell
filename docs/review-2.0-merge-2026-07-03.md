@@ -136,5 +136,39 @@
 
 ---
 
+# 第四批评审(2026-07-05 · P1 统一关系模型,独立大批 46 文件 / 7551 插入)
+
+> 评审对象:第三批修复(`a8e0d31`)之后一大批未评审的 **P1 统一关系模型** 工程——引入 `relation-resolver`(关系唯一读入口)、退旧「强/中/弱」双轨→`relationType`、审计化关系数据为单一核定源、加审阅台 / 准入 lint / 健康面板护栏。基线 `a8e0d31` → HEAD `0b478cf`。7 维度多智能体 + 对抗验证 + 人工抽验(28 候选→25 存活)。
+> **核心结论:三不变量(单一读入口 / 双轨退干净 / 单一核定源)均为「文档达成、非代码达成」;合规红线基本守住;审阅台安全;但有 1 条 HIGH 发布阻断项,不能直接上生产。**
+
+## 第四批 · P0 发布阻断(HIGH · 已人工实锤)
+
+| # | 文件:行 | 问题 | 建议 |
+|---|---|---|---|
+| P1-0 HIGH | `chains.ts:44` + `stock/[code]/page.tsx:302`(+`Dashboard.tsx:82`) | **AI 主链所有个股「查看链」100% 404**——`CHAINS` 用 `id:"ai"`,chain-relations 的 chainId 是 `"ai-infra"`;个股页拼 `href=/chain/${primaryRel.chainId}=/chain/ai-infra`,而 `getChain=CHAINS[id]` → `CHAINS["ai-infra"]`=undefined → `notFound()`。中际旭创等 35+ 只 AI 股 + Dashboard 关联图谱链接全 404,电力链因 id 恰一致幸免。 | 加 chainId→路由 id 映射(ai-infra→ai),Dashboard 与 stock 页共用一处;或统一 chain-relations 的 AI chainId 为 "ai"。**上线前必修。(评审侧可代修:纯 bug 一行映射、不碰架构决策)** |
+
+## 第四批 · 不变量未达成(重构核心目的没做到 · medium)
+
+| # | 文件:行 | 问题 | 建议 |
+|---|---|---|---|
+| P1-1 | `generate.ts:279`+`chain/[id]/page.tsx:302`+`page.tsx:64`+`admin/insights/route.ts:118` | **双轨没退干净**——`relation.ts`(仅 INSIGHT_CHAINS 派生)仍是平行未审计源,被链页/首页/每日简报/admin **4 处直读**。29 个审计码(浪潮 000977=direct、光迅 002281=indirect)不在 insight → 这 4 处返 null 落「产业链相关」,而 /stocks、stock 页读审计源显「直接/间接」→ **同票跨面两套标签**,简报还可能漏掉审计核定受益股。resolver 头注自称「chain 页都走这里」被自己没接进去打脸。 | 把链页 roster、首页 relationLabelFor、简报 generate.ts 切到 resolver(resolveInChain/resolveRelationsForCode),切完删 relation.ts 旧读函数、修正 resolver 头注。 |
+| P1-2 | `watch-relation.ts:30`+`Dashboard.tsx:1247`+`stocks/page.tsx:30` | **resolvePrimary 跨链取最强档 = B2-2 复发**——多链票(英维克 002837 / 盛弘 / 科士达 在 ai-infra=间接、power=直接)在自选卡/关联图谱/链筛选显「直接」,与 stock 页 `resolveInChain`(本链=间接)打架、档位被上抬;`/stocks` 选「AI链+间接」会把英维克错误剔除。 | 本链语义处先定锚链再 `resolveInChain`(与 stock 页一致),或按 chainId 存每链档位、前台按当前链渲染;同步更新 relation.ts:13-14 与链页那条已被违背的注释。 |
+| P1-3 | `chain-relations.ts:144`+`:88` | **单一核定源名不副实**——section-1 从 insight 派生时无「审计 remove」排除:英维克/盛弘/科士达/东方电气跨链双计入 ai-infra+power,ai-application(金山办公 6 A股 + PLTR/NOW/SNOW)错挂「AI 推理基础设施链」,均与 v2-audited.csv 判 `action=remove` 相反,`:81-82` 注释已过期。 | section-1 加按审计 remove 列表(code\|chainId)的排除集,或从 insight-chains 删这些行;diagnostics 加「同 code 跨多链/渲染出现 remove 行」告警。 |
+| P1-4 | `scripts/relation-lint.ts:1` | **护栏无强制准入门**——准入 lint / resolver-health / 关键样本三道全是纯手动脚本,未接 CI/pre-commit/package.json,注释宣称的「CI/回灌前跑非零退出」仓库里不存在。手改或数据管线派生出污染关系,git push main 直接部署、护栏一次未跑(refresh-data.yml 还自动 commit 生成物回 main 无关系门)。 | package.json 加 `check:relations`,接 GitHub Actions(过滤 chain-relations*/relation*)+ pre-push,失败即拦;修正注释假象。 |
+| P1-5 | `resolver-diagnostics.ts:51`/`:43` | **health 检查结构性恒绿**——守核心不变量「daily 绝不自动升 relationType」的检查里 `resolvedSource` 硬编码 'static'、`getDailySignals` 恒返 []、date 硬编码历史日、dups 去重后必空 → 面板永远全绿、永远无法失败,虚假保证。 | 改比对 resolved 后 relationType 与 static 档位是否一致、date 用运行时当天并透传;补跨链一致性检查;骨架期占位项显式标注「非活跃保证」。 |
+
+## 第四批 · 数据一致性 / 合规卫生(low)
+
+- `stock/[code]:186` **fallback 按边强度反推「直接映射」**——审计源无该 peer 时用 chainEdges 强/中/弱硬映射成 direct/indirect rose chip(30+ 条),无可回溯证据,擦边「分级需可回溯证据」红线。建议:未覆盖 peer 显「待验证/未纳入覆盖」,strength 仅内部排序不进徽章。
+- `watch-relation.ts:22` **weak 折叠不一致**——自选卡显「情绪映射」,/stocks 和 stock 页显「弱映射」,同票跨面两档(中国核电 601985 等)。
+- `chain-relations-audit.generated.ts:1` **不可复现**——声称 AUTO-GENERATED 但仓库无生成脚本,约 180/210 行(含所有 remove 判定)只在 CSV 是文档、非运行时源。建议补 `scripts/gen-chain-relations-audit.mjs` 接 data-check(生成物 vs 提交物比对)。
+- `insight-chains.ts:175` **残留「龙头/二线」话术** 经派生到 stock 页展示(浪潮/工业富联/盛弘「二线」等)——**注:铁律未破**(仍按传导距离非龙头分级),话术卫生,建议回灌改中性 + lint 拦「龙头/二线」。
+- `relation-lint.ts:44` lint 只扫 reason、不扫 verificationPoints/references(前台会展示的字段可绕过合规门);`chain-relations.ts:243` REASON_APPEND 拼样板文让「概念词无证据」检查自我满足;`relation-review/export/route.ts:24` CSV 公式注入(端点已 admin 鉴权、受害者限负责人本机);`relation-rank.ts:36` REL_RANK 3-4 处副本;`stock/[code]:148` peer 排序按隐藏边强度与徽章不同源。
+
+## 第四批 · 整体结论
+三不变量均未真达成(relation.ts 4 处直读平行源、审计 remove 未落运行时、护栏无 CI 门、health 恒绿)——「单一读入口+双轨退干净+单一核定源」目前是**文档达成而非代码达成**。**合规红线基本守住**(无买卖/目标价/涨跌预测,分级按传导距离非龙头),残留是 low 卫生问题非喊单事故。**审阅台安全**(端点鉴权、readonly 守住、无越权改档)。**但有真回归、不能直接上生产**:先修 AI 链 404(P0),再收敛 relation.ts + 统一跨链口径 + 护栏接 CI,方可宣称不变量达成并放行。
+
+---
+
 ## 附:未采纳/驳回的候选(供参考,不必处理)
-三批共 84+ 候选,经对抗验证驳回约 14 条(行号对不上 / 场景不可达 / 已有兜底 / 属文档已接受的设计),已剔除。上表为存活项。人工抽验累计确认:第二批两条 HIGH(title 未过护栏、relation 跨链越级)+ briefing-backup insight 无超时 fetch;第三批两条合规(content-guard「成」净回归、admin 发布侧缺 content-guard)均属实。
+四批共 112+ 候选,经对抗验证驳回约 17 条(行号对不上 / 场景不可达 / 已有兜底 / 属文档已接受的设计),已剔除。上表为存活项。人工抽验累计确认:第二批两条 HIGH(title 未过护栏、relation 跨链越级)+ briefing-backup insight 无超时 fetch;第三批两条合规(content-guard「成」净回归、admin 发布侧缺 content-guard);第四批 HIGH 404(chainId「ai-infra」≠路由「ai」)+ resolvePrimary 跨链取最强档(B2-2 复发)均属实。
