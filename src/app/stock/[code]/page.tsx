@@ -305,7 +305,7 @@ export default async function StockDetail({
           </p>
           {nodeVerify.length > 0 && (
             <p className="mt-1 text-xs text-gray-400">
-              后续验证:{nodeVerify.join(" / ")}
+              后续应核验的公开披露项(不代表已确认受益):{nodeVerify.join(" / ")}
             </p>
           )}
         </Section>

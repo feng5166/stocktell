@@ -347,6 +347,10 @@ export default async function InsightPage({ params }: { params: { slug: string }
               );
             })}
           </div>
+          <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-500">
+            本页关系来自 <b className="text-gray-600">staticRelations</b>(经人工审阅的长期产业链关系档);daily signals 只影响「今日触发」,
+            不自动改变长期关系档。关系档是"研究框架梳理·非确认",不构成投资建议。
+          </p>
         </Section>
 
         {/* 易看错 + references */}
