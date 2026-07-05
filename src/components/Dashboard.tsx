@@ -915,7 +915,7 @@ function StockTable({
         )}
         {rows.length === 0 && (
           <div className="rounded-xl bg-white shadow-sm px-4 py-12 text-center text-sm text-gray-400">
-            没有符合条件的标的。可放宽筛选;若按链 / 环节筛选,该环节可能暂无纳入静态关系的标的(仅有"待验证"标的、尚未核定)。
+            没有符合条件的标的。可放宽筛选;若按链 / 环节筛选,该环节可能暂无纳入静态关系的标的(仅有「待验证」标的、尚未核定)。
           </div>
         )}
       </div>
@@ -981,7 +981,7 @@ function StockTable({
                   colSpan={11}
                   className="px-4 py-12 text-center text-sm text-gray-400"
                 >
-                  没有符合条件的标的。可放宽筛选;若按链 / 环节筛选,该环节可能暂无纳入静态关系的标的(仅有"待验证"标的、尚未核定)。
+                  没有符合条件的标的。可放宽筛选;若按链 / 环节筛选,该环节可能暂无纳入静态关系的标的(仅有「待验证」标的、尚未核定)。
                 </td>
               </tr>
             )}
