@@ -15,7 +15,7 @@ import { ETFS } from "@/data/etfs";
 import { changeClass, fmtChange } from "@/lib/format";
 import { Th, Td } from "@/components/Table";
 import { DISCLAIMER } from "@/lib/constants";
-import { REL_CHIP_CLS } from "@/lib/relation-rank";
+import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType } from "@/lib/relation-rank";
 import {
   STOCKS,
   aSharePeers,
@@ -26,7 +26,7 @@ import {
   type Stock,
 } from "@/data/stocks";
 import { CONCEPTS } from "@/data/concepts.generated";
-import { edgeInfo, STRENGTH_BADGE, type Strength } from "@/data/relations";
+import { edgeInfo, type Strength } from "@/data/relations";
 import { track } from "@/lib/analytics";
 
 // 全部概念(按出现频次降序),给筛选下拉用
@@ -123,18 +123,8 @@ function WatchDot({ status }: { status: string }) {
 
 // 关联强弱标:强=真供货 中=对标/替代 弱=蹭概念;悬停看依据(basis)。
 // 让散户在浏览"美股→A股"映射时一眼分清"真关联"和"蹭概念",别被弱关联割。
+// Phase 3-B:边强度仅用于内部排序(真供货排前),不再作为展示徽章。StrengthTag 已退场。
 const STRENGTH_RANK: Record<Strength, number> = { 强: 0, 中: 1, 弱: 2 };
-function StrengthTag({ usCode, aCode }: { usCode: string; aCode: string }) {
-  const info = edgeInfo(usCode, aCode);
-  if (!info) return null;
-  return (
-    <TapBadge
-      label={info.strength}
-      cls={STRENGTH_BADGE[info.strength]}
-      detail={`${info.strength}关联:${info.basis}`}
-    />
-  );
-}
 
 // 联动有效率徽章:过去2年该美股≥2%异动 → 次日A股同向且≥1% 的比例。小样本(<12)只给样本数、
 // 不亮百分比;tooltip 明确"联动有效率·非预测、历史不代表未来",守合规。数据来自 /api/linkage(边级缓存)。
@@ -725,11 +715,11 @@ export default function Dashboard({
           />
         )}
         {tab === "关联图谱" && (
-          <RelationMap rows={crossMarketRows} watchedCodes={wl.codes} />
+          <RelationMap rows={crossMarketRows} watchedCodes={wl.codes} insightMap={insightMap} />
         )}
         {tab === "特征矩阵" && <FeatureMatrix rows={crossMarketRows} />}
         {tab === "主动发现" && (
-          <ActiveDiscovery rows={rows} watchedCodes={wl.codes} />
+          <ActiveDiscovery rows={rows} watchedCodes={wl.codes} insightMap={insightMap} />
         )}
 
         <p className="mt-6 text-center text-xs text-gray-400">
@@ -1242,32 +1232,36 @@ function ReactFragmentRow({
 function RelationMap({
   rows,
   watchedCodes,
+  insightMap,
 }: {
   rows: Stock[];
   watchedCodes: Set<string>;
+  insightMap: StockInsightMap;
 }) {
-  const [strongOnly, setStrongOnly] = useState(false);
+  const [directOnly, setDirectOnly] = useState(false);
   const codes = new Set(rows.map((r) => r.code));
   const byCode = new Map(rows.map((r) => [r.code, r]));
   const live = (s: Stock) => byCode.get(s.code) ?? s;
-  // 每条 美股→A股 边带上强弱,按 强→中→弱 排序(真供货排前,蹭概念沉底)
+  // Phase 3-B:每个 A 股 peer 读 relationType(退强/中/弱);无则 strength→relationType fallback。排序仍按边强度(内部)。
+  const relLabelOf = (code: string, strength: Strength) =>
+    insightMap[code]?.relation ?? relationTypeToDisplayBadge(strengthToRelationType(strength)).label;
   const anchors = STOCKS.filter((s) => s.market === "美股").map((us) => ({
     us: live(us),
     peers: aSharePeers(us)
-      .map((p) => ({
-        p: live(p),
-        strength: (edgeInfo(us.code, p.code)?.strength ?? "弱") as Strength,
-      }))
+      .map((p) => {
+        const strength = (edgeInfo(us.code, p.code)?.strength ?? "弱") as Strength;
+        return { p: live(p), strength, relLabel: relLabelOf(p.code, strength) };
+      })
       .sort((a, b) => STRENGTH_RANK[a.strength] - STRENGTH_RANK[b.strength]),
   }));
   const visible = anchors.filter(
     (a) => codes.has(a.us.code) || a.peers.some((x) => codes.has(x.p.code))
   );
-  // 仅看强关联:把每个锚点的 peer 过滤到只剩"强",并丢掉过滤后为空的锚点
+  // 仅看直接映射:过滤到只剩 relationType=直接映射 的 peer,丢掉过滤后为空的锚点
   const cards = visible
     .map(({ us, peers }) => ({
       us,
-      peers: strongOnly ? peers.filter((x) => x.strength === "强") : peers,
+      peers: directOnly ? peers.filter((x) => x.relLabel === "直接映射") : peers,
     }))
     .filter((a) => a.peers.length > 0);
 
@@ -1276,33 +1270,29 @@ function RelationMap({
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
         <button
           onClick={() =>
-            setStrongOnly((v) => {
-              if (!v) track("relation_strong_only");
+            setDirectOnly((v) => {
+              if (!v) track("relation_direct_only");
               return !v;
             })
           }
           className={`rounded-full px-2.5 py-1 font-medium ${
-            strongOnly
+            directOnly
               ? "bg-rose-600 text-white"
               : "bg-white text-gray-500 shadow-sm hover:text-gray-800"
           }`}
         >
-          {strongOnly ? "✓ 仅看强关联" : "仅看强关联"}
+          {directOnly ? "✓ 仅看直接映射" : "仅看直接映射"}
         </button>
         <span className="text-gray-500">
-          <span className="text-rose-600">强</span>=真供货 ·
-          <span className="text-amber-600"> 中</span>=对标/替代 ·
-          <span className="text-gray-500"> 弱</span>=蹭概念(点徽章看依据)
-        </span>
-        <span className="basis-full text-meta leading-relaxed text-gray-500">
-          「联动率」=过去 2 年该美股异动、次日 A 股同向的复盘比例,仅统计、非预测,历史不代表未来。
+          关系档:<span className="text-rose-600">直接映射</span> · <span className="text-amber-600">间接映射</span> ·{" "}
+          <span className="text-slate-500">情绪映射</span> · 弱映射 · 待验证(点徽章看依据)
         </span>
       </div>
       {cards.length === 0 ? (
         <Empty
           text={
-            strongOnly
-              ? "当前筛选下没有强关联关系,试试关掉「仅看强关联」"
+            directOnly
+              ? "当前筛选下没有直接映射关系,试试关掉「仅看直接映射」"
               : "当前筛选下没有可展示的关联关系"
           }
         />
@@ -1329,7 +1319,7 @@ function RelationMap({
               </div>
               <div className="mb-2 text-xs text-gray-400">↓ 关联 A股</div>
               <div className="flex flex-wrap gap-2">
-                {peers.map(({ p, strength }) => {
+                {peers.map(({ p, relLabel }) => {
                   const watched = watchedCodes.has(p.code);
                   return (
                     <Link
@@ -1342,9 +1332,9 @@ function RelationMap({
                       }`}
                     >
                       <TapBadge
-                        label={strength}
-                        cls={STRENGTH_BADGE[strength]}
-                        detail={`${strength}关联:${edgeInfo(us.code, p.code)?.basis ?? "—"}`}
+                        label={relLabel}
+                        cls={REL_CHIP_CLS[relLabel] ?? "bg-gray-100 text-gray-600"}
+                        detail={`${relLabel} · ${edgeInfo(us.code, p.code)?.basis ?? "—"}`}
                       />
                       <span className="font-medium text-gray-800">
                         {watched && <span className="text-amber-500">★</span>}
@@ -1445,9 +1435,11 @@ function HeatBar({ value }: { value: number }) {
 function ActiveDiscovery({
   rows,
   watchedCodes,
+  insightMap,
 }: {
   rows: Stock[];
   watchedCodes: Set<string>;
+  insightMap: StockInsightMap;
 }) {
   const [linkage, setLinkage] = useState<Record<string, LinkageStat | null>>({});
   const GAP = 1.5; // 美股领先 A股 至少 1.5 个点才算预期差
@@ -1534,7 +1526,10 @@ function ActiveDiscovery({
                       : "border-amber-200 hover:border-amber-400"
                   }`}
                 >
-                  <StrengthTag usCode={us.code} aCode={p.code} />
+                  {(() => {
+                    const rl = insightMap[p.code]?.relation ?? relationTypeToDisplayBadge(strengthToRelationType(edgeInfo(us.code, p.code)?.strength ?? "弱")).label;
+                    return <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${REL_CHIP_CLS[rl] ?? "bg-gray-100 text-gray-600"}`}>{rl}</span>;
+                  })()}
                   <LinkageBadge stat={linkage[`${us.code}:${p.code}`]} />
                   <span className="font-medium text-gray-800">
                     {watched && <span className="text-amber-500">★</span>}
