@@ -54,17 +54,36 @@ export function runDiagnostics(date = "2026-07-04"): Diagnostics {
   const triggerUngrouped = R.filter((r) => r.relationType === "trigger" && !r.triggerGroup);
   const lint = lintRelations(R);
 
+  // P1-5(2026-07-06 恒绿修):加能【真失败】的检查,让 health 不再结构性恒绿。
+  const KNOWN_CHAINS = new Set(["ai-infra", "data-center-power", "ai-application"]);
+  const unknownChain = R.filter((r) => !KNOWN_CHAINS.has(r.chainId));
+  // 多链串档:同 code 出现在多条链(P1-3 后应 0;>0 = resolvePrimary 跨链取最强档会串档误导)
+  const codeChains = new Map<string, Set<string>>();
+  for (const r of R) {
+    const s = codeChains.get(r.code) ?? new Set<string>();
+    s.add(r.chainId);
+    codeChains.set(r.code, s);
+  }
+  const multiChain = Array.from(codeChains.entries()).filter(([, s]) => s.size > 1).map(([c]) => c);
+  // P1-3 remove 验证:电力/AI应用 code 不得被 ai-infra 旧源捞回
+  const REMOVE_FROM_AI_INFRA = ["002837", "300693", "002518", "600875", "688111", "300033", "002230", "300418", "601360", "300496"];
+  const removeLeak = REMOVE_FROM_AI_INFRA.filter((c) => R.some((r) => r.code === c && r.chainId === "ai-infra"));
+
   const checks: HealthCheck[] = [
     { name: "无 unknown relationType", ok: unknownRT.length === 0, detail: unknownRT.map((r) => r.code).join(",") },
+    { name: "无 unknown chain", ok: unknownChain.length === 0, detail: unknownChain.map((r) => `${r.code}:${r.chainId}`).join(",") },
     { name: "无 unknown segment", ok: unknownSeg.length === 0, detail: unknownSeg.map((r) => `${r.code}:${r.segmentName}`).join(",") },
+    { name: "无多链串档(同 code 单链,防 resolvePrimary 跨链取最强档)", ok: multiChain.length === 0, detail: multiChain.join(",") },
+    { name: "P1-3 remove 未被旧源捞回(电力/AI应用不在 ai-infra)", ok: removeLeak.length === 0, detail: removeLeak.join(",") },
     { name: "无 empty relation", ok: emptyRel.length === 0, detail: emptyRel.map((r) => r.code).join(",") },
     { name: "无 duplicate relation", ok: dups.length === 0, detail: dups.join(",") },
     { name: "direct 缺证据队列 = 0", ok: directRed.length === 0, detail: directRed.map((r) => r.code).join(",") },
     { name: "indirect 缺证据队列 = 0", ok: indirectYellow.length === 0, detail: indirectYellow.map((r) => r.code).join(",") },
     { name: "trigger 全分组", ok: triggerUngrouped.length === 0, detail: triggerUngrouped.map((r) => r.code).join(",") },
-    { name: "dailyRelationSignals 空(未污染 static)", ok: getDailySignals(date).length === 0, detail: "" },
-    { name: "resolver 输出全 static(无自动升降级)", ok: nonStatic.length === 0, detail: "" },
     { name: "关系准入 lint 全过", ok: lint.length === 0, detail: `${lint.length} 处违规` },
+    // ⚠️ 骨架期占位(daily 层未落地,以下两项恒真、非活跃保证;daily 落地后才是真检查):
+    { name: "[占位] dailyRelationSignals 空", ok: getDailySignals(date).length === 0, detail: "骨架期占位·非活跃保证" },
+    { name: "[占位] resolver 输出全 static", ok: nonStatic.length === 0, detail: "骨架期占位·非活跃保证" },
   ];
 
   return {
