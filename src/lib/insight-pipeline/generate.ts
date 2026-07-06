@@ -9,7 +9,8 @@ import { bochaSearch, bochaEnabled } from "@/lib/bocha";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { getChain, type ChainSegment } from "@/data/chains";
 import { STOCK_MAP } from "@/data/stocks";
-import { relationForCodeInChain } from "@/lib/relation";
+import { resolveInChainMappingLabel } from "@/lib/relation-resolver";
+import { chainIdFromSlug } from "@/lib/relation-rank";
 import { fallbackChainTake } from "@/lib/chain-take";
 import { dailyRisk } from "@/lib/home-feed";
 import { runGuards, type GuardResult } from "./guard";
@@ -276,7 +277,8 @@ function buildMappingsDelta(
       if (seen.has(b.code) || out.length >= 12) continue;
       seen.add(b.code);
       const segName = toSegment(STOCK_MAP[b.code]?.sector);
-      const chainRel = relationForCodeInChain(b.code, insightSlug);
+      // P1-1(切 resolver·harness 验证零意外,仅 P1-3 电力4只从 ai-infra 移出):走统一模型本链档
+      const chainRel = resolveInChainMappingLabel(b.code, chainIdFromSlug(insightSlug));
       // 链边界(7.2 回放发现):受益股落「其他链上环节」兜底 且 非本链核定成员 → 跳过,
       // 别把不属本链的股堆成兜底映射(如纯 AI 事件日,电力链会把 12 只 AI 股全堆成情绪映射噪音)。
       // 保留:落兜底但确是本链核定成员的(chainRel 非空)。

@@ -11,7 +11,8 @@ import {
 import { validateDailyPayload } from "@/lib/insight-pipeline/schema";
 import { complianceBlockers } from "@/lib/insight-pipeline/guard";
 import { getChain } from "@/data/chains";
-import { relationForCodeInChain } from "@/lib/relation";
+import { resolveInChainMappingLabel } from "@/lib/relation-resolver";
+import { chainIdFromSlug } from "@/lib/relation-rank";
 import type { DailyInsightPayload } from "@/lib/insight-pipeline/schema";
 
 export const dynamic = "force-dynamic";
@@ -115,7 +116,7 @@ function enforceReadonlyRelations(
     mappingsDelta: next.mappingsDelta.map((m) => ({
       ...m,
       relation:
-        relationForCodeInChain(m.code, chain?.insightSlug) ??
+        resolveInChainMappingLabel(m.code, chainIdFromSlug(chain?.insightSlug)) ??
         prevMap.get(m.code) ??
         "情绪映射",
     })),

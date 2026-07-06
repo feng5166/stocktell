@@ -125,6 +125,22 @@ export function resolveInChainLabel(code: string, chainId: string | undefined): 
   const r = relationInChain(code, chainId);
   return r ? FRONT_LABEL[r.relationType] : null;
 }
+
+// 简报/admin 映射档:只返后台四档(trigger/candidate → null,落默认档)。返回类型与 insight-pipeline
+// 的 MappingRelation 结构一致(直接/间接/情绪/弱映射),不 import 其 schema,避免反向依赖。
+const MAPPING_LABEL: Partial<Record<RelationType, "直接映射" | "间接映射" | "情绪映射" | "弱映射">> = {
+  direct: "直接映射",
+  indirect: "间接映射",
+  sentiment: "情绪映射",
+  weak: "弱映射",
+};
+export function resolveInChainMappingLabel(
+  code: string,
+  chainId: string | undefined
+): "直接映射" | "间接映射" | "情绪映射" | "弱映射" | null {
+  const r = relationInChain(code, chainId);
+  return r ? MAPPING_LABEL[r.relationType] ?? null : null;
+}
 // 事件项标签(首页/链页事件卡:取 beneficiaries 最强档)
 export function resolveRelationLabelForItem(item: { beneficiaries: { code: string }[] }): string {
   let best: string | null = null;

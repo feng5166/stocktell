@@ -21,7 +21,8 @@
     "check:resolver-samples": "npx tsx scripts/resolver-samples.ts",
     "check:resolver-health": "npx tsx scripts/resolver-health.ts",
     "check:source-leakage": "npx tsx scripts/source-leakage.ts",
-    "check:relations": "npm run check:relation-lint && npm run check:resolver-samples && npm run check:resolver-health && npm run check:source-leakage"
+    "pipeline:replay": "npx tsx scripts/pipeline-replay.ts",
+    "check:relations": "npm run check:relation-lint && npm run check:resolver-samples && npm run check:resolver-health && npm run check:source-leakage -- --blocking"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

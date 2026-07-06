@@ -41,6 +41,6 @@ jobs:
         run: npm run check:resolver-samples
       - name: resolver health (blocking)
         run: npm run check:resolver-health
-      # warning:旧源直读(收敛完 generate/admin 后改 --blocking)
-      - name: source leakage (warning)
-        run: npm run check:source-leakage
+      # blocking:旧源直读(generate/admin 已切 resolver,source-leakage=0,转 blocking 关死回归口)
+      - name: source leakage (blocking)
+        run: npm run check:source-leakage -- --blocking
