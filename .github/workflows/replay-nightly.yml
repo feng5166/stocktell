@@ -1,6 +1,10 @@
 # 回放矩阵 nightly(2026-07-06 负责人拍板 CI 分层):full / market-closed 依赖东财历史日 K(网络),
 # 不进 PR blocking 防 flaky;每日跑 + 可手动触发。行情 fixture 落档(2.1)后再升 PR blocking。
 # compliance-block(零网络)已挂 relations-check.yml 作 PR blocking。
+#
+# 【拆双 job 的原因】东财按 IP 封限流窗口:同一跑机第一步全量 71 请求 3/3 成功,但第二步哪怕只发
+# 12 请求、隔 60s 也 3/3 被掐(2026-07-06 三轮实测)。两个 job = 两台跑机两个 IP,各自都是"新 IP
+# 第一步",且并行更快。
 # 样本日注意:2026-07-02/07-06 在东财 250 根日 K 窗口内有效约一年,失效时换新样本日并同步 docs/pipeline-replay.md。
 name: replay-nightly
 
@@ -10,7 +14,8 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  replay-matrix:
+  # Case C(兜底路径):正常交易日全链路,llm=off → engine=template / status=fallback(非 failed)
+  replay-full:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -20,12 +25,19 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Case C(兜底路径):正常交易日全链路,llm=off → engine=template / status=fallback(非 failed)
       - name: replay · full 2026-07-02 (Case C 兜底)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off
-      # 东财对同 IP 连续两轮全量历史 K 会限流(2026-07-06 nightly 首跑实测:第二步 71/90 miss)→ 隔 60s 打散 burst
-      - name: pause (东财限流缓冲)
-        run: sleep 60
-      # Case B:美股休市不硬造(07-03 独立日观察日+周末 → market_closed 非 failed)
+
+  # Case B:美股休市不硬造(07-03 独立日观察日+周末 → market_closed 非 failed);12 票探针集
+  replay-market-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
       - name: replay · market-closed 2026-07-06 (Case B)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off
