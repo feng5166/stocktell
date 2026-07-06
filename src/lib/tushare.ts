@@ -9,21 +9,37 @@ const parsedTsTimeout = Number(process.env.TUSHARE_FETCH_TIMEOUT_MS);
 const TS_TIMEOUT_MS =
   Number.isFinite(parsedTsTimeout) && parsedTsTimeout > 0 ? parsedTsTimeout : 3000;
 
-// 全局并发阀:无论上层并发多高,单实例在途 Tushare 请求数 ≤ MAX_CONCURRENT_TS,其余排队。
-// 作为放量/被刷时的安全阀,避免瞬时把 Tushare 打爆触发分钟级限频。仅同实例内有效。
-const MAX_CONCURRENT_TS = 8;
+// 全局并发阀 + 最小间隔(2026-07-05 优化:根治资金面整包/财报体检并发挤爆分钟级限频)。
+// 并发 ≤ MAX_CONCURRENT_TS,且相邻请求发起间隔 ≥ TS_MIN_GAP_MS —— 把"8 个瞬时齐发"的突刺
+// 摊平成稳定速率(≈ 1/间隔 次每秒),避开 Tushare 分钟级限频。仅同实例内有效(serverless 多实例
+// 靠更保守的并发+间隔各自节流,叠加也更难爆)。
+const MAX_CONCURRENT_TS = 5; // 8→5:放量/被刷时更保守
+const TS_MIN_GAP_MS = 120; // 相邻发起最小间隔;≈ ≤8.3 次/秒/实例,远低于常见限频
 let tsActive = 0;
+let tsNextStart = 0; // 下一个可发起时刻(每次发令后前移 GAP,让并发发令错峰而非齐发)
 const tsQueue: Array<() => void> = [];
+// 发令:预约下一个发起时刻(≥ 上次 + GAP),多个并发发令因此被错峰成 now / now+GAP / now+2GAP…
+function tsStart(res: () => void) {
+  const now = Date.now();
+  const at = Math.max(now, tsNextStart);
+  tsNextStart = at + TS_MIN_GAP_MS;
+  const delay = at - now;
+  if (delay <= 0) res();
+  else setTimeout(res, delay);
+}
 function tsAcquire(): Promise<void> {
-  if (tsActive < MAX_CONCURRENT_TS) {
-    tsActive++;
-    return Promise.resolve();
-  }
-  return new Promise((res) => tsQueue.push(res));
+  return new Promise((res) => {
+    if (tsActive < MAX_CONCURRENT_TS) {
+      tsActive++;
+      tsStart(res);
+    } else {
+      tsQueue.push(res);
+    }
+  });
 }
 function tsRelease() {
   const next = tsQueue.shift();
-  if (next) next(); // 把槽位直接交给下一个等待者(active 不变)
+  if (next) tsStart(next); // 槽位转交(active 不变),仍受最小间隔约束
   else tsActive--; // 无人等待,释放槽位
 }
 
@@ -84,11 +100,13 @@ async function tsCall(
 ) {
   const token = process.env.TUSHARE_TOKEN;
   if (!token) return null;
-  // 一次重试:Tushare 偶发限流(code!==0)/网络抖动时,等 1.5s 再试,降低多只票并发时的偶发缺失。
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // 退避重试(2026-07-05):Tushare 偶发限流(code!==0)/网络抖动时,退避再试;分钟级限频靠
+  // 逐步拉长间隔+节流缓解,降低多只票并发时的偶发缺失。3 次尝试,间隔 1.5s → 4s。
+  const BACKOFF_MS = [1500, 4000];
+  for (let attempt = 0; attempt < 3; attempt++) {
     const r = await tsFetchOnce(apiName, params, fields, token);
     if (r) return r;
-    if (attempt === 0) await new Promise((r) => setTimeout(r, 1500));
+    if (attempt < BACKOFF_MS.length) await new Promise((res) => setTimeout(res, BACKOFF_MS[attempt]));
   }
   return null;
 }
