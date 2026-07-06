@@ -1,0 +1,46 @@
+# P1-4 关系库准入门(第四批评审):关系数据/resolver 改动必须过 lint + 样本 + health,
+# 防旧源漏读/跨链串档/direct 缺证据/禁词/unknown segment 回归随 push main 直接部署。
+# lint + resolver-samples + health = blocking(非零退出即失败);source-leakage 先 warning。
+name: relations-check
+
+on:
+  push:
+    branches: [main, stocktell2.0]
+    paths:
+      - "src/data/chain-relations*"
+      - "src/data/segment-registry.ts"
+      - "src/data/insight-chains.ts"
+      - "src/data/direct-evidence.ts"
+      - "src/data/indirect-evidence*"
+      - "src/lib/relation*.ts"
+      - "scripts/relation-lint.ts"
+      - "scripts/resolver-*.ts"
+      - "scripts/source-leakage.ts"
+  pull_request:
+    paths:
+      - "src/data/chain-relations*"
+      - "src/data/segment-registry.ts"
+      - "src/lib/relation*.ts"
+      - "scripts/relation-lint.ts"
+      - "scripts/resolver-*.ts"
+
+jobs:
+  check-relations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # blocking:关系准入 lint + 关键样本 + health(任一非零即失败)
+      - name: relation lint (blocking)
+        run: npm run check:relation-lint
+      - name: resolver samples (blocking)
+        run: npm run check:resolver-samples
+      - name: resolver health (blocking)
+        run: npm run check:resolver-health
+      # warning:旧源直读(收敛完 generate/admin 后改 --blocking)
+      - name: source leakage (warning)
+        run: npm run check:source-leakage
