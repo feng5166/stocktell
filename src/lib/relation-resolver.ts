@@ -77,7 +77,10 @@ export function resolveRelationsForCode(code: string, date?: string): ResolvedRe
   // 注:静态无此关系、仅今日事件带出的候选,不在此凭 daily 判档——走 reviewQueue 人工沉淀后才进静态。
 }
 
-// 一只票的主关系(取最强档;首屏一句话判断用)。
+// 一只票的主关系(取最强档)。P1-2 口径(负责人 2026-07-06):**不得跨链取最强档来覆盖展示口径**。
+// 有页面 chain context 时【必须】用 resolveInChain(本链)——如 ai-infra 页看英维克应得 null、不显示成 ai-infra 股。
+// 本函数仅用于:①无 context 的兜底/排序(watchlist 若多链应展示多链关系卡,primary 只排序不覆盖);
+// ②首屏一句话判断(个股页本身是单锚,取其唯一/最强关系)。P1-3 后模型已无多链股票(见 health 多链串档检测)。
 export function resolvePrimary(code: string, date?: string): ResolvedRelation | null {
   const p = primaryRelation(code);
   if (!p) return null;

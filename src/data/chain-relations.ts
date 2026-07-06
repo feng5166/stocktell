@@ -83,12 +83,20 @@ const REL_RANK: Record<RelationType, number> = {
 const CHAIN_META: Record<string, { chainId: string; chainName: string }> = {
   "ai-infra": { chainId: "ai-infra", chainName: "AI 推理基础设施链" },
   "datacenter-power": { chainId: "data-center-power", chainName: "AI 数据中心电力基础设施链" },
-  // AI 应用:挂 AI 主链下(chainId=ai-infra),但用其应用侧 segments(办公AI/金融AI…)与推理核心区分;
-  // A股无 direct(insight 里就是 indirect/sentiment)。满足审阅"挂应用侧 segment、不放进推理核心"。
-  "ai-application": { chainId: "ai-infra", chainName: "AI 推理基础设施链" },
+  // P1-3(负责人 2026-07-06 严格 remove):AI 应用【不再】挂 ai-infra,独立 chainId=ai-application。
+  // 不用 ai-infra 兼容 AI 应用——否则 ai-infra 退回泛 AI 概念池。验证=AI 功能商业化收入/付费转化,非供货订单。
+  "ai-application": { chainId: "ai-application", chainName: "AI 应用链" },
 };
 const chainNameOf = (chainId: string) =>
-  chainId === "data-center-power" ? "AI 数据中心电力基础设施链" : "AI 推理基础设施链";
+  chainId === "data-center-power"
+    ? "AI 数据中心电力基础设施链"
+    : chainId === "ai-application"
+      ? "AI 应用链"
+      : "AI 推理基础设施链";
+
+// P1-3:电力股【不留在 ai-infra】(只归 data-center-power)。从 AI_INFRA insight 派生时排除这些 code。
+// AI 推理链→电力/温控/液冷的外溢由【链级外溢关系】表达,不塞进 ai-infra 的 stock relation。
+const AI_INFRA_REMOVE = new Set(["002837", "300693", "002518", "600875"]); // 英维克/盛弘/科士达/东方电气
 
 // 电力链标准环节 enum(负责人 2026-07-04 拍板归并:原 37 个近义变体 → 8 标准环节;前台筛选只展示这 8 个)。
 // 【硬约束】后续新增电力链关系必须从这里选,不允许自由文本 segment 名(杜绝"每票自造一个环节名")。
@@ -146,6 +154,7 @@ for (const ins of Object.values(INSIGHT_CHAINS)) {
   if (!meta) continue;
   for (const m of ins.mappings) {
     if (!m.code) continue;
+    if (meta.chainId === "ai-infra" && AI_INFRA_REMOVE.has(m.code)) continue; // P1-3:电力股不进 ai-infra
     const key = `${m.code}|${meta.chainId}`;
     if (seen.has(key)) continue; // 同 code 同链只留最先(insight 内已去重)
     seen.add(key);

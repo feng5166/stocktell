@@ -31,8 +31,10 @@ export function relationTypeToDisplayBadge(rt: RelationType): RelationBadge {
 // chain-relations 的 chainId → /chain/[id] 路由 id(= CHAINS 的 id)。
 // AI 主链 chainId="ai-infra" 但路由是 /chain/ai(CHAINS id="ai");电力链 chainId 与路由一致。
 // 修 P0:AI 股"查看链"拼 /chain/ai-infra → getChain=CHAINS["ai-infra"]=null → notFound() 全 404。
+// ai-infra / ai-application 都归 AI 主链页 /chain/ai(AI 应用暂无独立 /chain/ai-application 路由);
+// 电力链 chainId 与路由一致。
 export const chainRouteId = (chainId: string | undefined): string =>
-  chainId === "ai-infra" ? "ai" : chainId ?? "";
+  chainId === "ai-infra" || chainId === "ai-application" ? "ai" : chainId ?? "";
 // fallback:旧 strength(强/中/弱)→ relationType,仅用于无 relationType 的旧数据。调用侧要打 warning。
 export function strengthToRelationType(strength: string): RelationType {
   return strength === "强" ? "direct" : strength === "中" ? "indirect" : "weak";
