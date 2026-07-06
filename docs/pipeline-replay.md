@@ -53,8 +53,9 @@ relationParity / sourceLeakage / compliance / assertions / verdict),发结果只
 
 - 历史行情只有**日收盘价**(东财 250 根日 K),隔夜涨跌=相邻收盘差;盘中路径/实时源故障形态不在回放范围。
 - **行情源限流/不可达 ≠ 管线错**:CI 跑机连续两轮全量拉东财会触发限流(2026-07-06 nightly 首跑实测
-  71/90 miss → 空 quotes 被误判 open+failed)。harness 对策:miss 串行重试一轮 + miss>50% 直接报
-  `verdict=DATA_UNAVAILABLE`(exit 1,红但原因可读,不拿空数据断言休市语义);nightly 两步间隔 60s。
+  第二步 71/71 全 miss → 空 quotes 被误判 open+failed;60s 间隔仍不够)。harness 对策:①market-closed
+  只取 12 票探针集(休市判定是日历级,全美股同日历,不需要全池)②部分 miss 串行重试一轮 ③miss>50%
+  直接报 `verdict=DATA_UNAVAILABLE`(exit 1,红但原因可读,不拿空数据断言休市语义)④nightly 两步隔 60s。
 - `--llm=on` 的博查检索返回的是**当下**的网页结果,不是历史当日的——references 环节非严格历史回放。
 - A 股 peers 的装饰性涨跌(`peers[].change`)回放中为 null(不影响条目生成与合规扫描)。
 - 假期累计路径(`usCumulativeChange`)本身就按日期区间算,历史回放天然兼容,未单独出样本日。
