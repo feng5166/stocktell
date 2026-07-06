@@ -1,0 +1,28 @@
+# 回放矩阵 nightly(2026-07-06 负责人拍板 CI 分层):full / market-closed 依赖东财历史日 K(网络),
+# 不进 PR blocking 防 flaky;每日跑 + 可手动触发。行情 fixture 落档(2.1)后再升 PR blocking。
+# compliance-block(零网络)已挂 relations-check.yml 作 PR blocking。
+# 样本日注意:2026-07-02/07-06 在东财 250 根日 K 窗口内有效约一年,失效时换新样本日并同步 docs/pipeline-replay.md。
+name: replay-nightly
+
+on:
+  schedule:
+    - cron: "20 20 * * *" # UTC 20:20 ≈ 北京 04:20,早于 07:00 简报 cron,失败当天可见
+  workflow_dispatch: {}
+
+jobs:
+  replay-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Case C(兜底路径):正常交易日全链路,llm=off → engine=template / status=fallback(非 failed)
+      - name: replay · full 2026-07-02 (Case C 兜底)
+        run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off
+      # Case B:美股休市不硬造(07-03 独立日观察日+周末 → market_closed 非 failed)
+      - name: replay · market-closed 2026-07-06 (Case B)
+        run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off
