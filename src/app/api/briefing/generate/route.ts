@@ -5,6 +5,7 @@ import { generateChainTake } from "@/lib/chain-take";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
+import { setBriefStatus } from "@/lib/brief-status";
 
 export const dynamic = "force-dynamic";
 // replace 全链路 = 生成(LLM)+重写缓存+链级判断(LLM),60s 会重演"跑一半被硬杀"(07-03 事故同款)
@@ -86,6 +87,16 @@ export async function POST(req: NextRequest) {
       // 正在 LLM 里(10~22s),会在第一次清扫后把旧叙事写回;到这里已过链级判断的几十秒,
       // 再扫一遍把竞态写回的旧行清掉。
       await purgeDerived(false);
+      // 状态标识(规则4:replace 不能伪造市场状态)。休市→market_closed(即使强制补发也 count=0,
+      // 不伪造简报);有内容→manual_reissue(人工补发);交易日 0 条→failed。
+      await setBriefStatus(
+        d,
+        usMarketClosed
+          ? { status: "market_closed", reason: "us_market_closed", message: "美股休市,今日无新的隔夜美股映射。" }
+          : created.length > 0
+            ? { status: "manual_reissue" }
+            : { status: "failed", reason: "data_fetch_failed", message: `交易日 ${d} 补发 0 条(movers 为空/美股行情陈旧)。` }
+      );
       return NextResponse.json({
         ok: true,
         date: d,

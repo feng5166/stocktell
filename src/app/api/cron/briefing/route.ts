@@ -7,6 +7,7 @@ import { runWebPush } from "@/lib/push-web";
 import { todayISO } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
+import { setBriefStatus } from "@/lib/brief-status";
 import { getPrisma } from "@/lib/prisma";
 import { tradingDayGate } from "@/lib/trading-gate";
 
@@ -63,6 +64,12 @@ export async function GET(req: NextRequest) {
     // 但交易日早上判到"美股休市"多半是行情源抖动导致 asOf 陈旧的误判 → 告警(别静默),
     // 真节假日时这条告警当 FYI,但一年没几次,值得人眼扫一下确认。
     if (usMarketClosed) {
+      // 状态标识(2.0 收尾):休市缺口=正确保护,标 market_closed(非 failed),前台据此提示不误判成漏跑。
+      await setBriefStatus(date, {
+        status: "market_closed",
+        reason: "us_market_closed",
+        message: "美股休市,今日无新的隔夜美股映射。",
+      });
       await alertCron(
         "briefing(简报生成)",
         `交易日 ${date} 判定"美股休市"跳过 —— 若非美股真节假日,多半是 07:00 美股行情源抖动致 asOf 陈旧的误判,需手动重发(/api/admin… 或 generate?replace=1)`
@@ -89,6 +96,13 @@ export async function GET(req: NextRequest) {
         `交易日 ${date} 生成 0 条简报(movers 为空,疑似美股行情抓取失败/陈旧)—— 需手动重发`
       );
     }
+    // 状态标识:交易日且非休市——有条=已生成,0 条=生成异常(与休市缺口区分开)。
+    await setBriefStatus(
+      date,
+      created.length > 0
+        ? { status: "generated" }
+        : { status: "failed", reason: "data_fetch_failed", message: `交易日 ${date} 生成 0 条(movers 为空/美股行情陈旧)。` }
+    );
     // 链级「今日一句话判断」(链页顶部用):放在推送段之前,推送段再出事它也已生成。
     // 失败不致命(链页有规则兜底文案),但告警知晓。
     const chainTake = await generateChainTake("ai", date, created).catch(
@@ -112,6 +126,8 @@ export async function GET(req: NextRequest) {
       webpush,
     });
   } catch (e) {
+    // 状态标识:生成异常→failed(待人工核查),与休市缺口区分。
+    await setBriefStatus(date, { status: "failed", reason: "data_fetch_failed", message: String(e).slice(0, 200) });
     await alertCron("briefing(简报生成)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

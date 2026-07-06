@@ -11,6 +11,7 @@ import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
 import { buildWatchChainMap } from "@/lib/watch-relation";
 import { buildRelLabelMap, resolveRelationLabelForItem } from "@/lib/relation-resolver";
+import { getBriefStatus, BRIEF_STATUS_UI, type BriefStatusRecord } from "@/lib/brief-status";
 import { getChain } from "@/data/chains";
 import {
   listBriefing,
@@ -66,6 +67,8 @@ export default async function Home() {
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();
   const relLabelMap = buildRelLabelMap(); // Phase 3-D:OvernightRadar peer 关系档(服务端算好传客户端)
+  // 简报状态标识(2.0 收尾):区分"美股休市无新映射"(中性、非事故)与"生成异常"(待核查),用户不误判成漏跑
+  const briefStatus = await getBriefStatus(date).catch(() => null);
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -74,11 +77,7 @@ export default async function Home() {
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <HomeHero shownDate={shownDate} insightHref={insightHref} />
 
-        {stale && (
-          <div className="mb-3 rounded-lg bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
-            今日推理尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · {shownDate}。
-          </div>
-        )}
+        <BriefStatusBanner status={briefStatus} stale={stale} shownDate={shownDate} />
 
         {/* 1. 今日最重要的因果链(P0 一张真卡;chains.ts 加链自动进卡位) */}
         <ReasoningCards cards={cards} />
@@ -119,6 +118,45 @@ export default async function Home() {
       </main>
     </div>
   );
+}
+
+// 简报状态横幅(2.0 收尾小补丁)。优先级:美股休市(中性)> 生成异常(告警)> 尚未更新(既有)> 正常无横幅。
+// 真休市【不大红】——它不是事故;只有 failed 才用告警色。
+function BriefStatusBanner({
+  status,
+  stale,
+  shownDate,
+}: {
+  status: BriefStatusRecord | null;
+  stale: boolean;
+  shownDate: string;
+}) {
+  const s = status?.status;
+  const fromLatest = stale ? `,以下为最近一期 · ${shownDate}` : "";
+  if (s === "market_closed") {
+    return (
+      <div className="mb-3 rounded-lg bg-slate-100 px-4 py-2.5 text-xs leading-relaxed text-slate-600">
+        <span className="font-medium text-slate-700">美股休市</span> · {BRIEF_STATUS_UI.market_closed.note}
+        {fromLatest}
+      </div>
+    );
+  }
+  if (s === "failed") {
+    return (
+      <div className="mb-3 rounded-lg bg-rose-50 px-4 py-2.5 text-xs leading-relaxed text-rose-700">
+        <span className="font-medium">生成异常</span> · {BRIEF_STATUS_UI.failed.note}
+        {fromLatest}
+      </div>
+    );
+  }
+  if (stale) {
+    return (
+      <div className="mb-3 rounded-lg bg-amber-50 px-4 py-2.5 text-xs leading-relaxed text-amber-800">
+        今日推理尚未更新(每个交易日北京时间约 07:00 生成),以下为最近一期 · {shownDate}。
+      </div>
+    );
+  }
+  return null;
 }
 
 function EmptyState({ errored }: { errored: boolean }) {
