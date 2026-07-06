@@ -1,6 +1,7 @@
 # P1-4 关系库准入门(第四批评审):关系数据/resolver 改动必须过 lint + 样本 + health,
 # 防旧源漏读/跨链串档/direct 缺证据/禁词/unknown segment 回归随 push main 直接部署。
-# lint + resolver-samples + health = blocking(非零退出即失败);source-leakage 先 warning。
+# lint + resolver-samples + health + source-leakage + compliance-block 回放 = 全 blocking。
+# full / market-closed 回放依赖东财历史行情(网络),挂 replay-nightly.yml,不进 PR blocking。
 name: relations-check
 
 on:
@@ -13,16 +14,27 @@ on:
       - "src/data/direct-evidence.ts"
       - "src/data/indirect-evidence*"
       - "src/lib/relation*.ts"
+      - "src/lib/generate.ts"
+      - "src/lib/insight-pipeline/**"
+      - "src/lib/content-guard.ts"
       - "scripts/relation-lint.ts"
       - "scripts/resolver-*.ts"
       - "scripts/source-leakage.ts"
+      - "scripts/leakage-rules.ts"
+      - "scripts/pipeline-replay.ts"
   pull_request:
     paths:
       - "src/data/chain-relations*"
       - "src/data/segment-registry.ts"
       - "src/lib/relation*.ts"
+      - "src/lib/generate.ts"
+      - "src/lib/insight-pipeline/**"
+      - "src/lib/content-guard.ts"
       - "scripts/relation-lint.ts"
       - "scripts/resolver-*.ts"
+      - "scripts/source-leakage.ts"
+      - "scripts/leakage-rules.ts"
+      - "scripts/pipeline-replay.ts"
 
 jobs:
   check-relations:
@@ -44,3 +56,7 @@ jobs:
       # blocking:旧源直读(generate/admin 已切 resolver,source-leakage=0,转 blocking 关死回归口)
       - name: source leakage (blocking)
         run: npm run check:source-leakage -- --blocking
+      # blocking:合规阻断回放(禁词 fixture 走真实 generateDailyInsight 全链路)。零网络/零 DB/秒级:
+      # llm=off 摘 LLM/博查 key + INSIGHT_SKIP_URL_VERIFY 免 HEAD 探测;无 POSTGRES_PRISMA_URL 则 DB 层为 null。
+      - name: pipeline replay · compliance-block (blocking)
+        run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=compliance-block --llm=off

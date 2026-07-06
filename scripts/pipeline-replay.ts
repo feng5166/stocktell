@@ -1,21 +1,28 @@
 // Pipeline Replay Harness v2(2026-07-05 负责人拍板:回放替代等真实交易日,周二只做生产 canary)。
 //
 // 用法:
-//   pnpm pipeline:replay --date=2026-07-02 --mode=full --dry-run            # Case A 正常美股交易日
-//   pnpm pipeline:replay --date=2026-07-06 --mode=market-closed --dry-run   # Case B 美股休市(07-06 场景)
-//   pnpm pipeline:replay --date=2026-07-02 --mode=compliance-block --dry-run # Case D 合规阻断注入
-//   加 --llm=on 走真 LLM+博查(全真彩排,花钱);默认 off=规则兜底路径(快、免费、确定性)
+//   pnpm pipeline:replay --date=2026-07-02 --mode=full                       # Case C 兜底路径(默认 llm=off)
+//   pnpm pipeline:replay --date=2026-07-02 --mode=full --llm=on              # Case A' 全真彩排(真 LLM+博查,花钱)
+//   pnpm pipeline:replay --date=2026-07-06 --mode=market-closed              # Case B 美股休市(07-06 场景)
+//   pnpm pipeline:replay --date=2026-07-02 --mode=compliance-block           # Case D 合规阻断注入(零网络,PR 门禁)
 //
 // v2 相对 v1:真回放 generate——历史行情来自东财日 K(us-history.usDailyBars),findMovers/generateDrafts
 // 接受 ReplayEnv 注入(历史行情快照+回放日 07:00 锚点);insight 走 itemsOverride 内存直灌。
-// 全链路 = findMovers → generateDrafts → briefStatus 判定(镜像 cron)→ generateDailyInsight → runGuards。
+// 全链路 = findMovers → generateDrafts → briefStatus 判定 → generateDailyInsight → runGuards。
 //
 // 【dry-run 是结构性的】:本脚本只调 generateDrafts / generateDailyInsight——两者都不写库不发布
 // (写库/发布在 cron route 层,本脚本不 import)。--dry-run 标志仅作显式声明。
-// Case C(LLM 失败)如实说明:管线设计=北极星每天必产出,LLM 挂 → 规则兜底(engine=template /
-// confidence=低),【不是】failed;failed 只给地板故障(行情源挂/异常)。--llm=off 即验证该兜底路径。
-import { readdirSync, readFileSync, statSync, existsSync } from "fs";
+//
+// 状态口径(负责人 2026-07-06 拍板写死,docs/pipeline-replay.md §状态口径同源):
+//   generated      = LLM 全真产出;
+//   fallback       = LLM 挂但模板兜底成功(engine=template / confidence=低 / 进入人工审),【不是 failed】;
+//   failed         = 只给地板故障(行情源/数据底座/结构性异常导致无法产出);
+//   blocked        = 合规命中;
+//   market_closed  = 美股休市。
+// --llm=off 的 full 即 Case C(兜底路径)。不得把 LLM 挂等同于 failed。
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+import { scanSourceLeakage } from "./leakage-rules";
 
 /* ---------- 参数 ---------- */
 const args = process.argv.slice(2);
@@ -45,6 +52,9 @@ if (llm === "off") {
   delete process.env.LLM_API_KEY;
   delete process.env.LLM_FALLBACK_API_KEY;
   delete process.env.BOCHA_API_KEY;
+  // 兜底路径同时免 URL HEAD 探测(references 保持 verified=false):compliance-block 作 PR 门禁零网络,
+  // full/market-closed 兜底回放不受外站可达性抖动影响。--llm=on 全真彩排仍走真实探测。
+  process.env.INSIGHT_SKIP_URL_VERIFY = "1";
 }
 
 /* ---------- 断言收集 ---------- */
@@ -53,25 +63,10 @@ function expect(name: string, pass: boolean, got?: unknown) {
   assertions.push({ name, pass, got: got === undefined ? undefined : String(got) });
 }
 
-/* ---------- source-leakage(与 scripts/source-leakage.ts 同规则)---------- */
+/* ---------- source-leakage(规则单一源:scripts/leakage-rules.ts,与 CLI 共用防 drift)---------- */
 function sourceLeakage() {
-  const OLD = /relationForCodeInChain|relationLabelFor|insightBundleForCode|segmentForCodeInChain|from ["']@\/lib\/relation["']/;
-  const SKIP = /relation-resolver|relation-rank|relation-lint|watch-relation|chain-relations|resolver-diagnostics|source-leakage|pipeline-replay|[/\\]relation\.ts$/;
-  const hits: string[] = [];
-  const walk = (dir: string) => {
-    for (const f of readdirSync(dir)) {
-      const p = join(dir, f);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (/\.(ts|tsx)$/.test(p) && !SKIP.test(p)) {
-        readFileSync(p, "utf8").split("\n").forEach((line) => {
-          const t = line.trim();
-          if (OLD.test(line) && !t.startsWith("//") && !t.startsWith("*")) hits.push(p);
-        });
-      }
-    }
-  };
-  walk("src");
-  return { hits: hits.length, files: Array.from(new Set(hits)) };
+  const hits = scanSourceLeakage();
+  return { hits: hits.length, files: Array.from(new Set(hits.map((h) => h.file))) };
 }
 
 (async () => {
@@ -160,7 +155,8 @@ function sourceLeakage() {
       blockers: r.guard?.blockers ?? [],
       warnings: r.guard?.warnings ?? [],
     });
-    briefStatus = "n/a(fixture)";
+    // 口径:合规命中 = blocked(Case D 的 status 本身就是被验对象)
+    briefStatus = r.blocked ? "blocked" : "NOT_BLOCKED(红线)";
     marketStatus = "n/a(fixture)";
     expect("Case D:HIGH 风险被阻断(blocked=true)", r.blocked === true, `blocked=${r.blocked}`);
     expect(
@@ -177,8 +173,15 @@ function sourceLeakage() {
     engine = g.engine;
     eventCount = g.drafts.length;
     marketStatus = g.usMarketClosed ? "us_closed" : "open";
-    // briefStatus 判定镜像 cron/briefing:休市→market_closed;>0→generated;交易日 0 条→failed
-    briefStatus = g.usMarketClosed ? "market_closed" : g.drafts.length > 0 ? "generated" : "failed";
+    // briefStatus 口径(负责人 2026-07-06 拍板):market_closed=休市;generated=LLM 全真产出;
+    // fallback=LLM 挂但模板兜底成功(≠failed);failed 只给地板故障(交易日 0 条产出=行情/底座异常)。
+    briefStatus = g.usMarketClosed
+      ? "market_closed"
+      : g.drafts.length === 0
+        ? "failed"
+        : engine === "llm"
+          ? "generated"
+          : "fallback";
 
     if (g.drafts.length > 0) {
       const items = draftsToItems(g.drafts as unknown as Array<Record<string, unknown>>);
@@ -201,11 +204,31 @@ function sourceLeakage() {
     }
 
     if (mode === "full") {
-      expect("Case A:美股为交易日(marketStatus=open)", marketStatus === "open", marketStatus);
-      expect("Case A:count>0(简报有产出)", eventCount > 0, `count=${eventCount}`);
-      expect("Case A:briefStatus=generated", briefStatus === "generated", briefStatus);
+      const tag = llm === "on" ? "Case A'(全真)" : "Case C(兜底)"; // llm=off 的 full 即 Case C
+      expect(`${tag}:美股为交易日(marketStatus=open)`, marketStatus === "open", marketStatus);
+      expect(`${tag}:count>0(简报有产出)`, eventCount > 0, `count=${eventCount}`);
+      if (llm === "on") {
+        expect(
+          "Case A':全真路径(engine=llm,status=generated)",
+          engine === "llm" && briefStatus === "generated",
+          `engine=${engine},status=${briefStatus}`
+        );
+      } else {
+        expect(
+          "Case C:LLM 挂→模板兜底(engine=template,status=fallback,非 failed)",
+          engine === "template" && briefStatus === "fallback",
+          `engine=${engine},status=${briefStatus}`
+        );
+      }
       const okInsights = insights.filter((i) => i.ok && !i.blocked);
-      expect("Case A:生成 insight ≥1 且未被阻断", okInsights.length >= 1, `ok=${okInsights.length}/${insights.length}`);
+      expect(`${tag}:生成 insight ≥1 且未被阻断`, okInsights.length >= 1, `ok=${okInsights.length}/${insights.length}`);
+      if (llm === "off") {
+        expect(
+          "Case C:兜底 insight 置信=低(不伪装确定性)",
+          okInsights.every((i) => i.confidence === "低"),
+          okInsights.map((i) => String(i.confidence)).join(",") || "-"
+        );
+      }
     } else {
       expect("Case B:usMarketClosed=true", marketStatus === "us_closed", marketStatus);
       expect("Case B:count=0(不硬造隔夜映射)", eventCount === 0, `count=${eventCount}`);

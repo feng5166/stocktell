@@ -388,11 +388,15 @@ async function buildReferences(
   }
   for (const s of STANDING_REFS) refs.push({ ...s, verified: false });
   const capped = refs.slice(0, 5);
-  await Promise.all(
-    capped.map(async (r) => {
-      r.verified = await verifyUrl(r.url);
-    })
-  );
+  // 回放/CI 免网:INSIGHT_SKIP_URL_VERIFY=1 时跳过 HEAD 可达探测(refs 保持 verified=false,不出伪验证)。
+  // pipeline-replay 兜底路径置此开关 → compliance-block 作 PR 门禁零网络、回放结果确定性。
+  if (process.env.INSIGHT_SKIP_URL_VERIFY !== "1") {
+    await Promise.all(
+      capped.map(async (r) => {
+        r.verified = await verifyUrl(r.url);
+      })
+    );
+  }
   return capped;
 }
 
