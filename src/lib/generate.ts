@@ -67,12 +67,22 @@ function mostRecentUSWeekday(now: Date): string {
   return "";
 }
 
+// 回放注入(scripts/pipeline-replay.ts 用):历史行情快照 + 模拟"现在"。
+// 不传 = 生产实时路径,行为不变。now 决定"应有美股交易日"的判定锚点(回放日北京 07:00 主 cron 时刻)。
+export interface ReplayEnv {
+  quotes: Record<string, Quote>;
+  now: Date;
+}
+
 // 找美股异动 + 映射 A 股(双向取并集)。
 // usMarketClosed:美股最近一个工作日没有新行情(节假日休市),此时不硬生成隔夜映射。
 async function findMovers(
-  date: string
+  date: string,
+  replay?: ReplayEnv
 ): Promise<{ movers: Mover[]; usMarketClosed: boolean }> {
-  const { quotes } = await fetchQuotes(STOCKS.map((s) => s.code));
+  const quotes = replay
+    ? replay.quotes
+    : (await fetchQuotes(STOCKS.map((s) => s.code))).quotes;
   const q = (code: string): Quote | undefined => quotes[code];
 
   // 美股行情新鲜度:取所有美股报价里最新的 asOf 日期,与"美东最近工作日"比对
@@ -80,7 +90,7 @@ async function findMovers(
     .map((s) => q(s.code)?.asOf)
     .filter((d): d is string => Boolean(d));
   const freshestUS = usAsOf.length ? usAsOf.sort().at(-1)! : undefined;
-  const expected = mostRecentUSWeekday(new Date());
+  const expected = mostRecentUSWeekday(replay?.now ?? new Date());
   // 能确定新鲜度(拿到 asOf)且最新行情落后于应有交易日 → 美股休市
   const usMarketClosed = Boolean(freshestUS && expected && freshestUS < expected);
 
@@ -91,7 +101,8 @@ async function findMovers(
   const usQuoteCount = STOCKS.filter(
     (s) => s.market === "美股" && q(s.code) !== undefined
   ).length;
-  if (usQuoteCount === 0) {
+  // 回放不打真告警:探针/飞书是生产源故障监控,历史回放里美股报价空是数据问题不是源故障
+  if (usQuoteCount === 0 && !replay) {
     try {
       const probeDay = await usLatestTradingDay();
       if (probeDay && expected && probeDay >= expected) {
@@ -398,6 +409,7 @@ async function llmDrafts(
 export async function generateDrafts(opts?: {
   date?: string;
   forceTemplate?: boolean;
+  replay?: ReplayEnv; // 回放注入(pipeline-replay):历史行情快照,不走实时源
 }): Promise<{
   date: string;
   drafts: NewBriefingItem[];
@@ -405,7 +417,7 @@ export async function generateDrafts(opts?: {
   usMarketClosed: boolean;
 }> {
   const date = opts?.date || todayISO(); // 可指定日期(管理员演示/回测累计口径)
-  const { movers, usMarketClosed } = await findMovers(date);
+  const { movers, usMarketClosed } = await findMovers(date, opts?.replay);
   const useLLM =
     !opts?.forceTemplate &&
     Boolean(process.env.LLM_API_KEY || process.env.LLM_FALLBACK_API_KEY);

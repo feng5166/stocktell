@@ -4,7 +4,7 @@ import { fetchJsonWithTimeout } from "@/lib/fetch-timeout";
 
 const EM_MARKETS = [105, 106, 107]; // NASDAQ / NYSE / AMEX,逐个试
 
-interface Bar {
+export interface Bar {
   date: string; // YYYY-MM-DD
   close: number;
 }
@@ -33,6 +33,11 @@ async function emCloses(ticker: string): Promise<Bar[] | null> {
     }
   }
   return null;
+}
+
+// 历史日 K 直出(pipeline-replay 回放行情源用):最近 ~250 根,date 升序。
+export async function usDailyBars(ticker: string): Promise<Bar[] | null> {
+  return emCloses(ticker);
 }
 
 export interface CumChange {

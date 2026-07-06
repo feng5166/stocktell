@@ -400,11 +400,17 @@ async function buildReferences(
 export async function generateDailyInsight(
   chainId: string,
   date: string,
-  opts?: { yesterdayHeat?: { segment: string; direction: string }[] | null }
+  opts?: {
+    yesterdayHeat?: { segment: string; direction: string }[] | null;
+    // 回放注入(pipeline-replay):内存条目直灌,不读 DB、不要求已发布——dry-run 全链路用
+    itemsOverride?: BriefingItem[];
+  }
 ): Promise<GenerateResult> {
   const chain = getChain(chainId);
   if (!chain?.segments?.length) return { ok: false, reason: "链未配置 segments" };
-  const items = await listBriefing({ date, status: "published" }).catch(() => []);
+  const items =
+    opts?.itemsOverride ??
+    (await listBriefing({ date, status: "published" }).catch(() => []));
   if (items.length === 0) return { ok: false, reason: "当日无已发布简报条目(地板未产出)" };
 
   const meta = { llmCalls: 0, searchCalls: 0, retries: 0 };
