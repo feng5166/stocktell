@@ -84,8 +84,12 @@ function sourceLeakage() {
 
   /* ---------- 回放行情:东财历史日 K → Quote 快照 ---------- */
   // 隔夜口径:北京 date 日 07:00 能看到的最新美股收盘 = 最后一根 date' < date 的 bar。
-  async function buildReplayQuotes(): Promise<{ quotes: Record<string, Quote>; misses: string[] }> {
-    const usStocks = STOCKS.filter((s: { market: string }) => s.market === "美股");
+  async function buildReplayQuotes(): Promise<{ quotes: Record<string, Quote>; misses: string[]; universe: number }> {
+    const usAll = STOCKS.filter((s: { market: string }) => s.market === "美股");
+    // market-closed 只验【日历级】新鲜度(freshestUS vs 最近美东工作日,全美股同一交易日历),
+    // 不需要全池——12 票探针集把请求量压到限流阈值下(2026-07-06 nightly 二跑实测:全量 71 请求
+    // 即使隔 60s 仍被东财限流)。full 模式仍全量(要真实 movers)。
+    const usStocks = mode === "market-closed" ? usAll.slice(0, 12) : usAll;
     const quotes: Record<string, Quote> = {};
     const tryFetch = async (code: string): Promise<boolean> => {
       const bars = await usDailyBars(code).catch(() => null);
@@ -119,7 +123,7 @@ function sourceLeakage() {
       await new Promise((r) => setTimeout(r, 1500));
       misses = await sweep(misses, 2);
     }
-    return { quotes, misses };
+    return { quotes, misses, universe: usStocks.length };
   }
 
   const draftsToItems = (drafts: Array<Record<string, unknown>>): BriefingItem[] =>
@@ -176,17 +180,16 @@ function sourceLeakage() {
     );
   } else {
     // full / market-closed:真回放 generate
-    const { quotes, misses } = await buildReplayQuotes();
+    const { quotes, misses, universe } = await buildReplayQuotes();
     quoteMisses = misses;
     // 数据地板 guard:行情源不可达(限流/断网)时【不】拿空数据断言休市语义——那会把"harness 取数失败"
     // 误报成"管线判定错误"(空 quotes → freshestUS=undefined → 误判 open+failed)。按口径:failed/
     // DATA_UNAVAILABLE 只给地板故障,红但原因一眼可读。
-    const usTotal = STOCKS.filter((s: { market: string }) => s.market === "美股").length;
-    if (misses.length > usTotal / 2) {
+    if (misses.length > universe / 2) {
       console.log("=== Pipeline Replay Snapshot ===");
       console.log(JSON.stringify({
         date, mode, llm, dryRun: true,
-        verdict: `DATA_UNAVAILABLE(行情源不可达/限流:miss ${misses.length}/${usTotal},重试一轮后仍缺)`,
+        verdict: `DATA_UNAVAILABLE(行情源不可达/限流:miss ${misses.length}/${universe})`,
         quoteMisses: misses.slice(0, 12),
       }, null, 2));
       process.exit(1);
