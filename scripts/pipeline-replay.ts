@@ -87,27 +87,37 @@ function sourceLeakage() {
   async function buildReplayQuotes(): Promise<{ quotes: Record<string, Quote>; misses: string[] }> {
     const usStocks = STOCKS.filter((s: { market: string }) => s.market === "美股");
     const quotes: Record<string, Quote> = {};
-    const misses: string[] = [];
-    const CONC = 6;
-    for (let i = 0; i < usStocks.length; i += CONC) {
-      await Promise.all(
-        usStocks.slice(i, i + CONC).map(async (s: { code: string }) => {
-          const bars = await usDailyBars(s.code).catch(() => null);
-          if (!bars || bars.length < 2) return void misses.push(s.code);
-          let toIdx = -1;
-          for (let j = bars.length - 1; j >= 0; j--) {
-            if (bars[j].date < date) { toIdx = j; break; }
-          }
-          if (toIdx < 1) return void misses.push(s.code);
-          const to = bars[toIdx];
-          const prev = bars[toIdx - 1];
-          quotes[s.code] = {
-            price: to.close,
-            change: Math.round((to.close / prev.close - 1) * 10000) / 100,
-            asOf: to.date,
-          };
-        })
-      );
+    const tryFetch = async (code: string): Promise<boolean> => {
+      const bars = await usDailyBars(code).catch(() => null);
+      if (!bars || bars.length < 2) return false;
+      let toIdx = -1;
+      for (let j = bars.length - 1; j >= 0; j--) {
+        if (bars[j].date < date) { toIdx = j; break; }
+      }
+      if (toIdx < 1) return false;
+      const to = bars[toIdx];
+      const prev = bars[toIdx - 1];
+      quotes[code] = {
+        price: to.close,
+        change: Math.round((to.close / prev.close - 1) * 10000) / 100,
+        asOf: to.date,
+      };
+      return true;
+    };
+    const sweep = async (codes: string[], conc: number): Promise<string[]> => {
+      const misses: string[] = [];
+      for (let i = 0; i < codes.length; i += conc) {
+        await Promise.all(codes.slice(i, i + conc).map(async (c) => { if (!(await tryFetch(c))) misses.push(c); }));
+      }
+      return misses;
+    };
+    // 首轮并发 6;部分 miss=瞬时抖动 → 停 1.5s 低并发重试一轮。>50% miss=源级断供(限流/断网,
+    // 2026-07-06 nightly 首跑实测:第二步 71/71 全 miss),重试无意义且会拖爆超时(每票 3 市场×6s),
+    // 直接返回由上层报 DATA_UNAVAILABLE。
+    let misses = await sweep(usStocks.map((s: { code: string }) => s.code), 6);
+    if (misses.length && misses.length <= usStocks.length / 2) {
+      await new Promise((r) => setTimeout(r, 1500));
+      misses = await sweep(misses, 2);
     }
     return { quotes, misses };
   }
@@ -168,6 +178,19 @@ function sourceLeakage() {
     // full / market-closed:真回放 generate
     const { quotes, misses } = await buildReplayQuotes();
     quoteMisses = misses;
+    // 数据地板 guard:行情源不可达(限流/断网)时【不】拿空数据断言休市语义——那会把"harness 取数失败"
+    // 误报成"管线判定错误"(空 quotes → freshestUS=undefined → 误判 open+failed)。按口径:failed/
+    // DATA_UNAVAILABLE 只给地板故障,红但原因一眼可读。
+    const usTotal = STOCKS.filter((s: { market: string }) => s.market === "美股").length;
+    if (misses.length > usTotal / 2) {
+      console.log("=== Pipeline Replay Snapshot ===");
+      console.log(JSON.stringify({
+        date, mode, llm, dryRun: true,
+        verdict: `DATA_UNAVAILABLE(行情源不可达/限流:miss ${misses.length}/${usTotal},重试一轮后仍缺)`,
+        quoteMisses: misses.slice(0, 12),
+      }, null, 2));
+      process.exit(1);
+    }
     const replay = { quotes, now: new Date(`${date}T07:00:00+08:00`) };
     const g = await generateDrafts({ date, replay });
     engine = g.engine;

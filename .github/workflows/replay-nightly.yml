@@ -23,6 +23,9 @@ jobs:
       # Case C(兜底路径):正常交易日全链路,llm=off → engine=template / status=fallback(非 failed)
       - name: replay · full 2026-07-02 (Case C 兜底)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off
+      # 东财对同 IP 连续两轮全量历史 K 会限流(2026-07-06 nightly 首跑实测:第二步 71/90 miss)→ 隔 60s 打散 burst
+      - name: pause (东财限流缓冲)
+        run: sleep 60
       # Case B:美股休市不硬造(07-03 独立日观察日+周末 → market_closed 非 failed)
       - name: replay · market-closed 2026-07-06 (Case B)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off
