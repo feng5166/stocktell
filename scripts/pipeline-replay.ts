@@ -73,6 +73,7 @@ function sourceLeakage() {
   /* ---------- 动态 import(env 定型后)---------- */
   const { STOCKS } = await import("../src/data/stocks");
   const { usDailyBars } = await import("../src/lib/us-history");
+  const { usDailyCloses } = await import("../src/lib/yahoo");
   const { generateDrafts } = await import("../src/lib/generate");
   const { generateDailyInsight } = await import("../src/lib/insight-pipeline/generate");
   const { CHAINS } = await import("../src/data/chains");
@@ -92,7 +93,10 @@ function sourceLeakage() {
     const usStocks = mode === "market-closed" ? usAll.slice(0, 12) : usAll;
     const quotes: Record<string, Quote> = {};
     const tryFetch = async (code: string): Promise<boolean> => {
-      const bars = await usDailyBars(code).catch(() => null);
+      // 主源东财;miss(限流/封机房 IP)逐票回退 Yahoo(仓库既有选择:新浪同样封机房 IP、
+      // 腾讯美股覆盖不全,见 src/lib/yahoo.ts 头注释)。两源都挂才算 miss。
+      let bars = await usDailyBars(code).catch(() => null);
+      if (!bars || bars.length < 2) bars = await usDailyCloses(code).catch(() => []);
       if (!bars || bars.length < 2) return false;
       let toIdx = -1;
       for (let j = bars.length - 1; j >= 0; j--) {

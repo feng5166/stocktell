@@ -91,6 +91,42 @@ export async function fetchYahooChanges(
   return out;
 }
 
+// 美股历史日收盘(pipeline-replay 回放行情源 fallback:东财限流/封机房 IP 时逐票回退这里)。
+// 返回形状对齐 us-history.Bar({date, close},date 升序);仅 harness 消费,生产路径不走。
+export async function usDailyCloses(
+  ticker: string,
+  range = "1y"
+): Promise<{ date: string; close: number }[]> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    ticker
+  )}?range=${range}&interval=1d`;
+  try {
+    const j = await fetchJsonWithTimeout<YahooChart>(
+      url,
+      { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" },
+      6000
+    );
+    const res = j?.chart?.result?.[0];
+    const ts: number[] = res?.timestamp ?? [];
+    const closes: (number | null)[] = res?.indicators?.quote?.[0]?.close ?? [];
+    const fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const out: { date: string; close: number }[] = [];
+    for (let i = 0; i < ts.length; i++) {
+      const c = closes[i];
+      if (c == null || c <= 0) continue;
+      out.push({ date: fmt.format(new Date(ts[i] * 1000)), close: c });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export async function usDailyHistory(
   ticker: string,
   range = "2y"
