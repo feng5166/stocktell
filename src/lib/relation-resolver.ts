@@ -117,3 +117,24 @@ export function buildRelLabelMap(): Record<string, string> {
   }
   return m;
 }
+
+// P1-1(2026-07-06):链页 roster / 首页事件卡的关系标签走统一模型,替代旧 relation.ts 直读(消同票跨页两标签)。
+const ITEM_RANK: Record<RelationType, number> = { direct: 0, indirect: 1, sentiment: 2, weak: 3, candidate: 4, trigger: 5 };
+// 本链关系标签(链页 roster:chain-scoped,不跨链取最强档;本链无则 null → 调用方落"产业链相关")
+export function resolveInChainLabel(code: string, chainId: string | undefined): string | null {
+  const r = relationInChain(code, chainId);
+  return r ? FRONT_LABEL[r.relationType] : null;
+}
+// 事件项标签(首页/链页事件卡:取 beneficiaries 最强档)
+export function resolveRelationLabelForItem(item: { beneficiaries: { code: string }[] }): string {
+  let best: string | null = null;
+  let bestRank = Infinity;
+  for (const b of item.beneficiaries) {
+    const p = primaryRelation(b.code);
+    if (p && ITEM_RANK[p.relationType] < bestRank) {
+      bestRank = ITEM_RANK[p.relationType];
+      best = FRONT_LABEL[p.relationType];
+    }
+  }
+  return best ?? "产业链相关";
+}

@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
-import { buildRelLabelMap } from "@/lib/relation-resolver";
+import { buildRelLabelMap, resolveInChainLabel, resolveRelationLabelForItem } from "@/lib/relation-resolver";
 import { ChainRoster } from "@/components/chain/ChainRoster";
 import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert";
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
@@ -15,8 +15,7 @@ import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
-import { relationLabelFor, relationForCodeInChain } from "@/lib/relation";
-import { REL_CHIP_CLS } from "@/lib/relation-rank";
+import { REL_CHIP_CLS, chainIdFromRoute } from "@/lib/relation-rank";
 import { routeInsightForItem } from "@/data/trigger-sources";
 import { DISCLAIMER } from "@/lib/constants";
 
@@ -222,10 +221,10 @@ export default async function ChainPage({
                   <div className="flex items-center gap-2">
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                        REL_CHIP_CLS[relationLabelFor(it)] ?? "bg-gray-100 text-gray-600"
+                        REL_CHIP_CLS[resolveRelationLabelForItem(it)] ?? "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {relationLabelFor(it)}
+                      {resolveRelationLabelForItem(it)}
                     </span>
                     <span className="font-medium text-gray-900">{it.title}</span>
                   </div>
@@ -300,7 +299,8 @@ export default async function ChainPage({
             // B2-2:按【本链】核定关系(chain-scoped),不跨链取最强档把间接股越级成直接
             roster.map((r) => [
               r.code,
-              relationForCodeInChain(r.code, chain.insightSlug) ?? "产业链相关",
+              // P1-1:走 relationResolver(本链 chain-scoped),不再直读旧 relation.ts;路由 id→chainId
+              resolveInChainLabel(r.code, chainIdFromRoute(chain.id)) ?? "产业链相关",
             ])
           )}
           groupOverride={chain.rosterGroups?.groupOverride}
