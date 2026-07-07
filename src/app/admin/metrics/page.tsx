@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
+import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
@@ -75,17 +76,23 @@ export default async function AdminMetricsPage() {
   // 商业化 / 增长信号(2.2-C 运营看板):DB 侧可得的转化与留存代理指标。
   // 页面级流量(日活/首页点击/insight 停留/SEO 来路)看 Umami 后台;这里补 Umami 看不到的 DB 事实。
   const since7d = new Date(Date.now() - 7 * 86400000);
+  // W9(五轮 review):日期直接用写入方同源的 todayISO(),不做"去横线再正则加回"的双重转换
+  // (正则不匹配时 replace 原样返回、过滤零行且 catch 不触发=静默归零);清理①:八读并行。
   const biz = db
-    ? {
-        users: await db.user.count().catch(() => -1),
-        usersNew7d: await db.user.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
-        watchRows: await db.watchlist.count().catch(() => -1),
-        watchNew7d: await db.watchlist.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
-        digestToday: await db.digestSendLog.count({ where: { date: today.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") } }).catch(() => -1),
-        proIntent: await db.feedback.count({ where: { category: "专业版意向" } }).catch(() => -1),
-        subIntent: await db.feedback.count({ where: { category: "订阅意向" } }).catch(() => -1),
-        reviewPending: await db.relationReview.count({ where: { status: "pending" } }).catch(() => -1),
-      }
+    ? await (async () => {
+        const [users, usersNew7d, watchRows, watchNew7d, digestToday, proIntent, subIntent, reviewPending] =
+          await Promise.all([
+            db.user.count().catch(() => -1),
+            db.user.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
+            db.watchlist.count().catch(() => -1),
+            db.watchlist.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
+            db.digestSendLog.count({ where: { date: todayISO() } }).catch(() => -1),
+            db.feedback.count({ where: { category: "专业版意向" } }).catch(() => -1),
+            db.feedback.count({ where: { category: "订阅意向" } }).catch(() => -1),
+            db.relationReview.count({ where: { status: "pending" } }).catch(() => -1),
+          ]);
+        return { users, usersNew7d, watchRows, watchNew7d, digestToday, proIntent, subIntent, reviewPending };
+      })()
     : null;
 
   return (
@@ -108,8 +115,8 @@ export default async function AdminMetricsPage() {
               ["注册用户", `${biz.users}(7日+${biz.usersNew7d})`],
               ["自选条目", `${biz.watchRows}(7日+${biz.watchNew7d})`],
               ["今日早报送达", String(biz.digestToday)],
-              ["专业版意向", String(biz.proIntent)],
-              ["订阅意向", String(biz.subIntent)],
+              ["专业版意向(行数未去重)", String(biz.proIntent)],
+              ["订阅意向(行数未去重)", String(biz.subIntent)],
               ["待审关系队列", String(biz.reviewPending)],
             ].map(([label, val]) => (
               <div key={label} className="rounded-lg bg-gray-50 px-3 py-2">

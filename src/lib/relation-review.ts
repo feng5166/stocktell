@@ -12,6 +12,7 @@
 //
 // 所有写读 fail-safe:队列坏了不能连累记账/复盘主流程。
 import { getPrisma } from "@/lib/prisma";
+import { alertThrottled } from "@/lib/monitor";
 import type { RelationType } from "@/data/chain-relations";
 
 export type ReviewSource = "outcome-review" | "daily-signal" | "manual" | "ai-review";
@@ -44,7 +45,7 @@ export async function upsertReviewItem(item: {
   date: string; // 触发日 YYYY-MM-DD
   source: ReviewSource;
   reason?: string;
-  suggestedType?: RelationType;
+  suggestedType?: RelationType | null; // null=显式清空(如 AI 建议 remove,W4)
 }): Promise<void> {
   const db = getPrisma();
   if (!db) return;
@@ -67,18 +68,34 @@ export async function upsertReviewItem(item: {
             lastSeen: item.date,
           },
         })
-        .catch(() => {}); // 并发下的唯一冲突:另一路已建,视作已入队
+        .catch(async (e) => {
+          // W1(五轮 review):静默吞错曾掩盖"生产索引未迁移"整类故障(UI 显示成功、实际没写)。
+          // 并发真冲突极罕见(先 findUnique 再 create,竞窗小),失败一律可见+节流告警。
+          console.error("[relation-review] 入队写入失败:", item.code, item.chainId, item.source, e);
+          await alertThrottled(
+            "relation-review-create-fail",
+            `⚠️ relationReviewQueue 写入失败(${item.code}/${item.chainId}/${item.source}):${String(e).slice(0, 160)}\n若批量出现:检查 relation_review_queue 唯一索引是否为 (code,chain_id,source) 三列(改库后需重跑 /api/admin/init-db)`
+          );
+        });
       return;
     }
-    if (existing.status === "rejected") return; // 人工已拒,同源不复活
-    if (existing.lastSeen === item.date) return; // 同日同源(行=源),恒幂等
+    if (existing.status === "rejected") return; // 人工已拒,同源不复活(跨源语义见 UI 文案)
     const evidenceChanged = !!item.reason && item.reason !== existing.reason;
+    // W3(五轮 review):同日重判(如 AI 审阅当天重跑出新判定过程)不能静默 no-op——
+    // 面板刚展示了新裁决,队列却留着旧 reason。同日+证据变化 → 替换 reason/建议档但
+    // 【不加 hitCount】(重判是替换不是新证据);同日+无变化才是真幂等。
+    if (existing.lastSeen === item.date && !evidenceChanged) return;
     await db.relationReview.update({
       where: { id: existing.id },
       data: {
         lastSeen: item.date,
-        ...(evidenceChanged ? { hitCount: { increment: 1 }, reason: item.reason } : {}),
-        ...(item.suggestedType ? { suggestedType: item.suggestedType } : {}),
+        ...(evidenceChanged
+          ? {
+              reason: item.reason,
+              ...(existing.lastSeen !== item.date ? { hitCount: { increment: 1 } } : {}),
+            }
+          : {}),
+        ...(item.suggestedType !== undefined ? { suggestedType: item.suggestedType } : {}),
       },
     });
   } catch {
@@ -119,20 +136,24 @@ export async function listReviewQueue(status?: ReviewStatus): Promise<RelationRe
 
 // 人工审阅动作(admin):只改队列状态与备注,不碰 staticRelations(不变量#4)。
 // note 语义(N7):undefined=不动,空串=清空(存 null)。
+// W2(五轮 review):只允许从 pending 出发——终态行(confirmed/rejected)拒绝二次写,
+// 防 RSC 陈旧刷新闪回后管理员误点导致终审结论被反向覆写(改判走 DB,保审计)。
 export async function setReviewStatus(
   id: string,
   status: ReviewStatus,
   note?: string
-): Promise<boolean> {
+): Promise<"ok" | "not-pending" | "error"> {
   const db = getPrisma();
-  if (!db) return false;
-  const r = await db.relationReview
-    .update({
-      where: { id },
+  if (!db) return "error";
+  try {
+    const r = await db.relationReview.updateMany({
+      where: { id, status: "pending" },
       data: { status, ...(note !== undefined ? { note: note === "" ? null : note } : {}) },
-    })
-    .catch(() => null);
-  return !!r;
+    });
+    return r.count > 0 ? "ok" : "not-pending";
+  } catch {
+    return "error";
+  }
 }
 
 // 诊断用:pending 数(resolver-health 面板)。

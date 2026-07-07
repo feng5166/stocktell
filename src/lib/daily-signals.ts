@@ -7,8 +7,7 @@
 // 该函数结构上就只写 todaySignalStrength 一个字段。
 //
 // resolver 的 getDailySignals 同步 getter 保持骨架:resolver 是全站同步热路径,不为层②
-// 破坏同步契约。消费方(/watchlist 服务端)用 deriveDailySignals(异步)取信号,再经
-// resolver 导出的 resolveWithSignals 注入——同一 attachSignal 逻辑,两条入口一个语义。
+// 破坏同步契约。消费方(/watchlist 服务端)用 deriveDailySignals(异步)取信号按 code 聚合。
 import { listBriefing, type BriefingItem, type Impact } from "@/lib/briefings";
 import { relationsForCode } from "@/data/chain-relations";
 import type { DailyRelationSignal } from "@/lib/relation-resolver";

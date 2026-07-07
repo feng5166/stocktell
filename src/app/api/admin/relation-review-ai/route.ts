@@ -6,6 +6,7 @@ import { STOCK_MAP } from "@/data/stocks";
 import { getLLM, chatTimed, LLM_MODEL_FAST } from "@/lib/llm";
 import { upsertReviewItem } from "@/lib/relation-review";
 import { todayISO } from "@/lib/date";
+import { AI_REVIEW_MAX_ITEMS, AI_REVIEW_POOL } from "@/lib/ai-review-const";
 
 export const dynamic = "force-dynamic";
 // LLM 审阅按 4 路并发池执行(每条 ~10-20s):12 条最坏 ~60s,300s 上限给足。
@@ -17,7 +18,7 @@ export const maxDuration = 300;
 // 人工在审阅队列面板通过/拒绝。
 // 【铁律】AI 只产建议:本路由没有任何写 staticRelations 的能力(不变量#4);
 // AI 依据的是训练知识+库内既有信息,业务事实(订单/客户/收入)必须人工核实——建议仅供参考。
-const MAX_ITEMS = 12;
+const MAX_ITEMS = AI_REVIEW_MAX_ITEMS;
 const VALID_TYPES = new Set(["direct", "indirect", "sentiment", "weak", "candidate"]);
 
 const SYSTEM_PROMPT = `你是 StockTell 产业链关系库的审阅助手。对给出的「股票×产业链」关系,按以下口径给出档位建议:
@@ -52,18 +53,22 @@ export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req) && !(await isAdminSession())) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  const llm = getLLM();
+  const llm = getLLM({ timeoutMs: 45_000, maxRetries: 1 }); // W5:收紧超时,防单条挂起坐满 300s 预算
   if (!llm) {
     return NextResponse.json({ ok: false, error: "LLM 未配置(缺 LLM_API_KEY)" }, { status: 503 });
   }
   const body = (await req.json().catch(() => null)) as {
     items?: Array<{ code?: string; chainId?: string }>;
   } | null;
-  const items = (body?.items ?? [])
-    .filter((i): i is { code: string; chainId: string } => !!i?.code && !!i?.chainId)
-    .slice(0, MAX_ITEMS);
+  const requested = (body?.items ?? []).filter(
+    (i): i is { code: string; chainId: string } => !!i?.code && !!i?.chainId
+  );
+  // W7(五轮 review):校验下沉服务端——超量不静默 slice(响应回报 truncated),
+  // trigger 关系服务端过滤(触发源不参与档位审阅,不能只靠客户端不勾选)。
+  const truncated = requested.length > MAX_ITEMS;
+  const items = requested.slice(0, MAX_ITEMS);
   if (items.length === 0) {
-    return NextResponse.json({ ok: false, error: "empty-items(每次最多 12 条)" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: `empty-items(每次最多 ${MAX_ITEMS} 条)` }, { status: 400 });
   }
 
   const date = todayISO();
@@ -77,6 +82,14 @@ export async function POST(req: NextRequest) {
         currentType: rel?.relationType ?? "-", suggestedType: "-",
         rationale: "", analysis: "", evidenceNeeded: [], verificationPoints: [],
         queued: false, error: "relation-not-found",
+      };
+    }
+    if (rel.relationType === "trigger") {
+      return {
+        code: it.code, name: st.name, chainId: it.chainId,
+        currentType: "trigger", suggestedType: "-",
+        rationale: "", analysis: "", evidenceNeeded: [], verificationPoints: [],
+        queued: false, error: "trigger-not-reviewable(触发源不参与档位审阅)",
       };
     }
     const user = [
@@ -95,11 +108,17 @@ export async function POST(req: NextRequest) {
             { role: "user", content: user },
           ],
           temperature: 0.2,
-          max_tokens: 900,
+          max_tokens: 1500, // W10:判定过程+两数组的余量(推理模型可能把思考计入)
+          response_format: { type: "json_object" },
         })
       );
       const raw = resp.choices[0]?.message?.content ?? "";
-      const jsonText = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+      let jsonText = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+      // W10 兜底:非首尾围栏/夹带文字时,截取首个平衡 {...} 块再试
+      if (!jsonText.startsWith("{")) {
+        const m = jsonText.match(/\{[\s\S]*\}/);
+        if (m) jsonText = m[0];
+      }
       const parsed = JSON.parse(jsonText) as {
         suggestedType?: string; rationale?: string; analysis?: string;
         evidenceNeeded?: string[]; verificationPoints?: string[];
@@ -115,7 +134,8 @@ export async function POST(req: NextRequest) {
         chainId: it.chainId,
         date,
         source: "ai-review",
-        suggestedType: VALID_TYPES.has(sug) ? (sug as RelationType) : undefined,
+        // W4:remove 裁决显式清空建议档(null 覆写),防隔日翻转时徽章残留旧档
+        suggestedType: VALID_TYPES.has(sug) ? (sug as RelationType) : sug === "remove" ? null : undefined,
         reason: `AI 审阅建议:${sug}(现档 ${rel.relationType})。${rationale} 判定过程:${analysis}${evidence.length ? ` 需人工核实:${evidence.join("、")}` : ""}`,
       });
       return {
@@ -136,12 +156,12 @@ export async function POST(req: NextRequest) {
   const out: AiSuggestion[] = new Array(items.length);
   let cursor = 0;
   await Promise.all(
-    Array.from({ length: Math.min(4, items.length) }, async () => {
+    Array.from({ length: Math.min(AI_REVIEW_POOL, items.length) }, async () => {
       while (cursor < items.length) {
         const i = cursor++;
         out[i] = await reviewOne(items[i]);
       }
     })
   );
-  return NextResponse.json({ ok: true, suggestions: out });
+  return NextResponse.json({ ok: true, suggestions: out, ...(truncated ? { truncated: true, accepted: items.length, requested: requested.length } : {}) });
 }

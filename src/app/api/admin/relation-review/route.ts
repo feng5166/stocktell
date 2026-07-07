@@ -29,6 +29,11 @@ export async function PATCH(req: NextRequest) {
   if (!body?.id || !["pending", "confirmed", "rejected"].includes(body.status ?? "")) {
     return NextResponse.json({ ok: false, error: "bad-request" }, { status: 400 });
   }
-  const ok = await setReviewStatus(body.id, body.status!, body.note);
-  return NextResponse.json({ ok }, { status: ok ? 200 : 500 });
+  const r = await setReviewStatus(body.id, body.status!, body.note);
+  if (r === "not-pending") {
+    // W2(五轮 review):终态行拒绝二次写——RSC 陈旧刷新会把已决行短暂闪回列表,管理员补点
+    // 另一个按钮不能把 confirmed 反向覆写成 rejected(需要改判走 DB/工单,保审计)。
+    return NextResponse.json({ ok: false, error: "already-decided(该行已终审,拒绝覆写)" }, { status: 409 });
+  }
+  return NextResponse.json({ ok: r === "ok" }, { status: r === "ok" ? 200 : 500 });
 }

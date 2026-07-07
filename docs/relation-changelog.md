@@ -14,6 +14,7 @@
 | 2026-07-04 | `d0beae0`→`ae5997f` | 13 条 direct 补 references(法定披露入口)+ 四段式验证点 + 证据状态;沪市补上交所公告检索入口 | 13 direct | src/data/direct-evidence.ts | 红旗 13→0;verified 定义收紧;EVIDENCE_LABEL 前台不显英文档 |
 | 2026-07-04 | `b3d5709` | 44 条 indirect 补 references + 四段式验证点(环节模板)+ evidenceStatus=partially;澜起/英维克/香农芯创 清概念词旗 | 44 indirect | src/data/indirect-evidence.generated.ts | 黄旗清零;indirect 验证点是环节模板待复核 |
 | 2026-07-07 | (2.2-B) | 新增半导体设备与先进制程链:8 环节 enum、8 只国内候选全 candidate 档;触发源【allowlist 收窄】仅 ASML/AMAT/LRCX/CDNS/SNPS(四轮 review 纠账:曾整组路由 11 只,IPGP/SITM/VECO/AMKR/Q/ENTG 未逐票评审已退回未来链) | +13(8 candidate + 5 trigger) | src/data/chain-relations.ts §2.5 | 待审阅台校准升档+补证据;KLAC/TEL/精测/概伦待入池;chains.ts 有意不配 segments(校准后接 insight 管线) |
+| 2026-07-07 | (校准回灌) | 半导体设备链 5 只 candidate→direct(北方华创/中微/拓荆/芯源微/华海清科):负责人经 AI 审阅面板终审采纳(判定过程在队列 ai-review 行);补法定披露入口 references + 四段式验证点,evidenceStatus=partially_verified | 5 升档 | src/data/direct-evidence.ts + chain-relations §2.5 | 盛美/长川/华大九天未终审维持 candidate;终审记录曾因按钮语义歧义记为 rejected,已翻转 confirmed 并留 note |
 
 ## 回灌工作流(标准动作)
 1. 负责人在审阅台(/admin/relation-review)改档/改 reason/批量标记 → 导出 diff(含 dry-run 预览)。
