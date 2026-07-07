@@ -12,7 +12,19 @@ import { AuthTracker } from "@/components/AuthTracker";
 const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC;
 const UMAMI_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 
+// WebSite JSON-LD(2.1-W4 SEO 基建):站点级结构化数据,页面级 Article 由 insight 归档页自带
+const WEBSITE_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "StockTell",
+  url: "https://www.stocktell.me",
+  description:
+    "把全球事件拆解为产业链传导、A 股映射、关系强弱和可核实依据的产业理解工具。不构成投资建议。",
+  inLanguage: "zh-CN",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.stocktell.me"),
   title: "StockTell｜今日产业链推理:把全球事件翻译成 A 股产业链映射",
   description:
     "StockTell 不是新闻聚合,也不提供买卖建议。我们把全球事件拆解为产业链传导、A 股映射、关系强弱和可核实依据,帮助用户理解今天哪些产业链值得关注。",
@@ -46,6 +58,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className="antialiased pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSONLD) }}
+        />
         <Providers>
           {children}
           <GuestWatchlistNudge />
