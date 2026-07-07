@@ -7,6 +7,7 @@ import { runWebPush } from "@/lib/push-web";
 import { todayISO } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
+import { sendFeishu } from "@/lib/feishu";
 import { setBriefStatus } from "@/lib/brief-status";
 import { getPrisma } from "@/lib/prisma";
 import { tradingDayGate } from "@/lib/trading-gate";
@@ -96,13 +97,22 @@ export async function GET(req: NextRequest) {
         `交易日 ${date} 生成 0 条简报(movers 为空,疑似美股行情抓取失败/陈旧)—— 需手动重发`
       );
     }
-    // 状态标识:交易日且非休市——有条=已生成,0 条=生成异常(与休市缺口区分开)。
+    // 状态标识:交易日且非休市——LLM 产出=generated,模板兜底=fallback(低置信/进人工审,
+    // 【不是】失败),0 条=failed(与休市缺口区分开)。
     await setBriefStatus(
       date,
       created.length > 0
-        ? { status: "generated" }
+        ? engine === "llm"
+          ? { status: "generated" }
+          : { status: "fallback", reason: "llm_failed", message: `交易日 ${date} LLM 不可用,规则模板兜底生成 ${created.length} 条,待人工审阅。` }
         : { status: "failed", reason: "data_fetch_failed", message: `交易日 ${date} 生成 0 条(movers 为空/美股行情陈旧)。` }
     );
+    // 模板兜底是非事故但需人眼:发一条低优提示(非 🚨),让人知道今天内容置信度低、去 admin 过一遍。
+    if (created.length > 0 && engine !== "llm") {
+      await sendFeishu(
+        `⚠️ StockTell 简报模板兜底 · ${date} · LLM 不可用,规则模板生成 ${created.length} 条(低置信)。请到 /admin/briefing 人工过一遍,非事故无需补发`
+      ).catch(() => {});
+    }
     // 链级「今日一句话判断」(链页顶部用):放在推送段之前,推送段再出事它也已生成。
     // 失败不致命(链页有规则兜底文案),但告警知晓。
     const chainTake = await generateChainTake("ai", date, created).catch(

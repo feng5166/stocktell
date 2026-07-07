@@ -5,6 +5,7 @@ import { isAshareTradingDay } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { sendFeishu } from "@/lib/feishu";
+import { getBriefStatus, briefAlertSeverity, BRIEF_STATUS_UI } from "@/lib/brief-status";
 import { getPrisma } from "@/lib/prisma";
 import { CHAINS } from "@/data/chains";
 import { isPipelinePaused } from "@/lib/insight-pipeline/docs";
@@ -124,19 +125,46 @@ export async function GET(req: NextRequest) {
       await alertCron("简报看门狗", `交易日 ${date} 简报已发布但当日发送记录为 0,盘前邮件疑似未发,需手动补推`);
       payload = { ok: true, date, count: items.length, digestSuspect: true, feishu: fs };
     } else {
-      // 成功:推一条确认(主/补位 cron 正常跑通)
+      // 成功:推一条确认(主/补位 cron 正常跑通)。模板兜底(fallback)也算"在"——
+      // 但要在确认里带出来:低置信内容在线上,提醒人工过稿,别当成全真产出放心睡。
+      const brief = await getBriefStatus(date).catch(() => null);
+      const fallbackNote =
+        brief?.status === "fallback"
+          ? " ⚠️ 本期为模板兜底(低置信),请到 /admin/briefing 人工过一遍"
+          : "";
       const fs = await sendFeishu(
-        `✅ StockTell 今日简报已就绪 · ${date} · 共 ${items.length} 条,已发早报 ${digestSent < 0 ? "?" : digestSent} 人(主/补位 cron 正常)`
+        `✅ StockTell 今日简报已就绪 · ${date} · 共 ${items.length} 条,已发早报 ${digestSent < 0 ? "?" : digestSent} 人(主/补位 cron 正常)${fallbackNote}`
       );
-      payload = { ok: true, date, count: items.length, digestSent, feishu: fs };
+      payload = { ok: true, date, count: items.length, digestSent, briefStatus: brief?.status, feishu: fs };
     }
   } else {
-    // 失败:主 + 补位都没产出 → 告警让人工补
-    const fs = await sendFeishu(
-      `❌ StockTell 今日简报缺失 · ${date} · 到 08:30 仍 0 条(主 07:00 + 补位 07:40 都没出)。请手动补:POST /api/briefing/generate?replace=1&llm=1(Bearer ADMIN_TOKEN)`
-    );
-    await alertCron("简报看门狗", `交易日 ${date} 到 08:30 仍无已发布简报,需手动补`);
-    payload = { ok: true, date, alerted: true, count: 0, feishu: fs };
+    // 0 简报 ≠ 一律事故(2.1-B):先读 brief-status 分级,别把"设计性无简报"误报成 ❌ 并给出
+    // 误导性"需补发"指令(休市不硬造=不变量#7;2026-07-06 休市交易日误报实录)。
+    const brief = await getBriefStatus(date).catch(() => null);
+    const severity = briefAlertSeverity(brief);
+    if (severity === "none") {
+      // 休市等设计性缺口:中性心跳(看门狗职责=每早可感知,静默会和"看门狗自己挂了"混淆),
+      // 不告警、不给补发指令。
+      const ui = BRIEF_STATUS_UI[brief!.status];
+      const fs = await sendFeishu(
+        `🛌 StockTell 今日无新简报(${ui.badge}) · ${date} · ${ui.note}设计性无简报,勿补发`
+      );
+      payload = { ok: true, date, count: 0, briefStatus: brief!.status, feishu: fs };
+    } else if (severity === "notice") {
+      // 合规阻断/兜底待审:低优先级提示(非 🚨 非 ❌),要人工处理但不是事故,不喊补发。
+      const ui = BRIEF_STATUS_UI[brief!.status];
+      const fs = await sendFeishu(
+        `⚠️ StockTell 今日简报待人工处理(${ui.badge}) · ${date} · ${ui.note}${brief?.message ? `\n${brief.message}` : ""}`
+      );
+      payload = { ok: true, date, count: 0, briefStatus: brief!.status, notice: true, feishu: fs };
+    } else {
+      // failed 或状态缺失(疑似生成 cron 根本没跑/共模故障):事故,告警让人工补。
+      const fs = await sendFeishu(
+        `❌ StockTell 今日简报缺失 · ${date} · 到 08:30 仍 0 条(主 07:00 + 补位 07:40 都没出${brief ? `;状态=${brief.status}` : ";且无状态记录,疑似生成 cron 未跑"})。请手动补:POST /api/briefing/generate?replace=1&llm=1(Bearer ADMIN_TOKEN)`
+      );
+      await alertCron("简报看门狗", `交易日 ${date} 到 08:30 仍无已发布简报,需手动补`);
+      payload = { ok: true, date, alerted: true, count: 0, briefStatus: brief?.status ?? null, feishu: fs };
+    }
   }
   // await 而非 fire-and-forget:serverless 返回后悬空 promise 可能随实例冻结丢失
   await sweepCaches();

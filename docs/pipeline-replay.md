@@ -87,8 +87,9 @@ relationParity / sourceLeakage / compliance / assertions / verdict),发结果只
 - `blocked` 是合规正确行为,不是生成器失败。
 - 只有行情源不可用、数据结构异常、兜底也失败等地板故障,才算 `failed`。
 
-> 对齐备注:运行时 `src/lib/brief-status.ts` 的 `fallback` 徽章现语义=「首页展示回退内容」;生产状态里
-> 引擎兜底(engine=template)的标注与本口径的对齐属 2.1,replay snapshot 已按新口径先行输出。
+> 对齐备注:2026-07-07(2.1-A)起生产已全站对齐本口径——`src/lib/brief-status.ts` 五档同名同义
+> (`fallback`=引擎兜底,briefing cron 按 engine 写入),告警消费方(watchdog/outcome/push-feishu)
+> 经 `briefAlertSeverity` 分级:休市不告警不喊补发、fallback/blocked 低优提示、failed/无状态才 🚨。
 
 ## CI / 发布门禁(2026-07-06 起实挂,不再是建议)
 

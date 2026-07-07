@@ -4,6 +4,7 @@ import { todayISO } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { tradingDayGate } from "@/lib/trading-gate";
+import { getBriefStatus, briefAlertSeverity } from "@/lib/brief-status";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,13 +27,20 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await recordOutcomes(date);
-    // 交易日却没简报可记 = 当天早盘简报没发出来(已知静默失败模式)。
-    // 这是第二道网:15:30 再喊一次,提醒去查/补当天简报 + 事后 backfill-outcomes。
+    // 交易日却没简报可记:先读 brief-status 分级(2.1-B)——美股休市等设计性无简报是【正常】,
+    // 0 简报本来就无账可记,绝不能喊"需补发"(2026-07-06 休市交易日误报实录:补发指令是误导,勿照做)。
+    // 只有 failed / 状态缺失(疑似早盘 cron 静默没跑)才是事故,15:30 这里是第二道网。
     if (res.skipped === "no-briefing") {
-      await alertCron(
-        "outcome(记账)",
-        `交易日 ${date} 收盘记账时无已发布简报 —— 当天早盘简报很可能没发出来,需补发并用 /api/admin/backfill-outcomes?date=${date} 补回查账`
-      );
+      const brief = await getBriefStatus(date).catch(() => null);
+      const severity = briefAlertSeverity(brief);
+      if (severity === "incident") {
+        await alertCron(
+          "outcome(记账)",
+          `交易日 ${date} 收盘记账时无已发布简报(${brief ? `状态=${brief.status}` : "且无状态记录"})—— 当天早盘简报很可能没发出来,需补发并用 /api/admin/backfill-outcomes?date=${date} 补回查账`
+        );
+      }
+      // none(休市)/notice(阻断待审):设计性或已知待人工,早间 watchdog 已按级提示过,这里不重复告警
+      return NextResponse.json({ date, ...res, briefStatus: brief?.status ?? null });
     }
     // 判定率异常低:大多数受益股拿不到当日有效行情(源全挂 → quotes 空、缺 q;或源漂移 → asOf≠当日),
     // 当天战绩几乎全 null,但 evaluated>0 会显得"记了" → 必须告警,否则静默缺一天(评审确认的回归)。

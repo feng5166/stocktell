@@ -94,7 +94,9 @@ export async function POST(req: NextRequest) {
         usMarketClosed
           ? { status: "market_closed", reason: "us_market_closed", message: "美股休市,今日无新的隔夜美股映射。" }
           : created.length > 0
-            ? { status: "manual_reissue" }
+            ? engine === "llm"
+              ? { status: "manual_reissue" }
+              : { status: "manual_reissue", reason: "llm_failed", message: `人工补发走了模板引擎(低置信),建议 llm=1 重发或人工过稿。` }
             : { status: "failed", reason: "data_fetch_failed", message: `交易日 ${d} 补发 0 条(movers 为空/美股行情陈旧)。` }
       );
       return NextResponse.json({
