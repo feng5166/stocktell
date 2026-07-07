@@ -22,8 +22,11 @@ export async function kvGet<T>(id: string): Promise<T | null> {
 export async function kvListIds(prefix: string, take = 400): Promise<string[]> {
   const db = getPrisma();
   if (!db) return [];
+  // V6(四轮 review):必须 orderBy——无序时超过 take 后 Postgres 返回任意子集,最新日期
+  // 可能被非确定性丢弃(约 8 个月后 /daily 索引开始时好时坏地丢最近的休市日)。
+  // id 内日期零填充,desc 即"最新在前"。
   const rows = await db.quotesCache
-    .findMany({ where: { id: { startsWith: prefix } }, select: { id: true }, take })
+    .findMany({ where: { id: { startsWith: prefix } }, select: { id: true }, orderBy: { id: "desc" }, take })
     .catch(() => [] as Array<{ id: string }>);
   return rows.map((r) => r.id);
 }

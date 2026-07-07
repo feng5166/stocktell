@@ -26,7 +26,7 @@ export async function generateMetadata({
   return {
     title: `${params.date} 产业链简报归档:隔夜事件与 A 股映射 | StockTell`,
     description: `${params.date} 的产业链推理简报归档:隔夜美股事件、传导环节与 A 股映射(研究框架梳理·非确认,不构成投资建议)。`,
-    alternates: { canonical: `https://www.stocktell.me/daily/${params.date}` },
+    alternates: { canonical: `/daily/${params.date}` },
   };
 }
 

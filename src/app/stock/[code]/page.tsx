@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SIGNAL_RANK } from "@/lib/signal-rank";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { STOCK_MAP, STOCKS, resolvePeer, type Stock } from "@/data/stocks";
@@ -72,7 +73,7 @@ export function generateMetadata({ params }: { params: { code: string } }): Meta
   return {
     title,
     description,
-    alternates: { canonical: `https://www.stocktell.me/stock/${s.code}` },
+    alternates: { canonical: `/stock/${s.code}` },
   };
 }
 
@@ -162,7 +163,7 @@ export default async function StockDetail({
   const peers = Array.from(peerMap.values());
 
   // 按关联强度降序(edgeInfo 现已覆盖产业链边)
-  const STR_RANK: Record<string, number> = { 强: 3, 中: 2, 弱: 1 };
+  const STR_RANK: Record<string, number> = SIGNAL_RANK; // 单一来源:lib/signal-rank
   const strengthOf = (code: string) =>
     STR_RANK[edgeInfo(s.code, code)?.strength ?? "弱"] ?? 0;
   const byStrength = (arr: Stock[]) =>

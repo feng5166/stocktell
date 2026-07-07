@@ -49,6 +49,12 @@ if (useFixture && recordFixture) {
   console.error("--fixture 与 --record-fixture 互斥");
   process.exit(2);
 }
+// V8(四轮 review):fixture 契约只覆盖 full/market-closed——其它 mode 静默忽略会给出
+// "fixture 契约覆盖该模式"的假信心(compliance-block/holiday-bridge 本就是零网络 fixture-in-code)。
+if ((useFixture || recordFixture) && mode !== "full" && mode !== "market-closed") {
+  console.error(`--fixture/--record-fixture 仅支持 full/market-closed(${mode} 本身就是零网络模式,无需 fixture)`);
+  process.exit(2);
+}
 const FIXTURE_DIR = join(process.cwd(), "fixtures", "replay");
 const fixtureQuotesPath = join(FIXTURE_DIR, `${mode}-${date}.quotes.json`);
 const fixtureSnapshotPath = join(FIXTURE_DIR, `${mode}-${date}.snapshot.json`);
@@ -335,6 +341,21 @@ function sourceLeakage() {
       }
       quotes = JSON.parse(readFileSync(fixtureQuotesPath, "utf8")) as Record<string, Quote>;
       console.log(`[fixture] 行情来自 ${fixtureQuotesPath}(${Object.keys(quotes).length} 票,零网络)`);
+      // V4(四轮 review):覆盖面断言——fixture keys 必须 ⊇ 当前所需美股池,否则加新美股
+      // 不重录时新票静默无行情、不红,fixture 与股票池漂移只能靠 nightly 撞见。
+      {
+        const usPool = STOCKS.filter((st: { market: string }) => st.market === "美股");
+        const need = (mode === "market-closed"
+          ? usPool.filter((st: { code: string }) => MARKET_PROBE.includes(st.code))
+          : usPool
+        ).map((st: { code: string }) => st.code);
+        const missingInFixture = need.filter((c: string) => !(c in quotes));
+        expect(
+          "fixture 覆盖面:包含当前全部所需美股(股票池未漂移)",
+          missingInFixture.length === 0,
+          missingInFixture.length ? `缺 ${missingInFixture.join(",")} —— 请 --record-fixture 重录` : `${need.length} 票全覆盖`
+        );
+      }
     } else {
       const live = await buildReplayQuotes();
       quoteMisses = live.misses;
@@ -358,9 +379,30 @@ function sourceLeakage() {
       }
       quotes = live.quotes;
       if (recordFixture) {
+        // V5(四轮 review):录制质量闸——残缺 fixture 会把"缺失票永远不出现在回放里"固化成
+        // 全绿基线(东财限流窗口重录 20/71 缺票的真实风险)。>10% 拒绝写盘,>0 显式警告。
+        if (live.misses.length > live.universe * 0.1) {
+          console.error(`[fixture] 拒绝录制:miss ${live.misses.length}/${live.universe}(>10%)——行情源不健康,换时间/网络重录。缺票:${live.misses.slice(0, 12).join(",")}`);
+          process.exit(2);
+        }
+        if (live.misses.length > 0) {
+          console.warn(`⚠️ [fixture] 录制存在 ${live.misses.length} 只缺票(${live.misses.join(",")}),这些票将永远不出现在回放中——建议补齐后重录`);
+        }
+        // V7:规范化——key 排序 + change/price 统一两位精度。否则 fetch 完成顺序 + Yahoo float64
+        // 会产生数百行零语义 diff,把"重录 diff 即行为变化清单"的契约淹没。
+        const normalized: Record<string, Quote> = {};
+        for (const k of Object.keys(quotes).sort()) {
+          const q = quotes[k];
+          normalized[k] = {
+            ...q,
+            price: Math.round(q.price * 100) / 100,
+            change: q.change === null || q.change === undefined ? q.change : Math.round(q.change * 100) / 100,
+          };
+        }
+        quotes = normalized;
         mkdirSync(FIXTURE_DIR, { recursive: true });
         writeFileSync(fixtureQuotesPath, JSON.stringify(quotes, null, 2) + "\n");
-        console.log(`[fixture] 已录制行情快照 → ${fixtureQuotesPath}(${Object.keys(quotes).length} 票)`);
+        console.log(`[fixture] 已录制行情快照 → ${fixtureQuotesPath}(${Object.keys(quotes).length} 票,已排序+两位精度归一)`);
       }
     }
     const replay = { quotes, now: new Date(`${date}T07:00:00+08:00`) };
@@ -493,8 +535,18 @@ function sourceLeakage() {
         insightCount: insights.filter((i) => i.ok && !i.blocked).length,
         sourceLeakage: leakage.hits,
       };
+      let mismatched = false;
       for (const [k, v] of Object.entries(stable)) {
-        expect(`fixture 对照:${k} 与录制一致`, exp[k] === v, `expected=${String(exp[k])}, got=${String(v)}`);
+        const same = exp[k] === v;
+        if (!same) mismatched = true;
+        expect(`fixture 对照:${k} 与录制一致`, same, `expected=${String(exp[k])}, got=${String(v)}`);
+      }
+      // V9(四轮 review):对照失败的出路要写在报错里——有意改变管线结论的 PR(如接新链 segments)
+      // 正确动作是重录基线并把 diff 提交评审,不是对着 expected/got 抓头。
+      if (mismatched) {
+        console.error(
+          `[fixture] 对照不一致。若为【有意】的管线结论变更:npx tsx scripts/pipeline-replay.ts --date=${date} --mode=${mode} --record-fixture,并把 fixtures/replay/ 的 diff 随 PR 提交评审;若非有意,先查引起漂移的改动。`
+        );
       }
     } else {
       expect(
@@ -533,9 +585,14 @@ function sourceLeakage() {
     verdict: failed.length === 0 ? "PASS" : `FAIL(${failed.length})`,
   };
   if (recordFixture && (mode === "full" || mode === "market-closed")) {
-    mkdirSync(FIXTURE_DIR, { recursive: true });
-    writeFileSync(fixtureSnapshotPath, JSON.stringify(snapshot, null, 2) + "\n");
-    console.log(`[fixture] 已落档 expected snapshot → ${fixtureSnapshotPath}`);
+    // V2(四轮 review):FAIL 的运行绝不写基线——否则坏基线入库后 PR 门禁从此对着它全绿
+    if (failed.length === 0) {
+      mkdirSync(FIXTURE_DIR, { recursive: true });
+      writeFileSync(fixtureSnapshotPath, JSON.stringify(snapshot, null, 2) + "\n");
+      console.log(`[fixture] 已落档 expected snapshot → ${fixtureSnapshotPath}`);
+    } else {
+      console.error(`[fixture] verdict=FAIL(${failed.length} 项断言未过),拒绝写 expected snapshot——修绿后再录`);
+    }
   }
   console.log("=== Pipeline Replay Snapshot ===");
   console.log(JSON.stringify(snapshot, null, 2));

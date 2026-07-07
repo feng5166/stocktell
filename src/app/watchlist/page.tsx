@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   title: "我的自选 · 产业链状态:今日触发与验证点 | StockTell",
   description:
     "自选股按产业链分组:今日是否被事件触发、直接/间接/情绪映射、该看什么验证点。研究框架梳理·非确认,不构成投资建议。",
-  alternates: { canonical: "https://www.stocktell.me/watchlist" },
+  alternates: { canonical: "/watchlist" },
 };
 
 export default async function WatchlistPage() {

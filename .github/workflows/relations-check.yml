@@ -2,6 +2,8 @@
 # 防旧源漏读/跨链串档/direct 缺证据/禁词/unknown segment 回归随 push main 直接部署。
 # lint + resolver-samples + health + source-leakage + compliance-block 回放 = 全 blocking。
 # full / market-closed 回放依赖东财历史行情(网络),挂 replay-nightly.yml,不进 PR blocking。
+# V3(四轮 review):paths 必含 chains.ts(insightCount 依赖 segments 配置)与 stocks.ts
+# (eventCount 依赖美股池)——fixture 对照的每个输入源都必须能触发本门禁;push/PR 两列表保持对称。
 name: relations-check
 
 on:
@@ -13,6 +15,8 @@ on:
       - "src/data/insight-chains.ts"
       - "src/data/direct-evidence.ts"
       - "src/data/indirect-evidence*"
+      - "src/data/chains.ts"
+      - "src/data/stocks.ts"
       - "src/lib/relation*.ts"
       - "src/lib/generate.ts"
       - "src/lib/insight-pipeline/**"
@@ -28,6 +32,11 @@ on:
     paths:
       - "src/data/chain-relations*"
       - "src/data/segment-registry.ts"
+      - "src/data/insight-chains.ts"
+      - "src/data/direct-evidence.ts"
+      - "src/data/indirect-evidence*"
+      - "src/data/chains.ts"
+      - "src/data/stocks.ts"
       - "src/lib/relation*.ts"
       - "src/lib/generate.ts"
       - "src/lib/insight-pipeline/**"

@@ -2,12 +2,13 @@
 // 透明口径 + 小样本警示 + 明确"历史统计非预测",守合规红线。
 // 数据:美股历史走 Yahoo(lib/yahoo),A 股历史走 Tushare daily。
 import { STOCK_MAP, resolvePeer } from "@/data/stocks";
+import { SIGNAL_RANK } from "@/lib/signal-rank";
 import { edgeInfo, type Strength } from "@/data/relations";
 import { usDailyHistory } from "@/lib/yahoo";
 import { dailyHistory } from "@/lib/tushare";
 
 const THRESH = 2; // 美股单日 |涨跌| ≥ 2% 视为异动
-const RANK: Record<Strength, number> = { 强: 3, 中: 2, 弱: 1 };
+const RANK: Record<Strength, number> = SIGNAL_RANK; // 单一来源:lib/signal-rank
 
 export interface SimGroup {
   dir: "涨" | "跌"; // 美股异动方向

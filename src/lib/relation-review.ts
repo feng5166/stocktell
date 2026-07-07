@@ -14,7 +14,7 @@
 import { getPrisma } from "@/lib/prisma";
 import type { RelationType } from "@/data/chain-relations";
 
-export type ReviewSource = "outcome-review" | "daily-signal" | "manual";
+export type ReviewSource = "outcome-review" | "daily-signal" | "manual" | "ai-review";
 export type ReviewStatus = "pending" | "confirmed" | "rejected";
 
 export type RelationReviewRow = {
@@ -31,11 +31,13 @@ export type RelationReviewRow = {
   note: string | null;
 };
 
-// 入队/累计:同 (code, chainId) 幂等。二轮 review N8:hitCount 只在【证据变化】时 +1——
-// feeder 每天对同一 30 天滚动窗重扫,零新判定也无脑 +1 的话,计数器度量的是"cron 跑了几天"
-// 而非证据量,审阅人会按噪声排优先级。同日重跑恒幂等;reason(内嵌判定/验证数)没变=只刷
-// lastSeen 不加计数。已被人工 rejected 的不复活;不再逐条开事务(小项③:唯一约束竞态由
-// create 的冲突 catch 兜住,15:30 cron 不为它烧 N×4 次往返)。
+// 入队/累计(四轮 review V1 重设计:【按源分账】)。
+// 唯一键 = (code, chainId, source):同一关系的 feeder 统计、用户提交、AI 建议各自一行,
+// 幂等/hitCount/reason 全部行内自洽——此前"单行 + 字符串拼接 + 共享 lastSeen"被执行级测试
+// 证出三个洞(手动提交冻结 feeder 当日更新 / 拼接段被整体替换后计数虚增 / manual-first 行
+// feeder 统计永不刷新),补丁摞了三轮,按源分行让这类跨源干扰在结构上不可能。
+// 行内规则:同日重复=no-op;reason(=该源证据)变化才 hitCount+1 并整体替换;
+// rejected 不复活。审阅台按 (code,chainId) 自然看到多源并排,证据来源一目了然。
 export async function upsertReviewItem(item: {
   code: string;
   chainId: string;
@@ -48,7 +50,9 @@ export async function upsertReviewItem(item: {
   if (!db) return;
   try {
     const existing = await db.relationReview.findUnique({
-      where: { code_chainId: { code: item.code, chainId: item.chainId } },
+      where: {
+        code_chainId_source: { code: item.code, chainId: item.chainId, source: item.source },
+      },
     });
     if (!existing) {
       await db.relationReview
@@ -66,32 +70,14 @@ export async function upsertReviewItem(item: {
         .catch(() => {}); // 并发下的唯一冲突:另一路已建,视作已入队
       return;
     }
-    if (existing.status === "rejected") return; // 人工已拒,不复活
-    // 三轮 review T8:幂等守卫按【同日同源】——feeder(15:30)当天摸过的条目,真实用户当天
-    // 在 Watchlist 提交复核仍要落下去(那是独立的新证据),不能静默 no-op 却回 ok。
-    if (existing.lastSeen === item.date && existing.source === item.source) return;
-    // 三轮 review T2:跨源【绝不覆盖 reason】——feeder 的统计证据("近30天复盘:N 次判定…")
-    // 是审阅优先级的依据,不能被(无鉴权面可达的)manual 提交改写;跨源新证据以标记段追加一次,
-    // 已有同源标记则只刷 lastSeen(重复提交不再膨胀)。同源 reason 变化仍视为证据更新。
-    const crossSource = existing.source !== item.source;
-    const crossTag = `[${item.source}]`;
-    let reasonUpdate: string | undefined;
-    let countIt = false;
-    if (crossSource) {
-      if (item.reason && !(existing.reason ?? "").includes(crossTag)) {
-        reasonUpdate = `${existing.reason ?? ""}${existing.reason ? " | " : ""}${crossTag} ${item.reason}`.slice(0, 600);
-        countIt = true; // 首次跨源证据,计一次
-      }
-    } else if (item.reason && item.reason !== existing.reason) {
-      reasonUpdate = item.reason;
-      countIt = true;
-    }
+    if (existing.status === "rejected") return; // 人工已拒,同源不复活
+    if (existing.lastSeen === item.date) return; // 同日同源(行=源),恒幂等
+    const evidenceChanged = !!item.reason && item.reason !== existing.reason;
     await db.relationReview.update({
       where: { id: existing.id },
       data: {
         lastSeen: item.date,
-        ...(countIt ? { hitCount: { increment: 1 } } : {}),
-        ...(reasonUpdate !== undefined ? { reason: reasonUpdate } : {}),
+        ...(evidenceChanged ? { hitCount: { increment: 1 }, reason: item.reason } : {}),
         ...(item.suggestedType ? { suggestedType: item.suggestedType } : {}),
       },
     });

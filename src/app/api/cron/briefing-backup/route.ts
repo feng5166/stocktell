@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SITE_URL } from "@/lib/site";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  const base = process.env.NEXTAUTH_URL || "https://www.stocktell.me";
+  const base = process.env.NEXTAUTH_URL || SITE_URL;
   const secret = process.env.CRON_SECRET || "";
   // 本函数 maxDuration=300 与下游主流程最坏耗时相同,裸等会先被平台硬杀。留余量 280s 主动 abort,
   // 但 abort ≠ 失败:补位真正管用的那天(07:00 漏了)下游要跑满生成+推送 ~300s,280s abort 属正常,

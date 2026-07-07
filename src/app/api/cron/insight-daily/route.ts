@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SITE_URL } from "@/lib/site";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { isAshareTradingDay } from "@/lib/tushare";
 import { todayISO } from "@/lib/date";
@@ -96,7 +97,7 @@ export async function GET(req: NextRequest) {
 
       const warn = r.guard!.warnings.length ? `⚠️ ${r.guard!.warnings.length} 项警告` : "✅ 护栏全过";
       const hits = p.mappingsDelta.slice(0, 4).map((m) => `${m.name}(${m.relation})`).join("、");
-      const base = process.env.NEXTAUTH_URL ?? "https://www.stocktell.me";
+      const base = process.env.NEXTAUTH_URL ?? SITE_URL;
       await sendFeishu(
         `${published ? "✅" : "⚠️"} ${date} ${chain.name}·每日推理${published ? "已自动发布" : "留审"}\n` +
           `💡 ${p.judgment.slice(0, 60)}\n` +

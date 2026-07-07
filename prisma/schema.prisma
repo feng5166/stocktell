@@ -299,7 +299,9 @@ model RelationReview {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  @@unique([code, chainId])
+  // 四轮 review V1:按源分账——同 (code,chainId) 不同 source 各自一行,幂等/hitCount/reason
+  // 全部行内自洽,跨源污染在结构上不可能(此前字符串拼接+共享 lastSeen 被证出三个洞)。
+  @@unique([code, chainId, source])
   @@index([status, lastSeen])
   @@map("relation_review_queue")
 }

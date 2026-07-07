@@ -12,8 +12,8 @@
 | 2026-07-04 | `12b687a` | v2 审阅回灌定稿:档位 0 差异,reason 用 v2 完整口径 | reason 更新 | docs/chain-relations-review-v2-audited.csv | 未用 downgrade/needs_evidence |
 | 2026-07-04 | `567e432` | 闭环测试:浪潮/中际旭创 reason 补验证点(不降档) | 2 改 reason | docs/relation-review-diff-test.csv | 端到端闭环验证,note 零泄漏、daily 未污染 |
 | 2026-07-04 | `d0beae0`→`ae5997f` | 13 条 direct 补 references(法定披露入口)+ 四段式验证点 + 证据状态;沪市补上交所公告检索入口 | 13 direct | src/data/direct-evidence.ts | 红旗 13→0;verified 定义收紧;EVIDENCE_LABEL 前台不显英文档 |
-| 2026-07-07 | (2.2-B) | 新增半导体设备与先进制程链:8 环节 enum 注册、8 只国内候选全部 candidate 档(不虚标不编证据)、semiconductor 触发源组启用(ASML/AMAT/LRCX/CDNS/SNPS,audit 未来链→派生层路由) | +13(8 candidate + 5 trigger) | src/data/chain-relations.ts §2.5 | 待审阅台人工校准升 direct/indirect 并补证据;KLAC/TEL/精测/概伦待入池;chains.ts 有意不配 segments(校准后再接 insight 管线,防看门狗断产误报) |
 | 2026-07-04 | `b3d5709` | 44 条 indirect 补 references + 四段式验证点(环节模板)+ evidenceStatus=partially;澜起/英维克/香农芯创 清概念词旗 | 44 indirect | src/data/indirect-evidence.generated.ts | 黄旗清零;indirect 验证点是环节模板待复核 |
+| 2026-07-07 | (2.2-B) | 新增半导体设备与先进制程链:8 环节 enum、8 只国内候选全 candidate 档;触发源【allowlist 收窄】仅 ASML/AMAT/LRCX/CDNS/SNPS(四轮 review 纠账:曾整组路由 11 只,IPGP/SITM/VECO/AMKR/Q/ENTG 未逐票评审已退回未来链) | +13(8 candidate + 5 trigger) | src/data/chain-relations.ts §2.5 | 待审阅台校准升档+补证据;KLAC/TEL/精测/概伦待入池;chains.ts 有意不配 segments(校准后接 insight 管线) |
 
 ## 回灌工作流(标准动作)
 1. 负责人在审阅台(/admin/relation-review)改档/改 reason/批量标记 → 导出 diff(含 dry-run 预览)。

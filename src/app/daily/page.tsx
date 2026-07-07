@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "产业链简报归档:按日回看全球事件到 A 股的传导 | StockTell",
   description:
     "StockTell 每个交易日的产业链推理简报归档:隔夜事件、传导环节、A 股映射与当日状态记录。研究框架梳理·非确认,不构成投资建议。",
-  alternates: { canonical: "https://www.stocktell.me/daily" },
+  alternates: { canonical: "/daily" },
 };
 
 export default async function DailyIndexPage() {
