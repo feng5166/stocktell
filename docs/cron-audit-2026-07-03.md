@@ -60,3 +60,18 @@ Vercel 超时**硬杀不走 catch → alertCron 永不执行**,而多个 cron �
 - webpush 无 per-endpoint 幂等 → 彻底解需发送日志。
 - Resend 抑制名单「假成功」→ 接 Resend webhook(见 briefing-email-reliability 记忆)。
 - 用户涨到几十人后 briefing 300s 又会紧 → 拆独立 cron / 队列。
+
+## 6. 2026-07-07 增补:密集窗口稳定性(2.1 第1周)
+
+07-07 canary 实证:07:00 主跑 `listBriefing` 首查撞 P2024 连接池超时(默认 pool_timeout=10s),
+主跑整段失败,靠 07:40 补位自愈。三项修复(只修稳定性,不动补位逻辑/业务口径):
+
+- **首查重试**:`lib/db-retry.ts` `dbReadRetry`(2 次,2s/4s 退避,只认瞬态错误码)。
+  【只给幂等读用】,写路径不重试(超时可能已提交,重试=重复写;写失败归 07:40 幂等补位管)。
+- **pool_timeout 10s→30s**:`lib/prisma.ts` 代码层追加 URL 参数(env 已显式配置则不覆盖);
+  connection_limit 不动——抬高会把 Neon 侧连接数顶爆(每 serverless 实例各持一池)。
+- **轻微错峰**:risk-radar `50 22`→`40 22`(北京 06:40,其 LLM 长尾不再叠 07:00);
+  insight-daily `5 23`→`7 23`(北京 07:07,躲开 briefing 最坏 300s 的尾巴 + 07:05 瞬时叠加)。
+  顺序不变:radar → briefing → insight → weixin/feishu(07:10)→ backup(07:40)→ watchdog(08:30)。
+- **告警口径**:主跑 catch 的告警改名「briefing(简报生成·主跑)」并注明"07:40 补位将自动重试,
+  最终结果以 08:30 看门狗为准"——区分主跑失败与最终失败。
