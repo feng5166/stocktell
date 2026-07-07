@@ -72,6 +72,22 @@ export default async function AdminMetricsPage() {
   const errToday = todayRows.reduce((s, r) => s + r.errors, 0);
   const slowToday = todayRows.reduce((s, r) => s + r.slow, 0);
 
+  // 商业化 / 增长信号(2.2-C 运营看板):DB 侧可得的转化与留存代理指标。
+  // 页面级流量(日活/首页点击/insight 停留/SEO 来路)看 Umami 后台;这里补 Umami 看不到的 DB 事实。
+  const since7d = new Date(Date.now() - 7 * 86400000);
+  const biz = db
+    ? {
+        users: await db.user.count().catch(() => -1),
+        usersNew7d: await db.user.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
+        watchRows: await db.watchlist.count().catch(() => -1),
+        watchNew7d: await db.watchlist.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
+        digestToday: await db.digestSendLog.count({ where: { date: today.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") } }).catch(() => -1),
+        proIntent: await db.feedback.count({ where: { category: "专业版意向" } }).catch(() => -1),
+        subIntent: await db.feedback.count({ where: { category: "订阅意向" } }).catch(() => -1),
+        reviewPending: await db.relationReview.count({ where: { status: "pending" } }).catch(() => -1),
+      }
+    : null;
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <h1 className="text-h1 font-semibold tracking-tight">接口监控</h1>
@@ -79,6 +95,31 @@ export default async function AdminMetricsPage() {
         按路由聚合的调用次数 / 响应时间(Asia/Shanghai 日维度)。慢响应(≥
         阈值)与错误会触发飞书告警。
       </p>
+
+      {biz && (
+        <section className="mt-5 rounded-xl bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-700">商业化 / 增长信号(2.2-C)</h2>
+          <p className="mt-0.5 text-xs text-gray-400">
+            页面级漏斗(日活/首页点击/insight 停留/SEO 来路/stocks_filter_use 等事件)看 Umami 后台;
+            此处为 DB 侧事实。事件口径:docs/埋点需求.md。
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["注册用户", `${biz.users}(7日+${biz.usersNew7d})`],
+              ["自选条目", `${biz.watchRows}(7日+${biz.watchNew7d})`],
+              ["今日早报送达", String(biz.digestToday)],
+              ["专业版意向", String(biz.proIntent)],
+              ["订阅意向", String(biz.subIntent)],
+              ["待审关系队列", String(biz.reviewPending)],
+            ].map(([label, val]) => (
+              <div key={label} className="rounded-lg bg-gray-50 px-3 py-2">
+                <div className="text-meta text-gray-400">{label}</div>
+                <div className="mt-0.5 text-lg font-semibold tabular-nums text-gray-800">{val}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {!db ? (
         <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-500">
