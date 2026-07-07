@@ -9,7 +9,7 @@ import { todayISO } from "@/lib/date";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-// 联动有效率(边级、天内不变)。?pairs=NVDA:300308,NVDA:601138 → { "NVDA:300308": stat|null, ... }
+// 历史同向率(旧称联动有效率;边级、天内不变)。?pairs=NVDA:300308,NVDA:601138 → { "NVDA:300308": stat|null, ... }
 // 按 边+日 落 DB 缓存(复用 quotes_cache,跨实例持久 —— 原 unstable_cache 不跨实例,
 // 每个冷实例都重算 = 拉 Yahoo 2年 + Tushare 2年日线,曾告警 22s)。配单飞防冷窗口并发回源。
 const MAX_PAIRS = 12;

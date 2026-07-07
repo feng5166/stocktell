@@ -4,6 +4,7 @@ import { OutcomeFeed } from "@/components/OutcomeFeed";
 import {
   pageOutcomes,
   statsOutcomes,
+  statsOutcomesByRelation,
   HIT_THRESHOLD,
   MIN_SAMPLE,
   type HitStats,
@@ -19,11 +20,13 @@ const PAGE = 20;
 
 export default async function TrackPage() {
   // 真分页:服务端只取首页 + 轻量统计;其余滚动时由 OutcomeFeed 向 /api/outcomes 拉
-  const [liveAgg, btAgg, liveFirst, btFirst] = await Promise.all([
+  const [liveAgg, btAgg, liveFirst, btFirst, liveRel] = await Promise.all([
     statsOutcomes(false).catch(() => ({ stats: emptyStats(), byImpact: [] })),
     statsOutcomes(true).catch(() => ({ stats: emptyStats(), byImpact: [] })),
     pageOutcomes(false, null, PAGE).catch(() => ({ rows: [], hasMore: false, nextCursor: null })),
     pageOutcomes(true, null, PAGE).catch(() => ({ rows: [], hasMore: false, nextCursor: null })),
+    // 2.1-W3:按关系档/链拆复盘(只拆实盘——回测是明牌参考,不值得再细分)
+    statsOutcomesByRelation(false).catch(() => ({ byRelation: [], byChain: [] })),
   ]);
   const liveStats = liveAgg.stats;
   const btStats = btAgg.stats;
@@ -106,6 +109,7 @@ export default async function TrackPage() {
             实盘记录 · 自动记账起
           </h2>
           <Overview stats={liveStats} byImpact={liveByImpact} />
+          <RelationBreakdown byRelation={liveRel.byRelation} byChain={liveRel.byChain} />
           {liveFirst.rows.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white py-12 text-center">
               <div className="text-sm font-medium text-gray-500">还在积累中</div>
@@ -153,6 +157,71 @@ export default async function TrackPage() {
 
 function emptyStats(): HitStats {
   return { evaluated: 0, hits: 0, rate: null };
+}
+
+// 按关系档 / 按链拆复盘(2.1-W3):复盘的主口径=「哪类关系判断被验证」,不是笼统的涨跌命中。
+// direct 与 sentiment 的验证含义不同:direct 未验证要复核订单/收入证据(高频未验证会自动进
+// 审阅队列),sentiment 未验证多半是情绪衰减(符合预期)。历史同向统计只是参考、非基本面验证。
+const REL_META: Record<string, { label: string; verifyHint: string }> = {
+  direct: { label: "直接映射", verifyHint: "看订单/客户/收入占比/毛利率" },
+  indirect: { label: "间接映射", verifyHint: "看环节变化与业务披露" },
+  sentiment: { label: "情绪映射", verifyHint: "看情绪是否衰减、有无基本面传导" },
+  weak: { label: "弱映射", verifyHint: "外围观察,评估是否保留" },
+  candidate: { label: "待验证", verifyHint: "候选池,证据不足未归档" },
+  trigger: { label: "触发源", verifyHint: "看是否引发链级事件" },
+  unmapped: { label: "未覆盖", verifyHint: "尚无关系档,待验证收录" },
+};
+
+function RelationBreakdown({
+  byRelation,
+  byChain,
+}: {
+  byRelation: { relationType: string; stats: HitStats }[];
+  byChain: { chainId: string; stats: HitStats }[];
+}) {
+  if (byRelation.length === 0) return null;
+  return (
+    <div className="mb-3 rounded-xl bg-white p-4 shadow-sm sm:p-5">
+      <h3 className="text-xs font-semibold text-gray-700">按关系档复盘 · 哪类判断被验证了</h3>
+      <div className="mt-2 space-y-1.5">
+        {byRelation.map(({ relationType, stats }) => {
+          const meta = REL_META[relationType] ?? { label: relationType, verifyHint: "" };
+          const showPct = stats.evaluated >= 5 && stats.rate !== null;
+          return (
+            <div key={relationType} className="flex items-baseline gap-2 text-xs">
+              <span className="w-16 shrink-0 font-medium text-gray-700">{meta.label}</span>
+              <span className="tabular-nums text-gray-600">
+                {showPct ? `验证 ${Math.round(stats.rate! * 100)}%` : "样本积累中"}
+                <span className="text-gray-400">
+                  ({stats.hits}/{stats.evaluated})
+                </span>
+              </span>
+              <span className="min-w-0 truncate text-meta text-gray-400">{meta.verifyHint}</span>
+            </div>
+          );
+        })}
+      </div>
+      {byChain.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500">
+          {byChain.map(({ chainId, stats }) => (
+            <span key={chainId}>
+              {chainId} ·{" "}
+              {stats.evaluated >= 5 && stats.rate !== null
+                ? `验证 ${Math.round(stats.rate * 100)}% `
+                : ""}
+              <span className="text-gray-400">
+                ({stats.hits}/{stats.evaluated})
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-meta leading-relaxed text-gray-400">
+        以上为历史同向统计(市场表现是否与判断同向),供参考、降权使用;不等于基本面验证,不预测未来。
+        直接映射高频未验证的关系会进入人工审阅队列复核,关系档不会被统计自动调整。
+      </p>
+    </div>
+  );
 }
 
 // 图例小圆点:颜色与明细表的有效/未联动/未判定一一对应

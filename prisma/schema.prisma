@@ -280,3 +280,26 @@ model InsightDoc {
   @@index([chainId, date, kind])
   @@map("insight_docs")
 }
+
+// 层③ relationReviewQueue 持久化(2.1-W3,2026-07-07 拍板):多次命中/复盘高频未验证的
+// 关系进队列待人工沉淀。不变量#4:队列【绝不】自动改 staticRelations——confirmed 只是
+// 人工结论记录,改档仍走 chain-relations.ts 代码评审。
+model RelationReview {
+  id            String   @id @default(uuid())
+  code          String // 股票代码
+  chainId       String   @map("chain_id")
+  suggestedType String?  @map("suggested_type") // 建议档位(可空,人工判)
+  reason        String? // 进队原因(如「近10次复盘仅验证1次」)
+  source        String // outcome-review | daily-signal | manual
+  hitCount      Int      @default(1) @map("hit_count") // 累计触发次数
+  firstSeen     String   @map("first_seen") // YYYY-MM-DD
+  lastSeen      String   @map("last_seen")
+  status        String   @default("pending") // pending | confirmed | rejected
+  note          String? // 人工审阅备注(仅审计,不上前台=不变量#5)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([code, chainId])
+  @@index([status, lastSeen])
+  @@map("relation_review_queue")
+}

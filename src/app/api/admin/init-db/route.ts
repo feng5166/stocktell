@@ -229,6 +229,26 @@ const IDX_INSIGHT_SLUG = `CREATE UNIQUE INDEX IF NOT EXISTS "insight_docs_slug_k
 const IDX_INSIGHT_DATE_STATUS = `CREATE INDEX IF NOT EXISTS "insight_docs_date_status_idx" ON "insight_docs" ("date", "status")`;
 const IDX_INSIGHT_CHAIN = `CREATE INDEX IF NOT EXISTS "insight_docs_chain_id_date_kind_idx" ON "insight_docs" ("chain_id", "date", "kind")`;
 
+// 层③ relationReviewQueue 持久化(2.1-W3,幂等)。不变量#4:队列不自动改 staticRelations。
+const T_RELATION_REVIEW = `CREATE TABLE IF NOT EXISTS "relation_review_queue" (
+  "id" text NOT NULL,
+  "code" text NOT NULL,
+  "chain_id" text NOT NULL,
+  "suggested_type" text,
+  "reason" text,
+  "source" text NOT NULL,
+  "hit_count" integer NOT NULL DEFAULT 1,
+  "first_seen" text NOT NULL,
+  "last_seen" text NOT NULL,
+  "status" text NOT NULL DEFAULT 'pending',
+  "note" text,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "relation_review_queue_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_RELATION_REVIEW_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "relation_review_queue_code_chain_id_key" ON "relation_review_queue" ("code", "chain_id")`;
+const IDX_RELATION_REVIEW_STATUS = `CREATE INDEX IF NOT EXISTS "relation_review_queue_status_last_seen_idx" ON "relation_review_queue" ("status", "last_seen")`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -288,6 +308,9 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(T_DIGEST_SEND_LOG);
         await tx.$executeRawUnsafe(IDX_DIGEST_SEND_UNIQUE);
         await tx.$executeRawUnsafe(IDX_DIGEST_SEND_DATE);
+        await tx.$executeRawUnsafe(T_RELATION_REVIEW);
+        await tx.$executeRawUnsafe(IDX_RELATION_REVIEW_UNIQUE);
+        await tx.$executeRawUnsafe(IDX_RELATION_REVIEW_STATUS);
       },
       { timeout: 30000 }
     );
