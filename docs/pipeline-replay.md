@@ -12,6 +12,8 @@ pnpm pipeline:replay --date=2026-07-02 --mode=full --llm=on       # Case A' 全�
 pnpm pipeline:replay --date=2026-07-06 --mode=market-closed       # Case B 美股休市
 pnpm pipeline:replay --date=2026-07-02 --mode=compliance-block    # Case D 合规阻断注入(零网络,PR 门禁)
 pnpm pipeline:replay --date=2026-07-06 --mode=holiday-bridge      # Case F 节后首日观察(零网络,PR 门禁)
+pnpm pipeline:replay --date=2026-07-02 --mode=full --fixture      # 本地 fixture 回放(零网络,PR 门禁,2.2-A)
+pnpm pipeline:replay --date=2026-07-02 --mode=full --record-fixture  # 抓真数据录制/更新 fixture(需网络)
 ```
 
 - `--date`:回放的业务日期(北京简报日)。
@@ -75,6 +77,7 @@ relationParity / sourceLeakage / compliance / assertions / verdict),发结果只
    (holiday-bridge 的 fallbackFromDate 常量在 scripts/pipeline-replay.ts 内,与 full 样本日同族);
 3. 同步四处:本文档用法段与样本矩阵、`.github/workflows/relations-check.yml`、
    `.github/workflows/replay-nightly.yml`、`scripts/pipeline-replay.ts` 内的日期常量;
+   并对新样本日 `--record-fixture` 重录 `fixtures/replay/`(旧日期的 fixture 文件一并删除);
 4. 提交后确认 nightly 首跑绿。
 
 ## 状态口径(status taxonomy)
@@ -117,7 +120,16 @@ npm run check:resolver-health
 npm run check:source-leakage -- --blocking
 npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=compliance-block --llm=off
 npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=holiday-bridge --llm=off
+npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off --fixture
+npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off --fixture
 ```
+
+> **2.2-A(2026-07-07 拍板)起 full / market-closed 已进 PR blocking**:行情来自
+> `fixtures/replay/{mode}-{date}.quotes.json` 本地快照(零网络,不受东财/Yahoo 波动影响),
+> 并与录制时的 expected snapshot(同目录 `.snapshot.json`)做稳定子集对照
+> (marketStatus/briefStatus/engine/eventCount/insightCount/sourceLeakage)——管线结论漂移在
+> PR 显式红出;完整 snapshot 入库,重录时 git diff 即人可读的行为变化清单。
+> **有意改变结论的 PR**(如调 MOVER 阈值)须 `--record-fixture` 重录并把 diff 一并提交评审。
 
 compliance-block 进 PR blocking 的前提(已满足):**零网络**(llm=off 摘 LLM/博查 key +
 `INSIGHT_SKIP_URL_VERIFY=1` 免 HEAD 探测)、**零 DB**(无 `POSTGRES_PRISMA_URL` 时 `getPrisma()` 返 null)、
@@ -132,15 +144,16 @@ blocking 条件:
 - compliance fixture 未被阻断(status 必须=blocked);
 - direct 缺 evidence / unknown segment(relation-lint 覆盖)。
 
-### nightly(`.github/workflows/replay-nightly.yml`,每日 + 可手动触发)
+### nightly = 外部数据源健康检查(`.github/workflows/replay-nightly.yml`,每日 + 可手动触发)
 
 ```bash
-npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off          # Case C 兜底
-npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off # Case B 休市
+npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off          # 实抓(东财/Yahoo 健康)
+npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off # 实抓(同上)
 ```
 
-full / market-closed 依赖东财历史日 K(网络),不进 PR blocking 防 flaky;样本日在 250 根日 K 窗口内
-有效约一年,**行情 fixture 落档(2.1)后再升 PR blocking**。
+2.2-A 起 nightly 职责重定位:门禁职责已由 fixture 路径承担(上面 PR blocking),这里保留
+**实抓路径**作外部源健康检查——限流/封 IP/格式漂移/样本日出窗(SAMPLE_DATE_EXPIRED)第一时间可见。
+**nightly 红 ≠ 门禁破**,含义是"外部源或样本日需要人工看一眼"。
 
 ### 可选(花钱,手动/低频)
 

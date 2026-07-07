@@ -1,0 +1,75 @@
+{
+  "date": "2026-07-02",
+  "mode": "full",
+  "llm": "off",
+  "dryRun": true,
+  "marketStatus": "open",
+  "briefStatus": "fallback",
+  "engine": "template",
+  "eventCount": 8,
+  "insightCount": 2,
+  "insights": [
+    {
+      "chain": "ai",
+      "ok": true,
+      "blocked": false,
+      "confidence": "低",
+      "mappings": 11,
+      "blockers": [],
+      "warnings": [
+        "references 全部不可达(进审,请人工核链接)"
+      ]
+    },
+    {
+      "chain": "data-center-power",
+      "ok": true,
+      "blocked": false,
+      "confidence": "低",
+      "mappings": 0,
+      "blockers": [],
+      "warnings": [
+        "references 全部不可达(进审,请人工核链接)"
+      ]
+    }
+  ],
+  "resolverSource": "resolver",
+  "sourceLeakage": 0,
+  "relationsChecked": {
+    "yingweikeAiInfra": "not_found",
+    "yingweikePower": "direct",
+    "kingsoftAiInfra": "not_found",
+    "kingsoftAiApp": "indirect",
+    "langchaoAiInfra": "direct",
+    "zhongjiAiInfra": "direct",
+    "eatonTrigger": "trigger",
+    "beifanghuachuang": "not_found"
+  },
+  "relationParity": {
+    "total": 43,
+    "unchanged": 39,
+    "changed": [
+      "002837[ai-infra] 间接映射→∅",
+      "300693[ai-infra] 间接映射→∅",
+      "002518[ai-infra] 间接映射→∅",
+      "600875[ai-infra] 情绪映射→∅"
+    ]
+  },
+  "quoteMisses": [],
+  "compliance": "passed",
+  "assertions": [
+    "✅ Case C(兜底):美股为交易日(marketStatus=open)(open)",
+    "✅ Case C(兜底):count>0(简报有产出)(count=8)",
+    "✅ Case C:LLM 挂→模板兜底(engine=template,status=fallback,非 failed)(engine=template,status=fallback)",
+    "✅ Case C(兜底):生成 insight ≥1 且未被阻断(ok=2/2)",
+    "✅ Case C:兜底 insight 置信=低(不伪装确定性)(低,低)",
+    "✅ Case E:英维克不在 ai-infra(not_found)",
+    "✅ Case E:英维克电力链 direct(direct)",
+    "✅ Case E:金山不挂 ai-infra(not_found)",
+    "✅ Case E:浪潮 ai-infra direct(direct)",
+    "✅ Case E:中际旭创 ai-infra direct(direct)",
+    "✅ Case E:Eaton=trigger(trigger)",
+    "✅ Case E:北方华创不被旧源捞回(not_found)",
+    "✅ source-leakage=0(无旧源直读)(hits=0)"
+  ],
+  "verdict": "PASS"
+}

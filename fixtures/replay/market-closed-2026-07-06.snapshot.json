@@ -1,0 +1,51 @@
+{
+  "date": "2026-07-06",
+  "mode": "market-closed",
+  "llm": "off",
+  "dryRun": true,
+  "marketStatus": "us_closed",
+  "briefStatus": "market_closed",
+  "engine": "template",
+  "eventCount": 0,
+  "insightCount": 0,
+  "insights": [],
+  "resolverSource": "resolver",
+  "sourceLeakage": 0,
+  "relationsChecked": {
+    "yingweikeAiInfra": "not_found",
+    "yingweikePower": "direct",
+    "kingsoftAiInfra": "not_found",
+    "kingsoftAiApp": "indirect",
+    "langchaoAiInfra": "direct",
+    "zhongjiAiInfra": "direct",
+    "eatonTrigger": "trigger",
+    "beifanghuachuang": "not_found"
+  },
+  "relationParity": {
+    "total": 43,
+    "unchanged": 39,
+    "changed": [
+      "002837[ai-infra] 间接映射→∅",
+      "300693[ai-infra] 间接映射→∅",
+      "002518[ai-infra] 间接映射→∅",
+      "600875[ai-infra] 情绪映射→∅"
+    ]
+  },
+  "quoteMisses": [],
+  "compliance": "passed",
+  "assertions": [
+    "✅ Case B:usMarketClosed=true(us_closed)",
+    "✅ Case B:count=0(不硬造隔夜映射)(count=0)",
+    "✅ Case B:status=market_closed(非 failed)(market_closed)",
+    "✅ Case B:insight 不硬造(0 条输入即跳过)(insights=0)",
+    "✅ Case E:英维克不在 ai-infra(not_found)",
+    "✅ Case E:英维克电力链 direct(direct)",
+    "✅ Case E:金山不挂 ai-infra(not_found)",
+    "✅ Case E:浪潮 ai-infra direct(direct)",
+    "✅ Case E:中际旭创 ai-infra direct(direct)",
+    "✅ Case E:Eaton=trigger(trigger)",
+    "✅ Case E:北方华创不被旧源捞回(not_found)",
+    "✅ source-leakage=0(无旧源直读)(hits=0)"
+  ],
+  "verdict": "PASS"
+}

@@ -6,6 +6,8 @@
 //   pnpm pipeline:replay --date=2026-07-06 --mode=market-closed              # Case B 美股休市(07-06 场景)
 //   pnpm pipeline:replay --date=2026-07-02 --mode=compliance-block           # Case D 合规阻断注入(零网络,PR 门禁)
 //   pnpm pipeline:replay --date=2026-07-06 --mode=holiday-bridge             # Case F 节后首日观察(零网络,PR 门禁)
+//   pnpm pipeline:replay --date=2026-07-02 --mode=full --fixture             # 本地 fixture 回放(零网络,PR 门禁,2.2-A)
+//   pnpm pipeline:replay --date=2026-07-02 --mode=full --record-fixture      # 抓真数据录制/更新 fixture(需网络)
 //
 // v2 相对 v1:真回放 generate——历史行情来自东财日 K(us-history.usDailyBars),findMovers/generateDrafts
 // 接受 ReplayEnv 注入(历史行情快照+回放日 07:00 锚点);insight 走 itemsOverride 内存直灌。
@@ -21,7 +23,7 @@
 //   blocked        = 合规命中;
 //   market_closed  = 美股休市。
 // --llm=off 的 full 即 Case C(兜底路径)。不得把 LLM 挂等同于 failed。
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { scanSourceLeakage } from "./leakage-rules";
 
@@ -35,10 +37,21 @@ const mode = (getArg("mode") ?? "full") as
   | "compliance-block"
   | "holiday-bridge";
 const llm = (getArg("llm") ?? "off") as "on" | "off";
+// 2.2-A 行情 fixture 落档:--fixture=从 fixtures/replay/ 加载行情快照(零网络→可进 PR blocking);
+// --record-fixture=抓真数据写入 fixture+expected snapshot(样本日轮换/首次落档时用,需网络)。
+const useFixture = args.includes("--fixture");
+const recordFixture = args.includes("--record-fixture");
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
   console.error("必须指定 --date=YYYY-MM-DD(回放的业务日期)");
   process.exit(2);
 }
+if (useFixture && recordFixture) {
+  console.error("--fixture 与 --record-fixture 互斥");
+  process.exit(2);
+}
+const FIXTURE_DIR = join(process.cwd(), "fixtures", "replay");
+const fixtureQuotesPath = join(FIXTURE_DIR, `${mode}-${date}.quotes.json`);
+const fixtureSnapshotPath = join(FIXTURE_DIR, `${mode}-${date}.snapshot.json`);
 
 /* ---------- env:先载 .env.local,再按 --llm 裁剪,然后才动态 import 业务模块 ---------- */
 function loadEnvLocal() {
@@ -309,26 +322,46 @@ function sourceLeakage() {
     const empty = buildHolidayBridge({ date, fallbackFromDate, recapItems: [] });
     expect("Case F:无素材→不出 bridge(宁缺勿造)", empty === null, empty ? "built(红线)" : "null");
   } else {
-    // full / market-closed:真回放 generate
-    const { quotes, misses, universe, expired } = await buildReplayQuotes();
-    quoteMisses = misses;
-    // 数据地板 guard:行情源不可达(限流/断网)时【不】拿空数据断言休市语义——那会把"harness 取数失败"
-    // 误报成"管线判定错误"(空 quotes → freshestUS=undefined → 误判 open+failed)。按口径:failed/
-    // DATA_UNAVAILABLE 只给地板故障,红但原因一眼可读。
-    // review F8:样本日老化(出 250 根 K 窗口)单独出 SAMPLE_DATE_EXPIRED——那是"换样本日"
-    // 的维护动作,不是限流排查,verdict 必须把人指对方向。
-    if (misses.length > universe / 2) {
-      const expiredDominant = expired.length >= misses.length / 2;
-      console.log("=== Pipeline Replay Snapshot ===");
-      console.log(JSON.stringify({
-        date, mode, llm, dryRun: true,
-        verdict: expiredDominant
-          ? `SAMPLE_DATE_EXPIRED(样本日 ${date} 超出历史 K 线窗口:expired ${expired.length}/${universe}。请按 docs/pipeline-replay.md 换新样本日并同步 relations-check.yml / replay-nightly.yml)`
-          : `DATA_UNAVAILABLE(行情源不可达/限流:miss ${misses.length}/${universe})`,
-        quoteMisses: misses.slice(0, 12),
-        expiredCodes: expired.slice(0, 12),
-      }, null, 2));
-      process.exit(1);
+    // full / market-closed:真回放 generate。
+    // 行情来源二选一(2.2-A):--fixture=本地快照(零网络,PR blocking 用);默认=东财/Yahoo
+    // 实抓(nightly 外部源健康检查用;--record-fixture 时同时落档)。
+    let quotes: Record<string, Quote>;
+    if (useFixture) {
+      if (!existsSync(fixtureQuotesPath)) {
+        console.error(
+          `fixture 不存在:${fixtureQuotesPath}\n先在有网环境录制:npx tsx scripts/pipeline-replay.ts --date=${date} --mode=${mode} --record-fixture`
+        );
+        process.exit(2);
+      }
+      quotes = JSON.parse(readFileSync(fixtureQuotesPath, "utf8")) as Record<string, Quote>;
+      console.log(`[fixture] 行情来自 ${fixtureQuotesPath}(${Object.keys(quotes).length} 票,零网络)`);
+    } else {
+      const live = await buildReplayQuotes();
+      quoteMisses = live.misses;
+      // 数据地板 guard:行情源不可达(限流/断网)时【不】拿空数据断言休市语义——那会把"harness 取数失败"
+      // 误报成"管线判定错误"(空 quotes → freshestUS=undefined → 误判 open+failed)。按口径:failed/
+      // DATA_UNAVAILABLE 只给地板故障,红但原因一眼可读。
+      // review F8:样本日老化(出 250 根 K 窗口)单独出 SAMPLE_DATE_EXPIRED——那是"换样本日"
+      // 的维护动作,不是限流排查,verdict 必须把人指对方向。
+      if (live.misses.length > live.universe / 2) {
+        const expiredDominant = live.expired.length >= live.misses.length / 2;
+        console.log("=== Pipeline Replay Snapshot ===");
+        console.log(JSON.stringify({
+          date, mode, llm, dryRun: true,
+          verdict: expiredDominant
+            ? `SAMPLE_DATE_EXPIRED(样本日 ${date} 超出历史 K 线窗口:expired ${live.expired.length}/${live.universe}。请按 docs/pipeline-replay.md 换新样本日并同步 relations-check.yml / replay-nightly.yml)`
+            : `DATA_UNAVAILABLE(行情源不可达/限流:miss ${live.misses.length}/${live.universe})`,
+          quoteMisses: live.misses.slice(0, 12),
+          expiredCodes: live.expired.slice(0, 12),
+        }, null, 2));
+        process.exit(1);
+      }
+      quotes = live.quotes;
+      if (recordFixture) {
+        mkdirSync(FIXTURE_DIR, { recursive: true });
+        writeFileSync(fixtureQuotesPath, JSON.stringify(quotes, null, 2) + "\n");
+        console.log(`[fixture] 已录制行情快照 → ${fixtureQuotesPath}(${Object.keys(quotes).length} 票)`);
+      }
     }
     const replay = { quotes, now: new Date(`${date}T07:00:00+08:00`) };
     const g = await generateDrafts({ date, replay });
@@ -441,6 +474,34 @@ function sourceLeakage() {
   const leakage = sourceLeakage();
   expect("source-leakage=0(无旧源直读)", leakage.hits === 0, `hits=${leakage.hits}`);
 
+  /* ---------- fixture expected 对照(2.2-A) ---------- */
+  // fixture 回放不只要"跑通",还要与录制时的结论一致——管线逻辑改动引起的结论漂移
+  // (如 movers 数变化、休市判定翻转)必须在 PR 里显式红出来,而不是静默换了预期。
+  // 只对稳定子集断言(verdict/断言文本会随断言集演进,不适合逐字对照);完整 snapshot
+  // 已随 fixture 入库,重录时 git diff 即人可读的行为变化清单。
+  if (useFixture && (mode === "full" || mode === "market-closed")) {
+    if (existsSync(fixtureSnapshotPath)) {
+      const exp = JSON.parse(readFileSync(fixtureSnapshotPath, "utf8")) as Record<string, unknown>;
+      const stable: Record<string, unknown> = {
+        marketStatus,
+        briefStatus,
+        engine,
+        eventCount,
+        insightCount: insights.filter((i) => i.ok && !i.blocked).length,
+        sourceLeakage: leakage.hits,
+      };
+      for (const [k, v] of Object.entries(stable)) {
+        expect(`fixture 对照:${k} 与录制一致`, exp[k] === v, `expected=${String(exp[k])}, got=${String(v)}`);
+      }
+    } else {
+      expect(
+        "fixture 对照:expected snapshot 存在",
+        false,
+        `缺 ${fixtureSnapshotPath},请 --record-fixture 重录`
+      );
+    }
+  }
+
   /* ---------- snapshot ---------- */
   const failed = assertions.filter((a) => !a.pass);
   const snapshot = {
@@ -468,6 +529,11 @@ function sourceLeakage() {
     assertions: assertions.map((a) => `${a.pass ? "✅" : "❌"} ${a.name}${a.got !== undefined ? `(${a.got})` : ""}`),
     verdict: failed.length === 0 ? "PASS" : `FAIL(${failed.length})`,
   };
+  if (recordFixture && (mode === "full" || mode === "market-closed")) {
+    mkdirSync(FIXTURE_DIR, { recursive: true });
+    writeFileSync(fixtureSnapshotPath, JSON.stringify(snapshot, null, 2) + "\n");
+    console.log(`[fixture] 已落档 expected snapshot → ${fixtureSnapshotPath}`);
+  }
   console.log("=== Pipeline Replay Snapshot ===");
   console.log(JSON.stringify(snapshot, null, 2));
   process.exit(failed.length === 0 ? 0 : 1);
