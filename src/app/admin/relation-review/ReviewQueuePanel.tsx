@@ -18,17 +18,28 @@ const REL_LABEL: Record<string, string> = {
 export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
 
+  // 二轮 review N7:必须读响应——401/500 时此前静默刷新,条目看似处理了实则没落库、
+  // 手输备注全丢。失败=显式报错+不刷新(备注留在输入框);note 恒传(空串=清空,undefined 才是不动)。
   async function act(id: string, status: "confirmed" | "rejected") {
     setBusy(id);
+    setErr(null);
     try {
-      await fetch("/api/admin/relation-review", {
+      const r = await fetch("/api/admin/relation-review", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status, note: noteDraft[id] || undefined }),
+        body: JSON.stringify({ id, status, note: noteDraft[id] ?? "" }),
       });
+      const d = await r.json().catch(() => ({ ok: false }));
+      if (!r.ok || !d.ok) {
+        setErr(`操作失败(HTTP ${r.status}${d.error ? ` · ${d.error}` : ""}),未落库——请重试或重新登录`);
+        return;
+      }
       router.refresh();
+    } catch (e) {
+      setErr(`网络错误,未落库:${String(e)}`);
     } finally {
       setBusy(null);
     }
@@ -43,6 +54,9 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
   }
   return (
     <div className="mb-6 space-y-2">
+      {err && (
+        <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{err}</div>
+      )}
       {items.map((it) => (
         <div key={it.id} className="rounded-lg bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center gap-2 text-sm">

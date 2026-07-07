@@ -93,7 +93,9 @@ function sourceLeakage() {
   // 【探针集是显式清单不是位置切片】(review F9):slice(0,12) 会被 stocks.ts 重排/插新票静默
   // 换掉——新上市薄历史票 bars<2 直接 miss,12 样本分母下几只就触发 DATA_UNAVAILABLE 假红。
   // 清单标准:长上市、高流动、多行业分散(休市判定是日历级,谁都行,要的是"一定有 250 根 K")。
-  const MARKET_PROBE = ["NVDA", "MSFT", "AAPL", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD", "ORCL", "ANET", "ETN"];
+  // 二轮 N6:清单必须对着 STOCKS 校验(上一版含池里不存在的 AAPL,实际探针只有 11 只),
+  // 且交集不足时【不得】静默退回位置切片(F9 原 bug 回归)——显式报错红给人看。
+  const MARKET_PROBE = ["NVDA", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD", "ORCL", "ANET", "ETN", "INTC"];
   async function buildReplayQuotes(): Promise<{
     quotes: Record<string, Quote>;
     misses: string[];
@@ -105,7 +107,16 @@ function sourceLeakage() {
     // 不需要全池——12 票探针集把请求量压到限流阈值下(2026-07-06 nightly 二跑实测:全量 71 请求
     // 即使隔 60s 仍被东财限流)。full 模式仍全量(要真实 movers)。
     const probe = usAll.filter((s: { code: string }) => MARKET_PROBE.includes(s.code));
-    const usStocks = mode === "market-closed" && probe.length >= 8 ? probe : mode === "market-closed" ? usAll.slice(0, 12) : usAll;
+    if (mode === "market-closed" && probe.length < MARKET_PROBE.length) {
+      const missing = MARKET_PROBE.filter((c) => !probe.some((s: { code: string }) => s.code === c));
+      if (probe.length < 8) {
+        // 探针不足以支撑 >50% 地板判定:显式失败,绝不静默退回位置切片(F9 原 bug)
+        console.error(`MARKET_PROBE 与 STOCKS 交集仅 ${probe.length} 只(<8),缺:${missing.join(",")}。请更新 scripts/pipeline-replay.ts 的探针清单`);
+        process.exit(2);
+      }
+      console.warn(`⚠️ MARKET_PROBE 有 ${missing.length} 只不在 STOCKS(${missing.join(",")}),实际探针 ${probe.length} 只——请尽快更新清单`);
+    }
+    const usStocks = mode === "market-closed" ? probe : usAll;
     const quotes: Record<string, Quote> = {};
     const expired: string[] = [];
     // review F8:「样本日超出 ~250 根 K 线窗口」(bars 在手但 date 前无 bar)≠「行情源不可达」。

@@ -31,8 +31,11 @@ export type RelationReviewRow = {
   note: string | null;
 };
 
-// 入队/累计:同 (code, chainId) 幂等——已存在则 hitCount+1、刷 lastSeen/reason。
-// 已被人工 rejected 的不复活(人已拒,重复入队=骚扰);confirmed 的只刷计数供审计。
+// 入队/累计:同 (code, chainId) 幂等。二轮 review N8:hitCount 只在【证据变化】时 +1——
+// feeder 每天对同一 30 天滚动窗重扫,零新判定也无脑 +1 的话,计数器度量的是"cron 跑了几天"
+// 而非证据量,审阅人会按噪声排优先级。同日重跑恒幂等;reason(内嵌判定/验证数)没变=只刷
+// lastSeen 不加计数。已被人工 rejected 的不复活;不再逐条开事务(小项③:唯一约束竞态由
+// create 的冲突 catch 兜住,15:30 cron 不为它烧 N×4 次往返)。
 export async function upsertReviewItem(item: {
   code: string;
   chainId: string;
@@ -43,13 +46,13 @@ export async function upsertReviewItem(item: {
 }): Promise<void> {
   const db = getPrisma();
   if (!db) return;
-  await db
-    .$transaction(async (tx) => {
-      const existing = await tx.relationReview.findUnique({
-        where: { code_chainId: { code: item.code, chainId: item.chainId } },
-      });
-      if (!existing) {
-        await tx.relationReview.create({
+  try {
+    const existing = await db.relationReview.findUnique({
+      where: { code_chainId: { code: item.code, chainId: item.chainId } },
+    });
+    if (!existing) {
+      await db.relationReview
+        .create({
           data: {
             code: item.code,
             chainId: item.chainId,
@@ -59,21 +62,26 @@ export async function upsertReviewItem(item: {
             firstSeen: item.date,
             lastSeen: item.date,
           },
-        });
-        return;
-      }
-      if (existing.status === "rejected") return; // 人工已拒,不复活
-      await tx.relationReview.update({
-        where: { id: existing.id },
-        data: {
-          hitCount: { increment: 1 },
-          lastSeen: item.date,
-          ...(item.reason ? { reason: item.reason } : {}),
-          ...(item.suggestedType ? { suggestedType: item.suggestedType } : {}),
-        },
-      });
-    })
-    .catch(() => {});
+        })
+        .catch(() => {}); // 并发下的唯一冲突:另一路已建,视作已入队
+      return;
+    }
+    if (existing.status === "rejected") return; // 人工已拒,不复活
+    if (existing.lastSeen === item.date) return; // 同日重跑,恒幂等
+    const evidenceChanged = !!item.reason && item.reason !== existing.reason;
+    await db.relationReview.update({
+      where: { id: existing.id },
+      data: {
+        lastSeen: item.date,
+        ...(evidenceChanged
+          ? { hitCount: { increment: 1 }, reason: item.reason }
+          : {}),
+        ...(item.suggestedType ? { suggestedType: item.suggestedType } : {}),
+      },
+    });
+  } catch {
+    /* 队列坏了不连累调用方 */
+  }
 }
 
 export async function listReviewQueue(status?: ReviewStatus): Promise<RelationReviewRow[]> {
@@ -90,6 +98,7 @@ export async function listReviewQueue(status?: ReviewStatus): Promise<RelationRe
 }
 
 // 人工审阅动作(admin):只改队列状态与备注,不碰 staticRelations(不变量#4)。
+// note 语义(N7):undefined=不动,空串=清空(存 null)。
 export async function setReviewStatus(
   id: string,
   status: ReviewStatus,
@@ -98,7 +107,10 @@ export async function setReviewStatus(
   const db = getPrisma();
   if (!db) return false;
   const r = await db.relationReview
-    .update({ where: { id }, data: { status, ...(note !== undefined ? { note } : {}) } })
+    .update({
+      where: { id },
+      data: { status, ...(note !== undefined ? { note: note === "" ? null : note } : {}) },
+    })
     .catch(() => null);
   return !!r;
 }
@@ -114,6 +126,11 @@ export async function countPendingReview(): Promise<number> {
 // 口径:只看实盘(isBacktest=false)、近 lookback 个自然日、已判定(hit 非 null)样本;
 // 某 (code) 判定数 ≥ minJudged 且验证率 < maxRate → 入队(带链身份与统计上下文)。
 // 阈值保守起步(≥6 次判定、验证率 <25%),宁少勿滥——队列刷屏=没人看。
+// 二轮 review N9:只喂 direct/indirect——sentiment/weak/candidate 低同向率是【设计预期】
+// (情绪衰减/外围观察),入队会霸榜把真正要复核的 direct 淹没,且与 /track 页"直接映射
+// 高频未验证进入审阅队列"的产品承诺相悖。
+const REVIEW_FEED_TYPES = new Set(["direct", "indirect"]);
+
 export async function feedReviewQueueFromOutcomes(
   date: string,
   opts: { lookbackDays?: number; minJudged?: number; maxRate?: number } = {}
@@ -123,7 +140,9 @@ export async function feedReviewQueueFromOutcomes(
   const lookbackDays = opts.lookbackDays ?? 30;
   const minJudged = opts.minJudged ?? 6;
   const maxRate = opts.maxRate ?? 0.25;
-  const since = new Date(new Date(`${date}T00:00:00+08:00`).getTime() - lookbackDays * 86400_000)
+  // 小项①:窗口按【日期字符串】直减,不经 toISOString——北京 T00:00 转 UTC 会回退一天,
+  // 30 天窗实际 31 天,与 reason 文案对不上。用 UTC 正午锚点做日历减法,时区中立。
+  const since = new Date(new Date(`${date}T12:00:00Z`).getTime() - lookbackDays * 86400_000)
     .toISOString()
     .slice(0, 10);
   const rows = await db.briefingOutcome
@@ -146,6 +165,7 @@ export async function feedReviewQueueFromOutcomes(
     if (m.judged < minJudged || m.hits / m.judged >= maxRate) continue;
     const rel = resolvePrimary(code);
     if (!rel) continue; // 无静态关系的票不进关系队列(它没有档可复核)
+    if (!REVIEW_FEED_TYPES.has(rel.relationType)) continue; // N9:低档低同向=预期,不进队
     await upsertReviewItem({
       code,
       chainId: rel.chainId,

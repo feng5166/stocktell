@@ -251,8 +251,9 @@ export async function statsOutcomes(
 }
 
 // 按关系档 / 按链拆复盘(2.1-W3:复盘的主口径从"涨跌命中"转向"关系验证")。
-// 链身份不落库(读时经 resolvePrimary 解析=resolver 唯一入口),所以不能用 DB groupBy——
-// 轻量 select {code,hit} 后在 Node 聚合;code→关系解析先归并(几百行、几十个 code,开销可忽略)。
+// 链身份不落库(读时经 resolvePrimary 解析=resolver 唯一入口)——但归并计数可以下推 DB:
+// groupBy(code,hit) 返回 ≤ 2×code 数 的聚合行,不再把整表拉进 Node(二轮 review 小项②;
+// 同文件 statsOutcomes 此前正是为此从全表扫迁到 groupBy 的)。
 // direct/indirect/sentiment 分开统计正是差异化所在:直接映射的验证率和情绪映射的验证率
 // 是两种含义,混在一起就退化回"涨跌有效率"。
 export async function statsOutcomesByRelation(backtest: boolean): Promise<{
@@ -261,19 +262,19 @@ export async function statsOutcomesByRelation(backtest: boolean): Promise<{
 }> {
   const db = getPrisma();
   if (!db) return { byRelation: [], byChain: [] };
-  const rows = await db.briefingOutcome
-    .findMany({
+  const grouped = await db.briefingOutcome
+    .groupBy({
+      by: ["code", "hit"],
       where: { isBacktest: backtest, hit: { not: null } },
-      select: { code: true, hit: true },
+      _count: { _all: true },
     })
-    .catch(() => [] as Array<{ code: string; hit: boolean | null }>);
-  // 先按 code 归并计数,再一次性解析关系(避免每行跑 resolver)
+    .catch(() => [] as Array<{ code: string; hit: boolean | null; _count: { _all: number } }>);
   const byCode = new Map<string, { judged: number; hits: number }>();
-  for (const r of rows) {
-    const m = byCode.get(r.code) ?? { judged: 0, hits: 0 };
-    m.judged++;
-    if (r.hit) m.hits++;
-    byCode.set(r.code, m);
+  for (const g of grouped) {
+    const m = byCode.get(g.code) ?? { judged: 0, hits: 0 };
+    m.judged += g._count._all;
+    if (g.hit === true) m.hits += g._count._all;
+    byCode.set(g.code, m);
   }
   const relAgg = new Map<string, { evaluated: number; hits: number }>();
   const chainAgg = new Map<string, { evaluated: number; hits: number }>();

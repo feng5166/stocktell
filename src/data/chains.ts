@@ -68,7 +68,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       { name: "数据中心电力", plain: "给数据中心供电配电的设备与能源", sectors: ["电源/HVDC", "能源/核电", "数据中心/IDC"], defaultRelation: "间接映射", verifyTemplate: ["供配电订单", "数据中心开工", "客户验证"] },
       { name: "铜连接/高速互连(铜)", plain: "机柜内近距离连接用的「铜线」", sectors: ["铜连接/高速互连"], defaultRelation: "间接映射", verifyTemplate: ["供货确认", "GB 系统出货节奏"] },
       { name: "国产算力芯片", plain: "国产 AI 芯片及配套 IP", sectors: ["AI芯片/GPU", "EDA/IP"], defaultRelation: "情绪映射", verifyTemplate: ["客户导入", "国产替代订单", "收入兑现"] },
-      { name: "其他链上环节", plain: "链上其余配套方向", sectors: [], defaultRelation: "情绪映射", verifyTemplate: ["订单与客户验证", "板块共振"] },
+      { name: FALLBACK_SEGMENT, plain: "链上其余配套方向", sectors: [], defaultRelation: "情绪映射", verifyTemplate: ["订单与客户验证", "板块共振"] },
     ],
   },
   "data-center-power": {
@@ -97,7 +97,7 @@ export const CHAINS: Record<string, ChainConfig> = {
       { name: "变压器/干变/配电", plain: "数据中心进出电用的变压器和配电", sectors: ["数据中心/IDC"], defaultRelation: "间接映射", verifyTemplate: ["干变订单", "数据中心配电项目", "毛利率"] },
       { name: "备用电源/储能", plain: "数据中心备用电源与削峰填谷", sectors: [], defaultRelation: "间接映射", verifyTemplate: ["数据中心备用电源订单", "储能项目客户", "收入占比"] },
       { name: "发电/核电(外溢最远)", plain: "发电装备与核电运营(算力耗电宏大叙事)", sectors: ["能源/核电"], defaultRelation: "情绪映射", verifyTemplate: ["装机/并网进度", "与数据中心的直接连接(多为无)"] },
-      { name: "其他链上环节", plain: "链上其余配套方向", sectors: [], defaultRelation: "情绪映射", verifyTemplate: ["订单与客户验证", "数据中心收入占比"] },
+      { name: FALLBACK_SEGMENT, plain: "链上其余配套方向", sectors: [], defaultRelation: "情绪映射", verifyTemplate: ["订单与客户验证", "数据中心收入占比"] },
     ],
   },
 };

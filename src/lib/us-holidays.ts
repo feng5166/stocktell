@@ -44,11 +44,21 @@ function lastWeekday(y: number, month: number, w: number): string {
   const lastDow = new Date(Date.UTC(y, month - 1, lastDay)).getUTCDay();
   return iso(y, month, lastDay - ((7 + lastDow - w) % 7));
 }
-// 固定日期假日的 observed 日(周六→周五,周日→周一)
-function observed(y: number, month: number, day: number): string {
-  const dow = new Date(Date.UTC(y, month - 1, day)).getUTCDay();
-  if (dow === 6) return iso(y, month, day - 1);
-  if (dow === 0) return iso(y, month, day + 1);
+// 固定日期假日的 observed 日(周六→周五,周日→周一)。
+// 二轮 review 小项⑤:用 UTC 毫秒运算跨月/跨年安全——元旦逢周六此前会拼出 "01-00" 无效日期。
+// 注:NYSE 规则里元旦逢周六【不】前移到上一年 12/31(如 2022-01-01),该情形返回 null 由上层过滤。
+function observed(y: number, month: number, day: number): string | null {
+  const t = Date.UTC(y, month - 1, day);
+  const dow = new Date(t).getUTCDay();
+  if (dow === 6) {
+    if (month === 1 && day === 1) return null; // 元旦逢周六:当年无 observed 假日
+    const d = new Date(t - 86400_000);
+    return iso(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
+  if (dow === 0) {
+    const d = new Date(t + 86400_000);
+    return iso(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
   return iso(y, month, day);
 }
 
@@ -56,8 +66,8 @@ export function nyseHolidays(y: number): string[] {
   const [em, ed] = easter(y);
   const easterUTC = Date.UTC(y, em - 1, ed);
   const goodFriday = new Date(easterUTC - 2 * 86400_000);
-  return [
-    observed(y, 1, 1), // New Year's Day
+  return ([
+    observed(y, 1, 1), // New Year's Day(逢周六=当年无,见 observed)
     nthWeekday(y, 1, 1, 3), // MLK Day
     nthWeekday(y, 2, 1, 3), // Presidents' Day
     iso(y, goodFriday.getUTCMonth() + 1, goodFriday.getUTCDate()), // Good Friday
@@ -67,7 +77,7 @@ export function nyseHolidays(y: number): string[] {
     nthWeekday(y, 9, 1, 1), // Labor Day = 9月第1个周一
     nthWeekday(y, 11, 4, 4), // Thanksgiving = 11月第4个周四
     observed(y, 12, 25), // Christmas
-  ];
+  ] as Array<string | null>).filter((d): d is string => d !== null);
 }
 
 export function isUSMarketHoliday(dateISO: string): boolean {

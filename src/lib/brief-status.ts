@@ -111,7 +111,10 @@ export function briefAlertSeverity(
   if (ctx.statusReadFailed) return "notice"; // 读挂了什么也证明不了,别按"无状态"报共模
   switch (rec?.status) {
     case "market_closed":
-      return "none"; // 设计性无简报(0 条即一致)
+      // reason=stale_asof(二轮 review N10)=「判了休市但 NYSE 日历说那天不是假日」——疑似
+      // 行情源误判,不是设计性缺口:notice 让 08:30 看门狗提示人工确认,而不是发"勿补发"
+      // 与 07:00 的"疑似误判需重发"告警打架。真假日(us_market_closed)仍 none。
+      return rec.reason === "stale_asof" ? "notice" : "none";
     case "blocked":
       return "notice"; // 正确阻断,0 条即一致,待人工
     case "generated":

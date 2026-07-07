@@ -65,12 +65,16 @@ export async function GET(req: NextRequest) {
         const fs = await sendFeishu(msg);
         return NextResponse.json({ ok: true, notice: brief?.status ?? "unknown", date, feishu: fs });
       }
-      // incident:交易日无状态(共模嫌疑)或状态与库矛盾。500 + workflow curl -f → GH 打红,双通道。
+      // incident 三种成因分开说(二轮 N5:failed+0 条是【一致态】=生成失败,套"状态与库矛盾"
+      // 模板会把值班引去查"谁删了简报";补发指令也要跟上,别让人等到 08:30 才拿到命令)。
+      // 500 + workflow curl -f → GH 打红,双通道。
       await alertCron(
         "push-feishu(飞书推送)",
-        brief
-          ? `交易日 ${date} 状态=${brief.status} 但 0 条已发布(状态与库矛盾:疑似发布后被清空/写入中断),需人工核查 /admin/briefing`
-          : `交易日 ${date} 推送时无已发布简报且无状态记录 —— 疑似 Vercel cron 共模故障(生成 cron 未跑)。请查 Vercel cron;若 07:40 补位后恢复,此为延迟误报,勿手动补发`
+        brief?.status === "failed"
+          ? `交易日 ${date} 简报生成失败(主跑+07:40 补位均未产出,状态=failed)。请手动补:POST /api/briefing/generate?replace=1&llm=1(Bearer ADMIN_TOKEN)${brief.message ? `\n${brief.message}` : ""}`
+          : brief
+            ? `交易日 ${date} 状态=${brief.status} 但 0 条已发布(状态与库矛盾:疑似发布后被清空/写入中断),需人工核查 /admin/briefing`
+            : `交易日 ${date} 推送时无已发布简报且无状态记录 —— 疑似 Vercel cron 共模故障(生成 cron 未跑)。请查 Vercel cron;若 07:40 补位后恢复,此为延迟误报,勿手动补发`
       );
       return NextResponse.json(
         { ok: false, error: "briefing-missing-on-trading-day", date, briefStatus: brief?.status ?? null },

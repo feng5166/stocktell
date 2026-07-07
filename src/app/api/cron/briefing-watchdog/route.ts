@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listBriefing } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
-import { isAshareTradingDay } from "@/lib/tushare";
+import { ashareDayStatus } from "@/lib/tushare";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { sendFeishu } from "@/lib/feishu";
@@ -77,9 +77,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const date = todayISO();
-  if (!(await isAshareTradingDay(date))) {
+  // 二轮 review N3:isAshareTradingDay 是 fail-open(unknown→true)——工作日 A 股节假日 +
+  // Tushare 故障会被当交易日处理,status=null 直接假 ❌"请手动补"。改用 ashareDayStatus 三态:
+  // closed 照旧跳过;unknown 继续核对但把 tradingDayUnknown 传进分级(降 notice,不喊补发)。
+  const dayStatus = await ashareDayStatus(date).catch(() => "unknown" as const);
+  if (dayStatus === "closed") {
     return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
   }
+  const tradingDayUnknown = dayStatus === "unknown";
   // 先取当日已发布简报——既是下面简报看门狗的输入,也是 insight 心跳的前置门(P2)。
   const items = await listBriefing({ date, status: "published" }).catch(() => []);
   // insight 管线心跳(PRD §5):交易日到 08:30 还没有当日链级每日推理(draft 或 published)→ 告警。
@@ -150,6 +155,7 @@ export async function GET(req: NextRequest) {
     const severity = briefAlertSeverity(brief, {
       publishedCount: 0,
       statusReadFailed: readFailed,
+      tradingDayUnknown,
       beforeBackup: false, // 08:30 跑,补位已尘埃落定
     });
     if (severity === "none") {
@@ -165,11 +171,13 @@ export async function GET(req: NextRequest) {
       );
       payload = { ok: true, date, count: 0, briefStatus: brief!.status, feishu: fs };
     } else if (severity === "notice") {
-      // 合规阻断待审 / 状态读失败:低优先级提示(非 🚨 非 ❌),不喊补发。
+      // 合规阻断待审 / 状态读失败 / 交易日未知:低优先级提示(非 🚨 非 ❌),不喊补发。
       const fs = await sendFeishu(
-        readFailed || !brief
-          ? `⚠️ StockTell 简报状态读取失败 · ${date} · 0 条已发布但状态读不到(DB 抖动),请人工看一眼 /admin/briefing`
-          : feishuPendingNoticeText(brief, date)
+        brief && !readFailed
+          ? feishuPendingNoticeText(brief, date)
+          : readFailed
+            ? `⚠️ StockTell 简报状态读取失败 · ${date} · 0 条已发布但状态读不到(DB 抖动),请人工看一眼 /admin/briefing`
+            : `⚠️ StockTell 今日无简报且交易日未知 · ${date} · Tushare 日历不可用,可能为 A 股假日(生成 cron 在闸门跳过属预期);若确认是交易日再手动补`
       );
       payload = { ok: true, date, count: 0, briefStatus: brief?.status ?? null, notice: true, feishu: fs };
     } else {
