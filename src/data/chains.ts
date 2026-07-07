@@ -102,6 +102,25 @@ export const CHAINS: Record<string, ChainConfig> = {
   },
 };
 
+// 2.2-B(2026-07-07 拍板):半导体设备与先进制程链成分(显式清单;全部 candidate 档待人工校准,
+// 见 chain-relations.ts SEMI_CANDIDATES)。KLAC/TEL/精测/概伦不在股票池,入池后第二批补。
+const SEMI_EQUIP_CODES = ["002371", "688012", "688072", "688037", "688120", "688082", "300604", "301269"];
+
+CHAINS["semiconductor-equipment"] = {
+  id: "semiconductor-equipment",
+  name: "半导体设备与先进制程链",
+  short: "半导体设备链",
+  tagline:
+    "AI 芯片与先进制程扩产的上游链:晶圆厂资本开支怎么传导到光刻/刻蚀/沉积/清洗/CMP/量测/EDA/先进封装各环节——看订单与国产替代验证,不是半导体概念池。",
+  aMembers: STOCKS.filter((s) => s.market === "A股" && SEMI_EQUIP_CODES.includes(s.code)),
+  sentimentTitle: "这条链今日状态",
+  todayFraming:
+    "今天这条链的触发源主要来自海外设备厂(ASML/AMAT/LRCX 等)财报与订单指引、先进制程扩产消息。短期价格可能被半导体情绪带动,但真正要验证的是:晶圆厂资本开支是否落地、设备订单与国产替代招标是否兑现、相关公司能否形成收入确认。当前成分全部为待验证档,关系分级以人工校准后的静态关系库为准。",
+  // 【有意不配 segments】:配了 segments 的链会被 insight-daily cron 与 08:30 看门狗按链纳管
+  // (无草稿即告警)。本链成分尚全为 candidate,先走审阅台校准;校准出 direct/indirect 后
+  // 再接 segments 启用链级每日推理(2.2-B 第二批)。环节 enum 已在 segment-registry 注册。
+};
+
 export function getChain(id: string): ChainConfig | null {
   return CHAINS[id] ?? null;
 }

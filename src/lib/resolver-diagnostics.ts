@@ -55,7 +55,7 @@ export function runDiagnostics(date = "2026-07-04"): Diagnostics {
   const lint = lintRelations(R);
 
   // P1-5(2026-07-06 恒绿修):加能【真失败】的检查,让 health 不再结构性恒绿。
-  const KNOWN_CHAINS = new Set(["ai-infra", "data-center-power", "ai-application"]);
+  const KNOWN_CHAINS = new Set(["ai-infra", "data-center-power", "ai-application", "semiconductor-equipment"]); // 2.2-B 扩链
   const unknownChain = R.filter((r) => !KNOWN_CHAINS.has(r.chainId));
   // 多链串档:同 code 出现在多条链(P1-3 后应 0;>0 = resolvePrimary 跨链取最强档会串档误导)
   const codeChains = new Map<string, Set<string>>();

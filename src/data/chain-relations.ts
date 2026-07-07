@@ -92,7 +92,9 @@ const chainNameOf = (chainId: string) =>
     ? "AI 数据中心电力基础设施链"
     : chainId === "ai-application"
       ? "AI 应用链"
-      : "AI 推理基础设施链";
+      : chainId === "semiconductor-equipment"
+        ? "半导体设备与先进制程链"
+        : "AI 推理基础设施链";
 
 // P1-3:电力股【不留在 ai-infra】(只归 data-center-power)。从 AI_INFRA insight 派生时排除这些 code。
 // AI 推理链→电力/温控/液冷的外溢由【链级外溢关系】表达,不塞进 ai-infra 的 stock relation。
@@ -183,7 +185,11 @@ for (const ins of Object.values(INSIGHT_CHAINS)) {
 
 // 2) ai-infra 审阅升级/改档(29,candidate→direct/indirect/sentiment,带审阅 reason)。
 //    审阅版【不再】从 CHAINS 广谱成分派生 candidate——那是"AI 概念大池"污染源,已移除。
+// 2.2-B:审阅时标注"建议移入半导体设备/EDA链、若留仅 sentiment"的票,新链落地后按原建议移出
+// ai-infra(它们在 §2.5 以 candidate 归新链;一票一链=P1-3 口径,不留双链)。
+const MOVED_TO_SEMI = new Set(["301269"]); // 华大九天(audit 原文:EDA 属半导体设计工具)
 for (const u of AI_INFRA_UPGRADES) {
+  if (MOVED_TO_SEMI.has(u.code)) continue;
   const key = `${u.code}|ai-infra`;
   if (seen.has(key)) continue;
   seen.add(key);
@@ -207,21 +213,87 @@ for (const u of AI_INFRA_UPGRADES) {
   });
 }
 
-// 3) 美股 → trigger,按审阅【分组】(不再一类"海外事件触发源")。chainId=null 的(半导体设备/
-//    智能车机器人/航天军工/加密)是未来链,不进当前静态库;电力触发源归 data-center-power。
+// 2.5) 半导体设备与先进制程链(2.2-B MVP,2026-07-07 负责人拍板扩链)。
+//    传导:AI 芯片需求/先进制程扩产 → 晶圆厂资本开支 → 设备各环节 → 订单/国产替代/收入验证。
+//    【第一版口径纪律】:国内候选一律 candidate 档(证据不足未归档,待审阅台人工校准后才升
+//    direct/indirect 并补 references)——不编造证据=铁律②;不收 sentiment/weak 大池;
+//    KLAC/TEL/精测电子/概伦电子 不在股票池,入池后再补(第二批)。
+export const SEMI_EQUIP_CHAIN_ID = "semiconductor-equipment";
+export const SEMI_EQUIP_CHAIN_NAME = "半导体设备与先进制程链";
+export const SEMI_EQUIP_SEGMENTS = [
+  "光刻与涂胶显影",
+  "刻蚀设备",
+  "薄膜沉积",
+  "清洗设备",
+  "CMP / 抛光",
+  "量测检测",
+  "EDA / IP",
+  "先进封装设备",
+] as const;
+const SEMI_SEG_VERIFY: Record<string, string[]> = {
+  光刻与涂胶显影: ["涂胶显影机订单", "产线导入进度", "设备收入占比"],
+  刻蚀设备: ["刻蚀设备订单", "晶圆厂资本开支", "国产替代招标"],
+  薄膜沉积: ["沉积设备订单", "先进制程验证进度", "客户结构"],
+  清洗设备: ["清洗设备订单", "海内外客户导入", "收入占比"],
+  "CMP / 抛光": ["CMP 设备订单", "产线验证", "耗材配套收入"],
+  量测检测: ["测试/量测设备订单", "封测厂资本开支", "毛利率"],
+  "EDA / IP": ["工具授权收入", "客户续约与导入", "国产替代进度"],
+  先进封装设备: ["先进封装设备订单", "封装产能扩张", "客户验证"],
+};
+// 国内候选(全部 candidate 档;segment 按主业务归一,与 stocks.ts positioning 一致)
+const SEMI_CANDIDATES: Array<{ code: string; segment: string; reason: string }> = [
+  { code: "002371", segment: "刻蚀设备", reason: "国产半导体设备平台(刻蚀/薄膜沉积等多品类),与晶圆厂扩产节奏相关;候选档待人工校准,后续看设备订单、国产替代招标与收入确认" },
+  { code: "688012", segment: "刻蚀设备", reason: "刻蚀设备主业,与先进制程及存储扩产相关;候选档待人工校准,后续看刻蚀设备订单、客户验证与收入占比" },
+  { code: "688072", segment: "薄膜沉积", reason: "薄膜沉积设备(PECVD/ALD 等)主业;候选档待人工校准,后续看沉积设备订单、先进制程验证进度与客户结构" },
+  { code: "688037", segment: "光刻与涂胶显影", reason: "涂胶显影设备主业,配套光刻环节;候选档待人工校准,后续看涂胶显影机订单、产线导入进度与设备收入占比" },
+  { code: "688120", segment: "CMP / 抛光", reason: "CMP 抛光设备主业;候选档待人工校准,后续看 CMP 设备订单、产线验证与耗材配套收入" },
+  { code: "688082", segment: "清洗设备", reason: "半导体清洗设备主业;候选档待人工校准,后续看清洗设备订单、海内外客户导入与收入占比" },
+  { code: "300604", segment: "量测检测", reason: "半导体测试设备(测试机/分选机)主业;候选档待人工校准,后续看测试设备订单、封测厂资本开支与毛利率" },
+  { code: "301269", segment: "EDA / IP", reason: "国产 EDA 工具主业(audit 原建议自 ai-infra 移入本链);候选档待人工校准,后续看工具授权收入、客户续约导入与国产替代进度" },
+];
+for (const c of SEMI_CANDIDATES) {
+  const key = `${c.code}|${SEMI_EQUIP_CHAIN_ID}`;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  const st = STOCK_MAP[c.code];
+  relations.push({
+    code: c.code,
+    name: st?.name ?? c.code,
+    market: mktOf(st?.market),
+    chainId: SEMI_EQUIP_CHAIN_ID,
+    chainName: SEMI_EQUIP_CHAIN_NAME,
+    segmentId: segId(c.segment),
+    segmentName: c.segment,
+    relationType: "candidate",
+    confidence: "low",
+    reason: c.reason,
+    verificationPoints: SEMI_SEG_VERIFY[c.segment] ?? GENERIC_VERIFY,
+    evidenceStatus: "needs_review",
+    source: "manual",
+    lastReviewedAt: "2026-07-07",
+    updatedAt: "2026-07-07",
+  });
+}
+
+// 3) 美股 → trigger,按审阅【分组】(不再一类"海外事件触发源")。chainId=null 的
+//    智能车机器人/航天军工/加密仍是未来链;semiconductor 组自 2.2-B 起有家(派生层路由,
+//    不改 audit generated 文件);电力触发源归 data-center-power。
+const FUTURE_CHAIN_ROUTE: Record<string, string> = { semiconductor: SEMI_EQUIP_CHAIN_ID };
 for (const st of STOCKS) {
   if (st.market !== "美股") continue;
   const cls = TRIGGER_CLASS[st.code];
-  if (!cls || !cls.chainId) continue; // 未分类 / 未来链 → 跳过
-  const key = `${st.code}|${cls.chainId}`;
+  if (!cls) continue;
+  const routedChainId = cls.chainId ?? FUTURE_CHAIN_ROUTE[cls.group] ?? null;
+  if (!routedChainId) continue; // 未分类 / 仍是未来链 → 跳过
+  const key = `${st.code}|${routedChainId}`;
   if (seen.has(key)) continue;
   seen.add(key);
   relations.push({
     code: st.code,
     name: st.name,
     market: "US",
-    chainId: cls.chainId,
-    chainName: chainNameOf(cls.chainId),
+    chainId: routedChainId,
+    chainName: chainNameOf(routedChainId),
     segmentId: "trigger-source",
     segmentName: "海外事件触发源",
     relationType: "trigger",

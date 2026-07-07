@@ -42,7 +42,8 @@
     "langchaoAiInfra": "direct",
     "zhongjiAiInfra": "direct",
     "eatonTrigger": "trigger",
-    "beifanghuachuang": "not_found"
+    "beifanghuachuangAiInfra": "not_found",
+    "beifanghuachuangSemi": "candidate"
   },
   "relationParity": {
     "total": 43,
@@ -68,7 +69,8 @@
     "✅ Case E:浪潮 ai-infra direct(direct)",
     "✅ Case E:中际旭创 ai-infra direct(direct)",
     "✅ Case E:Eaton=trigger(trigger)",
-    "✅ Case E:北方华创不被旧源捞回(not_found)",
+    "✅ Case E:北方华创不在 ai-infra(不被旧源捞回)(not_found)",
+    "✅ Case E:北方华创属半导体设备链 candidate(2.2-B)(candidate)",
     "✅ source-leakage=0(无旧源直读)(hits=0)"
   ],
   "verdict": "PASS"

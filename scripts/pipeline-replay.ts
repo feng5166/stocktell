@@ -441,7 +441,9 @@ function sourceLeakage() {
     langchaoAiInfra: resolvePrimary("000977")?.chainId === "ai-infra" ? resolvePrimary("000977")?.relationType : "not_ai-infra",
     zhongjiAiInfra: resolvePrimary("300308")?.chainId === "ai-infra" ? resolvePrimary("300308")?.relationType : "not_ai-infra",
     eatonTrigger: resolvePrimary("ETN")?.relationType ?? "not_found",
-    beifanghuachuang: resolvePrimary("002371") ? "found" : "not_found",
+    // 2.2-B 起北方华创归半导体设备链 candidate;守住的语义=【不在 ai-infra】(不被旧源捞回)
+    beifanghuachuangAiInfra: resolveInChain("002371", "ai-infra") ? "found" : "not_found",
+    beifanghuachuangSemi: resolveInChain("002371", "semiconductor-equipment")?.relationType ?? "not_found",
   };
   expect("Case E:英维克不在 ai-infra", samples.yingweikeAiInfra === "not_found", samples.yingweikeAiInfra);
   expect("Case E:英维克电力链 direct", samples.yingweikePower === "direct", String(samples.yingweikePower));
@@ -449,7 +451,8 @@ function sourceLeakage() {
   expect("Case E:浪潮 ai-infra direct", samples.langchaoAiInfra === "direct", String(samples.langchaoAiInfra));
   expect("Case E:中际旭创 ai-infra direct", samples.zhongjiAiInfra === "direct", String(samples.zhongjiAiInfra));
   expect("Case E:Eaton=trigger", samples.eatonTrigger === "trigger", String(samples.eatonTrigger));
-  expect("Case E:北方华创不被旧源捞回", samples.beifanghuachuang === "not_found", samples.beifanghuachuang);
+  expect("Case E:北方华创不在 ai-infra(不被旧源捞回)", samples.beifanghuachuangAiInfra === "not_found", samples.beifanghuachuangAiInfra);
+  expect("Case E:北方华创属半导体设备链 candidate(2.2-B)", samples.beifanghuachuangSemi === "candidate", String(samples.beifanghuachuangSemi));
 
   /* ---------- 关系标签新旧 diff(切 resolver 回归哨)---------- */
   const SLUG_TO_CHAIN: Record<string, string> = {
