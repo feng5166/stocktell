@@ -28,7 +28,7 @@ export interface GenerateResult {
   heatStreak?: number;
 }
 
-const FALLBACK_SEGMENT = "其他链上环节";
+import { FALLBACK_SEGMENT } from "@/data/chains";
 
 /* ---------- 工具 ---------- */
 
@@ -390,6 +390,11 @@ async function buildReferences(
   const capped = refs.slice(0, 5);
   // 回放/CI 免网:INSIGHT_SKIP_URL_VERIFY=1 时跳过 HEAD 可达探测(refs 保持 verified=false,不出伪验证)。
   // pipeline-replay 兜底路径置此开关 → compliance-block 作 PR 门禁零网络、回放结果确定性。
+  // review F7:该开关【严禁】配置到 Vercel——误设会让每日 insight 全部 refs 永久 verified=false,
+  // admin 显示"0/N 可达"与源站全挂不可区分。跳过时留日志,让排查者能从函数日志一眼看到开关在生效。
+  if (process.env.INSIGHT_SKIP_URL_VERIFY === "1") {
+    console.warn("[insight] INSIGHT_SKIP_URL_VERIFY=1:已跳过 references 可达性验证(回放/CI 专用,生产不应配置)");
+  }
   if (process.env.INSIGHT_SKIP_URL_VERIFY !== "1") {
     await Promise.all(
       capped.map(async (r) => {

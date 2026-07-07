@@ -39,6 +39,10 @@ const DC_POWER_CODES = [
   "300249", "603912", "002364", "300068", "002922", // 本批新增专属标的
 ];
 
+// 兜底段名(单一来源,review F10:此前 insight-pipeline / holiday-bridge / replay 三处字面量
+// 拷贝,改名会静默漂移)。语义:不进 heat、不进节后观察,只作受益股无法归段时的容器。
+export const FALLBACK_SEGMENT = "其他链上环节";
+
 export const CHAINS: Record<string, ChainConfig> = {
   ai: {
     id: "ai",

@@ -4,7 +4,7 @@ import { todayISO } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { tradingDayGate } from "@/lib/trading-gate";
-import { getBriefStatus, briefAlertSeverity } from "@/lib/brief-status";
+import { getBriefStatusChecked, briefAlertSeverity } from "@/lib/brief-status";
 import { feedReviewQueueFromOutcomes } from "@/lib/relation-review";
 
 export const dynamic = "force-dynamic";
@@ -32,8 +32,12 @@ export async function GET(req: NextRequest) {
     // 0 简报本来就无账可记,绝不能喊"需补发"(2026-07-06 休市交易日误报实录:补发指令是误导,勿照做)。
     // 只有 failed / 状态缺失(疑似早盘 cron 静默没跑)才是事故,15:30 这里是第二道网。
     if (res.skipped === "no-briefing") {
-      const brief = await getBriefStatus(date).catch(() => null);
-      const severity = briefAlertSeverity(brief);
+      const { rec: brief, readFailed } = await getBriefStatusChecked(date);
+      const severity = briefAlertSeverity(brief, {
+        publishedCount: 0, // recordOutcomes 返回 no-briefing 即当日 0 条已发布
+        statusReadFailed: readFailed,
+        beforeBackup: false, // 15:30 跑,早间补位早已结束
+      });
       if (severity === "incident") {
         await alertCron(
           "outcome(记账)",

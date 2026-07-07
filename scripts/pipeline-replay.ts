@@ -90,24 +90,38 @@ function sourceLeakage() {
 
   /* ---------- 回放行情:东财历史日 K → Quote 快照 ---------- */
   // 隔夜口径:北京 date 日 07:00 能看到的最新美股收盘 = 最后一根 date' < date 的 bar。
-  async function buildReplayQuotes(): Promise<{ quotes: Record<string, Quote>; misses: string[]; universe: number }> {
+  // 【探针集是显式清单不是位置切片】(review F9):slice(0,12) 会被 stocks.ts 重排/插新票静默
+  // 换掉——新上市薄历史票 bars<2 直接 miss,12 样本分母下几只就触发 DATA_UNAVAILABLE 假红。
+  // 清单标准:长上市、高流动、多行业分散(休市判定是日历级,谁都行,要的是"一定有 250 根 K")。
+  const MARKET_PROBE = ["NVDA", "MSFT", "AAPL", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD", "ORCL", "ANET", "ETN"];
+  async function buildReplayQuotes(): Promise<{
+    quotes: Record<string, Quote>;
+    misses: string[];
+    universe: number;
+    expired: string[]; // 样本日超出 K 线窗口的票(bars 拿到了但 date 之前没有 bar)
+  }> {
     const usAll = STOCKS.filter((s: { market: string }) => s.market === "美股");
     // market-closed 只验【日历级】新鲜度(freshestUS vs 最近美东工作日,全美股同一交易日历),
     // 不需要全池——12 票探针集把请求量压到限流阈值下(2026-07-06 nightly 二跑实测:全量 71 请求
     // 即使隔 60s 仍被东财限流)。full 模式仍全量(要真实 movers)。
-    const usStocks = mode === "market-closed" ? usAll.slice(0, 12) : usAll;
+    const probe = usAll.filter((s: { code: string }) => MARKET_PROBE.includes(s.code));
+    const usStocks = mode === "market-closed" && probe.length >= 8 ? probe : mode === "market-closed" ? usAll.slice(0, 12) : usAll;
     const quotes: Record<string, Quote> = {};
-    const tryFetch = async (code: string): Promise<boolean> => {
+    const expired: string[] = [];
+    // review F8:「样本日超出 ~250 根 K 线窗口」(bars 在手但 date 前无 bar)≠「行情源不可达」。
+    // 混成一个 false 会在样本日老化后(约 2027 年中)让 nightly 以误导性 DATA_UNAVAILABLE 永久红,
+    // 把值班引向限流排查。分开计数,上层按占比出 SAMPLE_DATE_EXPIRED。
+    const tryFetch = async (code: string): Promise<"ok" | "miss" | "expired"> => {
       // 主源东财;miss(限流/封机房 IP)逐票回退 Yahoo(仓库既有选择:新浪同样封机房 IP、
       // 腾讯美股覆盖不全,见 src/lib/yahoo.ts 头注释)。两源都挂才算 miss。
       let bars = await usDailyBars(code).catch(() => null);
       if (!bars || bars.length < 2) bars = await usDailyCloses(code).catch(() => []);
-      if (!bars || bars.length < 2) return false;
+      if (!bars || bars.length < 2) return "miss";
       let toIdx = -1;
       for (let j = bars.length - 1; j >= 0; j--) {
         if (bars[j].date < date) { toIdx = j; break; }
       }
-      if (toIdx < 1) return false;
+      if (toIdx < 1) return "expired"; // 数据拿到了,但样本日早于窗口起点 → 是样本老化不是源故障
       const to = bars[toIdx];
       const prev = bars[toIdx - 1];
       quotes[code] = {
@@ -115,24 +129,31 @@ function sourceLeakage() {
         change: Math.round((to.close / prev.close - 1) * 10000) / 100,
         asOf: to.date,
       };
-      return true;
+      return "ok";
     };
     const sweep = async (codes: string[], conc: number): Promise<string[]> => {
       const misses: string[] = [];
       for (let i = 0; i < codes.length; i += conc) {
-        await Promise.all(codes.slice(i, i + conc).map(async (c) => { if (!(await tryFetch(c))) misses.push(c); }));
+        await Promise.all(
+          codes.slice(i, i + conc).map(async (c) => {
+            const r = await tryFetch(c);
+            if (r === "expired" && !expired.includes(c)) expired.push(c);
+            if (r !== "ok") misses.push(c);
+          })
+        );
       }
       return misses;
     };
     // 首轮并发 6;部分 miss=瞬时抖动 → 停 1.5s 低并发重试一轮。>50% miss=源级断供(限流/断网,
     // 2026-07-06 nightly 首跑实测:第二步 71/71 全 miss),重试无意义且会拖爆超时(每票 3 市场×6s),
-    // 直接返回由上层报 DATA_UNAVAILABLE。
+    // 直接返回由上层报 DATA_UNAVAILABLE / SAMPLE_DATE_EXPIRED。
     let misses = await sweep(usStocks.map((s: { code: string }) => s.code), 6);
     if (misses.length && misses.length <= usStocks.length / 2) {
       await new Promise((r) => setTimeout(r, 1500));
+      expired.length = 0; // 重试轮重新统计,避免双计
       misses = await sweep(misses, 2);
     }
-    return { quotes, misses, universe: usStocks.length };
+    return { quotes, misses, universe: usStocks.length, expired };
   }
 
   const draftsToItems = (drafts: Array<Record<string, unknown>>): BriefingItem[] =>
@@ -196,13 +217,16 @@ function sourceLeakage() {
     // ③guard 纵深有效(干净素材 0 blockers;禁词素材必须被拦)
     // ④宁缺勿造(无素材→不出 bridge)
     const { buildHolidayBridge, BRIDGE_TITLE } = await import("../src/lib/holiday-bridge");
+    const { FALLBACK_SEGMENT } = await import("../src/data/chains");
     const fallbackFromDate = "2026-07-02"; // 与 Case B 样本日同族:07-06 休市,最近有效=07-02
     const recapFixture: BriefingItem[] = [
       {
         id: "fixture-bridge-1",
         date: fallbackFromDate,
         impact: "高",
-        title: "英伟达隔夜异动,算力链关注度提升",
+        // 带涨跌百分比——生产模板题的真实形态(review F1:回顾标题是已过审事实记录,
+        // 只扫禁词不扫数字红线;此 fixture 即"桥不被自己的合规扫描杀死"的回归哨)
+        title: "英伟达隔夜上涨 3.10%,算力链关注度提升",
         triggerCode: "NVDA",
         triggerName: "英伟达",
         triggerChange: 3.1,
@@ -250,11 +274,15 @@ function sourceLeakage() {
       "Case F:链观察含验证点(非空且不含兜底段)",
       (doc?.chainWatch.length ?? 0) > 0 &&
         (doc?.chainWatch ?? []).every(
-          (cw) => cw.segments.length > 0 && cw.segments.every((s) => s.verify.length > 0 && s.name !== "其他链上环节")
+          (cw) => cw.segments.length > 0 && cw.segments.every((s) => s.verify.length > 0 && s.name !== FALLBACK_SEGMENT)
         ),
       `chains=${doc?.chainWatch.length}`
     );
-    expect("Case F:干净素材 guard=0 blockers", doc?.guard.blockers.length === 0, (doc?.guard.blockers ?? []).join("|") || "0");
+    expect(
+      "Case F:回顾标题含涨跌百分比不自拦(事实记录只扫禁词,guard=0)",
+      doc?.guard.blockers.length === 0,
+      (doc?.guard.blockers ?? []).join("|") || "0"
+    );
     // 反向:禁词素材必须被 guard 纵深拦下(未来接 LLM 假期消息时这道闸就是防线)
     const dirty = buildHolidayBridge({
       date,
@@ -271,17 +299,23 @@ function sourceLeakage() {
     expect("Case F:无素材→不出 bridge(宁缺勿造)", empty === null, empty ? "built(红线)" : "null");
   } else {
     // full / market-closed:真回放 generate
-    const { quotes, misses, universe } = await buildReplayQuotes();
+    const { quotes, misses, universe, expired } = await buildReplayQuotes();
     quoteMisses = misses;
     // 数据地板 guard:行情源不可达(限流/断网)时【不】拿空数据断言休市语义——那会把"harness 取数失败"
     // 误报成"管线判定错误"(空 quotes → freshestUS=undefined → 误判 open+failed)。按口径:failed/
     // DATA_UNAVAILABLE 只给地板故障,红但原因一眼可读。
+    // review F8:样本日老化(出 250 根 K 窗口)单独出 SAMPLE_DATE_EXPIRED——那是"换样本日"
+    // 的维护动作,不是限流排查,verdict 必须把人指对方向。
     if (misses.length > universe / 2) {
+      const expiredDominant = expired.length >= misses.length / 2;
       console.log("=== Pipeline Replay Snapshot ===");
       console.log(JSON.stringify({
         date, mode, llm, dryRun: true,
-        verdict: `DATA_UNAVAILABLE(行情源不可达/限流:miss ${misses.length}/${universe})`,
+        verdict: expiredDominant
+          ? `SAMPLE_DATE_EXPIRED(样本日 ${date} 超出历史 K 线窗口:expired ${expired.length}/${universe}。请按 docs/pipeline-replay.md 换新样本日并同步 relations-check.yml / replay-nightly.yml)`
+          : `DATA_UNAVAILABLE(行情源不可达/限流:miss ${misses.length}/${universe})`,
         quoteMisses: misses.slice(0, 12),
+        expiredCodes: expired.slice(0, 12),
       }, null, 2));
       process.exit(1);
     }

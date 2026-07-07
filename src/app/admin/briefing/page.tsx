@@ -1,12 +1,13 @@
 import { requireAdmin } from "@/lib/admin";
 import { todayISO } from "@/lib/date";
-import { getBriefStatus, BRIEF_STATUS_UI } from "@/lib/brief-status";
+import { getBriefStatus, BRIEF_STATUS_UI, type BriefTone } from "@/lib/brief-status";
 import AdminBriefingClient from "./AdminBriefingClient";
 
 export const dynamic = "force-dynamic";
 
 // 状态 chip 色调(2.1-A):与首页横幅同一套语义——failed 才红,fallback/blocked 琥珀,休市中性
-const TONE_CHIP: Record<string, string> = {
+// Record<BriefTone,…>(review 小项①):新增 tone 忘配样式会编译报错,而不是渲染 className=undefined
+const TONE_CHIP: Record<BriefTone, string> = {
   info: "bg-emerald-50 text-emerald-700",
   neutral: "bg-slate-100 text-slate-600",
   attention: "bg-amber-50 text-amber-800",

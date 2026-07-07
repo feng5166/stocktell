@@ -46,7 +46,7 @@ function impactFromChange(abs: number): Impact {
 // "美股休市"而生成 0 条(2026-07-03 中午 replace 实踩:删了 8 条只回填 0 条)。
 // 18h 的含义:上一交易日收盘(16:00 ET)后 2 小时内仍指向上一日,不影响 07:00 北京主 cron
 // (=19:00 ET,回拨后仍是当日)与真节假日判定。
-function mostRecentUSWeekday(now: Date): string {
+export function mostRecentUSWeekday(now: Date): string {
   const dayMs = 86400000;
   const anchor = new Date(now.getTime() - 18 * 3600000);
   for (let i = 0; i < 7; i++) {
