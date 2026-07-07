@@ -23,6 +23,9 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
   // 乐观更新(负责人实测:只靠 router.refresh() 在 RSC 缓存时序下不可靠,操作后列表不动)——
   // 本地持有列表,成功即时移除该条;refresh 仍触发,作为服务端最终一致的兜底。
   const [rows, setRows] = useState<RelationReviewRow[]>(items);
+  // 负责人 2026-07-07 定夺:未覆盖票可提交(chainId=unmapped 作待收录容器)——配套给个
+  // 筛选开关,把「关系复核」和「新标的收录建议」分开批量处理,噪声不混流。
+  const [view, setView] = useState<"all" | "mapped" | "unmapped">("all");
   // W2(五轮 review):RSC 陈旧刷新会把已决行"复活"回列表——本会话内已终审的 id 永不回流
   const decided = useRef<Set<string>>(new Set());
   useEffect(() => setRows(items.filter((i) => !decided.current.has(i.id))), [items]);
@@ -60,12 +63,33 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
       </div>
     );
   }
+  const shown = rows.filter((it) =>
+    view === "all" ? true : view === "unmapped" ? it.chainId === "unmapped" : it.chainId !== "unmapped"
+  );
+  const unmappedCount = rows.filter((it) => it.chainId === "unmapped").length;
   return (
     <div className="mb-6 space-y-2">
+      {unmappedCount > 0 && (
+        <div className="flex items-center gap-1.5 text-xs">
+          {([
+            ["all", `全部(${rows.length})`],
+            ["mapped", `关系复核(${rows.length - unmappedCount})`],
+            ["unmapped", `待收录建议(${unmappedCount})`],
+          ] as const).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setView(k)}
+              className={`rounded px-2 py-0.5 ${view === k ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       {err && (
         <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{err}</div>
       )}
-      {rows.map((it) => (
+      {shown.map((it) => (
         <div key={it.id} className="rounded-lg bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium">{it.code}</span>
