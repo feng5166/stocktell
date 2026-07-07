@@ -8,7 +8,8 @@ import { upsertReviewItem } from "@/lib/relation-review";
 import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
-// 逐条 LLM 审阅(串行,每条 ~10-20s),上限 5 条/次 → 最坏 ~100s,300s 上限给足
+// LLM 审阅按 4 路并发池执行(每条 ~10-20s):12 条最坏 ~60s,300s 上限给足。
+// 上限 12=一条链一次审完;再大不是时间问题而是终审质量问题(一次给人 20 条建议没人细看)。
 export const maxDuration = 300;
 
 // AI 审阅(2.2-C 对话能力试点,2026-07-07 负责人拍板):管理员勾选关系 → LLM 按关系口径逐条
@@ -16,7 +17,7 @@ export const maxDuration = 300;
 // 人工在审阅队列面板通过/拒绝。
 // 【铁律】AI 只产建议:本路由没有任何写 staticRelations 的能力(不变量#4);
 // AI 依据的是训练知识+库内既有信息,业务事实(订单/客户/收入)必须人工核实——建议仅供参考。
-const MAX_ITEMS = 5;
+const MAX_ITEMS = 12;
 const VALID_TYPES = new Set(["direct", "indirect", "sentiment", "weak", "candidate"]);
 
 const SYSTEM_PROMPT = `你是 StockTell 产业链关系库的审阅助手。对给出的「股票×产业链」关系,按以下口径给出档位建议:
@@ -57,22 +58,21 @@ export async function POST(req: NextRequest) {
     .filter((i): i is { code: string; chainId: string } => !!i?.code && !!i?.chainId)
     .slice(0, MAX_ITEMS);
   if (items.length === 0) {
-    return NextResponse.json({ ok: false, error: "empty-items(每次最多 5 条)" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "empty-items(每次最多 12 条)" }, { status: 400 });
   }
 
   const date = todayISO();
-  const out: AiSuggestion[] = [];
-  for (const it of items) {
+  const client = llm; // 上方已判空;闭包内 TS 无法跨函数收窄,固定为非空引用
+  async function reviewOne(it: { code: string; chainId: string }): Promise<AiSuggestion> {
     const rel = relationInChain(it.code, it.chainId);
     const st = STOCK_MAP[it.code];
     if (!rel || !st) {
-      out.push({
+      return {
         code: it.code, name: st?.name ?? it.code, chainId: it.chainId,
         currentType: rel?.relationType ?? "-", suggestedType: "-",
         rationale: "", evidenceNeeded: [], verificationPoints: [],
         queued: false, error: "relation-not-found",
-      });
-      continue;
+      };
     }
     const user = [
       `股票:${st.name}(${it.code}),板块:${st.sector},定位:${st.positioning}`,
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean).join("\n");
     try {
       const resp = await chatTimed("relation-review-ai", "primary", () =>
-        llm.chat.completions.create({
+        client.chat.completions.create({
           model: LLM_MODEL_FAST,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
@@ -112,19 +112,30 @@ export async function POST(req: NextRequest) {
         suggestedType: VALID_TYPES.has(sug) ? (sug as RelationType) : undefined,
         reason: `AI 审阅建议:${sug}(现档 ${rel.relationType})。${rationale}${evidence.length ? ` 需人工核实:${evidence.join("、")}` : ""}`,
       });
-      out.push({
+      return {
         code: it.code, name: st.name, chainId: it.chainId,
         currentType: rel.relationType, suggestedType: sug,
         rationale, evidenceNeeded: evidence, verificationPoints: verify, queued: true,
-      });
+      };
     } catch (e) {
-      out.push({
+      return {
         code: it.code, name: st.name, chainId: it.chainId,
         currentType: rel.relationType, suggestedType: "-",
         rationale: "", evidenceNeeded: [], verificationPoints: [],
         queued: false, error: String(e).slice(0, 120),
-      });
+      };
     }
   }
+  // 4 路并发池:比 Promise.all 全放温和(不给 LLM 网关一次拍 12 个),比串行快 3-4 倍
+  const out: AiSuggestion[] = new Array(items.length);
+  let cursor = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(4, items.length) }, async () => {
+      while (cursor < items.length) {
+        const i = cursor++;
+        out[i] = await reviewOne(items[i]);
+      }
+    })
+  );
   return NextResponse.json({ ok: true, suggestions: out });
 }
