@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useWatchlist } from "@/components/useWatchlist";
 import type { WatchChainInfo } from "@/lib/watch-relation";
-import { SIGNAL_RANK as SIG_RANK } from "@/lib/signal-rank";
+import { classifyWatchCodes } from "@/lib/watch-groups";
 
 const REL_CHIP: Record<string, string> = {
   直接映射: "bg-rose-50 text-rose-600",
@@ -46,49 +46,11 @@ export default function WatchlistBoard({
   const { codes, ready } = useWatchlist();
   const [submitted, setSubmitted] = useState<Record<string, "ok" | "fail">>({});
 
-  // 四组分流(三轮 review T4/T5):A 股三档→链分组;美股 trigger→触发源组(有核定档,
-  // 要亮今日信号,绝不落"待验证");ETF→独立组(不进关系模型,明确标注,不给死流程);
-  // 其余→待验证收录组(也读 signalMap:未覆盖≠今天没被事件提到)。
-  const groups = useMemo(() => {
-    const byChain = new Map<
-      string,
-      { chainName: string; rows: Array<{ code: string; info: WatchChainInfo }> }
-    >();
-    const triggers: string[] = [];
-    const etfs: string[] = [];
-    const uncovered: string[] = [];
-    for (const code of Array.from(codes)) {
-      const info = chainMap[code];
-      if (info) {
-        const g = byChain.get(info.chainId) ?? { chainName: info.chainName, rows: [] };
-        g.rows.push({ code, info });
-        byChain.set(info.chainId, g);
-      } else if (triggerMap[code]) {
-        triggers.push(code);
-      } else if (names[code]?.market === "ETF") {
-        etfs.push(code);
-      } else {
-        uncovered.push(code);
-      }
-    }
-    // 组内:今日触发在前(强>中>弱),再按名称;组间:有触发的链在前
-    const sigRank = (code: string) =>
-      SIG_RANK[(signalMap[code]?.strength ?? "") as keyof typeof SIG_RANK] ?? 0;
-    const byName = (a: string, b: string) =>
-      (names[a]?.name ?? a).localeCompare(names[b]?.name ?? b, "zh");
-    for (const g of Array.from(byChain.values())) {
-      g.rows.sort((a, b) => sigRank(b.code) - sigRank(a.code) || byName(a.code, b.code));
-    }
-    const chains = Array.from(byChain.entries()).sort(
-      (a, b) =>
-        Math.max(0, ...b[1].rows.map((r) => sigRank(r.code))) -
-        Math.max(0, ...a[1].rows.map((r) => sigRank(r.code)))
-    );
-    triggers.sort((a, b) => sigRank(b) - sigRank(a) || byName(a, b));
-    etfs.sort(byName);
-    uncovered.sort((a, b) => sigRank(b) - sigRank(a) || byName(a, b));
-    return { chains, triggers, etfs, uncovered };
-  }, [codes, chainMap, triggerMap, signalMap, names]);
+  // 四组分流:纯函数 lib/watch-groups(与 scripts/watchlist-smoke.ts 共用,CI 端到端断言)
+  const groups = useMemo(
+    () => classifyWatchCodes(Array.from(codes), chainMap, triggerMap, names, signalMap),
+    [codes, chainMap, triggerMap, signalMap, names]
+  );
 
   async function suggestReview(code: string) {
     try {

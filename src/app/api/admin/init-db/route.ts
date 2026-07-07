@@ -4,6 +4,9 @@ import { isAdminAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 
+// 【维护约定(2026-07-07 五轮 review W1)】:本文件每加一条改变"表/索引形态"的 DDL,
+// 同步在 src/instrumentation.ts 的 SENTINELS 加一条哨兵——启动时核对,漂移即飞书告警,
+// 消灭"代码上线了、库还是旧形态"的静默窗口。改库后仍需手动 POST 本接口(幂等)。
 // 一次性建 password_reset_tokens 表。需 ?token=ADMIN_TOKEN。建完即删。
 const T = `CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
   "id" text NOT NULL,

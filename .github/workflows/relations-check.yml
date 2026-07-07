@@ -27,6 +27,9 @@ on:
       - "scripts/source-leakage.ts"
       - "scripts/leakage-rules.ts"
       - "scripts/pipeline-replay.ts"
+      - "scripts/watchlist-smoke.ts"
+      - "src/lib/watch-*.ts"
+      - "src/lib/daily-signals.ts"
       - "fixtures/replay/**"
   pull_request:
     paths:
@@ -47,6 +50,9 @@ on:
       - "scripts/source-leakage.ts"
       - "scripts/leakage-rules.ts"
       - "scripts/pipeline-replay.ts"
+      - "scripts/watchlist-smoke.ts"
+      - "src/lib/watch-*.ts"
+      - "src/lib/daily-signals.ts"
       - "fixtures/replay/**"
 
 jobs:
@@ -84,3 +90,7 @@ jobs:
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off --fixture
       - name: pipeline replay · market-closed via fixture (blocking)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off --fixture
+      # blocking:Watchlist 端到端冒烟(零网络零 DB)。三轮 review 教训:trigger 信号/ETF/
+      # 未覆盖三类"模块各自正确、拼起来断"的缺陷单测测不出,这里按数据装配→分组→展示不变量全链断言。
+      - name: watchlist smoke (blocking)
+        run: npx tsx scripts/watchlist-smoke.ts
