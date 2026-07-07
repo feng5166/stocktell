@@ -11,12 +11,15 @@ jobs:
   push:
     runs-on: ubuntu-latest
     steps:
+      # -f:HTTP ≥400(交易日缺简报时路由故意返回 500)要让本 step 失败 → GH 失败邮件,
+      # 成为飞书之外的第二告警通道(2.1-B:此前 500 被吞,GH 永远绿)。
       - name: Push today's briefing to Feishu
         run: |
-          curl -sS -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
+          curl -sSf -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
       # Web Push 已关闭(改由邮件 + 微信承载);不再触发 /api/cron/push-web。
       - name: Check bridge HTTPS cert expiry (alert if <14d)
+        if: always() # 简报 step 红了也照测证书,别让两个哨互相遮蔽
         run: |
-          curl -sS -X GET "https://stocktell.vercel.app/api/cron/cert-check" \
+          curl -sSf -X GET "https://stocktell.vercel.app/api/cron/cert-check" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

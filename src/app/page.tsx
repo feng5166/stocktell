@@ -120,8 +120,16 @@ export default async function Home() {
   );
 }
 
-// 简报状态横幅(2.0 收尾小补丁)。优先级:美股休市(中性)> 生成异常(告警)> 尚未更新(既有)> 正常无横幅。
-// 真休市【不大红】——它不是事故;只有 failed 才用告警色。
+// 简报状态横幅(2.1-A 全站五档对齐)。文案/色调统一走 BRIEF_STATUS_UI:
+// 休市=中性、模板兜底/合规阻断=琥珀(需关注非事故)、failed 才大红;generated/manual_reissue 无横幅。
+// 用户在首页就能读懂"今天为什么没有(正常的)新简报"。
+const TONE_BANNER: Record<string, { box: string; badge: string } | null> = {
+  info: null, // 正常产出不打横幅
+  neutral: { box: "bg-slate-100 text-slate-600", badge: "text-slate-700" },
+  attention: { box: "bg-amber-50 text-amber-800", badge: "text-amber-900" },
+  warn: { box: "bg-rose-50 text-rose-700", badge: "text-rose-700" },
+};
+
 function BriefStatusBanner({
   status,
   stale,
@@ -131,20 +139,13 @@ function BriefStatusBanner({
   stale: boolean;
   shownDate: string;
 }) {
-  const s = status?.status;
   const fromLatest = stale ? `,以下为最近一期 · ${shownDate}` : "";
-  if (s === "market_closed") {
+  const ui = status ? BRIEF_STATUS_UI[status.status] : null;
+  const style = ui ? TONE_BANNER[ui.tone] : null;
+  if (ui && style) {
     return (
-      <div className="mb-3 rounded-lg bg-slate-100 px-4 py-2.5 text-xs leading-relaxed text-slate-600">
-        <span className="font-medium text-slate-700">美股休市</span> · {BRIEF_STATUS_UI.market_closed.note}
-        {fromLatest}
-      </div>
-    );
-  }
-  if (s === "failed") {
-    return (
-      <div className="mb-3 rounded-lg bg-rose-50 px-4 py-2.5 text-xs leading-relaxed text-rose-700">
-        <span className="font-medium">生成异常</span> · {BRIEF_STATUS_UI.failed.note}
+      <div className={`mb-3 rounded-lg px-4 py-2.5 text-xs leading-relaxed ${style.box}`}>
+        <span className={`font-medium ${style.badge}`}>{ui.badge}</span> · {ui.note}
         {fromLatest}
       </div>
     );
