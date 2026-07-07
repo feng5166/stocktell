@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
-import { listBriefing, listBriefingDates } from "@/lib/briefings";
-import { getBriefStatus, BRIEF_STATUS_UI, type BriefTone } from "@/lib/brief-status";
+import { listBriefing } from "@/lib/briefings";
+import { listArchiveDates } from "@/lib/archive-dates";
+import { getBriefStatus, BRIEF_STATUS_UI, BRIEF_TONE_CHIP_CLS } from "@/lib/brief-status";
 import { getHolidayBridge } from "@/lib/holiday-bridge";
 import { IMPACT_META } from "@/lib/impact";
 import type { Impact } from "@/lib/briefings";
@@ -29,20 +30,13 @@ export async function generateMetadata({
   };
 }
 
-const TONE_BOX: Record<BriefTone, string> = {
-  info: "bg-emerald-50 text-emerald-700",
-  neutral: "bg-slate-100 text-slate-600",
-  attention: "bg-amber-50 text-amber-800",
-  warn: "bg-rose-50 text-rose-700",
-};
-
 export default async function DailyArchivePage({ params }: { params: { date: string } }) {
   if (!DATE_RE.test(params.date)) notFound();
   const date = params.date;
   const [items, status, dates] = await Promise.all([
     listBriefing({ date, status: "published" }).catch(() => []),
     getBriefStatus(date).catch(() => null),
-    listBriefingDates(120).catch(() => [] as string[]),
+    listArchiveDates(120),
   ]);
   const bridge =
     status?.subType === "holiday_bridge" ? await getHolidayBridge(date).catch(() => null) : null;
@@ -66,8 +60,10 @@ export default async function DailyArchivePage({ params }: { params: { date: str
           <h1 className="mt-1 text-h1 font-semibold tracking-tight">{date} · 产业链简报</h1>
           {ui && (
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-              <span className={`rounded px-1.5 py-0.5 font-medium ${TONE_BOX[ui.tone]}`}>{ui.badge}</span>
-              <span className="text-gray-400">{status?.message ?? ui.note}</span>
+              <span className={`rounded px-1.5 py-0.5 font-medium ${BRIEF_TONE_CHIP_CLS[ui.tone]}`}>{ui.badge}</span>
+              {/* 三轮 review T6:公开归档页只渲染 ui.note——status.message 是内部运维文案
+                (stale_asof 日含手动重发指令),与首页 Banner 同口径,绝不外泄 */}
+              <span className="text-gray-400">{ui.note}</span>
             </div>
           )}
         </header>

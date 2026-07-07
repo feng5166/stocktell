@@ -38,9 +38,12 @@ export default async function Home() {
   // 简报 + AI链情绪快照并行。情绪只读缓存快照(纯 DB 查询、零 fetch):
   // Next 14 渲染期间碰到 no-store fetch 会把整页打成动态(ISR 报废、每请求跑函数、大陆更慢),
   // 所以首页绝不在服务端触发情绪冷算;快照过期由客户端组件后台拉 /api/chain-sentiment 刷新。
-  const [briefingsRes, snap] = await Promise.all([
+  // R12(三轮收尾):状态/桥 KV 读并进同一批(全部相互独立,一跳出全量)
+  const [briefingsRes, snap, briefStatus, bridgeDoc] = await Promise.all([
     listBriefing({ date, status: "published" }).catch(() => null),
     sentimentSnapshot().catch(() => null),
+    getBriefStatus(date).catch(() => null),
+    getHolidayBridge(date).catch(() => null),
   ]);
   if (briefingsRes === null) errored = true;
   else items = briefingsRes;
@@ -73,13 +76,8 @@ export default async function Home() {
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();
   const relLabelMap = buildRelLabelMap(); // Phase 3-D:OvernightRadar peer 关系档(服务端算好传客户端)
-  // 简报状态标识(2.0 收尾)+ 节后首日观察(2.1-C):两个 KV 读相互独立,并行取
-  // (二轮 review G4 收尾);桥文档只在 subType 命中时才渲染,多读的一次 KV 在 ISR 下可忽略。
+  // 节后首日观察(2.1-C):桥文档只在 subType 命中时渲染(多读一次 KV 在 ISR 下可忽略);
   // 回顾条目不在 bridge 区块重复——下方 stale feed 展示的就是最近一期简报,区块只补「口径+验证点」。
-  const [briefStatus, bridgeDoc] = await Promise.all([
-    getBriefStatus(date).catch(() => null),
-    getHolidayBridge(date).catch(() => null),
-  ]);
   const bridge = briefStatus?.subType === "holiday_bridge" ? bridgeDoc : null;
 
   return (

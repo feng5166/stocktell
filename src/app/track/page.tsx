@@ -162,10 +162,8 @@ function emptyStats(): HitStats {
 // 按关系档 / 按链拆复盘(2.1-W3):复盘的主口径=「哪类关系判断被验证」,不是笼统的涨跌命中。
 // direct 与 sentiment 的验证含义不同:direct 未验证要复核订单/收入证据(高频未验证会自动进
 // 审阅队列),sentiment 未验证多半是情绪衰减(符合预期)。历史同向统计只是参考、非基本面验证。
-// 亮百分比的最低样本(二轮 review N2):与 linkage-rules.md §6 红线同口径——历史同向类统计
-// 小样本(<12)只给样本数不亮百分比(OvernightRadar 的 LINKAGE_MIN 同为 12)。此前硬编码 5
-// 与红线自相矛盾,拆掉了"小样本不亮百分比"这层合规防线。
-const REL_MIN_SAMPLE = 12;
+// 亮百分比的最低样本:linkage-rules §6 红线单一来源(<12 只给样本数)
+const REL_MIN_SAMPLE = MIN_SAMPLE;
 
 const REL_META: Record<string, { label: string; verifyHint: string }> = {
   direct: { label: "直接映射", verifyHint: "看订单/客户/收入占比/毛利率" },
@@ -238,8 +236,8 @@ function Dot({ className }: { className: string }) {
   );
 }
 
-// 分项(高/中/低联动)亮百分比的最低样本——比总体 MIN_SAMPLE 宽松,但仍挡掉 1/1 这种虚高
-const SUB_MIN_SAMPLE = 5;
+// 分项(高/中/低)与总体同用 MIN_SAMPLE=12(三轮 review T10:同页三种阈值口径是红线把柄)
+const SUB_MIN_SAMPLE = MIN_SAMPLE;
 
 function Overview({
   stats,

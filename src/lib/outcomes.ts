@@ -309,8 +309,9 @@ export async function statsOutcomesByRelation(backtest: boolean): Promise<{
   return { byRelation, byChain };
 }
 
-// 样本低于此数不亮总命中率,只说"样本积累中"——早期几条数据的命中率没意义,亮出来反而误导。
-export const MIN_SAMPLE = 10;
+// 样本低于此数不亮总命中率,只说"样本积累中"。三轮 review T10:与 linkage-rules §6 红线
+// 统一为 12(单一来源=lib/linkage.ts 的 MIN_SAMPLE),同页不再出现 5/10/12 三种口径。
+export { MIN_SAMPLE } from "@/lib/linkage";
 
 // 按影响等级(高/中/低)拆命中率,只返回有样本的等级。
 export function summarizeByImpact(

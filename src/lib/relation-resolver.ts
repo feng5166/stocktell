@@ -23,7 +23,8 @@ import {
 } from "@/data/chain-relations";
 
 // ---- 层②:每日事件信号(当天有效,不进静态库) ----
-export type SignalStrength = "强" | "中" | "弱";
+export type { SignalStrength } from "@/lib/signal-rank";
+import type { SignalStrength } from "@/lib/signal-rank";
 export type DailyRelationSignal = {
   code: string;
   chainId: string;
@@ -62,6 +63,8 @@ export function getDailySignals(date: string): DailyRelationSignal[] {
 // 注入式解析(2.1-W5):调用方自带信号(deriveDailySignals 的产物),返回该票全部链关系
 // 并挂 todaySignalStrength。不变量#3 由 attachSignal 结构保证:只写 todaySignalStrength,
 // relationType 永远来自 staticRelations。
+// 【现状(三轮 review 注记)】暂无生产调用方——/watchlist 用按 code 聚合的 signalMap(板级
+// 展示不需要逐链信号),本函数是"逐链信号"场景(个股页今日触发/扩链)的预留入口,接入前勿删。
 export function resolveWithSignals(
   code: string,
   signals: DailyRelationSignal[]

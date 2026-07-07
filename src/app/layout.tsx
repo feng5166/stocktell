@@ -6,6 +6,7 @@ import { PWARegister } from "@/components/PWARegister";
 import { SiteFooter } from "@/components/SiteFooter";
 import { GuestWatchlistNudge } from "@/components/GuestWatchlistNudge";
 import { AuthTracker } from "@/components/AuthTracker";
+import { SITE_URL, safeJsonLd } from "@/lib/site";
 
 // Umami 网页分析(自托管 analytics.stocktell.me)。配了 WEBSITE_ID 才注入,
 // 自动采集 pageview;自定义事件经 lib/analytics 的 track() 上报。
@@ -17,14 +18,14 @@ const WEBSITE_JSONLD = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "StockTell",
-  url: "https://www.stocktell.me",
+  url: SITE_URL,
   description:
     "把全球事件拆解为产业链传导、A 股映射、关系强弱和可核实依据的产业理解工具。不构成投资建议。",
   inLanguage: "zh-CN",
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.stocktell.me"),
+  metadataBase: new URL(SITE_URL),
   title: "StockTell｜今日产业链推理:把全球事件翻译成 A 股产业链映射",
   description:
     "StockTell 不是新闻聚合,也不提供买卖建议。我们把全球事件拆解为产业链传导、A 股映射、关系强弱和可核实依据,帮助用户理解今天哪些产业链值得关注。",
@@ -60,7 +61,7 @@ export default function RootLayout({
       <body className="antialiased pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSONLD) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(WEBSITE_JSONLD) }}
         />
         <Providers>
           {children}

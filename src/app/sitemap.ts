@@ -2,12 +2,13 @@ import type { MetadataRoute } from "next";
 import { CHAINS } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { STOCKS } from "@/data/stocks";
-import { listBriefingDates } from "@/lib/briefings";
+import { listArchiveDates } from "@/lib/archive-dates";
 import { listPublishedDailyDates } from "@/lib/insight-pipeline/docs";
 
 // SEO 基建(2.1-W4)。内容资产四层:静态页 → 链页/insight 三链 → 股票页 → 每日归档。
 // DB 归档查询全部 fail-safe:库不可用时退化为纯静态条目,sitemap 本身绝不 500。
-const BASE = "https://www.stocktell.me";
+import { SITE_URL } from "@/lib/site";
+const BASE = SITE_URL;
 
 export const revalidate = 3600; // 归档每天最多多一天,1h 再生成足够
 
@@ -33,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   // 每日归档(DB;fail-safe 空数组)
   try {
-    const briefDates = await listBriefingDates(120);
+    const briefDates = await listArchiveDates(120);
     for (const d of briefDates) {
       out.push({ url: `${BASE}/daily/${d}`, changeFrequency: "yearly", priority: 0.4 });
     }

@@ -18,6 +18,16 @@ export async function kvGet<T>(id: string): Promise<T | null> {
   return (row?.data as T | undefined) ?? null;
 }
 
+// 前缀列举 id(三轮 review T9:brief-status 按日期集列举,状态型归档日不再是孤儿)。
+export async function kvListIds(prefix: string, take = 400): Promise<string[]> {
+  const db = getPrisma();
+  if (!db) return [];
+  const rows = await db.quotesCache
+    .findMany({ where: { id: { startsWith: prefix } }, select: { id: true }, take })
+    .catch(() => [] as Array<{ id: string }>);
+  return rows.map((r) => r.id);
+}
+
 // 带「读失败」区分的读(review F5):告警消费方必须能区分「记录不存在」和「读挂了」——
 // 前者可能是共模故障信号,后者只是 DB 抖动,判级完全不同。瞬态错误先重试再认输。
 export async function kvGetChecked<T>(
