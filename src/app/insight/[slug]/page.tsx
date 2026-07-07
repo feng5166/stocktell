@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { STOCK_MAP } from "@/data/stocks";
@@ -23,6 +24,23 @@ import {
 export const revalidate = 60;
 export function generateStaticParams() {
   return Object.keys(INSIGHT_CHAINS).map((slug) => ({ slug }));
+}
+
+// SEO(2.1-W4):三条核心链页是自然流量主入口,title 直答搜索意图(产业链是什么/怎么传导/
+// A 股映射),description 用人话结论;禁荐股口径(内容本身已过合规,这里只描述不判断)。
+export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+  const c = INSIGHT_CHAINS[params.slug];
+  if (!c) return {};
+  return {
+    title: `${c.title.replace(" · 因果链", "")}产业链:事件如何传导到 A 股映射 | StockTell`,
+    description: c.oneLinerPlain.slice(0, 150),
+    alternates: { canonical: `https://www.stocktell.me/insight/${params.slug}` },
+    openGraph: {
+      title: c.title,
+      description: c.oneLinerPlain.slice(0, 150),
+      type: "article",
+    },
+  };
 }
 
 const CONF: Record<Confidence, string> = {
@@ -160,7 +178,13 @@ export default async function InsightPage({ params }: { params: { slug: string }
           <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-brand-100">
             <div className="mb-1 flex items-baseline justify-between gap-2">
               <span className="text-xs font-medium text-brand-600">📡 今日更新 · {daily.date}</span>
-              <span className="text-meta text-gray-400">链级每日推理</span>
+              {/* 归档入口(2.1-W4):进入当日归档页,页内有前后日互链,构成 SEO 抓取路径 */}
+              <Link
+                href={`/insight/${params.slug}/${daily.date}`}
+                className="text-meta text-gray-400 hover:text-brand-600"
+              >
+                链级每日推理 · 归档 →
+              </Link>
             </div>
             <p className="text-sm leading-relaxed text-gray-800">{daily.payload.judgment}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">

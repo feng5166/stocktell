@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { STOCK_MAP, STOCKS, resolvePeer, type Stock } from "@/data/stocks";
 import { ChainPosition } from "@/components/ChainPosition";
@@ -52,6 +53,28 @@ const HEAT_CLASS: Record<string, string> = {
 // 串行等新浪行情 + DB,整页被慢请求卡住。改 ISR:静态外壳走缓存,实时行情交给 <LiveQuote>
 // 客户端按需拉,今日简报标记随每 5 分钟再生成刷新。
 export const revalidate = 300;
+
+// SEO(2.1-W4):股票页回答长尾问题「XX 为什么在某产业链里/哪个环节/直接还是间接映射」。
+// 全部来自静态数据 + resolver(零 IO),description 用关系口径不作判断(不出荐股口径)。
+export function generateMetadata({ params }: { params: { code: string } }): Metadata {
+  const s = STOCK_MAP[params.code];
+  if (!s) return {};
+  const rel = resolvePrimary(s.code);
+  const relLabel = rel ? STOCK_REL_LABEL[rel.relationType] ?? rel.relationType : s.market === "A股" ? "待验证" : "触发源";
+  const title = rel
+    ? `${s.name}(${s.code})在${rel.chainName}的位置:${rel.segmentName ?? s.sector} · ${relLabel} | StockTell`
+    : `${s.name}(${s.code}):产业链定位与关系档 | StockTell`;
+  const description = (
+    rel?.reason
+      ? `${s.name} 属${rel.chainName}${rel.segmentName ? ` · ${rel.segmentName}` : ""},关系档为${relLabel}(研究框架梳理·非确认):${rel.reason}`
+      : `${s.name} 的产业链定位、关系档与验证点。${s.positioning ?? ""}`
+  ).slice(0, 160);
+  return {
+    title,
+    description,
+    alternates: { canonical: `https://www.stocktell.me/stock/${s.code}` },
+  };
+}
 
 // 单项取数加超时 + 失败兜底:Tushare 慢/挂时返回 fb,不拖垮整页 SSR。
 function cap<T>(p: Promise<T>, ms: number, fb: T): Promise<T> {

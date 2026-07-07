@@ -184,6 +184,21 @@ export async function getPublishedDaily(
   return row ? fromRow(row) : null;
 }
 
+// 归档(2.1-W4):某链已发布 daily 的日期列表(倒序),供 /insight/[slug]/[date] 归档页与 sitemap。
+export async function listPublishedDailyDates(chainId: string, limit = 120): Promise<string[]> {
+  const db = getPrisma();
+  if (!db) return [];
+  const rows = await db.insightDoc
+    .findMany({
+      where: { chainId, kind: "daily", status: "published" },
+      select: { date: true },
+      orderBy: { date: "desc" },
+      take: limit,
+    })
+    .catch(() => [] as Array<{ date: string }>);
+  return Array.from(new Set(rows.map((r) => r.date)));
+}
+
 // 昨日 heat(S2 diff 输入):最近一篇该链 daily(published 优先,其次 draft)
 export async function getPrevHeat(
   chainId: string,

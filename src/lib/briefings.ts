@@ -97,6 +97,19 @@ export async function listBriefing(opts: {
   return sortItems(items);
 }
 
+// 归档(2.1-W4):已发布简报的日期列表(倒序去重),供 /daily 归档索引与 sitemap。
+export async function listBriefingDates(limit = 120): Promise<string[]> {
+  const db = getPrisma();
+  if (db) {
+    const rows = await db.briefingItem
+      .groupBy({ by: ["date"], where: { status: "published" }, orderBy: { date: "desc" }, take: limit })
+      .catch(() => [] as Array<{ date: string }>);
+    return rows.map((r) => r.date);
+  }
+  const items = (await localRead()).filter((i) => i.status === "published");
+  return Array.from(new Set(items.map((i) => i.date))).sort().reverse().slice(0, limit);
+}
+
 // 最近一期已发布简报(今天还没生成时,用于回退展示历史,而不是给用户一片空白)。
 // 返回该期日期 + 条目;库里一条都没有时 date=null。
 export async function latestBriefing(): Promise<{
