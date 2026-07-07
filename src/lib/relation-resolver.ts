@@ -50,11 +50,24 @@ export type ResolvedRelation = StockChainRelation & {
   resolvedSource: "static" | "daily" | "review";
 };
 
-// 骨架期:daily 为空源。pipeline 落地 dailyRelationSignals 后替换 getter 即可,
-// resolver 与所有消费方不动(这正是唯一入口的价值)。
+// 层② 2.1-W5 起有真源:lib/daily-signals.ts 从当日已发布简报【异步】派生。
+// 本同步 getter 保持空——resolver 是全站同步热路径,不为层②破坏同步契约;
+// 需要今日信号的消费方(/watchlist 服务端)先 deriveDailySignals(date),
+// 再经下方 resolveWithSignals 注入,挂接语义与本文件 attachSignal 同一份。
 export function getDailySignals(date: string): DailyRelationSignal[] {
-  void date; // 骨架期空源;pipeline 落地后按 date 读 dailyRelationSignals
+  void date;
   return [];
+}
+
+// 注入式解析(2.1-W5):调用方自带信号(deriveDailySignals 的产物),返回该票全部链关系
+// 并挂 todaySignalStrength。不变量#3 由 attachSignal 结构保证:只写 todaySignalStrength,
+// relationType 永远来自 staticRelations。
+export function resolveWithSignals(
+  code: string,
+  signals: DailyRelationSignal[]
+): ResolvedRelation[] {
+  const mine = signals.filter((s) => s.code === code);
+  return relationsForCode(code).map((r) => attachSignal(r, mine));
 }
 // 层③ 2.1-W3 起已持久化(relation_review_queue 表,读写走 lib/relation-review.ts)。
 // 本 getter 仍返回空:pending/confirmed 队列项【不是关系】,不影响解析(改档只走

@@ -23,6 +23,15 @@ const TABS: Tab[] = [
     ),
   },
   {
+    label: "自选",
+    href: "/watchlist",
+    icon: (a) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw(a)} className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.8L6.6 19.7l1-6L3.2 9.4l6.1-.9L12 3z" />
+      </svg>
+    ),
+  },
+  {
     label: "股票池",
     href: "/stocks",
     icon: (a) => (
