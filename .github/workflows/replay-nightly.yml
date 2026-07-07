@@ -1,11 +1,16 @@
-# 回放矩阵 nightly(2026-07-06 负责人拍板 CI 分层):full / market-closed 依赖东财历史日 K(网络),
-# 不进 PR blocking 防 flaky;每日跑 + 可手动触发。行情 fixture 落档(2.1)后再升 PR blocking。
-# compliance-block(零网络)已挂 relations-check.yml 作 PR blocking。
+# 外部数据源健康检查(2.2-A 重定位,2026-07-07 负责人拍板):
+# full / market-closed 的【门禁职责】已升入 relations-check.yml(PR blocking,行情走本地 fixture,
+# 零网络零 flaky)。本 nightly 保留【实抓路径】,职责变为:
+#   ①东财/Yahoo 外部行情源健康(限流/封 IP/格式漂移第一时间可见);
+#   ②样本日窗口有效性(出 250 根 K 窗口时报 SAMPLE_DATE_EXPIRED,按 docs/pipeline-replay.md 轮换并重录 fixture);
+#   ③实抓结论与 fixture 录制结论的隐性对照(实抓也跑同一套断言,行为漂移这里也能红)。
+# nightly 红 ≠ 门禁破——PR blocking 不受影响;红的含义是"外部源或样本日需要人工看一眼"。
 #
 # 【拆双 job 的原因】东财按 IP 封限流窗口:同一跑机第一步全量 71 请求 3/3 成功,但第二步哪怕只发
 # 12 请求、隔 60s 也 3/3 被掐(2026-07-06 三轮实测)。两个 job = 两台跑机两个 IP,各自都是"新 IP
 # 第一步",且并行更快。
-# 样本日注意:2026-07-02/07-06 在东财 250 根日 K 窗口内有效约一年,失效时换新样本日并同步 docs/pipeline-replay.md。
+# 样本日注意:2026-07-02/07-06 在东财 250 根日 K 窗口内有效约一年,失效时换新样本日并同步
+# docs/pipeline-replay.md(§样本日轮换)+ 重录 fixtures/replay/。
 name: replay-nightly
 
 on:
@@ -14,8 +19,8 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  # Case C(兜底路径):正常交易日全链路,llm=off → engine=template / status=fallback(非 failed)
-  replay-full:
+  # 外部源健康 · full 实抓(Case C 兜底路径):正常交易日全链路,llm=off
+  source-health-full:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -25,11 +30,11 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: replay · full 2026-07-02 (Case C 兜底)
+      - name: live replay · full 2026-07-02(东财/Yahoo 实抓健康检查)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off
 
-  # Case B:美股休市不硬造(07-03 独立日观察日+周末 → market_closed 非 failed);12 票探针集
-  replay-market-closed:
+  # 外部源健康 · market-closed 实抓(Case B):美股休市不硬造;12 票探针集
+  source-health-market-closed:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -39,5 +44,5 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: replay · market-closed 2026-07-06 (Case B)
+      - name: live replay · market-closed 2026-07-06(东财/Yahoo 实抓健康检查)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off

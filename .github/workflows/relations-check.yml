@@ -23,6 +23,7 @@ on:
       - "scripts/source-leakage.ts"
       - "scripts/leakage-rules.ts"
       - "scripts/pipeline-replay.ts"
+      - "fixtures/replay/**"
   pull_request:
     paths:
       - "src/data/chain-relations*"
@@ -37,6 +38,7 @@ on:
       - "scripts/source-leakage.ts"
       - "scripts/leakage-rules.ts"
       - "scripts/pipeline-replay.ts"
+      - "fixtures/replay/**"
 
 jobs:
   check-relations:
@@ -66,3 +68,10 @@ jobs:
       # 断言口径不伪装/不硬造/guard 纵深/宁缺勿造。
       - name: pipeline replay · holiday-bridge (blocking)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=holiday-bridge --llm=off
+      # blocking:full / market-closed 本地 fixture 回放(2.2-A 行情落档后升格,负责人拍板)。
+      # 行情来自 fixtures/replay/ 快照(零网络,不受东财/Yahoo 波动影响),并与录制时的
+      # expected snapshot 稳定子集对照——管线结论漂移在 PR 里显式红出。实抓路径留在 nightly 作外部源健康检查。
+      - name: pipeline replay · full via fixture (blocking)
+        run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=full --llm=off --fixture
+      - name: pipeline replay · market-closed via fixture (blocking)
+        run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=market-closed --llm=off --fixture
