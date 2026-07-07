@@ -21,6 +21,7 @@ type Suggestion = {
   currentType: string;
   suggestedType: string;
   rationale: string;
+  analysis: string;
   evidenceNeeded: string[];
   verificationPoints: string[];
   queued: boolean;
@@ -147,7 +148,13 @@ export default function AiReviewPanel({ relations }: { relations: AiReviewRelati
                   </>
                 )}
               </div>
-              {s.rationale && <p className="mt-0.5 text-gray-600">{s.rationale}</p>}
+              {s.rationale && <p className="mt-0.5 font-medium text-gray-700">{s.rationale}</p>}
+              {s.analysis && (
+                <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-gray-600">
+                  <span className="text-gray-400">判定过程:</span>
+                  {s.analysis}
+                </p>
+              )}
               {s.evidenceNeeded.length > 0 && (
                 <p className="mt-0.5 text-gray-400">需人工核实:{s.evidenceNeeded.join("、")}</p>
               )}

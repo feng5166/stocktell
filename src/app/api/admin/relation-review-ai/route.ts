@@ -27,8 +27,12 @@ const SYSTEM_PROMPT = `你是 StockTell 产业链关系库的审阅助手。对�
 - weak(弱映射):关系远,仅外围观察;
 - candidate(待验证):信息不足以判档;
 - remove(移出):主营与该链无实质关系。
-规则:①宁可保守,证据不足就 candidate,不确定的业务事实要在 evidenceNeeded 里列出让人工核实;②rationale 用中性研究口径,不用任何买卖/涨跌/受益确定性话术;③只输出 JSON,不要输出其它文字。
-输出格式:{"suggestedType":"direct|indirect|sentiment|weak|candidate|remove","rationale":"≤80字理由","evidenceNeeded":["需人工核实的证据,1-3条"],"verificationPoints":["建议验证点,1-3条"]}`;
+规则:①宁可保守,证据不足就 candidate,不确定的业务事实要在 evidenceNeeded 里列出让人工核实;②全程中性研究口径,不用任何买卖/涨跌/受益确定性话术;③只输出 JSON,不要输出其它文字。
+analysis 字段是【判定过程】,必须包含三段(用中文分号分隔):
+(a) 业务传导路径:该股主营如何进入这条链的哪个环节;
+(b) 档位辨析:为什么是建议档而不是相邻的上一档/下一档(各给一句排除理由);
+(c) 证据现状:已知什么支撑、缺什么关键证据。150~250字。
+输出格式:{"suggestedType":"direct|indirect|sentiment|weak|candidate|remove","rationale":"一句话结论(≤40字)","analysis":"判定过程(按 a/b/c 三段)","evidenceNeeded":["需人工核实的证据,1-3条"],"verificationPoints":["建议验证点,1-3条"]}`;
 
 type AiSuggestion = {
   code: string;
@@ -37,6 +41,7 @@ type AiSuggestion = {
   currentType: string;
   suggestedType: string;
   rationale: string;
+  analysis: string; // 判定过程(负责人反馈:要理由不要只给结果)
   evidenceNeeded: string[];
   verificationPoints: string[];
   queued: boolean;
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
       return {
         code: it.code, name: st?.name ?? it.code, chainId: it.chainId,
         currentType: rel?.relationType ?? "-", suggestedType: "-",
-        rationale: "", evidenceNeeded: [], verificationPoints: [],
+        rationale: "", analysis: "", evidenceNeeded: [], verificationPoints: [],
         queued: false, error: "relation-not-found",
       };
     }
@@ -90,17 +95,18 @@ export async function POST(req: NextRequest) {
             { role: "user", content: user },
           ],
           temperature: 0.2,
-          max_tokens: 500,
+          max_tokens: 900,
         })
       );
       const raw = resp.choices[0]?.message?.content ?? "";
       const jsonText = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
       const parsed = JSON.parse(jsonText) as {
-        suggestedType?: string; rationale?: string;
+        suggestedType?: string; rationale?: string; analysis?: string;
         evidenceNeeded?: string[]; verificationPoints?: string[];
       };
       const sug = String(parsed.suggestedType ?? "candidate");
-      const rationale = String(parsed.rationale ?? "").slice(0, 160);
+      const rationale = String(parsed.rationale ?? "").slice(0, 80);
+      const analysis = String(parsed.analysis ?? "").slice(0, 400);
       const evidence = (parsed.evidenceNeeded ?? []).map(String).slice(0, 3);
       const verify = (parsed.verificationPoints ?? []).map(String).slice(0, 3);
       // 入审阅队列(人工终审入口):suggestedType 仅收合法档;remove 建议以文字呈现,档位留空
@@ -110,18 +116,18 @@ export async function POST(req: NextRequest) {
         date,
         source: "ai-review",
         suggestedType: VALID_TYPES.has(sug) ? (sug as RelationType) : undefined,
-        reason: `AI 审阅建议:${sug}(现档 ${rel.relationType})。${rationale}${evidence.length ? ` 需人工核实:${evidence.join("、")}` : ""}`,
+        reason: `AI 审阅建议:${sug}(现档 ${rel.relationType})。${rationale} 判定过程:${analysis}${evidence.length ? ` 需人工核实:${evidence.join("、")}` : ""}`,
       });
       return {
         code: it.code, name: st.name, chainId: it.chainId,
         currentType: rel.relationType, suggestedType: sug,
-        rationale, evidenceNeeded: evidence, verificationPoints: verify, queued: true,
+        rationale, analysis, evidenceNeeded: evidence, verificationPoints: verify, queued: true,
       };
     } catch (e) {
       return {
         code: it.code, name: st.name, chainId: it.chainId,
         currentType: rel.relationType, suggestedType: "-",
-        rationale: "", evidenceNeeded: [], verificationPoints: [],
+        rationale: "", analysis: "", evidenceNeeded: [], verificationPoints: [],
         queued: false, error: String(e).slice(0, 120),
       };
     }
