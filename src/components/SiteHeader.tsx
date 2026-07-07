@@ -9,6 +9,7 @@ import { InstalledBadge } from "@/components/InstalledBadge";
 
 const NAV = [
   { href: "/", label: "今日推理" },
+  { href: "/watchlist", label: "自选" },
   { href: "/stocks", label: "股票池" },
   { href: "/track", label: "复盘" },
   { href: "/about", label: "关于我们" },
