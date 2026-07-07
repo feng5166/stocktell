@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { sendFeishu } from "@/lib/feishu";
+import { dbReadRetry } from "@/lib/db-retry";
 import { setBriefStatus } from "@/lib/brief-status";
 import { getPrisma } from "@/lib/prisma";
 import { tradingDayGate } from "@/lib/trading-gate";
@@ -35,7 +36,12 @@ export async function GET(req: NextRequest) {
 
   try {
     // 幂等看「已发布」而非「任何状态」:管理员预览产生的 draft 不该让主/补位 cron 全天跳过。
-    const published = await listBriefing({ date, status: "published" });
+    // 首查套瞬态重试(2.1 稳定性):07:00 密集窗口的 P2024 池超时不该让主跑整段失败
+    // (2026-07-07 canary 实证)。只重试这个幂等读;写路径不重试,交给 07:40 幂等补位。
+    const published = await dbReadRetry(
+      () => listBriefing({ date, status: "published" }),
+      "briefing:幂等首查"
+    );
     if (published.length > 0) {
       // 简报已在,但推送段可能被上一跑的超时截断没发出去(2026-07-03 事故)→ 补跑推送段。
       // 这里天然幂等、无需"跳过"分支:digest 按用户幂等(send_log,已发的跳过),webpush 由
@@ -138,7 +144,12 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     // 状态标识:生成异常→failed(待人工核查),与休市缺口区分。
     await setBriefStatus(date, { status: "failed", reason: "data_fetch_failed", message: String(e).slice(0, 200) });
-    await alertCron("briefing(简报生成)", e);
+    // 告警区分「主跑失败」和「最终失败」:07:40 补位会自动重跑主流程,这条告警≠今天没简报;
+    // 补位后仍缺以 08:30 看门狗为准(它按 brief-status 分级)。
+    await alertCron(
+      "briefing(简报生成·主跑)",
+      `${e instanceof Error ? e.message : String(e)}\n—— 07:40 补位将自动重试,本条为主跑失败;最终结果以 08:30 看门狗为准`
+    );
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }

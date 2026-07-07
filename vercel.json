@@ -25,11 +25,11 @@
     },
     {
       "path": "/api/cron/risk-radar",
-      "schedule": "50 22 * * *"
+      "schedule": "40 22 * * *"
     },
     {
       "path": "/api/cron/insight-daily",
-      "schedule": "5 23 * * *"
+      "schedule": "7 23 * * *"
     }
   ]
 }
