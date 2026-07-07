@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StockChainRelation, RelationType } from "@/data/chain-relations";
 import { AI_REVIEW_MAX_ITEMS } from "@/lib/ai-review-const";
+import { postJson } from "@/lib/post-json";
 
 // ============================================================================
 // 关系模型人工校准工作台(负责人审阅台 · 第6步 4 功能)。
@@ -117,12 +118,10 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
     setAiBusy(true);
     setAiErr(null);
     try {
-      const resp = await fetch("/api/admin/relation-review-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: picked.map((r) => ({ code: r.code, chainId: r.chainId })) }),
-      });
-      const d = await resp.json().catch(() => ({ ok: false }));
+      const { res: resp, data: d } = await postJson<{ suggestions?: Array<AiSug & { code: string; chainId: string }> }>(
+        "/api/admin/relation-review-ai",
+        { items: picked.map((r) => ({ code: r.code, chainId: r.chainId })) }
+      );
       if (!resp.ok || !d.ok) {
         setAiErr(`AI 审阅失败(HTTP ${resp.status}${d.error ? ` · ${d.error}` : ""})`);
         return;
