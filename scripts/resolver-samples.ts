@@ -28,14 +28,15 @@ const etn = resolvePrimary("ETN"); eq("Eaton relationType", etn?.relationType, "
 // "归新链 candidate 且【仍不在 ai-infra】"(不污染 ai-infra 的语义不变,只是有家了)。
 const bfhc = resolvePrimary("002371");
 eq("北方华创 chainId=semiconductor-equipment", bfhc?.chainId, "semiconductor-equipment");
-eq("北方华创 relationType=candidate(待人工校准,不虚标)", bfhc?.relationType, "candidate");
+eq("北方华创 relationType=direct(2026-07-07 负责人终审采纳)", bfhc?.relationType, "direct");
 eq("北方华创 ai-infra 应为 null(不被旧源捞回)", resolveInChain("002371", "ai-infra"), null);
 // 触发源路由:ASML 归半导体设备链 trigger(audit 未来链启用)
 const asml = resolvePrimary("ASML");
 eq("ASML chainId=semiconductor-equipment", asml?.chainId, "semiconductor-equipment");
 eq("ASML relationType=trigger", asml?.relationType, "trigger");
 // EDA:华大九天在新链 candidate,不挂 ai-infra
-eq("华大九天 semiconductor-equipment=candidate", resolveInChain("301269", "semiconductor-equipment")?.relationType, "candidate");
+eq("华大九天 semiconductor-equipment=candidate(未终审,维持)", resolveInChain("301269", "semiconductor-equipment")?.relationType, "candidate");
+eq("中微 semiconductor-equipment=direct(终审采纳)", resolveInChain("688012", "semiconductor-equipment")?.relationType, "direct");
 eq("华大九天 ai-infra 应为 null", resolveInChain("301269", "ai-infra"), null);
 
 console.log(fails === 0 ? "\n✅ resolver 关键样本全过" : `\n✗ ${fails} 项不符`);

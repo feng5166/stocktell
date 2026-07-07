@@ -2,7 +2,7 @@
 
 // 层③ reviewQueue 审阅面板(2.1-W3):pending 列表 + confirm/reject。
 // confirm 后的改档动作仍走 chain-relations.ts 代码评审(不变量#4),这里只记录人工结论。
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RelationReviewRow } from "@/lib/relation-review";
 
@@ -23,7 +23,9 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
   // 乐观更新(负责人实测:只靠 router.refresh() 在 RSC 缓存时序下不可靠,操作后列表不动)——
   // 本地持有列表,成功即时移除该条;refresh 仍触发,作为服务端最终一致的兜底。
   const [rows, setRows] = useState<RelationReviewRow[]>(items);
-  useEffect(() => setRows(items), [items]);
+  // W2(五轮 review):RSC 陈旧刷新会把已决行"复活"回列表——本会话内已终审的 id 永不回流
+  const decided = useRef<Set<string>>(new Set());
+  useEffect(() => setRows(items.filter((i) => !decided.current.has(i.id))), [items]);
 
   // 二轮 review N7:必须读响应——401/500 时此前静默刷新,条目看似处理了实则没落库、
   // 手输备注全丢。失败=显式报错+不刷新(备注留在输入框);note 恒传(空串=清空,undefined 才是不动)。
@@ -41,6 +43,7 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
         setErr(`操作失败(HTTP ${r.status}${d.error ? ` · ${d.error}` : ""}),未落库——请重试或重新登录`);
         return;
       }
+      decided.current.add(id); // W2:标记已终审,陈旧刷新不得复活
       setRows((rs) => rs.filter((x) => x.id !== id)); // 乐观移除:已落库,立即从待审列表消失
       router.refresh();
     } catch (e) {
@@ -88,22 +91,22 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
               disabled={busy === it.id}
               onClick={() => act(it.id, "confirmed")}
               className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              title="确认需要调档:去 chain-relations.ts 走代码评审改档,队列只记录结论"
+              title="采纳该建议(记录结论;改档由维护者走 chain-relations.ts 代码评审落地)"
             >
-              确认待调档
+              ✓ 采纳建议
             </button>
             <button
               disabled={busy === it.id}
               onClick={() => act(it.id, "rejected")}
               className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50"
             >
-              维持现档
+              ✕ 驳回建议(维持现档)
             </button>
           </div>
         </div>
       ))}
       <p className="text-meta text-gray-400">
-        确认后改档仍走 chain-relations.ts 代码评审(队列不自动改 staticRelations);拒绝后同关系不再重复入队。
+        采纳后改档仍走 chain-relations.ts 代码评审(队列不自动改 staticRelations);驳回只终结【该来源】的重复入队——其他来源(用户提交/AI/复盘)带新证据时仍会各自入队(按源分账,来源即证据类型)。
       </p>
     </div>
   );

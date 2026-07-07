@@ -36,8 +36,16 @@ export const LLM_MODEL_FAST = process.env.LLM_MODEL_FAST || "deepseek-v4-flash";
 export const LLM_BASE_URL =
   process.env.LLM_BASE_URL || "https://api.modelverse.cn/v1";
 
-export function getLLM(): OpenAI | null {
+// opts(五轮 review W5):SDK 默认 timeout 600s+2 重试——交互式/有 maxDuration 预算的调用方
+// (如 AI 审阅 300s 函数)必须显式收紧,否则一个挂起调用就能坐满预算让批次中途被平台击杀。
+// 不带 opts 的既有调用方(简报生成等离线 cron)行为不变。
+export function getLLM(opts?: { timeoutMs?: number; maxRetries?: number }): OpenAI | null {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
-  return new OpenAI({ apiKey, baseURL: LLM_BASE_URL });
+  return new OpenAI({
+    apiKey,
+    baseURL: LLM_BASE_URL,
+    ...(opts?.timeoutMs !== undefined ? { timeout: opts.timeoutMs } : {}),
+    ...(opts?.maxRetries !== undefined ? { maxRetries: opts.maxRetries } : {}),
+  });
 }

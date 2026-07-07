@@ -44,6 +44,33 @@ export const REASON_APPEND: Record<string, string> = {
 };
 
 export const DIRECT_EVIDENCE: Record<string, DirectEvidence> = {
+  // —— semiconductor-equipment(2.2-B 校准回灌,2026-07-07:负责人采纳 AI 审阅建议,
+  //     candidate→direct;证据状态一律 partially_verified——披露入口在、具体订单/收入待逐项核验)——
+  "002371": {
+    verificationPoints: ["刻蚀/薄膜设备订单", "晶圆厂客户与国产替代招标", "设备收入占比", "毛利率"],
+    references: [cninfo("002371", "北方华创")],
+    evidenceStatus: "partially_verified",
+  },
+  "688012": {
+    verificationPoints: ["刻蚀设备订单", "先进制程/存储客户验证", "刻蚀收入占比", "毛利率"],
+    references: [sse("688012", "中微公司")],
+    evidenceStatus: "partially_verified",
+  },
+  "688072": {
+    verificationPoints: ["薄膜沉积设备订单", "先进制程验证进度与客户结构", "收入占比", "毛利率"],
+    references: [sse("688072", "拓荆科技")],
+    evidenceStatus: "partially_verified",
+  },
+  "688037": {
+    verificationPoints: ["涂胶显影机订单", "产线导入客户", "设备收入占比", "毛利率"],
+    references: [sse("688037", "芯源微")],
+    evidenceStatus: "partially_verified",
+  },
+  "688120": {
+    verificationPoints: ["CMP 设备订单", "产线验证客户", "设备与耗材收入占比", "毛利率"],
+    references: [sse("688120", "华海清科")],
+    evidenceStatus: "partially_verified",
+  },
   // —— ai-infra ——
   "300308": {
     verificationPoints: ["800G/1.6T 光模块订单", "北美云厂客户", "收入占比", "毛利率"],

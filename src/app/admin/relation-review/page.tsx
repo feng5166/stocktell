@@ -14,7 +14,8 @@ export default async function RelationReviewPage() {
   await requireAdmin();
   const { items: queue, readFailed } = await listReviewQueueChecked("pending");
   // AI 审阅面板用的精简关系清单(不把整个 StockChainRelation 拖进客户端)
-  const aiRelations: AiReviewRelation[] = allRelations().map((r) => ({
+  // 清理④(五轮 review):trigger 不参与档位审阅,服务端过滤后再序列化进客户端 props
+  const aiRelations: AiReviewRelation[] = allRelations().filter((r) => r.relationType !== "trigger").map((r) => ({
     code: r.code,
     name: r.name,
     chainId: r.chainId,

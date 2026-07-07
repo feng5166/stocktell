@@ -494,7 +494,7 @@ function sourceLeakage() {
   expect("Case E:中际旭创 ai-infra direct", samples.zhongjiAiInfra === "direct", String(samples.zhongjiAiInfra));
   expect("Case E:Eaton=trigger", samples.eatonTrigger === "trigger", String(samples.eatonTrigger));
   expect("Case E:北方华创不在 ai-infra(不被旧源捞回)", samples.beifanghuachuangAiInfra === "not_found", samples.beifanghuachuangAiInfra);
-  expect("Case E:北方华创属半导体设备链 candidate(2.2-B)", samples.beifanghuachuangSemi === "candidate", String(samples.beifanghuachuangSemi));
+  expect("Case E:北方华创属半导体设备链 direct(07-07 负责人终审采纳)", samples.beifanghuachuangSemi === "direct", String(samples.beifanghuachuangSemi));
 
   /* ---------- 关系标签新旧 diff(切 resolver 回归哨)---------- */
   const SLUG_TO_CHAIN: Record<string, string> = {
