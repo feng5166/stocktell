@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RelationReviewRow } from "@/lib/relation-review";
+import { postJson } from "@/lib/post-json";
 
 const REL_LABEL: Record<string, string> = {
   trigger: "触发源",
@@ -36,12 +37,11 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
     setBusy(id);
     setErr(null);
     try {
-      const r = await fetch("/api/admin/relation-review", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status, note: noteDraft[id] ?? "" }),
-      });
-      const d = await r.json().catch(() => ({ ok: false }));
+      const { res: r, data: d } = await postJson(
+        "/api/admin/relation-review",
+        { id, status, note: noteDraft[id] ?? "" },
+        "PATCH"
+      );
       if (!r.ok || !d.ok) {
         setErr(`操作失败(HTTP ${r.status}${d.error ? ` · ${d.error}` : ""}),未落库——请重试或重新登录`);
         return;

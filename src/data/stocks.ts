@@ -177,8 +177,9 @@ const STOCKS_BASE: StockBase[] = [
   { code: "TSM", name: "台积电", market: "美股", position: "上游", sector: "封装测试/代工", positioning: "先进制程独家代工", observation: "CoWoS 封装产能是算力供给瓶颈", status: "行情覆盖", relationTypes: ["产业链"], relations: ["中芯国际"] },
   { code: "ASML", name: "阿斯麦", market: "美股", position: "上游", sector: "半导体设备", positioning: "EUV 光刻机独家供应", observation: "设备订单是产业链景气度前瞻指标", status: "行情覆盖", relationTypes: ["产业链"], relations: ["北方华创"] },
   // 2.2-B 第二批(2026-07-07):KLAC 入池(量测检测触发源,负责人拍板点名)。
-  // TEL(东京电子)主上市东交所 8035,美股仅 OTC ADR(TOELY)——现有行情源(新浪/腾讯/东财美股)
-  // 对 OTC 覆盖不稳,暂缓入池;确认行情源覆盖后再加(不入=不给用户看不到行情的死票)。
+  // TEL(东京电子)【结案不入池,2026-07-07 实测】:主上市东交所 8035,美股仅 OTC ADR(TOELY);
+  // 实测东财日K=null、实时行情(新浪/腾讯)=null,仅 Yahoo 日K 可用——触发源靠实时行情驱动
+  // 每日 movers,TOELY 会是永不触发的死票。除非行情源扩展到东交所/OTC,否则不入。
   { code: "KLAC", name: "科磊", market: "美股", position: "上游", sector: "半导体设备", positioning: "量测/检测设备龙头(过程控制)", observation: "量测检测订单反映先进制程良率投资节奏", status: "行情覆盖", relationTypes: ["产业链"], relations: ["精测电子", "中微公司"] },
   { code: "MU", name: "美光", market: "美股", position: "上游", sector: "存储/HBM", positioning: "HBM 高带宽存储三巨头之一", observation: "HBM 供不应求,绑定 GPU 出货", status: "行情覆盖", relationTypes: ["产业链"], relations: ["兆易创新", "澜起科技"] },
   { code: "MRVL", name: "迈威尔", market: "美股", position: "上游", sector: "光模块/CPO", positioning: "光 DSP + 定制芯片", observation: "光互连与定制 ASIC 双逻辑", status: "行情覆盖", relationTypes: ["产业链"], relations: ["新易盛", "天孚通信"] },

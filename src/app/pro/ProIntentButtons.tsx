@@ -5,6 +5,7 @@
 // 复用 /api/feedback 的既有限流(同 IP 10 分钟 5 条),不新开写端点。
 import { useEffect, useState } from "react";
 import { track } from "@/lib/analytics";
+import { postJson } from "@/lib/post-json";
 
 const LS_KEY = "stocktell_intent_submitted"; // W8:同浏览器防重复提交(刷新后恢复"已记录"态)
 function readSubmitted(): Record<string, "ok"> {
@@ -25,12 +26,9 @@ export default function ProIntentButtons() {
     setState((s) => ({ ...s, [kind]: "busy" }));
     track(kind);
     try {
-      const r = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, content: `${category}(/pro 轻入口)`, path: "/pro" }),
+      const { res: r, data: d } = await postJson("/api/feedback", {
+        category, content: `${category}(/pro 轻入口)`, path: "/pro",
       });
-      const d = await r.json().catch(() => ({ ok: false }));
       const ok = r.ok && d.ok !== false;
       if (ok) {
         try {

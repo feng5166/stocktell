@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { useWatchlist } from "@/components/useWatchlist";
 import type { WatchChainInfo } from "@/lib/watch-relation";
 import { classifyWatchCodes } from "@/lib/watch-groups";
+import { postJson } from "@/lib/post-json";
 
 const REL_CHIP: Record<string, string> = {
   直接映射: "bg-rose-50 text-rose-600",
@@ -30,6 +31,19 @@ function SignalChip({ sig }: { sig?: { strength: string; note: string } }) {
     </span>
   );
 }
+// 分组卡片样板(缓修收敛:四组 section/h2/ul 手抄四份,只有标题与行内容不同)
+function Group({ title, subtitle, children }: { title: React.ReactNode; subtitle: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-gray-800">
+        {title}
+        <span className="ml-2 text-xs font-normal text-gray-400">{subtitle}</span>
+      </h2>
+      <ul className="mt-2 divide-y divide-gray-50">{children}</ul>
+    </section>
+  );
+}
+
 export default function WatchlistBoard({
   chainMap,
   triggerMap,
@@ -54,12 +68,7 @@ export default function WatchlistBoard({
 
   async function suggestReview(code: string) {
     try {
-      const r = await fetch("/api/relation-review-suggest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const d = await r.json().catch(() => ({ ok: false }));
+      const { res: r, data: d } = await postJson("/api/relation-review-suggest", { code });
       setSubmitted((m) => ({ ...m, [code]: r.ok && d.ok ? "ok" : "fail" }));
     } catch {
       setSubmitted((m) => ({ ...m, [code]: "fail" }));
@@ -89,19 +98,16 @@ export default function WatchlistBoard({
       {groups.chains.map(([chainId, g]) => {
         const triggered = g.rows.filter((r) => signalMap[r.code]).length;
         return (
-          <section key={chainId} className="rounded-2xl bg-white p-4 shadow-sm">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="text-sm font-semibold text-gray-800">
-                <Link href={`/chain/${chainId}`} className="hover:text-brand-600">
-                  {g.chainName}
-                </Link>
-                <span className="ml-2 text-xs font-normal text-gray-400">
-                  {g.rows.length} 只{triggered > 0 ? ` · 今日触发 ${triggered}` : ""}
-                </span>
-              </h2>
-            </div>
-            <ul className="mt-2 divide-y divide-gray-50">
-              {g.rows.map(({ code, info }) => {
+          <Group
+            key={chainId}
+            title={
+              <Link href={`/chain/${chainId}`} className="hover:text-brand-600">
+                {g.chainName}
+              </Link>
+            }
+            subtitle={`${g.rows.length} 只${triggered > 0 ? ` · 今日触发 ${triggered}` : ""}`}
+          >
+            {g.rows.map(({ code, info }) => {
                 const sig = signalMap[code];
                 return (
                   <li key={code} className="py-2.5">
@@ -124,22 +130,14 @@ export default function WatchlistBoard({
                     )}
                   </li>
                 );
-              })}
-            </ul>
-          </section>
+            })}
+          </Group>
         );
       })}
 
       {groups.triggers.length > 0 && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-800">
-            海外触发源
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              {groups.triggers.length} 只 · 它们是事件源头,不是 A 股映射标的
-            </span>
-          </h2>
-          <ul className="mt-2 divide-y divide-gray-50">
-            {groups.triggers.map((code) => {
+        <Group title="海外触发源" subtitle={`${groups.triggers.length} 只 · 它们是事件源头,不是 A 股映射标的`}>
+          {groups.triggers.map((code) => {
               const sig = signalMap[code];
               return (
                 <li key={code} className="py-2.5">
@@ -158,40 +156,24 @@ export default function WatchlistBoard({
                 </li>
               );
             })}
-          </ul>
-        </section>
+        </Group>
       )}
 
       {groups.etfs.length > 0 && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-800">
-            ETF
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              {groups.etfs.length} 只 · ETF 是一篮子股票,不进产业链关系模型
-            </span>
-          </h2>
-          <ul className="mt-2 divide-y divide-gray-50">
-            {groups.etfs.map((code) => (
+        <Group title="ETF" subtitle={`${groups.etfs.length} 只 · ETF 是一篮子股票,不进产业链关系模型`}>
+          {groups.etfs.map((code) => (
               <li key={code} className="flex flex-wrap items-center gap-1.5 py-2.5">
                 <span className="text-sm font-medium text-gray-900">{names[code]?.name ?? code}</span>
                 <span className="text-xs text-gray-400">{code}</span>
                 <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">ETF</span>
               </li>
             ))}
-          </ul>
-        </section>
+        </Group>
       )}
 
       {groups.uncovered.length > 0 && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-800">
-            待验证收录
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              {groups.uncovered.length} 只 · 暂无核定关系档,不代表与产业链无关
-            </span>
-          </h2>
-          <ul className="mt-2 divide-y divide-gray-50">
-            {groups.uncovered.map((code) => (
+        <Group title="待验证收录" subtitle={`${groups.uncovered.length} 只 · 暂无核定关系档,不代表与产业链无关`}>
+          {groups.uncovered.map((code) => (
               <li key={code} className="flex flex-wrap items-center gap-1.5 py-2.5">
                 <Link href={`/stock/${code}`} className="text-sm font-medium text-gray-900 hover:text-brand-600">
                   {names[code]?.name ?? code}
@@ -216,8 +198,7 @@ export default function WatchlistBoard({
                 </span>
               </li>
             ))}
-          </ul>
-        </section>
+        </Group>
       )}
 
       <p className="text-meta text-gray-400">
