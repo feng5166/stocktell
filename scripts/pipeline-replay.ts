@@ -5,6 +5,7 @@
 //   pnpm pipeline:replay --date=2026-07-02 --mode=full --llm=on              # Case A' 全真彩排(真 LLM+博查,花钱)
 //   pnpm pipeline:replay --date=2026-07-06 --mode=market-closed              # Case B 美股休市(07-06 场景)
 //   pnpm pipeline:replay --date=2026-07-02 --mode=compliance-block           # Case D 合规阻断注入(零网络,PR 门禁)
+//   pnpm pipeline:replay --date=2026-07-06 --mode=holiday-bridge             # Case F 节后首日观察(零网络,PR 门禁)
 //
 // v2 相对 v1:真回放 generate——历史行情来自东财日 K(us-history.usDailyBars),findMovers/generateDrafts
 // 接受 ReplayEnv 注入(历史行情快照+回放日 07:00 锚点);insight 走 itemsOverride 内存直灌。
@@ -28,7 +29,11 @@ import { scanSourceLeakage } from "./leakage-rules";
 const args = process.argv.slice(2);
 const getArg = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
 const date = getArg("date") ?? "";
-const mode = (getArg("mode") ?? "full") as "full" | "market-closed" | "compliance-block";
+const mode = (getArg("mode") ?? "full") as
+  | "full"
+  | "market-closed"
+  | "compliance-block"
+  | "holiday-bridge";
 const llm = (getArg("llm") ?? "off") as "on" | "off";
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
   console.error("必须指定 --date=YYYY-MM-DD(回放的业务日期)");
@@ -182,6 +187,87 @@ function sourceLeakage() {
       (r.guard?.blockers ?? []).some((b: string) => b.includes("禁词")),
       (r.guard?.blockers ?? []).join(" | ")
     );
+  } else if (mode === "holiday-bridge") {
+    // Case F:节后首日观察(2.1-C,零网络零 DB)。buildHolidayBridge 是纯函数,素材注入式——
+    // fixture 模拟「最近有效交易日(date 前一交易日)的已发布简报」,断言四件事:
+    // ①口径不伪装(标题/声明写明无新隔夜映射,status=market_closed+subType,绝非 generated)
+    // ②不硬造(recap 全部来自 fallbackFromDate 素材,无当日新事件)
+    // ③guard 纵深有效(干净素材 0 blockers;禁词素材必须被拦)
+    // ④宁缺勿造(无素材→不出 bridge)
+    const { buildHolidayBridge, BRIDGE_TITLE } = await import("../src/lib/holiday-bridge");
+    const fallbackFromDate = "2026-07-02"; // 与 Case B 样本日同族:07-06 休市,最近有效=07-02
+    const recapFixture: BriefingItem[] = [
+      {
+        id: "fixture-bridge-1",
+        date: fallbackFromDate,
+        impact: "高",
+        title: "英伟达隔夜异动,算力链关注度提升",
+        triggerCode: "NVDA",
+        triggerName: "英伟达",
+        triggerChange: 3.1,
+        beneficiaries: [{ code: "300308", name: "中际旭创" }],
+        retailTake: "fixture",
+        sourceUrl: null,
+        status: "published",
+        createdAt: `${fallbackFromDate}T07:05:00+08:00`,
+      },
+      {
+        id: "fixture-bridge-2",
+        date: fallbackFromDate,
+        impact: "中",
+        title: "Eaton 隔夜走强,数据中心电力链情绪回暖",
+        triggerCode: "ETN",
+        triggerName: "Eaton",
+        triggerChange: 2.2,
+        beneficiaries: [{ code: "002837", name: "英维克" }],
+        retailTake: "fixture",
+        sourceUrl: null,
+        status: "published",
+        createdAt: `${fallbackFromDate}T07:05:00+08:00`,
+      },
+    ];
+    const doc = buildHolidayBridge({ date, fallbackFromDate, recapItems: recapFixture });
+    marketStatus = "us_closed(fixture)";
+    briefStatus = doc && doc.guard.blockers.length === 0 ? "market_closed+holiday_bridge" : "market_closed";
+    expect("Case F:bridge 生成(素材在→doc 在)", doc !== null, doc ? "built" : "null");
+    expect(
+      "Case F:标题=节后首日观察(不伪装成简报/generated)",
+      doc?.title === BRIDGE_TITLE,
+      doc?.title
+    );
+    expect(
+      "Case F:口径声明含「无新的隔夜美股映射」",
+      (doc?.note ?? "").includes("无新的隔夜美股映射"),
+      (doc?.note ?? "").slice(0, 40)
+    );
+    expect(
+      "Case F:recap 全部来自 fallbackFromDate(不硬造当日事件)",
+      doc?.recap.length === recapFixture.length && doc?.fallbackFromDate === fallbackFromDate,
+      `recap=${doc?.recap.length},from=${doc?.fallbackFromDate}`
+    );
+    expect(
+      "Case F:链观察含验证点(非空且不含兜底段)",
+      (doc?.chainWatch.length ?? 0) > 0 &&
+        (doc?.chainWatch ?? []).every(
+          (cw) => cw.segments.length > 0 && cw.segments.every((s) => s.verify.length > 0 && s.name !== "其他链上环节")
+        ),
+      `chains=${doc?.chainWatch.length}`
+    );
+    expect("Case F:干净素材 guard=0 blockers", doc?.guard.blockers.length === 0, (doc?.guard.blockers ?? []).join("|") || "0");
+    // 反向:禁词素材必须被 guard 纵深拦下(未来接 LLM 假期消息时这道闸就是防线)
+    const dirty = buildHolidayBridge({
+      date,
+      fallbackFromDate,
+      recapItems: [{ ...recapFixture[0], title: "英伟达大涨,建议满仓抄底" }],
+    });
+    expect(
+      "Case F:禁词素材被 guard 拦(blockers 非空)",
+      (dirty?.guard.blockers.length ?? 0) > 0,
+      (dirty?.guard.blockers ?? []).join("|")
+    );
+    // 宁缺勿造:无素材不出 bridge
+    const empty = buildHolidayBridge({ date, fallbackFromDate, recapItems: [] });
+    expect("Case F:无素材→不出 bridge(宁缺勿造)", empty === null, empty ? "built(红线)" : "null");
   } else {
     // full / market-closed:真回放 generate
     const { quotes, misses, universe } = await buildReplayQuotes();

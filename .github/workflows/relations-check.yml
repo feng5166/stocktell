@@ -17,6 +17,7 @@ on:
       - "src/lib/generate.ts"
       - "src/lib/insight-pipeline/**"
       - "src/lib/content-guard.ts"
+      - "src/lib/holiday-bridge.ts"
       - "scripts/relation-lint.ts"
       - "scripts/resolver-*.ts"
       - "scripts/source-leakage.ts"
@@ -30,6 +31,7 @@ on:
       - "src/lib/generate.ts"
       - "src/lib/insight-pipeline/**"
       - "src/lib/content-guard.ts"
+      - "src/lib/holiday-bridge.ts"
       - "scripts/relation-lint.ts"
       - "scripts/resolver-*.ts"
       - "scripts/source-leakage.ts"
@@ -60,3 +62,7 @@ jobs:
       # llm=off 摘 LLM/博查 key + INSIGHT_SKIP_URL_VERIFY 免 HEAD 探测;无 POSTGRES_PRISMA_URL 则 DB 层为 null。
       - name: pipeline replay · compliance-block (blocking)
         run: npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=compliance-block --llm=off
+      # blocking:节后首日观察(2.1-C Case F)。同样零网络零 DB(buildHolidayBridge 纯函数+fixture 素材):
+      # 断言口径不伪装/不硬造/guard 纵深/宁缺勿造。
+      - name: pipeline replay · holiday-bridge (blocking)
+        run: npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=holiday-bridge --llm=off

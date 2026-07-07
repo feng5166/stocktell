@@ -11,6 +11,7 @@ pnpm pipeline:replay --date=2026-07-02 --mode=full                # Case C 兜�
 pnpm pipeline:replay --date=2026-07-02 --mode=full --llm=on       # Case A' 全真彩排(真 LLM+博查,花钱)
 pnpm pipeline:replay --date=2026-07-06 --mode=market-closed       # Case B 美股休市
 pnpm pipeline:replay --date=2026-07-02 --mode=compliance-block    # Case D 合规阻断注入(零网络,PR 门禁)
+pnpm pipeline:replay --date=2026-07-06 --mode=holiday-bridge      # Case F 节后首日观察(零网络,PR 门禁)
 ```
 
 - `--date`:回放的业务日期(北京简报日)。
@@ -43,6 +44,7 @@ relationParity / sourceLeakage / compliance / assertions / verdict),发结果只
 | C LLM 失败→兜底 | `--date=2026-07-02 --mode=full`(默认 llm=off) | count>0 / engine=template / **status=fallback(非 failed)** / confidence=低 / insight≥1 未阻断 | ✅ |
 | D 合规阻断 | `--mode=compliance-block` | 禁词 fixture 走真实全链路被 guard 拦,**status=blocked** + reason 可见 | ✅ 「禁词命中:满仓、抄底」 |
 | E 关系冲突样本 | 每次都跑 | 英维克/金山/浪潮/中际旭创/Eaton/北方华创 8 项断言 | ✅ |
+| F 节后首日观察 | `--mode=holiday-bridge`(零网络) | 2.1-C:口径不伪装(market_closed+holiday_bridge,非 generated)/ recap 全来自 fallbackFromDate 不硬造 / guard 纵深拦禁词素材 / 无素材不出 bridge | ✅ 2026-07-07 首跑 |
 
 > 旧「Case A 正常交易日(llm=off)」与 Case C 是**同一命令**;2026-07-06 口径固化后统一按 C 断言
 > (engine=template → status=fallback,不再断言 generated)。llm=on 的全真路径即 A'。
@@ -101,6 +103,7 @@ npm run check:resolver-samples
 npm run check:resolver-health
 npm run check:source-leakage -- --blocking
 npx tsx scripts/pipeline-replay.ts --date=2026-07-02 --mode=compliance-block --llm=off
+npx tsx scripts/pipeline-replay.ts --date=2026-07-06 --mode=holiday-bridge --llm=off
 ```
 
 compliance-block 进 PR blocking 的前提(已满足):**零网络**(llm=off 摘 LLM/博查 key +
@@ -200,8 +203,8 @@ pnpm pipeline:replay --date=2026-07-02 --mode=full --llm=on
 
 属于 2.1 增强:
 
-- 节后首个 A 股交易日简报模式;
-- 周末消息聚合进节后简报;
+- 节后首个 A 股交易日简报模式(✅ 2.1-C 已落地:holiday-bridge + Case F);
+- 周末消息聚合进节后简报(未做:博查检索只有当下网页、做不了严格历史,bridge 先零 LLM 零检索);
 - 更完整的半日市/跨多日累计样本矩阵;
 - 严格历史网页 references 回放;
 - 历史行情 fixture 落档(full / market-closed 升 PR blocking 的前提);

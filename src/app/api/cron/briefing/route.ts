@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDrafts } from "@/lib/generate";
-import { insertDrafts, listBriefing } from "@/lib/briefings";
+import { insertDrafts, listBriefing, latestBriefing } from "@/lib/briefings";
+import { buildHolidayBridge, saveHolidayBridge } from "@/lib/holiday-bridge";
 import { generateChainTake } from "@/lib/chain-take";
 import { runPreOpenDigest } from "@/lib/digest";
 import { runWebPush } from "@/lib/push-web";
@@ -71,11 +72,37 @@ export async function GET(req: NextRequest) {
     // 但交易日早上判到"美股休市"多半是行情源抖动导致 asOf 陈旧的误判 → 告警(别静默),
     // 真节假日时这条告警当 FYI,但一年没几次,值得人眼扫一下确认。
     if (usMarketClosed) {
+      // Holiday Bridge(2.1-C):不硬造隔夜简报,但给「节后首日观察」——素材全部来自真数据
+      // (最近一期已发布简报 + 链验证点模板),guard 纵深扫过才发布。任何一步失败都不影响
+      // market_closed 主状态写入(宁缺勿造,回退纯休市标注)。
+      let bridged = false;
+      let bridgeFrom: string | undefined;
+      try {
+        const latest = await latestBriefing();
+        const doc = latest.date
+          ? buildHolidayBridge({ date, fallbackFromDate: latest.date, recapItems: latest.items })
+          : null;
+        if (doc && doc.guard.blockers.length === 0) {
+          await saveHolidayBridge(doc);
+          bridged = true;
+          bridgeFrom = doc.fallbackFromDate;
+        } else if (doc) {
+          await alertCron(
+            "briefing(节后首日观察)",
+            `${date} bridge 内容触发合规扫描(${doc.guard.blockers.join("、")}),本期回退纯 market_closed 标注`
+          );
+        }
+      } catch (e) {
+        await alertCron("briefing(节后首日观察)", e);
+      }
       // 状态标识(2.0 收尾):休市缺口=正确保护,标 market_closed(非 failed),前台据此提示不误判成漏跑。
       await setBriefStatus(date, {
         status: "market_closed",
+        ...(bridged ? { subType: "holiday_bridge" as const, fallbackFromDate: bridgeFrom } : {}),
         reason: "us_market_closed",
-        message: "美股休市,今日无新的隔夜美股映射。",
+        message: bridged
+          ? "美股休市,今日无新的隔夜美股映射,已发布节后首日观察。"
+          : "美股休市,今日无新的隔夜美股映射。",
       });
       await alertCron(
         "briefing(简报生成)",
