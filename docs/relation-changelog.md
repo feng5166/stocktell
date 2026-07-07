@@ -16,6 +16,7 @@
 | 2026-07-07 | (2.2-B) | 新增半导体设备与先进制程链:8 环节 enum、8 只国内候选全 candidate 档;触发源【allowlist 收窄】仅 ASML/AMAT/LRCX/CDNS/SNPS(四轮 review 纠账:曾整组路由 11 只,IPGP/SITM/VECO/AMKR/Q/ENTG 未逐票评审已退回未来链) | +13(8 candidate + 5 trigger) | src/data/chain-relations.ts §2.5 | 待审阅台校准升档+补证据;KLAC/TEL/精测/概伦待入池;chains.ts 有意不配 segments(校准后接 insight 管线) |
 | 2026-07-07 | (校准回灌) | 半导体设备链 5 只 candidate→direct(北方华创/中微/拓荆/芯源微/华海清科):负责人经 AI 审阅面板终审采纳(判定过程在队列 ai-review 行);补法定披露入口 references + 四段式验证点,evidenceStatus=partially_verified | 5 升档 | src/data/direct-evidence.ts + chain-relations §2.5 | 盛美/长川/华大九天未终审维持 candidate;终审记录曾因按钮语义歧义记为 rejected,已翻转 confirmed 并留 note |
 | 2026-07-07 | (2.2-B 二批) | KLAC 入池并登记半导体链触发源(拍板点名=逐票评审;TEL 暂缓:主上市东交所、美股仅 OTC ADR 行情覆盖不稳);精测电子 300567/概伦电子 688206 入池为 candidate;chains.ts 接 8+1 segments,链级每日推理与看门狗自此纳管本链 | +3(1 trigger + 2 candidate)+segments | src/data/{stocks,chains,chain-relations}.ts | insightCount 2→3,fixture 按 V9 流程重录随评审 |
+| 2026-07-07 | (二次校准) | 工作台 diff 回灌:盛美上海 candidate→direct、概伦电子 candidate→direct(采纳 AI 建议)、长川科技 candidate→indirect(测试设备偏后道隔一层);华大九天保留 candidate;两新 direct 补 references(上交所检索入口)+四段验证点 | 3 改档 | 负责人导出 CSV → direct-evidence.ts + chain-relations §2.5 | 半导体链 10 成分:7 direct + 1 indirect + 2 candidate(华大九天/精测) |
 
 ## 回灌工作流(标准动作)
 1. 负责人在审阅台(/admin/relation-review)改档/改 reason/批量标记 → 导出 diff(含 dry-run 预览)。

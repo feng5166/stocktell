@@ -3,6 +3,8 @@
 // 深/北市巨潮、沪市上交所公告检索入口。evidenceStatus 统一 partially_verified(有源、业务方向相关,数字待核)。
 import type { DirectEvidence } from "./direct-evidence";
 export const INDIRECT_EVIDENCE: Record<string, DirectEvidence> = {
+  // 2026-07-07 二次校准回灌:长川科技 candidate→indirect(负责人工作台 diff)
+  "300604": { verificationPoints: ["半导体测试设备订单","封测厂 / IDM 客户","收入占比","毛利率"], references: [{ title: "长川科技 · 巨潮资讯法定披露页", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=300604", sourceType: "exchange_disclosure", note: "定期报告 / 业绩快报 / 订单公告原文,以此核实下列验证点" }], evidenceStatus: "partially_verified" },
   "300394": { verificationPoints: ["高速光模块 / 器件订单","数通 / 云厂客户","收入占比","毛利率"], references: [{ title: "天孚通信 · 巨潮资讯法定披露页", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=300394", sourceType: "exchange_disclosure", note: "定期报告 / 业绩快报 / 订单公告原文,以此核实下列验证点" }], evidenceStatus: "partially_verified" },
   "688008": { verificationPoints: ["DDR5 / 内存接口订单","服务器 / 内存模组客户","收入占比","毛利率"], references: [{ title: "澜起科技 · 上交所上市公司公告检索", url: "http://www.sse.com.cn/disclosure/listedinfo/announcement/", sourceType: "exchange_disclosure", note: "按代码 688008 检索年报、公告与业务披露,以此核实下列验证点" }], evidenceStatus: "partially_verified" },
   "600584": { verificationPoints: ["先进封装 / 封测订单","AI 芯片 / 存储客户","收入占比","毛利率"], references: [{ title: "长电科技 · 上交所上市公司公告检索", url: "http://www.sse.com.cn/disclosure/listedinfo/announcement/", sourceType: "exchange_disclosure", note: "按代码 600584 检索年报、公告与业务披露,以此核实下列验证点" }], evidenceStatus: "partially_verified" },
