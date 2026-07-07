@@ -102,9 +102,9 @@ export const CHAINS: Record<string, ChainConfig> = {
   },
 };
 
-// 2.2-B(2026-07-07 拍板):半导体设备与先进制程链成分(显式清单;全部 candidate 档待人工校准,
-// 见 chain-relations.ts SEMI_CANDIDATES)。KLAC/TEL/精测/概伦不在股票池,入池后第二批补。
-const SEMI_EQUIP_CODES = ["002371", "688012", "688072", "688037", "688120", "688082", "300604", "301269"];
+// 2.2-B(2026-07-07 拍板):半导体设备与先进制程链成分(显式清单,档位见 chain-relations §2.5:
+// 5 direct 已终审 + candidate 待审)。第二批已入池:精测电子/概伦电子;TEL 暂缓(OTC 行情覆盖)。
+const SEMI_EQUIP_CODES = ["002371", "688012", "688072", "688037", "688120", "688082", "300604", "301269", "300567", "688206"];
 
 CHAINS["semiconductor-equipment"] = {
   id: "semiconductor-equipment",
@@ -116,9 +116,20 @@ CHAINS["semiconductor-equipment"] = {
   sentimentTitle: "这条链今日状态",
   todayFraming:
     "今天这条链的触发源主要来自海外设备厂(ASML/AMAT/LRCX 等)财报与订单指引、先进制程扩产消息。短期价格可能被半导体情绪带动,但真正要验证的是:晶圆厂资本开支是否落地、设备订单与国产替代招标是否兑现、相关公司能否形成收入确认。当前成分全部为待验证档,关系分级以人工校准后的静态关系库为准。",
-  // 【有意不配 segments】:配了 segments 的链会被 insight-daily cron 与 08:30 看门狗按链纳管
-  // (无草稿即告警)。本链成分尚全为 candidate,先走审阅台校准;校准出 direct/indirect 后
-  // 再接 segments 启用链级每日推理(2.2-B 第二批)。环节 enum 已在 segment-registry 注册。
+  // 2.2-B 第二批(2026-07-07):校准完成(5 只 direct 终审落库)→ 接入 segments,
+  // 链级每日推理(insight-daily cron)与 08:30 看门狗自此按链纳管本链。
+  // 环节与 chain-relations §2.5 的 8 标准 enum 同名同义(segment-registry 注册)。
+  segments: [
+    { name: "光刻与涂胶显影", plain: "光刻前后给晶圆涂胶显影的设备", sectors: ["半导体设备"], defaultRelation: "直接映射", verifyTemplate: ["涂胶显影机订单", "产线导入进度", "设备收入占比"] },
+    { name: "刻蚀设备", plain: "在晶圆上精确「雕刻」电路的设备", sectors: ["半导体设备"], defaultRelation: "直接映射", verifyTemplate: ["刻蚀设备订单", "晶圆厂资本开支", "国产替代招标"] },
+    { name: "薄膜沉积", plain: "往晶圆上「镀膜」的设备(PECVD/ALD)", sectors: ["半导体设备"], defaultRelation: "直接映射", verifyTemplate: ["沉积设备订单", "先进制程验证进度", "客户结构"] },
+    { name: "清洗设备", plain: "制程间清洗晶圆的设备", sectors: ["半导体设备"], defaultRelation: "直接映射", verifyTemplate: ["清洗设备订单", "海内外客户导入", "收入占比"] },
+    { name: "CMP / 抛光", plain: "把晶圆表面磨平的设备与耗材", sectors: ["半导体设备"], defaultRelation: "直接映射", verifyTemplate: ["CMP 设备订单", "产线验证", "耗材配套收入"] },
+    { name: "量测检测", plain: "检查每步做没做对的量测与测试设备", sectors: ["半导体设备"], defaultRelation: "直接映射", verifyTemplate: ["测试/量测设备订单", "封测厂资本开支", "毛利率"] },
+    { name: "EDA / IP", plain: "设计芯片用的软件工具与授权模块", sectors: ["EDA/IP"], defaultRelation: "间接映射", verifyTemplate: ["工具授权收入", "客户续约与导入", "国产替代进度"] },
+    { name: "先进封装设备", plain: "芯片「叠装」环节用的专用设备", sectors: ["封装测试/代工"], defaultRelation: "间接映射", verifyTemplate: ["先进封装设备订单", "封装产能扩张", "客户验证"] },
+    { name: FALLBACK_SEGMENT, plain: "链上其余配套方向", sectors: [], defaultRelation: "情绪映射", verifyTemplate: ["订单与客户验证", "板块共振"] },
+  ],
 };
 
 export function getChain(id: string): ChainConfig | null {

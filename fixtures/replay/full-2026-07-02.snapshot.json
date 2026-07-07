@@ -7,14 +7,14 @@
   "briefStatus": "fallback",
   "engine": "template",
   "eventCount": 8,
-  "insightCount": 2,
+  "insightCount": 3,
   "insights": [
     {
       "chain": "ai",
       "ok": true,
       "blocked": false,
       "confidence": "低",
-      "mappings": 11,
+      "mappings": 12,
       "blockers": [],
       "warnings": [
         "references 全部不可达(进审,请人工核链接)"
@@ -26,6 +26,17 @@
       "blocked": false,
       "confidence": "低",
       "mappings": 0,
+      "blockers": [],
+      "warnings": [
+        "references 全部不可达(进审,请人工核链接)"
+      ]
+    },
+    {
+      "chain": "semiconductor-equipment",
+      "ok": true,
+      "blocked": false,
+      "confidence": "低",
+      "mappings": 4,
       "blockers": [],
       "warnings": [
         "references 全部不可达(进审,请人工核链接)"
@@ -43,7 +54,7 @@
     "zhongjiAiInfra": "direct",
     "eatonTrigger": "trigger",
     "beifanghuachuangAiInfra": "not_found",
-    "beifanghuachuangSemi": "candidate"
+    "beifanghuachuangSemi": "direct"
   },
   "relationParity": {
     "total": 43,
@@ -61,8 +72,8 @@
     "✅ Case C(兜底):美股为交易日(marketStatus=open)(open)",
     "✅ Case C(兜底):count>0(简报有产出)(count=8)",
     "✅ Case C:LLM 挂→模板兜底(engine=template,status=fallback,非 failed)(engine=template,status=fallback)",
-    "✅ Case C(兜底):生成 insight ≥1 且未被阻断(ok=2/2)",
-    "✅ Case C:兜底 insight 置信=低(不伪装确定性)(低,低)",
+    "✅ Case C(兜底):生成 insight ≥1 且未被阻断(ok=3/3)",
+    "✅ Case C:兜底 insight 置信=低(不伪装确定性)(低,低,低)",
     "✅ Case E:英维克不在 ai-infra(not_found)",
     "✅ Case E:英维克电力链 direct(direct)",
     "✅ Case E:金山不挂 ai-infra(not_found)",
@@ -70,7 +81,7 @@
     "✅ Case E:中际旭创 ai-infra direct(direct)",
     "✅ Case E:Eaton=trigger(trigger)",
     "✅ Case E:北方华创不在 ai-infra(不被旧源捞回)(not_found)",
-    "✅ Case E:北方华创属半导体设备链 candidate(2.2-B)(candidate)",
+    "✅ Case E:北方华创属半导体设备链 direct(07-07 负责人终审采纳)(direct)",
     "✅ source-leakage=0(无旧源直读)(hits=0)"
   ],
   "verdict": "PASS"

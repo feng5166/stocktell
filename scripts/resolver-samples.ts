@@ -38,6 +38,12 @@ eq("ASML relationType=trigger", asml?.relationType, "trigger");
 eq("华大九天 semiconductor-equipment=candidate(未终审,维持)", resolveInChain("301269", "semiconductor-equipment")?.relationType, "candidate");
 eq("中微 semiconductor-equipment=direct(终审采纳)", resolveInChain("688012", "semiconductor-equipment")?.relationType, "direct");
 eq("华大九天 ai-infra 应为 null", resolveInChain("301269", "ai-infra"), null);
+// 2.2-B 第二批:KLAC 触发源 + 精测/概伦 candidate
+const klac = resolvePrimary("KLAC");
+eq("KLAC chainId=semiconductor-equipment", klac?.chainId, "semiconductor-equipment");
+eq("KLAC relationType=trigger", klac?.relationType, "trigger");
+eq("精测电子 semi=candidate(待终审)", resolveInChain("300567", "semiconductor-equipment")?.relationType, "candidate");
+eq("概伦电子 semi=candidate(待终审)", resolveInChain("688206", "semiconductor-equipment")?.relationType, "candidate");
 
 console.log(fails === 0 ? "\n✅ resolver 关键样本全过" : `\n✗ ${fails} 项不符`);
 process.exit(fails === 0 ? 0 : 1);

@@ -176,6 +176,10 @@ const STOCKS_BASE: StockBase[] = [
   { code: "AVGO", name: "博通", market: "美股", position: "上游", sector: "交换机/网络", positioning: "定制 ASIC + 网络芯片双轮", observation: "云厂自研芯片代工核心标的", status: "行情覆盖", relationTypes: ["产业链", "资本开支"], relations: ["中兴通讯"] },
   { code: "TSM", name: "台积电", market: "美股", position: "上游", sector: "封装测试/代工", positioning: "先进制程独家代工", observation: "CoWoS 封装产能是算力供给瓶颈", status: "行情覆盖", relationTypes: ["产业链"], relations: ["中芯国际"] },
   { code: "ASML", name: "阿斯麦", market: "美股", position: "上游", sector: "半导体设备", positioning: "EUV 光刻机独家供应", observation: "设备订单是产业链景气度前瞻指标", status: "行情覆盖", relationTypes: ["产业链"], relations: ["北方华创"] },
+  // 2.2-B 第二批(2026-07-07):KLAC 入池(量测检测触发源,负责人拍板点名)。
+  // TEL(东京电子)主上市东交所 8035,美股仅 OTC ADR(TOELY)——现有行情源(新浪/腾讯/东财美股)
+  // 对 OTC 覆盖不稳,暂缓入池;确认行情源覆盖后再加(不入=不给用户看不到行情的死票)。
+  { code: "KLAC", name: "科磊", market: "美股", position: "上游", sector: "半导体设备", positioning: "量测/检测设备龙头(过程控制)", observation: "量测检测订单反映先进制程良率投资节奏", status: "行情覆盖", relationTypes: ["产业链"], relations: ["精测电子", "中微公司"] },
   { code: "MU", name: "美光", market: "美股", position: "上游", sector: "存储/HBM", positioning: "HBM 高带宽存储三巨头之一", observation: "HBM 供不应求,绑定 GPU 出货", status: "行情覆盖", relationTypes: ["产业链"], relations: ["兆易创新", "澜起科技"] },
   { code: "MRVL", name: "迈威尔", market: "美股", position: "上游", sector: "光模块/CPO", positioning: "光 DSP + 定制芯片", observation: "光互连与定制 ASIC 双逻辑", status: "行情覆盖", relationTypes: ["产业链"], relations: ["新易盛", "天孚通信"] },
   { code: "ARM", name: "Arm", market: "美股", position: "上游", sector: "EDA/IP", positioning: "全球 CPU 架构 IP 授权", observation: "端侧与服务器架构渗透", status: "行情覆盖", relationTypes: ["产业链"], relations: ["瑞芯微"] },
@@ -293,6 +297,9 @@ const STOCKS_BASE: StockBase[] = [
   { code: "688072", name: "拓荆科技", market: "A股", position: "上游", sector: "半导体设备", positioning: "薄膜沉积设备", observation: "PECVD/ALD验证、订单交付和估值", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
   { code: "300604", name: "长川科技", market: "A股", position: "上游", sector: "半导体设备", positioning: "测试机与分选机，承接先进封装测试扩容", observation: "高端测试机收入、存储测试、毛利率和客户验证", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
   { code: "688120", name: "华海清科", market: "A股", position: "上游", sector: "半导体设备", positioning: "CMP设备与减薄装备", observation: "CMP订单、先进封装设备放量和估值", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
+  // 2.2-B 第二批(2026-07-07 入池,candidate 档待终审)
+  { code: "300567", name: "精测电子", market: "A股", position: "中游", sector: "半导体设备", positioning: "半导体/显示量测检测设备", observation: "半导体检测设备订单、客户导入与收入占比", status: "行情覆盖", relationTypes: ["A股映射", "产业链"], relations: ["KLAC"], chains: ["semiconductor-equipment"] },
+  { code: "688206", name: "概伦电子", market: "A股", position: "上游", sector: "EDA/IP", positioning: "国产 EDA(器件建模/电路仿真)", observation: "EDA 工具授权收入、客户续约与国产替代进度", status: "行情覆盖", relationTypes: ["A股映射", "产业链"], relations: ["CDNS", "SNPS"], chains: ["semiconductor-equipment"] },
   { code: "000988", name: "华工科技", market: "A股", position: "上游", sector: "光模块/CPO", positioning: "数通光模块、激光与传感", observation: "数通收入纯度、1.6T进展和估值", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
   { code: "688498", name: "源杰科技", market: "A股", position: "上游", sector: "光模块/CPO", positioning: "高速激光器芯片", observation: "100G/200G光芯片验证、良率和客户集中", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
   { code: "603228", name: "景旺电子", market: "A股", position: "上游", sector: "PCB/CCL", positioning: "多品类PCB与AI服务器板升级", observation: "AI数通收入、珠海产能、毛利率和客户结构", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },

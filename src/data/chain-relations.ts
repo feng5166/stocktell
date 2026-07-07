@@ -253,6 +253,9 @@ const SEMI_CANDIDATES: Array<{ code: string; segment: string; relationType: "dir
   { code: "688082", segment: "清洗设备", relationType: "candidate", reason: "半导体清洗设备主业;候选档待人工校准,后续看清洗设备订单、海内外客户导入与收入占比" },
   { code: "300604", segment: "量测检测", relationType: "candidate", reason: "半导体测试设备(测试机/分选机)主业;候选档待人工校准,后续看测试设备订单、封测厂资本开支与毛利率" },
   { code: "301269", segment: "EDA / IP", relationType: "candidate", reason: "国产 EDA 工具主业(audit 原建议自 ai-infra 移入本链);候选档待人工校准,后续看工具授权收入、客户续约导入与国产替代进度" },
+  // 2.2-B 第二批(2026-07-07 入池)
+  { code: "300567", segment: "量测检测", relationType: "candidate", reason: "半导体/显示量测检测设备主业;候选档待人工终审,后续看半导体检测设备订单、客户导入与收入占比" },
+  { code: "688206", segment: "EDA / IP", relationType: "candidate", reason: "国产 EDA(器件建模/电路仿真)主业;候选档待人工终审,后续看工具授权收入、客户续约与国产替代进度" },
 ];
 for (const c of SEMI_CANDIDATES) {
   const key = `${c.code}|${SEMI_EQUIP_CHAIN_ID}`;
@@ -285,13 +288,18 @@ for (const c of SEMI_CANDIDATES) {
 //    VECO/AMKR 封测/ENTG 材料等)一并放上前台,违反一票一审——收窄为显式 allowlist,
 //    只放负责人拍板点名且在池的 5 只;其余留在未来链,逐票评审后再加。
 const SEMI_TRIGGER_ALLOW = new Set(["ASML", "AMAT", "LRCX", "CDNS", "SNPS"]);
+// 2.2-B 第二批:KLAC 新入池(不在 audit TRIGGER_CLASS 里),负责人拍板点名=已过逐票评审,
+// 显式登记为半导体设备链触发源(量测检测环节的海外前瞻信号源)。
+const SEMI_TRIGGER_EXTRA = new Set(["KLAC"]);
 for (const st of STOCKS) {
   if (st.market !== "美股") continue;
   const cls = TRIGGER_CLASS[st.code];
-  if (!cls) continue;
-  const routedChainId =
-    cls.chainId ??
-    (cls.group === "semiconductor" && SEMI_TRIGGER_ALLOW.has(st.code) ? SEMI_EQUIP_CHAIN_ID : null);
+  const extraSemi = !cls && SEMI_TRIGGER_EXTRA.has(st.code);
+  if (!cls && !extraSemi) continue;
+  const routedChainId = extraSemi
+    ? SEMI_EQUIP_CHAIN_ID
+    : (cls!.chainId ??
+      (cls!.group === "semiconductor" && SEMI_TRIGGER_ALLOW.has(st.code) ? SEMI_EQUIP_CHAIN_ID : null));
   if (!routedChainId) continue; // 未分类 / 仍是未来链 / 未过逐票评审 → 跳过
   const key = `${st.code}|${routedChainId}`;
   if (seen.has(key)) continue;
@@ -305,7 +313,7 @@ for (const st of STOCKS) {
     segmentId: "trigger-source",
     segmentName: "海外事件触发源",
     relationType: "trigger",
-    triggerGroup: cls.group,
+    triggerGroup: extraSemi ? "semiconductor" : cls!.group,
     confidence: "medium",
     reason: st.positioning,
     verificationPoints: ["事件是否涉及 AI 产品/商业化/订单", "对国内是产业传导还是情绪外溢"],
