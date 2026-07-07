@@ -18,6 +18,10 @@ const slugToChainId = (slug: string): string | null =>
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// AI 生成 description 的统一免责模板(metadata 与 JSON-LD 共用,防两份漂移)
+const aiDescription = (judgment: string) =>
+  `${judgment.slice(0, 110)}(研究框架梳理·非确认,不构成投资建议)`;
+
 export async function generateMetadata({
   params,
 }: {
@@ -33,8 +37,8 @@ export async function generateMetadata({
     title: `${params.date} ${chainName}产业链每日推理 | StockTell`,
     // 三轮 review T7:AI 生成的 description 必须挂免责(合规口径:AI 输出挂"不构成投资建议";
     // Google 摘要展示的是这里而非页内 DISCLAIMER),截断后缀在免责前,半句不裸奔
-    description: `${doc.payload.judgment.slice(0, 110)}(研究框架梳理·非确认,不构成投资建议)`,
-    alternates: { canonical: `https://www.stocktell.me/insight/${params.slug}/${params.date}` },
+    description: aiDescription(doc.payload.judgment),
+    alternates: { canonical: `/insight/${params.slug}/${params.date}` },
   };
 }
 
@@ -69,7 +73,7 @@ export default async function InsightArchivePage({
     datePublished: params.date,
     inLanguage: "zh-CN",
     author: { "@type": "Organization", name: "StockTell" },
-    description: `${p.judgment.slice(0, 110)}(研究框架梳理·非确认,不构成投资建议)`,
+    description: aiDescription(p.judgment),
   };
 
   return (

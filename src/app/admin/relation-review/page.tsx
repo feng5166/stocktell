@@ -3,6 +3,7 @@ import { allRelations } from "@/data/chain-relations";
 import { listReviewQueueChecked } from "@/lib/relation-review";
 import RelationReviewClient from "./RelationReviewClient";
 import ReviewQueuePanel from "./ReviewQueuePanel";
+import AiReviewPanel, { type AiReviewRelation } from "./AiReviewPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +13,19 @@ export const dynamic = "force-dynamic";
 export default async function RelationReviewPage() {
   await requireAdmin();
   const { items: queue, readFailed } = await listReviewQueueChecked("pending");
+  // AI 审阅面板用的精简关系清单(不把整个 StockChainRelation 拖进客户端)
+  const aiRelations: AiReviewRelation[] = allRelations().map((r) => ({
+    code: r.code,
+    name: r.name,
+    chainId: r.chainId,
+    chainName: r.chainName,
+    segmentName: r.segmentName,
+    relationType: r.relationType,
+  }));
   return (
     <div>
       <div className="mx-auto max-w-4xl px-4 pt-4 sm:px-6">
+        <AiReviewPanel relations={aiRelations} />
         <h2 className="mb-2 text-sm font-semibold text-gray-700">
           审阅队列 · 待人工定夺({queue.length})
         </h2>

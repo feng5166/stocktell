@@ -34,7 +34,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   return {
     title: `${c.title.replace(" · 因果链", "")}产业链:事件如何传导到 A 股映射 | StockTell`,
     description: c.oneLinerPlain.slice(0, 150),
-    alternates: { canonical: `https://www.stocktell.me/insight/${params.slug}` },
+    alternates: { canonical: `/insight/${params.slug}` },
     openGraph: {
       title: c.title,
       description: c.oneLinerPlain.slice(0, 150),

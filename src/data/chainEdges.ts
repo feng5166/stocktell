@@ -1,6 +1,7 @@
 // 产业链上下游真实关联边(供应链/对标/映射),由多源研究+联网核验汇总。
 // from = 更上游(供货/赋能方),to = 更下游(集成/采购方)。strength: 强=直接供货/深度绑定;中=对标/国产替代/合理配套;弱=主题映射。
 // 仅在 stocks.ts 池内 164 只之间连边;不编造,拿不准的低置信项已剔除。叠加在 relations 之上,不改那个大数组。
+import { SIGNAL_RANK } from "@/lib/signal-rank";
 
 export type ChainStrength = "强" | "中" | "弱";
 export interface ChainEdge {
@@ -404,7 +405,7 @@ export interface ChainNeighbor {
   dir: "up" | "down"; // up = 该邻居是本股的上游(供货给本股);down = 下游(采购本股)
 }
 
-const RANK: Record<ChainStrength, number> = { 强: 3, 中: 2, 弱: 1 };
+const RANK: Record<ChainStrength, number> = SIGNAL_RANK; // 单一来源:lib/signal-rank
 const NEIGHBORS: Record<string, ChainNeighbor[]> = {};
 function add(code: string, n: ChainNeighbor) {
   const arr = (NEIGHBORS[code] = NEIGHBORS[code] ?? []);

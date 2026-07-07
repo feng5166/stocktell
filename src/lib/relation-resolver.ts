@@ -53,25 +53,14 @@ export type ResolvedRelation = StockChainRelation & {
 
 // 层② 2.1-W5 起有真源:lib/daily-signals.ts 从当日已发布简报【异步】派生。
 // 本同步 getter 保持空——resolver 是全站同步热路径,不为层②破坏同步契约;
-// 需要今日信号的消费方(/watchlist 服务端)先 deriveDailySignals(date),
-// 再经下方 resolveWithSignals 注入,挂接语义与本文件 attachSignal 同一份。
+// 需要今日信号的消费方(/watchlist 服务端)用 deriveDailySignals(date) 按 code 聚合。
+// (四轮 review C1:曾有 resolveWithSignals 逐链注入入口,两轮均无调用方——已删,
+//  git 历史可找回;需要时用 deriveDailySignals + attachSignal 同款语义重新引入。)
 export function getDailySignals(date: string): DailyRelationSignal[] {
   void date;
   return [];
 }
 
-// 注入式解析(2.1-W5):调用方自带信号(deriveDailySignals 的产物),返回该票全部链关系
-// 并挂 todaySignalStrength。不变量#3 由 attachSignal 结构保证:只写 todaySignalStrength,
-// relationType 永远来自 staticRelations。
-// 【现状(三轮 review 注记)】暂无生产调用方——/watchlist 用按 code 聚合的 signalMap(板级
-// 展示不需要逐链信号),本函数是"逐链信号"场景(个股页今日触发/扩链)的预留入口,接入前勿删。
-export function resolveWithSignals(
-  code: string,
-  signals: DailyRelationSignal[]
-): ResolvedRelation[] {
-  const mine = signals.filter((s) => s.code === code);
-  return relationsForCode(code).map((r) => attachSignal(r, mine));
-}
 // 层③ 2.1-W3 起已持久化(relation_review_queue 表,读写走 lib/relation-review.ts)。
 // 本 getter 仍返回空:pending/confirmed 队列项【不是关系】,不影响解析(改档只走
 // chain-relations.ts 代码评审=不变量#4)。若未来拍板「confirmed 候选上前台展示」,再接这里。

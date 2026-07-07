@@ -278,13 +278,18 @@ for (const c of SEMI_CANDIDATES) {
 // 3) 美股 → trigger,按审阅【分组】(不再一类"海外事件触发源")。chainId=null 的
 //    智能车机器人/航天军工/加密仍是未来链;semiconductor 组自 2.2-B 起有家(派生层路由,
 //    不改 audit generated 文件);电力触发源归 data-center-power。
-const FUTURE_CHAIN_ROUTE: Record<string, string> = { semiconductor: SEMI_EQUIP_CHAIN_ID };
+//    四轮 review V-T2:整组路由会把 audit 组里【未逐票评审】的票(IPGP 激光器/SITM 时钟/
+//    VECO/AMKR 封测/ENTG 材料等)一并放上前台,违反一票一审——收窄为显式 allowlist,
+//    只放负责人拍板点名且在池的 5 只;其余留在未来链,逐票评审后再加。
+const SEMI_TRIGGER_ALLOW = new Set(["ASML", "AMAT", "LRCX", "CDNS", "SNPS"]);
 for (const st of STOCKS) {
   if (st.market !== "美股") continue;
   const cls = TRIGGER_CLASS[st.code];
   if (!cls) continue;
-  const routedChainId = cls.chainId ?? FUTURE_CHAIN_ROUTE[cls.group] ?? null;
-  if (!routedChainId) continue; // 未分类 / 仍是未来链 → 跳过
+  const routedChainId =
+    cls.chainId ??
+    (cls.group === "semiconductor" && SEMI_TRIGGER_ALLOW.has(st.code) ? SEMI_EQUIP_CHAIN_ID : null);
+  if (!routedChainId) continue; // 未分类 / 仍是未来链 / 未过逐票评审 → 跳过
   const key = `${st.code}|${routedChainId}`;
   if (seen.has(key)) continue;
   seen.add(key);

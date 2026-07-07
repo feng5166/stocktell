@@ -246,7 +246,9 @@ const T_RELATION_REVIEW = `CREATE TABLE IF NOT EXISTS "relation_review_queue" (
   "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "relation_review_queue_pkey" PRIMARY KEY ("id")
 )`;
-const IDX_RELATION_REVIEW_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "relation_review_queue_code_chain_id_key" ON "relation_review_queue" ("code", "chain_id")`;
+// V1(四轮 review):唯一键升级为 (code,chain_id,source) 按源分账;旧二元唯一索引删除(幂等)
+const DROP_RELATION_REVIEW_OLD_UNIQUE = `DROP INDEX IF EXISTS "relation_review_queue_code_chain_id_key"`;
+const IDX_RELATION_REVIEW_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "relation_review_queue_code_chain_id_source_key" ON "relation_review_queue" ("code", "chain_id", "source")`;
 const IDX_RELATION_REVIEW_STATUS = `CREATE INDEX IF NOT EXISTS "relation_review_queue_status_last_seen_idx" ON "relation_review_queue" ("status", "last_seen")`;
 
 export async function POST(req: NextRequest) {
@@ -309,6 +311,7 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(IDX_DIGEST_SEND_UNIQUE);
         await tx.$executeRawUnsafe(IDX_DIGEST_SEND_DATE);
         await tx.$executeRawUnsafe(T_RELATION_REVIEW);
+        await tx.$executeRawUnsafe(DROP_RELATION_REVIEW_OLD_UNIQUE);
         await tx.$executeRawUnsafe(IDX_RELATION_REVIEW_UNIQUE);
         await tx.$executeRawUnsafe(IDX_RELATION_REVIEW_STATUS);
       },
