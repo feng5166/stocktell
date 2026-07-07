@@ -12,6 +12,7 @@ import { buildReasoningCards } from "@/lib/home-feed";
 import { buildWatchChainMap } from "@/lib/watch-relation";
 import { buildRelLabelMap, resolveRelationLabelForItem } from "@/lib/relation-resolver";
 import { getBriefStatus, BRIEF_STATUS_UI, type BriefStatusRecord } from "@/lib/brief-status";
+import { getHolidayBridge, type HolidayBridgeDoc } from "@/lib/holiday-bridge";
 import { getChain } from "@/data/chains";
 import {
   listBriefing,
@@ -69,6 +70,12 @@ export default async function Home() {
   const relLabelMap = buildRelLabelMap(); // Phase 3-D:OvernightRadar peer 关系档(服务端算好传客户端)
   // 简报状态标识(2.0 收尾):区分"美股休市无新映射"(中性、非事故)与"生成异常"(待核查),用户不误判成漏跑
   const briefStatus = await getBriefStatus(date).catch(() => null);
+  // 节后首日观察(2.1-C):休市日有 bridge 时渲染观察区块(纯 DB 读,ISR 安全)。
+  // 回顾条目不在这里重复——下方 stale feed 展示的就是最近一期简报,bridge 区块只补「口径+链观察验证点」。
+  const bridge =
+    briefStatus?.subType === "holiday_bridge"
+      ? await getHolidayBridge(date).catch(() => null)
+      : null;
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -78,6 +85,8 @@ export default async function Home() {
         <HomeHero shownDate={shownDate} insightHref={insightHref} />
 
         <BriefStatusBanner status={briefStatus} stale={stale} shownDate={shownDate} />
+
+        {bridge && <HolidayBridgeSection bridge={bridge} />}
 
         {/* 1. 今日最重要的因果链(P0 一张真卡;chains.ts 加链自动进卡位) */}
         <ReasoningCards cards={cards} />
@@ -158,6 +167,47 @@ function BriefStatusBanner({
     );
   }
   return null;
+}
+
+// 节后首日观察(2.1-C):休市日的产业链关注环节+验证点。第一条链默认展开,其余折叠
+// (原生 details,零客户端 JS,与 track 页复盘规则同款交互)。
+function HolidayBridgeSection({ bridge }: { bridge: HolidayBridgeDoc }) {
+  return (
+    <section className="mb-4 rounded-xl bg-white p-4 shadow-sm sm:p-5">
+      <h2 className="text-sm font-semibold text-gray-800">{bridge.title}</h2>
+      <p className="mt-1 text-xs leading-relaxed text-gray-500">{bridge.note}</p>
+      <div className="mt-3 space-y-2">
+        {bridge.chainWatch.map((cw, i) => (
+          <details key={cw.chainId} open={i === 0} className="group rounded-lg bg-gray-50 px-3 py-2">
+            <summary className="flex cursor-pointer list-none items-center text-xs font-medium text-gray-700">
+              {cw.chainName} · 今日可关注的验证点
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                className="ml-auto h-4 w-4 shrink-0 text-gray-300 transition-transform group-open:rotate-180"
+              >
+                <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </summary>
+            <ul className="mt-2 space-y-1.5">
+              {cw.segments.map((s) => (
+                <li key={s.name} className="text-xs leading-relaxed text-gray-600">
+                  <span className="font-medium text-gray-700">{s.name}</span>
+                  <span className="text-gray-400">({s.plain})</span> · 看:
+                  {s.verify.join(" / ")}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </div>
+      <p className="mt-3 text-meta text-gray-400">
+        以上为研究框架梳理·非确认,不构成投资建议;验证点用于观察产业链传导是否兑现,不预示涨跌。
+      </p>
+    </section>
+  );
 }
 
 function EmptyState({ errored }: { errored: boolean }) {

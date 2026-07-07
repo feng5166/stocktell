@@ -144,10 +144,14 @@ export async function GET(req: NextRequest) {
     const severity = briefAlertSeverity(brief);
     if (severity === "none") {
       // 休市等设计性缺口:中性心跳(看门狗职责=每早可感知,静默会和"看门狗自己挂了"混淆),
-      // 不告警、不给补发指令。
+      // 不告警、不给补发指令。有 holiday_bridge 时带出来,人知道用户侧不是空页。
       const ui = BRIEF_STATUS_UI[brief!.status];
+      const bridgeNote =
+        brief!.subType === "holiday_bridge"
+          ? `已发布「节后首日观察」(素材=${brief!.fallbackFromDate ?? "最近有效交易日"});`
+          : "";
       const fs = await sendFeishu(
-        `🛌 StockTell 今日无新简报(${ui.badge}) · ${date} · ${ui.note}设计性无简报,勿补发`
+        `🛌 StockTell 今日无新简报(${ui.badge}) · ${date} · ${ui.note}${bridgeNote}设计性无简报,勿补发`
       );
       payload = { ok: true, date, count: 0, briefStatus: brief!.status, feishu: fs };
     } else if (severity === "notice") {

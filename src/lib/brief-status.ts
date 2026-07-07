@@ -32,9 +32,12 @@ export type BriefStatusReason =
 
 export type BriefStatusRecord = {
   status: BriefStatus;
+  // market_closed 的子型(2.1-C):holiday_bridge=已发布「节后首日观察」(内容在
+  // holiday-bridge KV),前台据此渲染 bridge 区块;无 subType 的 market_closed=纯休市标注。
+  subType?: "holiday_bridge";
   reason?: BriefStatusReason;
   sourceAsOf?: string; // 隔夜映射所据的最近有效美股交易日
-  fallbackFromDate?: string; // 首页展示回退内容时,回退到的日期
+  fallbackFromDate?: string; // 回退/回顾内容所据的日期(holiday_bridge 的素材日)
   message?: string;
   at?: string; // 写入时间(由写入方传,脚本环境无 Date.now 时可省)
 };
