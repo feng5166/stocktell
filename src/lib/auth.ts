@@ -96,7 +96,25 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user }) {
-      if (user) token.id = user.id;
+      if (user) {
+        token.id = user.id;
+        token.llt = Date.now(); // 显式登录:events.signIn 已写库,记录触活时间戳
+      } else if (token.id) {
+        // 自动登录触活(负责人 2026-07-07 实测反馈:JWT 续期不走 signIn,后台"最近登录"
+        // 永远停在首登)。节流:每用户每 12h 最多回写一次 lastLoginAt——语义即"最近活跃"。
+        // await 而非 fire-and-forget:serverless 返回后悬空 promise 可能随实例冻结丢失;
+        // 写失败吞错(活跃标记是尽力而为,绝不影响会话)。
+        const last = typeof token.llt === "number" ? token.llt : 0;
+        if (Date.now() - last > 12 * 3600_000) {
+          token.llt = Date.now();
+          const db = getPrisma();
+          if (db) {
+            await db.user
+              .update({ where: { id: token.id as string }, data: { lastLoginAt: new Date() } })
+              .catch(() => {});
+          }
+        }
+      }
       return token;
     },
     async session({ session, token }) {

@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     email: u.email,
     nickname: u.nickname,
     createdAt: u.createdAt,
-    lastLoginAt: u.lastLoginAt, // 最近一次登录(null=本功能上线后还没登录过)
+    lastLoginAt: u.lastLoginAt, // 最近活跃(显式登录+自动登录 12h 节流触活;null=功能上线后未活跃)
     weixinBound: !!u.weixinOpenId,
     openId: u.weixinOpenId,
     digestOptOut: u.digestOptOut, // 已退订每日邮件

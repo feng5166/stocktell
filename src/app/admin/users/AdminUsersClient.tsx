@@ -104,7 +104,8 @@ export default function AdminUsersClient() {
     );
   });
 
-  // 两个时间列可点表头排序;null(没登录过)恒沉底。默认「最近登录」倒序=最近活跃置顶。
+  // 两个时间列可点表头排序;null(没登录过)恒沉底。默认「最近活跃」倒序置顶。
+  // 语义(2026-07-07):显式登录即写 + 自动登录会话每 12h 节流触活(见 lib/auth.ts jwt 回调)。
   const sorted = [...filtered].sort((a, b) => {
     const av = a[sortKey] ? new Date(a[sortKey] as string).getTime() : null;
     const bv = b[sortKey] ? new Date(b[sortKey] as string).getTime() : null;
@@ -171,7 +172,7 @@ export default function AdminUsersClient() {
                 className="cursor-pointer select-none px-3 py-2 font-medium hover:text-gray-700"
                 onClick={() => toggleSort("lastLoginAt")}
               >
-                最近登录{arrow("lastLoginAt")}
+                最近活跃{arrow("lastLoginAt")}
               </th>
               <th className="px-3 py-2 font-medium">自选</th>
               <th className="px-3 py-2 font-medium">邮件订阅</th>
