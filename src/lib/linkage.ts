@@ -1,6 +1,6 @@
-// 联动有效率:某美股单日 ≥2% 异动 → 对应 A 股次一交易日"同向且 ≥1%"的占比。
+// 历史同向率(旧称「联动有效率」,2.1-W3 口径迁移):某美股单日 ≥2% 异动 → 对应 A 股次一交易日"同向且 ≥1%"的占比。
 // 走 backtest 全历史(Yahoo 美股日线 + Tushare A 股日线),不是稀疏的 BriefingOutcome。
-// 透明口径 + 小样本只给样本数不亮百分比 + 明确"联动有效率≠准确率、非预测",守合规红线。
+// 透明口径 + 小样本只给样本数不亮百分比 + 明确"历史同向统计≠准确率、非预测",守合规红线。
 import { STOCK_MAP } from "@/data/stocks";
 import { usDailyHistory } from "@/lib/yahoo";
 import { dailyHistory } from "@/lib/tushare";

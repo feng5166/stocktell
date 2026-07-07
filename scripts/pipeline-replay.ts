@@ -161,7 +161,8 @@ function sourceLeakage() {
         impact: "高",
         title: "英伟达隔夜异动(合规阻断 fixture)",
         triggerCode: "NVDA",
-        triggerName: "英伟达,建议满仓抄底",
+        // 2.1-W3 扩表后 fixture 同步覆盖新词(强受益/有效信号),CI 一并验新表生效
+        triggerName: "英伟达,建议满仓抄底,强受益有效信号",
         triggerChange: 5.2,
         beneficiaries: [{ code: "300308", name: "中际旭创" }],
         retailTake: "fixture",

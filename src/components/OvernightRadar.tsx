@@ -1,7 +1,7 @@
 "use client";
 
 // 首页跨市场预期差雷达(一等卡):隔夜美股已涨、对应 A 股今日暂未跟上的标的,一屏直达。
-// 每条挂 强/中/弱 关联标 + 联动有效率徽章;自选 A 股高亮。无 live 信号时整卡自隐藏(不堆砌首页)。
+// 每条挂 强/中/弱 关联标 + 历史同向率徽章;自选 A 股高亮。无 live 信号时整卡自隐藏(不堆砌首页)。
 // 纯观察对比口径,不喊补涨/买卖,守合规。
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";

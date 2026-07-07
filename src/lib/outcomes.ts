@@ -250,6 +250,64 @@ export async function statsOutcomes(
   return { stats: { evaluated, hits, rate: rate(evaluated, hits) }, byImpact };
 }
 
+// 按关系档 / 按链拆复盘(2.1-W3:复盘的主口径从"涨跌命中"转向"关系验证")。
+// 链身份不落库(读时经 resolvePrimary 解析=resolver 唯一入口),所以不能用 DB groupBy——
+// 轻量 select {code,hit} 后在 Node 聚合;code→关系解析先归并(几百行、几十个 code,开销可忽略)。
+// direct/indirect/sentiment 分开统计正是差异化所在:直接映射的验证率和情绪映射的验证率
+// 是两种含义,混在一起就退化回"涨跌有效率"。
+export async function statsOutcomesByRelation(backtest: boolean): Promise<{
+  byRelation: { relationType: string; stats: HitStats }[];
+  byChain: { chainId: string; stats: HitStats }[];
+}> {
+  const db = getPrisma();
+  if (!db) return { byRelation: [], byChain: [] };
+  const rows = await db.briefingOutcome
+    .findMany({
+      where: { isBacktest: backtest, hit: { not: null } },
+      select: { code: true, hit: true },
+    })
+    .catch(() => [] as Array<{ code: string; hit: boolean | null }>);
+  // 先按 code 归并计数,再一次性解析关系(避免每行跑 resolver)
+  const byCode = new Map<string, { judged: number; hits: number }>();
+  for (const r of rows) {
+    const m = byCode.get(r.code) ?? { judged: 0, hits: 0 };
+    m.judged++;
+    if (r.hit) m.hits++;
+    byCode.set(r.code, m);
+  }
+  const relAgg = new Map<string, { evaluated: number; hits: number }>();
+  const chainAgg = new Map<string, { evaluated: number; hits: number }>();
+  for (const [code, m] of Array.from(byCode.entries())) {
+    const rel = resolvePrimary(code);
+    const rt = rel?.relationType ?? "unmapped"; // 无静态关系的票单列,不消失(未覆盖≠没发生)
+    const ra = relAgg.get(rt) ?? { evaluated: 0, hits: 0 };
+    ra.evaluated += m.judged;
+    ra.hits += m.hits;
+    relAgg.set(rt, ra);
+    if (rel) {
+      const ca = chainAgg.get(rel.chainId) ?? { evaluated: 0, hits: 0 };
+      ca.evaluated += m.judged;
+      ca.hits += m.hits;
+      chainAgg.set(rel.chainId, ca);
+    }
+  }
+  const toStats = (m: { evaluated: number; hits: number }): HitStats => ({
+    evaluated: m.evaluated,
+    hits: m.hits,
+    rate: m.evaluated ? m.hits / m.evaluated : null,
+  });
+  // 关系档固定顺序展示(direct 在前,情绪/弱/未覆盖殿后),只返回有样本的
+  const REL_ORDER = ["direct", "indirect", "sentiment", "weak", "candidate", "trigger", "unmapped"];
+  const byRelation = REL_ORDER.filter((rt) => relAgg.has(rt)).map((rt) => ({
+    relationType: rt,
+    stats: toStats(relAgg.get(rt)!),
+  }));
+  const byChain = Array.from(chainAgg.entries())
+    .map(([chainId, m]) => ({ chainId, stats: toStats(m) }))
+    .sort((a, b) => b.stats.evaluated - a.stats.evaluated);
+  return { byRelation, byChain };
+}
+
 // 样本低于此数不亮总命中率,只说"样本积累中"——早期几条数据的命中率没意义,亮出来反而误导。
 export const MIN_SAMPLE = 10;
 

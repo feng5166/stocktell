@@ -126,8 +126,8 @@ function WatchDot({ status }: { status: string }) {
 // Phase 3-B:边强度仅用于内部排序(真供货排前),不再作为展示徽章。StrengthTag 已退场。
 const STRENGTH_RANK: Record<Strength, number> = { 强: 0, 中: 1, 弱: 2 };
 
-// 联动有效率徽章:过去2年该美股≥2%异动 → 次日A股同向且≥1% 的比例。小样本(<12)只给样本数、
-// 不亮百分比;tooltip 明确"联动有效率·非预测、历史不代表未来",守合规。数据来自 /api/linkage(边级缓存)。
+// 历史同向率徽章(旧称联动有效率):过去2年该美股≥2%异动 → 次日A股同向且≥1% 的比例。小样本(<12)只给样本数、
+// 不亮百分比;tooltip 明确"历史同向统计·非预测、历史不代表未来",守合规。数据来自 /api/linkage(边级缓存)。
 type LinkageStat = {
   events: number;
   hits: number;
@@ -1457,7 +1457,7 @@ function ActiveDiscovery({
     .filter((x) => x.lagging.length > 0)
     .sort((a, b) => b.us.change - a.us.change);
 
-  // 拉联动有效率(边级、天内不变,服务端缓存 6h),给每条落后边打"联动N%"徽章
+  // 拉历史同向率(边级、天内不变,服务端缓存 6h),给每条落后边打"联动N%"徽章
   const pairsKey = signals
     .flatMap((s) => s.lagging.map((p) => `${s.us.code}:${p.code}`))
     .slice(0, 12)

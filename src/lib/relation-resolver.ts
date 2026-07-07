@@ -50,12 +50,15 @@ export type ResolvedRelation = StockChainRelation & {
   resolvedSource: "static" | "daily" | "review";
 };
 
-// 骨架期:daily / review 为空源。pipeline 落地 dailyRelationSignals、审阅台落地 reviewQueue 后,
-// 替换这两个 getter 即可,resolver 与所有消费方不动(这正是唯一入口的价值)。
+// 骨架期:daily 为空源。pipeline 落地 dailyRelationSignals 后替换 getter 即可,
+// resolver 与所有消费方不动(这正是唯一入口的价值)。
 export function getDailySignals(date: string): DailyRelationSignal[] {
   void date; // 骨架期空源;pipeline 落地后按 date 读 dailyRelationSignals
   return [];
 }
+// 层③ 2.1-W3 起已持久化(relation_review_queue 表,读写走 lib/relation-review.ts)。
+// 本 getter 仍返回空:pending/confirmed 队列项【不是关系】,不影响解析(改档只走
+// chain-relations.ts 代码评审=不变量#4)。若未来拍板「confirmed 候选上前台展示」,再接这里。
 export function getReviewQueue(): RelationReviewItem[] {
   return [];
 }
