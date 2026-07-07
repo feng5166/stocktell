@@ -11,7 +11,12 @@ import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
 import { buildWatchChainMap } from "@/lib/watch-relation";
 import { buildRelLabelMap, resolveRelationLabelForItem } from "@/lib/relation-resolver";
-import { getBriefStatus, BRIEF_STATUS_UI, type BriefStatusRecord } from "@/lib/brief-status";
+import {
+  getBriefStatus,
+  BRIEF_STATUS_UI,
+  type BriefStatusRecord,
+  type BriefTone,
+} from "@/lib/brief-status";
 import { getHolidayBridge, type HolidayBridgeDoc } from "@/lib/holiday-bridge";
 import { getChain } from "@/data/chains";
 import {
@@ -132,7 +137,7 @@ export default async function Home() {
 // 简报状态横幅(2.1-A 全站五档对齐)。文案/色调统一走 BRIEF_STATUS_UI:
 // 休市=中性、模板兜底/合规阻断=琥珀(需关注非事故)、failed 才大红;generated/manual_reissue 无横幅。
 // 用户在首页就能读懂"今天为什么没有(正常的)新简报"。
-const TONE_BANNER: Record<string, { box: string; badge: string } | null> = {
+const TONE_BANNER: Record<BriefTone, { box: string; badge: string } | null> = {
   info: null, // 正常产出不打横幅
   neutral: { box: "bg-slate-100 text-slate-600", badge: "text-slate-700" },
   attention: { box: "bg-amber-50 text-amber-800", badge: "text-amber-900" },

@@ -8,15 +8,15 @@
 //   假期消息聚合列 2.1 后续增强(博查检索返回的是当下网页,做不了严格历史,先不做)。
 // - 不伪装:状态=market_closed + subType=holiday_bridge,标题口径写明"无新的隔夜美股映射",
 //   绝不标 generated。
-// - 合规纵深:虽然素材都过过审,仍跑 scanBannedWords + hasSpecificMove(未来接入 LLM 假期
-//   消息时 guard 已就位);blockers 非空则不发布 bridge,回退纯 market_closed。
+// - 合规纵深:新拼散文全查(禁词+数字红线),recap 回顾标题只查禁词(已过审事实记录,
+//   数字是事实复述——见 buildHolidayBridge 内注释);blockers 非空则不发布,回退纯 market_closed。
 //
 // 存储:复用 quotesCache KV(id=holiday-bridge:{date}),与 brief-status 同仓,零新表。
 // buildHolidayBridge 是纯函数(素材注入式,不读写库)——replay 直接调,不需要 DB。
 import type { BriefingItem } from "@/lib/briefings";
-import { CHAINS } from "@/data/chains";
-import { scanBannedWords, hasSpecificMove } from "@/lib/content-guard";
-import { getPrisma } from "@/lib/prisma";
+import { CHAINS, FALLBACK_SEGMENT } from "@/data/chains";
+import { scanBannedWords, isComplianceClean } from "@/lib/content-guard";
+import { kvGet, kvSet } from "@/lib/kv";
 
 export type HolidayBridgeDoc = {
   date: string; // 北京简报日(A 股交易日、美股休市)
@@ -54,28 +54,33 @@ export function buildHolidayBridge(opts: {
     impact: it.impact,
     beneficiaries: (it.beneficiaries ?? []).map((b) => ({ code: b.code, name: b.name })),
   }));
-  // 链级观察:配置链的环节 + 验证点模板(「其他链上环节」是兜底段,不进观察列表)
+  // 链级观察:配置链的环节 + 验证点模板(FALLBACK_SEGMENT 是兜底段,不进观察列表)
   const chainWatch = Object.values(CHAINS)
     .filter((c) => c.segments?.length)
     .map((c) => ({
       chainId: c.id,
       chainName: c.name,
       segments: (c.segments ?? [])
-        .filter((s) => s.name !== "其他链上环节")
+        .filter((s) => s.name !== FALLBACK_SEGMENT)
         .map((s) => ({ name: s.name, plain: s.plain, verify: s.verifyTemplate })),
     }));
   const note = bridgeNote(opts.fallbackFromDate);
-  // 合规纵深:扫我们拼出的全部展示文本(标题/口径/回顾标题/环节文案/验证点)
-  const prose = [
+  // 合规纵深,两套口径(review F1):
+  // ①我们新拼的散文(标题/口径/环节文案/验证点)→ 禁词 + 涨跌数字红线全查(isComplianceClean);
+  // ②recap 回顾标题 = 已发布已过审的【事实记录】,生产标题设计上就含涨跌百分比
+  //   (模板题「隔夜上涨 3.10%」)——对历史事实复述数字不是新观点,只扫禁词不扫数字红线,
+  //   与 guard.ts 对外部来源标题(externalText)的既有先例同口径。全查会让桥在真实数据下必被自拦。
+  const ourProse = [
     BRIDGE_TITLE,
     note,
-    ...recap.map((r) => r.title),
     ...chainWatch.flatMap((cw) => cw.segments.flatMap((s) => [s.name, s.plain, ...s.verify])),
   ].join("\n");
   const blockers: string[] = [];
-  const bannedHits = scanBannedWords(prose);
-  if (bannedHits.length) blockers.push(`禁词命中:${bannedHits.join("、")}`);
-  if (hasSpecificMove(prose)) blockers.push("命中具体涨跌数字红线");
+  const own = isComplianceClean(ourProse);
+  if (own.bannedHits.length) blockers.push(`禁词命中:${own.bannedHits.join("、")}`);
+  if (own.hasNumber) blockers.push("命中具体涨跌数字红线");
+  const recapHits = scanBannedWords(recap.map((r) => r.title).join("\n"));
+  if (recapHits.length) blockers.push(`禁词命中(回顾标题):${recapHits.join("、")}`);
   return {
     date: opts.date,
     fallbackFromDate: opts.fallbackFromDate,
@@ -89,22 +94,11 @@ export function buildHolidayBridge(opts: {
 
 const KEY = (date: string) => `holiday-bridge:${date}`;
 
-// 写入(fail-safe:catch 内吞,bridge 失败绝不影响 market_closed 主状态写入)。
+// 存取走 lib/kv.ts(fail-safe:bridge 失败绝不影响 market_closed 主状态写入)。
 export async function saveHolidayBridge(doc: HolidayBridgeDoc): Promise<void> {
-  const db = getPrisma();
-  if (!db) return;
-  await db.quotesCache
-    .upsert({
-      where: { id: KEY(doc.date) },
-      create: { id: KEY(doc.date), data: doc as object },
-      update: { data: doc as object },
-    })
-    .catch(() => {});
+  await kvSet(KEY(doc.date), doc as object);
 }
 
 export async function getHolidayBridge(date: string): Promise<HolidayBridgeDoc | null> {
-  const db = getPrisma();
-  if (!db) return null;
-  const row = await db.quotesCache.findUnique({ where: { id: KEY(date) } }).catch(() => null);
-  return (row?.data as HolidayBridgeDoc | undefined) ?? null;
+  return kvGet<HolidayBridgeDoc>(KEY(date));
 }

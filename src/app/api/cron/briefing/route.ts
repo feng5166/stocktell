@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateDrafts } from "@/lib/generate";
+import { generateDrafts, mostRecentUSWeekday } from "@/lib/generate";
+import { isUSMarketHoliday } from "@/lib/us-holidays";
 import { insertDrafts, listBriefing, latestBriefing } from "@/lib/briefings";
 import { buildHolidayBridge, saveHolidayBridge } from "@/lib/holiday-bridge";
 import { generateChainTake } from "@/lib/chain-take";
@@ -72,13 +73,19 @@ export async function GET(req: NextRequest) {
     // 但交易日早上判到"美股休市"多半是行情源抖动导致 asOf 陈旧的误判 → 告警(别静默),
     // 真节假日时这条告警当 FYI,但一年没几次,值得人眼扫一下确认。
     if (usMarketClosed) {
+      // 休市判定交叉验证(review F3):usMarketClosed 只由「行情陈旧度」判定,行情源故障会
+      // 误判休市。对照 NYSE 法定假日日历——缺行情的那个美东工作日若不是法定假日,大概率是
+      // 源故障,【不发布】节后观察桥(否则假"美股休市"内容全天挂首页),状态仍标 market_closed
+      // (下面的既有 FYI 告警会带上交叉验证结果,人眼一秒判真伪)。
+      const expectedUSDay = mostRecentUSWeekday(new Date());
+      const holidayConfirmed = isUSMarketHoliday(expectedUSDay);
       // Holiday Bridge(2.1-C):不硬造隔夜简报,但给「节后首日观察」——素材全部来自真数据
       // (最近一期已发布简报 + 链验证点模板),guard 纵深扫过才发布。任何一步失败都不影响
       // market_closed 主状态写入(宁缺勿造,回退纯休市标注)。
       let bridged = false;
       let bridgeFrom: string | undefined;
       try {
-        const latest = await latestBriefing();
+        const latest = holidayConfirmed ? await latestBriefing() : { date: null, items: [] };
         const doc = latest.date
           ? buildHolidayBridge({ date, fallbackFromDate: latest.date, recapItems: latest.items })
           : null;
@@ -106,7 +113,9 @@ export async function GET(req: NextRequest) {
       });
       await alertCron(
         "briefing(简报生成)",
-        `交易日 ${date} 判定"美股休市"跳过 —— 若非美股真节假日,多半是 07:00 美股行情源抖动致 asOf 陈旧的误判,需手动重发(/api/admin… 或 generate?replace=1)`
+        holidayConfirmed
+          ? `交易日 ${date} 美股休市(${expectedUSDay} 为 NYSE 法定假日,日历交叉验证通过)${bridged ? ",已发布节后首日观察" : ""} —— FYI,无需处理`
+          : `交易日 ${date} 判定"美股休市"但 ${expectedUSDay} 【不是】NYSE 法定假日 —— 大概率是 07:00 行情源抖动致 asOf 陈旧的误判(已抑制节后观察桥),若确认误判需手动重发 generate?replace=1&llm=1`
       );
       // 没有隔夜简报,但用户持仓的资金面/雷区提醒(digest 的 alerts-only 分支)不依赖美股,
       // 照常发——否则美股源抖动的早上,这批高信号提醒被连带静默跳过(评审确认)。

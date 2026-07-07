@@ -1,60 +1,83 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listBriefing } from "@/lib/briefings";
 import { sendFeishu } from "@/lib/feishu";
-import { todayISO } from "@/lib/date";
+import { todayISO, beijingHM } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
-import { tradingDayGate } from "@/lib/trading-gate";
-import { getBriefStatus, briefAlertSeverity, BRIEF_STATUS_UI } from "@/lib/brief-status";
+import { ashareDayStatus } from "@/lib/tushare";
+import {
+  getBriefStatusChecked,
+  briefAlertSeverity,
+  feishuPendingNoticeText,
+} from "@/lib/brief-status";
 
 export const dynamic = "force-dynamic";
 
 const DOT: Record<string, string> = { 高: "🔴", 中: "🟡", 低: "🟢" };
 
-// 把当天已发布简报推一条到飞书(CRON_SECRET 鉴权;由 GitHub Actions 定时触发)。
+// 把当天已发布简报推一条到飞书(CRON_SECRET 鉴权;由 GitHub Actions 定时触发,北京约 07:10)。
 // 本 cron 是 Vercel cron 共模盲区的【唯一外部哨】(GH Actions 跑,不与 Vercel 同生共死):
-// 交易日缺简报时绝不静默 skip(2.1-B 修复的残口),按 brief-status 分级——
-// 休市=设计性不告警;兜底/阻断=低优提示;failed/无状态=🚨 且返回 500(配合 workflow curl -f
-// 把 GH run 打红,邮件成为飞书之外的第二通道)。
+// 交易日缺简报时绝不静默 skip,按 brief-status × 上下文分级(review F4/F5 修订)——
+// - 休市/阻断/兜底待审:按级提示,不喊补发;
+// - failed 且早于 07:40:主跑失败≠最终失败,notice 等补位,【不给手动补发指令】
+//   (抢跑指令会诱发人工与 07:40 自愈并发补发);
+// - 交易日无状态记录:共模嫌疑,🚨+500(curl -f 打红 GH,第二通道)——这是外部哨的本职,
+//   但注明"07:40 补位后恢复即为延迟误报";
+// - 状态读失败(DB 抖动)/交易日未知(Tushare 挂):notice,交给 08:30 看门狗,不假 🚨。
 export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   try {
     const date = todayISO();
-    const items = await listBriefing({ date, status: "published" });
-    if (items.length === 0) {
-      // 周末/确认节假日:本来就没简报,静默跳过。交付型 onUnknown=proceed(与 push-weixin 同,
-      // Tushare 抖动不该让外部哨自己哑火)。
-      const gate = await tradingDayGate(date, "push-feishu(飞书推送)", { onUnknown: "proceed" });
-      if (gate) return NextResponse.json({ ok: true, ...gate });
+    // 三读相互独立,并行(review 小项④)
+    const [items, dayStatus, statusRead] = await Promise.all([
+      listBriefing({ date, status: "published" }),
+      ashareDayStatus(date).catch(() => "unknown" as const),
+      getBriefStatusChecked(date),
+    ]);
+    const brief = statusRead.rec;
 
-      const brief = await getBriefStatus(date).catch(() => null);
-      const severity = briefAlertSeverity(brief);
+    if (items.length === 0) {
+      if (dayStatus === "closed") {
+        return NextResponse.json({ ok: true, skipped: "non-trading-day", date });
+      }
+      // GH schedule 常延迟(今日实测 07:10 排程 08:16 触发),按实际北京时刻判断补位是否在途
+      const beforeBackup = (beijingHM(new Date().toISOString()) ?? "23:59") < "07:40";
+      const severity = briefAlertSeverity(brief, {
+        publishedCount: 0,
+        statusReadFailed: statusRead.readFailed,
+        tradingDayUnknown: dayStatus === "unknown",
+        beforeBackup,
+      });
       if (severity === "none") {
-        // 美股休市等设计性无简报:不告警、不硬造。飞书侧的休市心跳由 08:30 watchdog 发,这里不重复。
+        // 美股休市等设计性无简报:不告警。飞书侧的休市心跳由 08:30 watchdog 发,这里不重复。
         return NextResponse.json({ ok: true, skipped: brief!.status, date });
       }
       if (severity === "notice") {
-        const ui = BRIEF_STATUS_UI[brief!.status];
-        const fs = await sendFeishu(
-          `⚠️ StockTell 今日简报待人工处理(${ui.badge}) · ${date} · ${ui.note}`
-        );
-        return NextResponse.json({ ok: true, notice: brief!.status, date, feishu: fs });
+        const msg = statusRead.readFailed
+          ? `⚠️ StockTell 简报状态读取失败 · ${date} · DB 瞬时抖动,暂不判级,以 08:30 看门狗为准`
+          : brief?.status === "failed"
+            ? `⚠️ StockTell 简报主跑失败 · ${date} · 07:40 补位将自动重试,勿手动补发;最终结果以 08:30 看门狗为准`
+            : brief
+              ? feishuPendingNoticeText(brief, date)
+              : `⚠️ StockTell 今日无简报且交易日未知 · ${date} · Tushare 日历不可用,可能为 A 股假日;以 08:30 看门狗为准`;
+        const fs = await sendFeishu(msg);
+        return NextResponse.json({ ok: true, notice: brief?.status ?? "unknown", date, feishu: fs });
       }
-      // incident:failed 或交易日连状态都没有(Vercel cron 疑似共模故障——正是外部哨要抓的)。
+      // incident:交易日无状态(共模嫌疑)或状态与库矛盾。500 + workflow curl -f → GH 打红,双通道。
       await alertCron(
         "push-feishu(飞书推送)",
-        `交易日 ${date} 推送时无已发布简报(${brief ? `状态=${brief.status}` : "且无状态记录,疑似 Vercel cron 共模故障"})。请查 /api/cron/briefing 与 Vercel cron,必要时手动补:POST /api/briefing/generate?replace=1&llm=1`
+        brief
+          ? `交易日 ${date} 状态=${brief.status} 但 0 条已发布(状态与库矛盾:疑似发布后被清空/写入中断),需人工核查 /admin/briefing`
+          : `交易日 ${date} 推送时无已发布简报且无状态记录 —— 疑似 Vercel cron 共模故障(生成 cron 未跑)。请查 Vercel cron;若 07:40 补位后恢复,此为延迟误报,勿手动补发`
       );
-      // 500 + workflow curl -f → GH Actions 打红发失败邮件,双通道
       return NextResponse.json(
         { ok: false, error: "briefing-missing-on-trading-day", date, briefStatus: brief?.status ?? null },
         { status: 500 }
       );
     }
     // 简报在但是模板兜底:推送照常(用户侧内容在线),标题带低置信标记,与"全真"区分。
-    const brief = await getBriefStatus(date).catch(() => null);
     const fallbackTag = brief?.status === "fallback" ? "(模板兜底·低置信)" : "";
     const lines = [`📊 StockTell 今日简报${fallbackTag} | ${date}`, ""];
     for (const it of items.slice(0, 8)) {

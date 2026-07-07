@@ -5,7 +5,7 @@ import { generateChainTake } from "@/lib/chain-take";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
-import { setBriefStatus } from "@/lib/brief-status";
+import { setBriefStatus, getBriefStatus } from "@/lib/brief-status";
 
 export const dynamic = "force-dynamic";
 // replace 全链路 = 生成(LLM)+重写缓存+链级判断(LLM),60s 会重演"跑一半被硬杀"(07-03 事故同款)
@@ -89,10 +89,26 @@ export async function POST(req: NextRequest) {
       await purgeDerived(false);
       // 状态标识(规则4:replace 不能伪造市场状态)。休市→market_closed(即使强制补发也 count=0,
       // 不伪造简报);有内容→manual_reissue(人工补发);交易日 0 条→failed。
+      // review F6:setBriefStatus 是整体覆盖——休市日 cron 可能已写 subType=holiday_bridge,
+      // 手动 replace 不带 subType 会把已发布的节后观察静默解链(首页/API 都 gate 在 subType 上)。
+      // 读旧状态,保留桥标记。
+      const prev = usMarketClosed ? await getBriefStatus(d) : null;
+      const keepBridge =
+        prev?.subType === "holiday_bridge"
+          ? { subType: prev.subType, fallbackFromDate: prev.fallbackFromDate }
+          : {};
       await setBriefStatus(
         d,
         usMarketClosed
-          ? { status: "market_closed", reason: "us_market_closed", message: "美股休市,今日无新的隔夜美股映射。" }
+          ? {
+              status: "market_closed",
+              ...keepBridge,
+              reason: "us_market_closed",
+              message:
+                prev?.subType === "holiday_bridge"
+                  ? "美股休市,今日无新的隔夜美股映射,已发布节后首日观察。"
+                  : "美股休市,今日无新的隔夜美股映射。",
+            }
           : created.length > 0
             ? engine === "llm"
               ? { status: "manual_reissue" }

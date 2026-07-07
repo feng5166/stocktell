@@ -24,6 +24,7 @@
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | ModelVerse(LLM) | 简报/解读/早报生成。默认模型 `deepseek-v4-pro` |
 | `WHY_ENABLED` / `WHY_LLM_MODEL` | LLM(为什么动) | 「为什么动」开关 + 专用模型 |
 | `TUSHARE_TOKEN` | Tushare | 交易日历 / 基本面 / 资金面 |
+| `INSIGHT_SKIP_URL_VERIFY` | insight 管线(回放/CI 专用) | =1 跳过 references HEAD 可达探测(refs 保持 verified=false)。**严禁配置到 Vercel**:误设会让每日 insight 全部 refs 永久 0/N 可达,与源站全挂不可区分(review F7)。仅 pipeline-replay --llm=off 与 CI 使用 |
 | `BOCHA_API_KEY` | 博查 Bocha Search | 「为什么动」真实新闻检索 |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Resend | 发邮件(早报/通知/密码重置/后台群发) |
 | `VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT` | Web Push | 浏览器/PWA 通知 |
