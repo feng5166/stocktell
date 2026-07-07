@@ -5,7 +5,8 @@ import { generateChainTake } from "@/lib/chain-take";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
-import { setBriefStatus, getBriefStatus } from "@/lib/brief-status";
+import { setBriefStatus, getBriefStatusChecked } from "@/lib/brief-status";
+import { getHolidayBridge } from "@/lib/holiday-bridge";
 
 export const dynamic = "force-dynamic";
 // replace 全链路 = 生成(LLM)+重写缓存+链级判断(LLM),60s 会重演"跑一半被硬杀"(07-03 事故同款)
@@ -91,21 +92,30 @@ export async function POST(req: NextRequest) {
       // 不伪造简报);有内容→manual_reissue(人工补发);交易日 0 条→failed。
       // review F6:setBriefStatus 是整体覆盖——休市日 cron 可能已写 subType=holiday_bridge,
       // 手动 replace 不带 subType 会把已发布的节后观察静默解链(首页/API 都 gate 在 subType 上)。
-      // 读旧状态,保留桥标记。
-      const prev = usMarketClosed ? await getBriefStatus(d) : null;
-      const keepBridge =
-        prev?.subType === "holiday_bridge"
-          ? { subType: prev.subType, fallbackFromDate: prev.fallbackFromDate }
+      // 二轮 N4:读必须走 checked——吞错成 null 的读在 DB 抖动时会让 keepBridge={},F6 经错误
+      // 路径复现;读失败时退一步查桥文档 KV 本身(桥文档在=桥在)。
+      const prevRead = usMarketClosed
+        ? await getBriefStatusChecked(d)
+        : { rec: null, readFailed: false };
+      let keepBridge: { subType?: "holiday_bridge"; fallbackFromDate?: string } =
+        prevRead.rec?.subType === "holiday_bridge"
+          ? { subType: prevRead.rec.subType, fallbackFromDate: prevRead.rec.fallbackFromDate }
           : {};
+      if (usMarketClosed && !prevRead.rec && prevRead.readFailed) {
+        const bridgeDoc = await getHolidayBridge(d).catch(() => null);
+        if (bridgeDoc) keepBridge = { subType: "holiday_bridge", fallbackFromDate: bridgeDoc.fallbackFromDate };
+      }
+      const prev = prevRead.rec;
       await setBriefStatus(
         d,
         usMarketClosed
           ? {
               status: "market_closed",
               ...keepBridge,
-              reason: "us_market_closed",
+              // 保留原 reason(stale_asof 的误判标记不因人工 replace 丢失);读不到旧状态则按真休市
+              reason: prev?.reason ?? "us_market_closed",
               message:
-                prev?.subType === "holiday_bridge"
+                keepBridge.subType === "holiday_bridge"
                   ? "美股休市,今日无新的隔夜美股映射,已发布节后首日观察。"
                   : "美股休市,今日无新的隔夜美股映射。",
             }

@@ -11,8 +11,8 @@ import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { sendFeishu } from "@/lib/feishu";
 import { dbReadRetry } from "@/lib/db-retry";
+import { kvGet, kvSet } from "@/lib/kv";
 import { setBriefStatus } from "@/lib/brief-status";
-import { getPrisma } from "@/lib/prisma";
 import { tradingDayGate } from "@/lib/trading-gate";
 
 export const dynamic = "force-dynamic";
@@ -103,13 +103,17 @@ export async function GET(req: NextRequest) {
         await alertCron("briefing(节后首日观察)", e);
       }
       // 状态标识(2.0 收尾):休市缺口=正确保护,标 market_closed(非 failed),前台据此提示不误判成漏跑。
+      // N10:日历交叉验证不过 → reason=stale_asof(分级层按 notice 处理,看门狗提示人工确认
+      // 而非"设计性勿补发"),与 07:00 的"疑似误判"告警口径一致。
       await setBriefStatus(date, {
         status: "market_closed",
         ...(bridged ? { subType: "holiday_bridge" as const, fallbackFromDate: bridgeFrom } : {}),
-        reason: "us_market_closed",
-        message: bridged
-          ? "美股休市,今日无新的隔夜美股映射,已发布节后首日观察。"
-          : "美股休市,今日无新的隔夜美股映射。",
+        reason: holidayConfirmed ? "us_market_closed" : "stale_asof",
+        message: holidayConfirmed
+          ? bridged
+            ? "美股休市,今日无新的隔夜美股映射,已发布节后首日观察。"
+            : "美股休市,今日无新的隔夜美股映射。"
+          : `判定美股休市但 ${expectedUSDay} 非 NYSE 法定假日,疑似行情源误判;确认误判后手动重发 generate?replace=1&llm=1。`,
       });
       await alertCron(
         "briefing(简报生成)",
@@ -225,17 +229,10 @@ async function runDigest(date: string, tag: string) {
 // 用当天专属广播标记去重:只有确实广播成功(runWebPush 跑了发送循环,非 skip 非抛错)才落标记;
 // 标记在 → 补位再调直接跳过(不重复骚扰);标记不在(截断/抛错/0条发布)→ 补位会补广播一次。
 // 残留:极小概率「广播成功但标记写失败」→ 补位重播一次(仅一条重复通知,低危,可接受)。
-type DB = NonNullable<ReturnType<typeof getPrisma>>;
-async function webpushDoneToday(db: DB | null, date: string): Promise<boolean> {
-  if (!db) return false;
-  const row = await db.quotesCache
-    .findUnique({ where: { id: `webpush-done:${date}` } })
-    .catch(() => null);
-  return !!row;
-}
+// 标记存取走 lib/kv.ts(review F10 收尾:第三份手写 quotesCache 读写迁移)。
+const WEBPUSH_KEY = (date: string) => `webpush-done:${date}`;
 async function maybeWebPush(date: string, tag: string) {
-  const db = getPrisma();
-  if (await webpushDoneToday(db, date)) return { skipped: "already-broadcast" };
+  if (await kvGet(WEBPUSH_KEY(date))) return { skipped: "already-broadcast" };
   const r = await runWebPush().catch(async (e) => {
     await alertCron(`briefing(网页推送${tag ? "·" + tag : ""})`, e);
     return null;
@@ -245,14 +242,8 @@ async function maybeWebPush(date: string, tag: string) {
   // 不落标记 → 07:40 补位会补广播(此前误落标记会永久压制补位重播,评审确认的回归)。
   const delivered =
     !!r && typeof r.subs === "number" && (r.subs === 0 || (r.sent ?? 0) > 0);
-  if (db && delivered) {
-    await db.quotesCache
-      .upsert({
-        where: { id: `webpush-done:${date}` },
-        create: { id: `webpush-done:${date}`, data: { done: true } },
-        update: { data: { done: true } },
-      })
-      .catch(() => {});
+  if (delivered) {
+    await kvSet(WEBPUSH_KEY(date), { done: true });
   }
   return r;
 }

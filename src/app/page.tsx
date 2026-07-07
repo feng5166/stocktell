@@ -73,14 +73,14 @@ export default async function Home() {
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();
   const relLabelMap = buildRelLabelMap(); // Phase 3-D:OvernightRadar peer 关系档(服务端算好传客户端)
-  // 简报状态标识(2.0 收尾):区分"美股休市无新映射"(中性、非事故)与"生成异常"(待核查),用户不误判成漏跑
-  const briefStatus = await getBriefStatus(date).catch(() => null);
-  // 节后首日观察(2.1-C):休市日有 bridge 时渲染观察区块(纯 DB 读,ISR 安全)。
-  // 回顾条目不在这里重复——下方 stale feed 展示的就是最近一期简报,bridge 区块只补「口径+链观察验证点」。
-  const bridge =
-    briefStatus?.subType === "holiday_bridge"
-      ? await getHolidayBridge(date).catch(() => null)
-      : null;
+  // 简报状态标识(2.0 收尾)+ 节后首日观察(2.1-C):两个 KV 读相互独立,并行取
+  // (二轮 review G4 收尾);桥文档只在 subType 命中时才渲染,多读的一次 KV 在 ISR 下可忽略。
+  // 回顾条目不在 bridge 区块重复——下方 stale feed 展示的就是最近一期简报,区块只补「口径+验证点」。
+  const [briefStatus, bridgeDoc] = await Promise.all([
+    getBriefStatus(date).catch(() => null),
+    getHolidayBridge(date).catch(() => null),
+  ]);
+  const bridge = briefStatus?.subType === "holiday_bridge" ? bridgeDoc : null;
 
   return (
     <div className="min-h-screen bg-canvas text-ink">

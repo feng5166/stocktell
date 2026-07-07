@@ -64,6 +64,19 @@ relationParity / sourceLeakage / compliance / assertions / verdict),发结果只
 - A 股 peers 的装饰性涨跌(`peers[].change`)回放中为 null(不影响条目生成与合规扫描)。
 - 假期累计路径(`usCumulativeChange`)本身就按日期区间算,历史回放天然兼容,未单独出样本日。
 
+## 样本日轮换(SAMPLE_DATE_EXPIRED 出现时照此办)
+
+样本日 2026-07-02(full/Case C/F 素材日)与 2026-07-06(market-closed/Case B)依赖东财/Yahoo
+~250 根日 K 窗口,**约 2027 年中出窗**。replay 报 `SAMPLE_DATE_EXPIRED` 时:
+
+1. 选新样本日:full 选一个「美股正常交易、有明显 movers」的近期北京简报日;market-closed 选
+   最近一个「A 股开市 + 美股法定假日」日(参考 `src/lib/us-holidays.ts` 日历);
+2. 本地跑三种 mode 全绿:`--mode=full`、`--mode=market-closed`、`--mode=holiday-bridge`
+   (holiday-bridge 的 fallbackFromDate 常量在 scripts/pipeline-replay.ts 内,与 full 样本日同族);
+3. 同步四处:本文档用法段与样本矩阵、`.github/workflows/relations-check.yml`、
+   `.github/workflows/replay-nightly.yml`、`scripts/pipeline-replay.ts` 内的日期常量;
+4. 提交后确认 nightly 首跑绿。
+
 ## 状态口径(status taxonomy)
 
 > **负责人 2026-07-06 正式确认,写死到本文档与 replay snapshot:不得把 LLM 挂等同于 failed。**
