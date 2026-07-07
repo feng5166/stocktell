@@ -505,6 +505,9 @@ function sourceLeakage() {
   let parityTotal = 0, parityUnchanged = 0;
   const parityChanged: string[] = [];
   for (const ins of Object.values(INSIGHT_CHAINS) as Array<{ slug: string; mappings: Array<{ code?: string }> }>) {
+    // parity 只比「切 resolver 前就存在」的三条链——新增链(如 semiconductor-equipment)没有
+    // 旧源可比,不参与新旧对照(其关系正确性由 Case E + resolver-samples 断言)。
+    if (!SLUG_TO_CHAIN[ins.slug]) continue;
     for (const m of ins.mappings) {
       if (!m.code) continue;
       parityTotal++;
