@@ -43,7 +43,10 @@ const klac = resolvePrimary("KLAC");
 eq("KLAC chainId=semiconductor-equipment", klac?.chainId, "semiconductor-equipment");
 eq("KLAC relationType=trigger", klac?.relationType, "trigger");
 eq("精测电子 semi=candidate(待终审)", resolveInChain("300567", "semiconductor-equipment")?.relationType, "candidate");
-eq("概伦电子 semi=candidate(待终审)", resolveInChain("688206", "semiconductor-equipment")?.relationType, "candidate");
+eq("概伦电子 semi=direct(07-07 二次终审)", resolveInChain("688206", "semiconductor-equipment")?.relationType, "direct");
+eq("盛美上海 semi=direct(07-07 二次终审)", resolveInChain("688082", "semiconductor-equipment")?.relationType, "direct");
+eq("长川科技 semi=indirect(07-07 二次终审:测试设备隔一层)", resolveInChain("300604", "semiconductor-equipment")?.relationType, "indirect");
+eq("华大九天 semi=candidate(负责人保留)", resolveInChain("301269", "semiconductor-equipment")?.relationType, "candidate");
 
 console.log(fails === 0 ? "\n✅ resolver 关键样本全过" : `\n✗ ${fails} 项不符`);
 process.exit(fails === 0 ? 0 : 1);

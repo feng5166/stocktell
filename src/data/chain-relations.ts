@@ -244,18 +244,18 @@ const SEMI_SEG_VERIFY: Record<string, string[]> = {
 // 2026-07-07 校准回灌:负责人经 AI 审阅面板逐票终审,采纳 5 只升 direct(设备主业与链环节
 // 短传导,证据状态 partially_verified,references/四段验证点见 direct-evidence.ts);
 // 盛美/长川/华大九天未终审,维持 candidate。审计痕迹:relationReviewQueue source=ai-review 行。
-const SEMI_CANDIDATES: Array<{ code: string; segment: string; relationType: "direct" | "candidate"; reason: string }> = [
+const SEMI_CANDIDATES: Array<{ code: string; segment: string; relationType: "direct" | "indirect" | "candidate"; reason: string }> = [
   { code: "002371", segment: "刻蚀设备", relationType: "direct", reason: "国产半导体设备平台(刻蚀/薄膜沉积等多品类),设备主业直接进入刻蚀/沉积环节;后续看设备订单、国产替代招标与收入确认" },
   { code: "688012", segment: "刻蚀设备", relationType: "direct", reason: "刻蚀设备主业,直接服务先进制程与存储扩产;后续看刻蚀设备订单、客户验证与收入占比" },
   { code: "688072", segment: "薄膜沉积", relationType: "direct", reason: "薄膜沉积设备(PECVD/ALD 等)主业,直接进入沉积环节;后续看沉积设备订单、先进制程验证进度与客户结构" },
   { code: "688037", segment: "光刻与涂胶显影", relationType: "direct", reason: "涂胶显影设备主业,直接配套光刻环节;后续看涂胶显影机订单、产线导入进度与设备收入占比" },
   { code: "688120", segment: "CMP / 抛光", relationType: "direct", reason: "CMP 抛光设备主业,直接进入抛光环节;后续看 CMP 设备订单、产线验证与耗材配套收入" },
-  { code: "688082", segment: "清洗设备", relationType: "candidate", reason: "半导体清洗设备主业;候选档待人工校准,后续看清洗设备订单、海内外客户导入与收入占比" },
-  { code: "300604", segment: "量测检测", relationType: "candidate", reason: "半导体测试设备(测试机/分选机)主业;候选档待人工校准,后续看测试设备订单、封测厂资本开支与毛利率" },
+  { code: "688082", segment: "清洗设备", relationType: "direct", reason: "半导体清洗设备主业,直接进入清洗环节;后续看清洗设备订单、海内外客户导入与收入占比" },
+  { code: "300604", segment: "量测检测", relationType: "indirect", reason: "半导体测试设备(测试机/分选机)主业,偏后道封测环节、传导隔一层;后续看测试设备订单、封测厂资本开支与毛利率" },
   { code: "301269", segment: "EDA / IP", relationType: "candidate", reason: "国产 EDA 工具主业(audit 原建议自 ai-infra 移入本链);候选档待人工校准,后续看工具授权收入、客户续约导入与国产替代进度" },
   // 2.2-B 第二批(2026-07-07 入池)
   { code: "300567", segment: "量测检测", relationType: "candidate", reason: "半导体/显示量测检测设备主业;候选档待人工终审,后续看半导体检测设备订单、客户导入与收入占比" },
-  { code: "688206", segment: "EDA / IP", relationType: "candidate", reason: "国产 EDA(器件建模/电路仿真)主业;候选档待人工终审,后续看工具授权收入、客户续约与国产替代进度" },
+  { code: "688206", segment: "EDA / IP", relationType: "direct", reason: "国产 EDA(器件建模/电路仿真)主业,工具直接服务设计与制程环节;后续看工具授权收入、客户续约与国产替代进度" },
 ];
 for (const c of SEMI_CANDIDATES) {
   const key = `${c.code}|${SEMI_EQUIP_CHAIN_ID}`;
@@ -271,7 +271,7 @@ for (const c of SEMI_CANDIDATES) {
     segmentId: segId(c.segment),
     segmentName: c.segment,
     relationType: c.relationType,
-    confidence: c.relationType === "direct" ? "medium" : "low",
+    confidence: c.relationType === "candidate" ? "low" : "medium", // 已终审档(direct/indirect)=medium
     reason: c.reason,
     verificationPoints: SEMI_SEG_VERIFY[c.segment] ?? GENERIC_VERIFY, // direct 由证据层覆写四段式
     evidenceStatus: "needs_review", // direct 由 DIRECT_EVIDENCE 覆写 partially_verified

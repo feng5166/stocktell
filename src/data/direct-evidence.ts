@@ -71,6 +71,17 @@ export const DIRECT_EVIDENCE: Record<string, DirectEvidence> = {
     references: [sse("688120", "华海清科")],
     evidenceStatus: "partially_verified",
   },
+  // 2026-07-07 二次校准回灌(负责人工作台 diff:盛美/概伦升 direct)
+  "688082": {
+    verificationPoints: ["清洗设备订单", "海内外客户导入", "设备收入占比", "毛利率"],
+    references: [sse("688082", "盛美上海")],
+    evidenceStatus: "partially_verified",
+  },
+  "688206": {
+    verificationPoints: ["EDA 工具授权收入", "客户续约与导入", "授权收入占比", "毛利率"],
+    references: [sse("688206", "概伦电子")],
+    evidenceStatus: "partially_verified",
+  },
   // —— ai-infra ——
   "300308": {
     verificationPoints: ["800G/1.6T 光模块订单", "北美云厂客户", "收入占比", "毛利率"],
