@@ -67,20 +67,54 @@ export async function upsertReviewItem(item: {
       return;
     }
     if (existing.status === "rejected") return; // 人工已拒,不复活
-    if (existing.lastSeen === item.date) return; // 同日重跑,恒幂等
-    const evidenceChanged = !!item.reason && item.reason !== existing.reason;
+    // 三轮 review T8:幂等守卫按【同日同源】——feeder(15:30)当天摸过的条目,真实用户当天
+    // 在 Watchlist 提交复核仍要落下去(那是独立的新证据),不能静默 no-op 却回 ok。
+    if (existing.lastSeen === item.date && existing.source === item.source) return;
+    // 三轮 review T2:跨源【绝不覆盖 reason】——feeder 的统计证据("近30天复盘:N 次判定…")
+    // 是审阅优先级的依据,不能被(无鉴权面可达的)manual 提交改写;跨源新证据以标记段追加一次,
+    // 已有同源标记则只刷 lastSeen(重复提交不再膨胀)。同源 reason 变化仍视为证据更新。
+    const crossSource = existing.source !== item.source;
+    const crossTag = `[${item.source}]`;
+    let reasonUpdate: string | undefined;
+    let countIt = false;
+    if (crossSource) {
+      if (item.reason && !(existing.reason ?? "").includes(crossTag)) {
+        reasonUpdate = `${existing.reason ?? ""}${existing.reason ? " | " : ""}${crossTag} ${item.reason}`.slice(0, 600);
+        countIt = true; // 首次跨源证据,计一次
+      }
+    } else if (item.reason && item.reason !== existing.reason) {
+      reasonUpdate = item.reason;
+      countIt = true;
+    }
     await db.relationReview.update({
       where: { id: existing.id },
       data: {
         lastSeen: item.date,
-        ...(evidenceChanged
-          ? { hitCount: { increment: 1 }, reason: item.reason }
-          : {}),
+        ...(countIt ? { hitCount: { increment: 1 } } : {}),
+        ...(reasonUpdate !== undefined ? { reason: reasonUpdate } : {}),
         ...(item.suggestedType ? { suggestedType: item.suggestedType } : {}),
       },
     });
   } catch {
     /* 队列坏了不连累调用方 */
+  }
+}
+
+// 带「读失败」区分的列表(三轮 review S6):admin 审阅台不能把"读挂了"渲染成"队列为空"。
+export async function listReviewQueueChecked(
+  status?: ReviewStatus
+): Promise<{ items: RelationReviewRow[]; readFailed: boolean }> {
+  const db = getPrisma();
+  if (!db) return { items: [], readFailed: false };
+  try {
+    const rows = await db.relationReview.findMany({
+      where: status ? { status } : undefined,
+      orderBy: [{ lastSeen: "desc" }, { hitCount: "desc" }],
+      take: 200,
+    });
+    return { items: rows as unknown as RelationReviewRow[], readFailed: false };
+  } catch {
+    return { items: [], readFailed: true };
   }
 }
 

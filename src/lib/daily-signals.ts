@@ -11,10 +11,10 @@
 // resolver 导出的 resolveWithSignals 注入——同一 attachSignal 逻辑,两条入口一个语义。
 import { listBriefing, type BriefingItem, type Impact } from "@/lib/briefings";
 import { relationsForCode } from "@/data/chain-relations";
-import type { DailyRelationSignal, SignalStrength } from "@/lib/relation-resolver";
+import type { DailyRelationSignal } from "@/lib/relation-resolver";
+import { SIGNAL_RANK as RANK, type SignalStrength } from "@/lib/signal-rank";
 
 const STRENGTH: Record<Impact, SignalStrength> = { 高: "强", 中: "中", 低: "弱" };
-const RANK: Record<SignalStrength, number> = { 强: 3, 中: 2, 弱: 1 };
 
 // 纯函数(replay/测试直接调):简报条目 → 信号列表。
 // - beneficiaries:信号挂到该票的【每一条静态链关系】上(chainId 逐链;P1-3 后已无多链股票,

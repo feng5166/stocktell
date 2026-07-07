@@ -6,6 +6,7 @@ import { CHAINS } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { getPublishedDaily, listPublishedDailyDates } from "@/lib/insight-pipeline/docs";
 import { DISCLAIMER } from "@/lib/constants";
+import { safeJsonLd } from "@/lib/site";
 
 // 每日 insight 归档页(2.1-W4):把每天的链级推理沉淀成可被搜索引擎抓取的内容资产。
 // 只渲染 published(fallback 引擎产出的 doc 也是人审后 published,不伪装口径由置信度徽章表达);
@@ -30,7 +31,9 @@ export async function generateMetadata({
   const chainName = c.title.replace(" · 因果链", "");
   return {
     title: `${params.date} ${chainName}产业链每日推理 | StockTell`,
-    description: doc.payload.judgment.slice(0, 150),
+    // 三轮 review T7:AI 生成的 description 必须挂免责(合规口径:AI 输出挂"不构成投资建议";
+    // Google 摘要展示的是这里而非页内 DISCLAIMER),截断后缀在免责前,半句不裸奔
+    description: `${doc.payload.judgment.slice(0, 110)}(研究框架梳理·非确认,不构成投资建议)`,
     alternates: { canonical: `https://www.stocktell.me/insight/${params.slug}/${params.date}` },
   };
 }
@@ -66,13 +69,14 @@ export default async function InsightArchivePage({
     datePublished: params.date,
     inLanguage: "zh-CN",
     author: { "@type": "Organization", name: "StockTell" },
-    description: p.judgment.slice(0, 150),
+    description: `${p.judgment.slice(0, 110)}(研究框架梳理·非确认,不构成投资建议)`,
   };
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日推理" />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {/* 三轮 review T1:LLM 内容进 JSON-LD 必须 safeJsonLd 转义 '<'(防 </script> 逃逸=存储型 XSS) */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <header className="mb-4">
           <p className="text-xs text-gray-400">

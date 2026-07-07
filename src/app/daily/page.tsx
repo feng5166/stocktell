@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
-import { listBriefingDates } from "@/lib/briefings";
+import { listArchiveDates } from "@/lib/archive-dates";
 import { DISCLAIMER } from "@/lib/constants";
 
 // 简报归档索引(2.1-W4):按日列出全部已发布简报日,是 /daily/[date] 的抓取入口。
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DailyIndexPage() {
-  const dates = await listBriefingDates(120).catch(() => [] as string[]);
+  const dates = await listArchiveDates(120).catch(() => [] as string[]);
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日推理" />

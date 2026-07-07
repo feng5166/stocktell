@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useWatchlist } from "@/components/useWatchlist";
 import type { WatchChainInfo } from "@/lib/watch-relation";
+import { SIGNAL_RANK as SIG_RANK } from "@/lib/signal-rank";
 
 const REL_CHIP: Record<string, string> = {
   直接映射: "bg-rose-50 text-rose-600",
@@ -19,15 +20,25 @@ const SIG_CHIP: Record<string, string> = {
   中: "bg-amber-100 text-amber-700",
   弱: "bg-gray-100 text-gray-500",
 };
-const SIG_RANK: Record<string, number> = { 强: 3, 中: 2, 弱: 1 };
 
+// 信号 chip(触发源/未覆盖组也要亮——信号与关系档是两回事)
+function SignalChip({ sig }: { sig?: { strength: string; note: string } }) {
+  if (!sig) return null;
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${SIG_CHIP[sig.strength] ?? ""}`}>
+      ⚡ 今日触发·{sig.strength}
+    </span>
+  );
+}
 export default function WatchlistBoard({
   chainMap,
+  triggerMap,
   signalMap,
   names,
   date,
 }: {
   chainMap: Record<string, WatchChainInfo>;
+  triggerMap: Record<string, { chainName: string }>;
   signalMap: Record<string, { strength: string; note: string }>;
   names: Record<string, { name: string; market: string }>;
   date: string;
@@ -35,39 +46,49 @@ export default function WatchlistBoard({
   const { codes, ready } = useWatchlist();
   const [submitted, setSubmitted] = useState<Record<string, "ok" | "fail">>({});
 
+  // 四组分流(三轮 review T4/T5):A 股三档→链分组;美股 trigger→触发源组(有核定档,
+  // 要亮今日信号,绝不落"待验证");ETF→独立组(不进关系模型,明确标注,不给死流程);
+  // 其余→待验证收录组(也读 signalMap:未覆盖≠今天没被事件提到)。
   const groups = useMemo(() => {
     const byChain = new Map<
       string,
       { chainName: string; rows: Array<{ code: string; info: WatchChainInfo }> }
     >();
+    const triggers: string[] = [];
+    const etfs: string[] = [];
     const uncovered: string[] = [];
     for (const code of Array.from(codes)) {
       const info = chainMap[code];
-      if (!info) {
+      if (info) {
+        const g = byChain.get(info.chainId) ?? { chainName: info.chainName, rows: [] };
+        g.rows.push({ code, info });
+        byChain.set(info.chainId, g);
+      } else if (triggerMap[code]) {
+        triggers.push(code);
+      } else if (names[code]?.market === "ETF") {
+        etfs.push(code);
+      } else {
         uncovered.push(code);
-        continue;
       }
-      const g = byChain.get(info.chainId) ?? { chainName: info.chainName, rows: [] };
-      g.rows.push({ code, info });
-      byChain.set(info.chainId, g);
     }
     // 组内:今日触发在前(强>中>弱),再按名称;组间:有触发的链在前
-    const sigRank = (code: string) => SIG_RANK[signalMap[code]?.strength ?? ""] ?? 0;
+    const sigRank = (code: string) =>
+      SIG_RANK[(signalMap[code]?.strength ?? "") as keyof typeof SIG_RANK] ?? 0;
+    const byName = (a: string, b: string) =>
+      (names[a]?.name ?? a).localeCompare(names[b]?.name ?? b, "zh");
     for (const g of Array.from(byChain.values())) {
-      g.rows.sort(
-        (a, b) =>
-          sigRank(b.code) - sigRank(a.code) ||
-          (names[a.code]?.name ?? a.code).localeCompare(names[b.code]?.name ?? b.code, "zh")
-      );
+      g.rows.sort((a, b) => sigRank(b.code) - sigRank(a.code) || byName(a.code, b.code));
     }
     const chains = Array.from(byChain.entries()).sort(
       (a, b) =>
         Math.max(0, ...b[1].rows.map((r) => sigRank(r.code))) -
         Math.max(0, ...a[1].rows.map((r) => sigRank(r.code)))
     );
-    uncovered.sort((a, b) => (names[a]?.name ?? a).localeCompare(names[b]?.name ?? b, "zh"));
-    return { chains, uncovered };
-  }, [codes, chainMap, signalMap, names]);
+    triggers.sort((a, b) => sigRank(b) - sigRank(a) || byName(a, b));
+    etfs.sort(byName);
+    uncovered.sort((a, b) => sigRank(b) - sigRank(a) || byName(a, b));
+    return { chains, triggers, etfs, uncovered };
+  }, [codes, chainMap, triggerMap, signalMap, names]);
 
   async function suggestReview(code: string) {
     try {
@@ -131,11 +152,7 @@ export default function WatchlistBoard({
                         {info.relation}
                       </span>
                       <span className="rounded bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-500">{info.segment}</span>
-                      {sig && (
-                        <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${SIG_CHIP[sig.strength] ?? ""}`}>
-                          ⚡ 今日触发·{sig.strength}
-                        </span>
-                      )}
+                      <SignalChip sig={sig} />
                     </div>
                     {sig?.note && (
                       <p className="mt-1 text-xs leading-relaxed text-gray-500">{sig.note}</p>
@@ -150,6 +167,58 @@ export default function WatchlistBoard({
           </section>
         );
       })}
+
+      {groups.triggers.length > 0 && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-800">
+            海外触发源
+            <span className="ml-2 text-xs font-normal text-gray-400">
+              {groups.triggers.length} 只 · 它们是事件源头,不是 A 股映射标的
+            </span>
+          </h2>
+          <ul className="mt-2 divide-y divide-gray-50">
+            {groups.triggers.map((code) => {
+              const sig = signalMap[code];
+              return (
+                <li key={code} className="py-2.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Link href={`/stock/${code}`} className="text-sm font-medium text-gray-900 hover:text-brand-600">
+                      {names[code]?.name ?? code}
+                    </Link>
+                    <span className="text-xs text-gray-400">{code}</span>
+                    <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">触发源</span>
+                    <span className="rounded bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-500">
+                      {triggerMap[code]?.chainName}
+                    </span>
+                    <SignalChip sig={sig} />
+                  </div>
+                  {sig?.note && <p className="mt-1 text-xs leading-relaxed text-gray-500">{sig.note}</p>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {groups.etfs.length > 0 && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-800">
+            ETF
+            <span className="ml-2 text-xs font-normal text-gray-400">
+              {groups.etfs.length} 只 · ETF 是一篮子股票,不进产业链关系模型
+            </span>
+          </h2>
+          <ul className="mt-2 divide-y divide-gray-50">
+            {groups.etfs.map((code) => (
+              <li key={code} className="flex flex-wrap items-center gap-1.5 py-2.5">
+                <span className="text-sm font-medium text-gray-900">{names[code]?.name ?? code}</span>
+                <span className="text-xs text-gray-400">{code}</span>
+                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">ETF</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {groups.uncovered.length > 0 && (
         <section className="rounded-2xl bg-white p-4 shadow-sm">
@@ -167,6 +236,7 @@ export default function WatchlistBoard({
                 </Link>
                 <span className="text-xs text-gray-400">{code}</span>
                 <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">待验证</span>
+                <SignalChip sig={signalMap[code]} />
                 <span className="ml-auto">
                   {submitted[code] === "ok" ? (
                     <span className="text-[11px] text-emerald-600">已提交复核 ✓</span>

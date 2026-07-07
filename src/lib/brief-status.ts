@@ -13,7 +13,7 @@
 //
 // 存储:复用 quotesCache KV(id=brief-status:{date},读写走 lib/kv.ts)。
 // 写入端(cron/generate)全部 fail-safe:状态写失败【绝不】影响简报生成/发布主流程。
-import { kvGet, kvGetChecked, kvSet } from "@/lib/kv";
+import { kvGet, kvGetChecked, kvListIds, kvSet } from "@/lib/kv";
 
 export type BriefStatus =
   | "generated" // 正常 LLM 生成
@@ -62,6 +62,15 @@ export async function getBriefStatusChecked(
 ): Promise<{ rec: BriefStatusRecord | null; readFailed: boolean }> {
   const r = await kvGetChecked<BriefStatusRecord>(KEY(date), "brief-status:checked");
   return { rec: r.value, readFailed: r.readFailed };
+}
+
+// 有状态记录的日期集(三轮 review T9):market_closed/blocked 等 0 简报日也有归档页可看
+// ——归档索引/sitemap/前后日导航必须把这些日子并进来,否则"解释那天为什么没有"的页面成孤儿。
+export async function listBriefStatusDates(limit = 400): Promise<string[]> {
+  const ids = await kvListIds("brief-status:", limit);
+  return ids
+    .map((id) => id.slice("brief-status:".length))
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
 }
 
 // 前台展示映射:status → 徽章 + 一行小字 + 色调。
@@ -135,6 +144,15 @@ export function briefAlertSeverity(
       return ctx.tradingDayUnknown ? "notice" : "incident";
   }
 }
+
+// tone → chip 样式(三轮 review 清理:admin/briefing 与 /daily 归档页各 fork 了一份,回收到
+// 单一来源;首页横幅是 box+badge 双段结构,自留 TONE_BANNER 不在此列)。
+export const BRIEF_TONE_CHIP_CLS: Record<BriefTone, string> = {
+  info: "bg-emerald-50 text-emerald-700",
+  neutral: "bg-slate-100 text-slate-600",
+  attention: "bg-amber-50 text-amber-800",
+  warn: "bg-rose-50 text-rose-700",
+};
 
 // 飞书「待人工处理」提示文案(review 小项③:push-feishu 与 watchdog 此前各写一份已开始漂移)。
 export function feishuPendingNoticeText(rec: BriefStatusRecord, date: string): string {
