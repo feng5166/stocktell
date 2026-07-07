@@ -1,5 +1,7 @@
 // 美股历史日线(免费,Yahoo Finance chart API,无需 key)。用于历史相似性的"美股事件"侧。
 // Tushare us_daily 需单独付费、东财封 Vercel IP,故美股历史走 Yahoo。失败返回空,调用方降级。
+// 缓修收敛(2026-07-07,四轮 review G2):chart API 的取数+解析此前在本文件手抄 4 份,
+// 收敛为 fetchChartSeries 单一 core,四个导出全是薄变换——改解析/换端点只动一处。
 import { fetchJsonWithTimeout } from "@/lib/fetch-timeout";
 
 type YahooChart = {
@@ -16,34 +18,49 @@ export interface UsBar {
   pct: number; // 当日涨跌 %
 }
 
-// 轻量探针:独立第三源(Yahoo,与新浪/腾讯不同基础设施)判"美股最近有数据的交易日"。
-// 仅用于地板健康检查——主源(新浪+腾讯)双挂返回空时,区分"真休市/无异动"与"源故障"。
-export async function usLatestTradingDay(ticker = "AAPL"): Promise<string | null> {
+const NY_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+// 单一 core:拉 chart 并解析成「有效收盘序列」(美东日期升序;剔 null/非正收盘)。
+// 失败返回空数组,调用方各自降级。
+async function fetchChartSeries(
+  ticker: string,
+  range: string,
+  timeoutMs?: number
+): Promise<{ date: string; close: number }[]> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     ticker
-  )}?range=5d&interval=1d`;
+  )}?range=${range}&interval=1d`;
   try {
-    const j = await fetchJsonWithTimeout<YahooChart>(url, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      cache: "no-store",
-    });
+    const j = await fetchJsonWithTimeout<YahooChart>(
+      url,
+      { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" },
+      timeoutMs
+    );
     const res = j?.chart?.result?.[0];
     const ts: number[] = res?.timestamp ?? [];
     const closes: (number | null)[] = res?.indicators?.quote?.[0]?.close ?? [];
-    const fmt = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    // 取有收盘价的最后一根 bar 的日期(美东)
-    for (let i = ts.length - 1; i >= 0; i--) {
-      if (closes[i] != null) return fmt.format(new Date(ts[i] * 1000));
+    const out: { date: string; close: number }[] = [];
+    for (let i = 0; i < ts.length; i++) {
+      const c = closes[i];
+      if (c == null || c <= 0) continue;
+      out.push({ date: NY_FMT.format(new Date(ts[i] * 1000)), close: c });
     }
-    return null;
+    return out;
   } catch {
-    return null;
+    return [];
   }
+}
+
+// 轻量探针:独立第三源(Yahoo,与新浪/腾讯不同基础设施)判"美股最近有数据的交易日"。
+// 仅用于地板健康检查——主源(新浪+腾讯)双挂返回空时,区分"真休市/无异动"与"源故障"。
+export async function usLatestTradingDay(ticker = "AAPL"): Promise<string | null> {
+  const series = await fetchChartSeries(ticker, "5d");
+  return series.length ? series[series.length - 1].date : null;
 }
 
 // 美股最近一个交易日的涨跌%(用日线最后两根收盘算),多 ticker 并行。免鉴权、东京可达。
@@ -51,39 +68,15 @@ export async function usLatestTradingDay(ticker = "AAPL"): Promise<string | null
 export async function fetchYahooChanges(
   tickers: string[]
 ): Promise<Record<string, { change: number; asOf?: string }>> {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
   const one = async (
     t: string
   ): Promise<[string, { change: number; asOf?: string }] | null> => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-      t
-    )}?range=5d&interval=1d`;
-    try {
-      const j = await fetchJsonWithTimeout<YahooChart>(
-        url,
-        { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" },
-        6000
-      );
-      const res = j?.chart?.result?.[0];
-      const ts = res?.timestamp ?? [];
-      const closes = res?.indicators?.quote?.[0]?.close ?? [];
-      const valid: { c: number; d: number }[] = [];
-      for (let i = 0; i < ts.length; i++)
-        if (closes[i] != null) valid.push({ c: closes[i] as number, d: ts[i] });
-      if (valid.length < 2) return null;
-      const last = valid[valid.length - 1];
-      const prev = valid[valid.length - 2];
-      if (prev.c === 0) return null;
-      const change = Math.round(((last.c - prev.c) / prev.c) * 10000) / 100;
-      return [t, { change, asOf: fmt.format(new Date(last.d * 1000)) }];
-    } catch {
-      return null;
-    }
+    const series = await fetchChartSeries(t, "5d", 6000);
+    if (series.length < 2) return null;
+    const last = series[series.length - 1];
+    const prev = series[series.length - 2];
+    const change = Math.round(((last.close - prev.close) / prev.close) * 10000) / 100;
+    return [t, { change, asOf: last.date }];
   };
   const results = await Promise.all(tickers.map(one));
   const out: Record<string, { change: number; asOf?: string }> = {};
@@ -97,70 +90,20 @@ export async function usDailyCloses(
   ticker: string,
   range = "1y"
 ): Promise<{ date: string; close: number }[]> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-    ticker
-  )}?range=${range}&interval=1d`;
-  try {
-    const j = await fetchJsonWithTimeout<YahooChart>(
-      url,
-      { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" },
-      6000
-    );
-    const res = j?.chart?.result?.[0];
-    const ts: number[] = res?.timestamp ?? [];
-    const closes: (number | null)[] = res?.indicators?.quote?.[0]?.close ?? [];
-    const fmt = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    const out: { date: string; close: number }[] = [];
-    for (let i = 0; i < ts.length; i++) {
-      const c = closes[i];
-      if (c == null || c <= 0) continue;
-      out.push({ date: fmt.format(new Date(ts[i] * 1000)), close: c });
-    }
-    return out;
-  } catch {
-    return [];
-  }
+  return fetchChartSeries(ticker, range, 6000);
 }
 
 export async function usDailyHistory(
   ticker: string,
   range = "2y"
 ): Promise<UsBar[]> {
-  const url =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-      ticker
-    )}?range=${range}&interval=1d`;
-  try {
-    const j = await fetchJsonWithTimeout<YahooChart>(url, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      cache: "no-store",
+  const series = await fetchChartSeries(ticker, range);
+  const out: UsBar[] = [];
+  for (let i = 1; i < series.length; i++) {
+    out.push({
+      date: series[i].date,
+      pct: Math.round(((series[i].close - series[i - 1].close) / series[i - 1].close) * 10000) / 100,
     });
-    const res = j?.chart?.result?.[0];
-    const ts: number[] = res?.timestamp ?? [];
-    const closes: (number | null)[] = res?.indicators?.quote?.[0]?.close ?? [];
-    const fmt = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/New_York",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    const out: UsBar[] = [];
-    for (let i = 1; i < ts.length; i++) {
-      const c = closes[i];
-      const p = closes[i - 1];
-      if (c == null || p == null || p === 0) continue;
-      out.push({
-        date: fmt.format(new Date(ts[i] * 1000)),
-        pct: Math.round(((c - p) / p) * 10000) / 100,
-      });
-    }
-    return out;
-  } catch {
-    return [];
   }
+  return out;
 }

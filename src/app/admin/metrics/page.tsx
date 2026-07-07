@@ -31,6 +31,18 @@ function recentYmds(n: number): string[] {
   return out;
 }
 
+// 意向计数去重(缓修:行数会被同一用户反复点虚增)——登录用户按 userId 去重,匿名按次
+// (无身份可去,如实计;限流已挡机刷)。表小(意向类顶多几百行),findMany 内存去重足够。
+async function intentCount(db: NonNullable<ReturnType<typeof getPrisma>>, category: string): Promise<number> {
+  try {
+    const rows = await db.feedback.findMany({ where: { category }, select: { userId: true } });
+    const users = new Set(rows.map((r) => r.userId).filter(Boolean));
+    return users.size + rows.filter((r) => !r.userId).length;
+  } catch {
+    return -1;
+  }
+}
+
 export default async function AdminMetricsPage() {
   await requireAdmin();
   const db = getPrisma();
@@ -87,8 +99,8 @@ export default async function AdminMetricsPage() {
             db.watchlist.count().catch(() => -1),
             db.watchlist.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
             db.digestSendLog.count({ where: { date: todayISO() } }).catch(() => -1),
-            db.feedback.count({ where: { category: "专业版意向" } }).catch(() => -1),
-            db.feedback.count({ where: { category: "订阅意向" } }).catch(() => -1),
+            intentCount(db, "专业版意向"),
+            intentCount(db, "订阅意向"),
             db.relationReview.count({ where: { status: "pending" } }).catch(() => -1),
           ]);
         return { users, usersNew7d, watchRows, watchNew7d, digestToday, proIntent, subIntent, reviewPending };
@@ -115,8 +127,8 @@ export default async function AdminMetricsPage() {
               ["注册用户", `${biz.users}(7日+${biz.usersNew7d})`],
               ["自选条目", `${biz.watchRows}(7日+${biz.watchNew7d})`],
               ["今日早报送达", String(biz.digestToday)],
-              ["专业版意向(行数未去重)", String(biz.proIntent)],
-              ["订阅意向(行数未去重)", String(biz.subIntent)],
+              ["专业版意向(登录去重+匿名按次)", String(biz.proIntent)],
+              ["订阅意向(登录去重+匿名按次)", String(biz.subIntent)],
               ["待审关系队列", String(biz.reviewPending)],
             ].map(([label, val]) => (
               <div key={label} className="rounded-lg bg-gray-50 px-3 py-2">

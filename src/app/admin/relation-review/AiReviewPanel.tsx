@@ -6,6 +6,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AI_REVIEW_MAX_ITEMS, AI_REVIEW_POOL, AI_REVIEW_SEC_PER_CALL } from "@/lib/ai-review-const";
+import { postJson } from "@/lib/post-json";
 
 export type AiReviewRelation = {
   code: string;
@@ -61,12 +62,10 @@ export default function AiReviewPanel({ relations }: { relations: AiReviewRelati
     setErr(null);
     setResults([]);
     try {
-      const r = await fetch("/api/admin/relation-review-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: Array.from(picked).map((code) => ({ code, chainId: chain })) }),
-      });
-      const d = await r.json().catch(() => ({ ok: false }));
+      const { res: r, data: d } = await postJson<{ suggestions?: Suggestion[] }>(
+        "/api/admin/relation-review-ai",
+        { items: Array.from(picked).map((code) => ({ code, chainId: chain })) }
+      );
       if (!r.ok || !d.ok) {
         setErr(`AI 审阅失败(HTTP ${r.status}${d.error ? ` · ${d.error}` : ""})`);
         return;
