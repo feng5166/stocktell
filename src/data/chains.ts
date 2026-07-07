@@ -113,6 +113,7 @@ CHAINS["semiconductor-equipment"] = {
   tagline:
     "AI 芯片与先进制程扩产的上游链:晶圆厂资本开支怎么传导到光刻/刻蚀/沉积/清洗/CMP/量测/EDA/先进封装各环节——看订单与国产替代验证,不是半导体概念池。",
   aMembers: STOCKS.filter((s) => s.market === "A股" && SEMI_EQUIP_CODES.includes(s.code)),
+  insightSlug: "semiconductor-equipment", // 2.2-B 三批:深读页(insight-chains.ts),归档路由同 slug
   sentimentTitle: "这条链今日状态",
   todayFraming:
     "今天这条链的触发源主要来自海外设备厂(ASML/AMAT/LRCX 等)财报与订单指引、先进制程扩产消息。短期价格可能被半导体情绪带动,但真正要验证的是:晶圆厂资本开支是否落地、设备订单与国产替代招标是否兑现、相关公司能否形成收入确认。当前成分全部为待验证档,关系分级以人工校准后的静态关系库为准。",
