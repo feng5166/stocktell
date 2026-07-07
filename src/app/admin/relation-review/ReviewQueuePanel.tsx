@@ -2,7 +2,7 @@
 
 // 层③ reviewQueue 审阅面板(2.1-W3):pending 列表 + confirm/reject。
 // confirm 后的改档动作仍走 chain-relations.ts 代码评审(不变量#4),这里只记录人工结论。
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RelationReviewRow } from "@/lib/relation-review";
 
@@ -20,6 +20,10 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  // 乐观更新(负责人实测:只靠 router.refresh() 在 RSC 缓存时序下不可靠,操作后列表不动)——
+  // 本地持有列表,成功即时移除该条;refresh 仍触发,作为服务端最终一致的兜底。
+  const [rows, setRows] = useState<RelationReviewRow[]>(items);
+  useEffect(() => setRows(items), [items]);
 
   // 二轮 review N7:必须读响应——401/500 时此前静默刷新,条目看似处理了实则没落库、
   // 手输备注全丢。失败=显式报错+不刷新(备注留在输入框);note 恒传(空串=清空,undefined 才是不动)。
@@ -37,6 +41,7 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
         setErr(`操作失败(HTTP ${r.status}${d.error ? ` · ${d.error}` : ""}),未落库——请重试或重新登录`);
         return;
       }
+      setRows((rs) => rs.filter((x) => x.id !== id)); // 乐观移除:已落库,立即从待审列表消失
       router.refresh();
     } catch (e) {
       setErr(`网络错误,未落库:${String(e)}`);
@@ -45,10 +50,10 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
     }
   }
 
-  if (items.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="mb-6 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-xs text-gray-400">
-        审阅队列为空(复盘高频未验证 / 每日信号多次命中的关系会自动进来)
+        审阅队列为空(复盘高频未验证 / 每日信号多次命中 / AI 审阅建议会自动进来)
       </div>
     );
   }
@@ -57,7 +62,7 @@ export default function ReviewQueuePanel({ items }: { items: RelationReviewRow[]
       {err && (
         <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{err}</div>
       )}
-      {items.map((it) => (
+      {rows.map((it) => (
         <div key={it.id} className="rounded-lg bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium">{it.code}</span>
