@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { StockChainRelation, RelationType } from "@/data/chain-relations";
+import { AI_REVIEW_MAX_ITEMS } from "@/lib/ai-review-const";
 
 // ============================================================================
 // 关系模型人工校准工作台(负责人审阅台 · 第6步 4 功能)。
@@ -21,6 +22,9 @@ const TYPE_META: Record<RelationType, { label: string; cls: string; btn: string 
 };
 
 type Edit = { newType?: RelationType | "remove"; newReason?: string; action?: string; note?: string };
+// 工作台内嵌 AI 审阅(负责人 2026-07-07:审阅台两处都要有 AI)——建议直接喂编辑态,
+// 一键「按建议改档」进 diff 导出流;同时服务端仍入队(ai-review 行)留审计。
+type AiSug = { suggestedType: string; rationale: string; analysis: string; evidenceNeeded: string[]; queued: boolean; error?: string };
 type Flag = { level: "red" | "yellow" | null; msg: string };
 
 // 证据缺失硬规则(负责人拍板,防关系库退化成"概念理由"):
@@ -74,6 +78,9 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
   const [fEvidence, setFEvidence] = useState("全部");
   const [fSource, setFSource] = useState("全部");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ai, setAi] = useState<Record<string, AiSug>>({});
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiErr, setAiErr] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -101,6 +108,35 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
       }
       return { ...e, [keyOf(r)]: next };
     });
+  // AI 审阅所选(≤AI_REVIEW_MAX_ITEMS;trigger 由服务端过滤,这里也先剔掉给准确计数)
+  async function runAiReview() {
+    const picked = relations
+      .filter((r) => selected.has(keyOf(r)) && r.relationType !== "trigger")
+      .slice(0, AI_REVIEW_MAX_ITEMS);
+    if (picked.length === 0) return;
+    setAiBusy(true);
+    setAiErr(null);
+    try {
+      const resp = await fetch("/api/admin/relation-review-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: picked.map((r) => ({ code: r.code, chainId: r.chainId })) }),
+      });
+      const d = await resp.json().catch(() => ({ ok: false }));
+      if (!resp.ok || !d.ok) {
+        setAiErr(`AI 审阅失败(HTTP ${resp.status}${d.error ? ` · ${d.error}` : ""})`);
+        return;
+      }
+      const next: Record<string, AiSug> = {};
+      for (const sug of d.suggestions ?? []) next[`${sug.code}|${sug.chainId}`] = sug;
+      setAi((a) => ({ ...a, ...next }));
+    } catch (e) {
+      setAiErr(`网络错误:${String(e)}`);
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
   const resetEdit = (r: StockChainRelation) =>
     setEdits((e) => {
       const n = { ...e };
@@ -330,6 +366,15 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
             <button onClick={() => applyBatch("needs_evidence")} className="rounded bg-white px-2 py-1 font-medium text-gray-700 shadow-sm">待补证据</button>
             <button onClick={() => applyBatch("keep")} className="rounded bg-white px-2 py-1 font-medium text-gray-700 shadow-sm">保留</button>
             <button onClick={() => applyBatch("remove")} className="rounded bg-white px-2 py-1 font-medium text-rose-600 shadow-sm">移出</button>
+            <button
+              onClick={runAiReview}
+              disabled={aiBusy}
+              className="rounded bg-gray-900 px-2 py-1 font-medium text-white shadow-sm disabled:opacity-50"
+              title={`对所选(≤${AI_REVIEW_MAX_ITEMS},触发源自动跳过)逐条给出建议档+判定过程,卡片内一键采纳进 diff`}
+            >
+              {aiBusy ? "🤖 AI 审阅中…" : "🤖 AI 审阅所选"}
+            </button>
+            {aiErr && <span className="text-rose-600">{aiErr}</span>}
             <button onClick={() => setSelected(new Set())} className="ml-auto text-gray-400 hover:text-gray-700">取消选择</button>
           </div>
         )}
@@ -391,6 +436,17 @@ export default function RelationReviewClient({ relations }: { relations: StockCh
                   onReset={() => resetEdit(r)}
                   sel={selected.has(keyOf(r))}
                   onSel={() => toggleSel(keyOf(r))}
+                  aiSug={ai[keyOf(r)]}
+                  onAdoptAi={() => {
+                    const sug = ai[keyOf(r)];
+                    if (!sug) return;
+                    const t = sug.suggestedType as RelationType | "remove";
+                    patch(r, {
+                      newType: t === r.relationType ? undefined : t,
+                      action: deriveAction(r.relationType, t),
+                      note: edits[keyOf(r)]?.note || "采纳 AI 审阅建议(判定过程见队列 ai-review 行)",
+                    });
+                  }}
                 />
               ))}
             </div>
@@ -434,6 +490,8 @@ function Row({
   onReset,
   sel,
   onSel,
+  aiSug,
+  onAdoptAi,
 }: {
   r: StockChainRelation;
   edit?: Edit;
@@ -443,6 +501,8 @@ function Row({
   onReason: (v: string) => void;
   onNote: (v: string) => void;
   onEditReason: () => void;
+  aiSug?: AiSug;
+  onAdoptAi?: () => void;
   onReset: () => void;
   sel: boolean;
   onSel: () => void;
@@ -481,6 +541,40 @@ function Row({
         <p className="mt-1 cursor-text text-xs leading-relaxed text-gray-500" onClick={onEditReason} title="点击编辑 reason">
           {edit?.newReason ? <span className="text-brand-700">✎ {edit.newReason}</span> : r.reason}
         </p>
+      )}
+
+      {/* AI 审阅建议(勾选后点批量条「AI 审阅所选」出现;采纳=直接写进编辑态进 diff 流) */}
+      {aiSug && (
+        <div className="mt-2 rounded-lg bg-indigo-50/60 px-2.5 py-2 text-xs leading-relaxed ring-1 ring-indigo-100">
+          {aiSug.error ? (
+            <span className="text-rose-500">🤖 审阅失败:{aiSug.error}</span>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-medium text-indigo-700">🤖 AI 建议:{aiSug.suggestedType}</span>
+                <span className="text-gray-600">{aiSug.rationale}</span>
+                {onAdoptAi && (
+                  <button
+                    onClick={onAdoptAi}
+                    className="ml-auto rounded bg-indigo-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-indigo-700"
+                    title="把建议档写入本地编辑(可撤销;仍需导出 diff → 回灌)"
+                  >
+                    按建议改档
+                  </button>
+                )}
+              </div>
+              {aiSug.analysis && (
+                <p className="mt-1 text-gray-600">
+                  <span className="text-gray-400">判定过程:</span>
+                  {aiSug.analysis}
+                </p>
+              )}
+              {aiSug.evidenceNeeded?.length > 0 && (
+                <p className="mt-0.5 text-gray-400">需人工核实:{aiSug.evidenceNeeded.join("、")}</p>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* 改档快捷项 */}
