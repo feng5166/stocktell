@@ -1,6 +1,6 @@
 "use client";
 
-// AI 审阅面板(2.2-C 对话能力试点):勾选关系(≤5/次)→ LLM 逐条给建议 → 自动入
+// AI 审阅面板(2.2-C 对话能力试点):勾选关系(≤12/次,一条链一次审完)→ LLM 并发逐条建议 → 自动入
 // 审阅队列(source=ai-review,按源分账独立行)→ 在上方队列面板人工通过/拒绝。
 // AI 只建议不改档;建议依据训练知识+库内信息,业务事实须人工核实——面板明示这一点。
 import { useMemo, useState } from "react";
@@ -49,7 +49,7 @@ export default function AiReviewPanel({ relations }: { relations: AiReviewRelati
     setPicked((p) => {
       const n = new Set(p);
       if (n.has(code)) n.delete(code);
-      else if (n.size < 5) n.add(code);
+      else if (n.size < 12) n.add(code);
       return n;
     });
   }
@@ -84,7 +84,7 @@ export default function AiReviewPanel({ relations }: { relations: AiReviewRelati
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold text-gray-700">🤖 AI 审阅</h2>
         <span className="text-xs text-gray-400">
-          勾选(≤5)→ AI 按关系口径逐条建议 → 自动入上方队列,由你终审。AI 只建议不改档;业务事实(订单/客户/收入)以人工核实为准。
+          勾选(≤12,可整链一次审)→ AI 按关系口径逐条建议 → 自动入上方队列,由你终审。AI 只建议不改档;业务事实(订单/客户/收入)以人工核实为准。
         </span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -107,7 +107,7 @@ export default function AiReviewPanel({ relations }: { relations: AiReviewRelati
           disabled={busy || picked.size === 0}
           className="rounded bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40"
         >
-          {busy ? `AI 审阅中(${picked.size} 条,约 ${picked.size * 15}s)…` : `让 AI 审阅所选(${picked.size}/5)`}
+          {busy ? `AI 审阅中(${picked.size} 条,约 ${Math.ceil(picked.size / 4) * 20}s)…` : `让 AI 审阅所选(${picked.size}/12)`}
         </button>
         {err && <span className="text-xs text-rose-500">{err}</span>}
       </div>
