@@ -607,6 +607,8 @@ export default function Dashboard({
                   onClick={() => {
                     setChain(c.chainId);
                     setSegment("全部");
+                    // 2.2-C 商业化漏斗:链筛选使用率=「用户最常看哪条链」的直接信号
+                    track("stocks_filter_use", { kind: "chain", chain_id: c.chainId });
                   }}
                 >
                   {c.chainName.replace("基础设施链", "")}
@@ -620,7 +622,14 @@ export default function Dashboard({
                 全部环节
               </Chip>
               {segsByChain[chain].map((sg) => (
-                <Chip key={sg.segmentId} active={segment === sg.segmentId} onClick={() => setSegment(sg.segmentId)}>
+                <Chip
+                  key={sg.segmentId}
+                  active={segment === sg.segmentId}
+                  onClick={() => {
+                    setSegment(sg.segmentId);
+                    track("stocks_filter_use", { kind: "segment", chain_id: chain, segment: sg.segmentId });
+                  }}
+                >
                   {sg.segmentName}
                 </Chip>
               ))}

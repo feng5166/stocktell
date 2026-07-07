@@ -6,6 +6,9 @@ export function SiteFooter() {
   return (
     <footer className="mx-auto max-w-5xl px-4 pb-8 pt-6 text-center">
       <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-gray-500">
+        <Link href="/pro" className="hover:text-gray-700">
+          专业版(规划中)
+        </Link>
         <Link href="/about" className="hover:text-gray-700">
           关于我们
         </Link>

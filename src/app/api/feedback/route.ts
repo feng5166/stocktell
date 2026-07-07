@@ -7,7 +7,8 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = new Set(["问题", "建议", "其他"]);
+// 2.2-C:+两类商业化意向(轻转化入口,不收费只收信号;admin/metrics 按类计数)
+const CATEGORIES = new Set(["问题", "建议", "其他", "专业版意向", "订阅意向"]);
 
 export async function POST(req: NextRequest) {
   // 限流:同一 IP 10 分钟最多 5 条,防刷
