@@ -53,6 +53,50 @@ function fromRow(r: any): OutcomeRow {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+// 收盘记账自愈(2026-07-08,负责人:「后续能自修复吗」)。背景:15:30 主跑遇日历源/行情源
+// 瞬时故障会 fail-safe 跳过(正确),但恢复靠人工 backfill——本函数把恢复也自动化:
+// 回看近 N 日,凡「有已发布简报 + 确认为交易日 + 无任何 outcome 记录」的日子,用 EOD
+// 历史价补记(recordOutcomes 幂等 upsert,收盘后 EOD 稳定,晚补与准点结果一致)。
+// 每次最多补 2 天(60s 函数预算);日历仍不可用的日子留给下一轮——自愈是逐轮收敛的。
+export async function catchUpMissedOutcomes(
+  today: string,
+  opts: { lookbackDays?: number; maxDates?: number } = {}
+): Promise<{ healed: Array<{ date: string; evaluated: number; judged: number }>; checked: number }> {
+  const db = getPrisma();
+  const healed: Array<{ date: string; evaluated: number; judged: number }> = [];
+  if (!db) return { healed, checked: 0 };
+  const lookback = opts.lookbackDays ?? 5;
+  const maxDates = opts.maxDates ?? 2;
+  const { isAshareTradingDay } = await import("@/lib/tushare");
+  let checked = 0;
+  for (let i = 1; i <= lookback && healed.length < maxDates; i++) {
+    const d = new Date(new Date(`${today}T12:00:00Z`).getTime() - i * 86400_000)
+      .toISOString()
+      .slice(0, 10);
+    checked++;
+    try {
+      const has = await db.briefingOutcome.count({ where: { date: d, isBacktest: false } });
+      if (has > 0) continue; // 已记账
+      const briefings = await listBriefing({ date: d, status: "published" });
+      if (briefings.length === 0) continue; // 无简报=无账可记(休市/设计性)
+      // fail-closed(不变量⑦):日历确认不了(unknown)绝不硬补,留给下一轮——
+      // isAshareTradingDay 默认 onUnknown=true 是【交付路径】的宽松语义,这里必须显式收紧
+      const open = await isAshareTradingDay(d, { onUnknown: false }).catch(() => false);
+      if (!open) continue;
+      const res = await recordOutcomes(d, { historical: true });
+      if (res.ok && (res.evaluated ?? 0) > 0) {
+        healed.push({ date: d, evaluated: res.evaluated ?? 0, judged: res.judged ?? 0 });
+        // 复盘喂队列与主跑同轨(不变量#4:只入队不改档);fail-safe
+        const { feedReviewQueueFromOutcomes } = await import("@/lib/relation-review");
+        await feedReviewQueueFromOutcomes(d).catch(() => null);
+      }
+    } catch {
+      /* 单日补记失败不阻断其余日子,下一轮再试 */
+    }
+  }
+  return { healed, checked };
+}
+
 // 评估某天的简报:回填受益股当日涨跌 + 命中。幂等(briefingId+code 唯一,upsert)。
 // historical=true 时用 Tushare 当日收盘涨跌幅(daily.pct_chg)取价,而非实时行情——
 // 用于补录漏记的历史交易日(实时行情只反映"当下",过了那天就取不到当天收盘了)。
