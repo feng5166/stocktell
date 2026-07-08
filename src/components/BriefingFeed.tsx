@@ -316,10 +316,10 @@ function CardFeed({
   chainName?: string;
   chainHref?: string;
   relations?: Record<string, string>;
-  collapsed?: boolean; // 首页事件区:默认只放 3 条(2026-07-08 改版:首页是分发台不是事件库/内容流)
+  collapsed?: boolean; // 首页事件区:默认只放 5 条,其余手动「查看更多」——首页是分发台不是事件库(评审)
 }) {
   const STEP = 6;
-  const INITIAL = collapsed ? 3 : STEP;
+  const INITIAL = collapsed ? 5 : STEP;
   const [visible, setVisible] = useState(INITIAL);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -428,9 +428,8 @@ const REL_EXPLAIN: Record<string, string> = {
   情绪映射: "「{seg}」更多是情绪/主题带动,不等于这次事件的直接受益方,真金白银看订单兑现。",
 };
 // 「今日触发」颜色(定稿②):去掉"影响"字样,只用深浅传递触发强度,供排序/视觉;不暗示股价
-// 2026-07-08 色系收敛:高档不再用红(红只留合规/异常)——高=主色紫,纯强度梯度不像警告
 const TRIGGER_CLS: Record<string, string> = {
-  高: "bg-violet-100 text-violet-700",
+  高: "bg-rose-100 text-rose-700",
   中: "bg-amber-100 text-amber-700",
   低: "bg-slate-100 text-slate-500",
 };
