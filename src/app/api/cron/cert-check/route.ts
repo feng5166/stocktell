@@ -8,7 +8,10 @@ export const runtime = "nodejs";
 
 // 证书到期安全网:宝塔默认自动续期 Let's Encrypt;万一续期失败,这里每日检查、
 // 剩余 < 14 天就发飞书告警。检查的是微信桥域名(其它都是 Vercel/平台托管证书,自动续)。
-const HOST = "bridge.stocktell.me";
+// ⚠️ 微信桥仍挂 bridge.stocktell.me(VPS 47.84.8.167 宝塔反代)。stocktell.me 备案期间解析
+// 会停,桥必须先迁 bridge.maoadao.com(阿里云加 A 记录→VPS + 宝塔加域名与证书),迁完改
+// CERT_CHECK_HOST 环境变量(或本默认值)并同步 CLAWBOT_BASE_URL。
+const HOST = process.env.CERT_CHECK_HOST || "bridge.stocktell.me";
 const WARN_DAYS = 14;
 
 function daysToExpiry(host: string, port = 443): Promise<number | null> {

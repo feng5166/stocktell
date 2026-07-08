@@ -112,7 +112,7 @@ export async function runIntradayAlert(): Promise<{
       const q = quotes[c]!;
       lines.push(`${STOCK_MAP[c].name} ${q.change > 0 ? "+" : ""}${q.change.toFixed(2)}%`);
     }
-    lines.push("", "stocktell.me/#mine 看详情", "信息提示,不构成投资建议");
+    lines.push("", "maoadao.com/#mine 看详情", "信息提示,不构成投资建议");
 
     alerts += fresh.length;
     const ok = await sendBridge(u.weixinOpenId, lines.join("\n"));
