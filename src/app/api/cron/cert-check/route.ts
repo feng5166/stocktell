@@ -8,10 +8,11 @@ export const runtime = "nodejs";
 
 // 证书到期安全网:宝塔默认自动续期 Let's Encrypt;万一续期失败,这里每日检查、
 // 剩余 < 14 天就发飞书告警。检查的是微信桥域名(其它都是 Vercel/平台托管证书,自动续)。
-// ⚠️ 微信桥仍挂 bridge.stocktell.me(VPS 47.84.8.167 宝塔反代)。stocktell.me 备案期间解析
-// 会停,桥必须先迁 bridge.maoadao.com(阿里云加 A 记录→VPS + 宝塔加域名与证书),迁完改
-// CERT_CHECK_HOST 环境变量(或本默认值)并同步 CLAWBOT_BASE_URL。
-const HOST = process.env.CERT_CHECK_HOST || "bridge.stocktell.me";
+// 2026-07-08 负责人拍板:微信桥/Umami 暂不迁移(bridge.stocktell.me 随备案停解析后失效;
+// 微信推送 0 绑定用户、cron 碰桥前即 no-weixin-users 早退)。本检查唯一监控对象就是桥证书——
+// 对象弃管,监控默认停用,否则停解析当天起每日空报警。桥若将来迁 bridge.maoadao.com 重启用:
+// 设 CERT_CHECK_HOST 环境变量即可(同步 CLAWBOT_BASE_URL)。
+const HOST = process.env.CERT_CHECK_HOST || "";
 const WARN_DAYS = 14;
 
 function daysToExpiry(host: string, port = 443): Promise<number | null> {
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
+  if (!HOST) return NextResponse.json({ ok: true, skipped: "cert-check-disabled(无监控对象)" });
   const days = await daysToExpiry(HOST);
   if (days === null) {
     await alertCron("cert-check", `无法读取 ${HOST} 的 HTTPS 证书(连接失败?可能桥/nginx 异常)`);
