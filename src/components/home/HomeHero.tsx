@@ -64,7 +64,7 @@ export function HomeHero({
       <div className="mt-3.5 flex flex-wrap gap-2">
         <button
           onClick={goMine}
-          className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+          className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 ring-1 ring-brand-200 transition-colors hover:bg-brand-100"
         >
           ⭐ 添加自选,查看和我相关
         </button>
