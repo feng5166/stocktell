@@ -11,11 +11,7 @@ import type { WatchChainInfo } from "@/lib/watch-relation";
 import { classifyWatchCodes } from "@/lib/watch-groups";
 import { postJson } from "@/lib/post-json";
 
-const REL_CHIP: Record<string, string> = {
-  直接映射: "bg-rose-50 text-rose-600",
-  间接映射: "bg-amber-50 text-amber-700",
-  情绪映射: "bg-gray-100 text-gray-500",
-};
+import { REL_CHIP_CLS as REL_CHIP } from "@/lib/relation-rank"; // 色系单源(2026-07-08 收敛)
 const SIG_CHIP: Record<string, string> = {
   强: "bg-rose-100 text-rose-700",
   中: "bg-amber-100 text-amber-700",

@@ -54,13 +54,16 @@ export const FRONT_RELATION_RANK: Record<string, number> = {
 };
 
 // 关系档配色(单一真源:改这里,长键/短键两套映射一起变)。
+// 色系收敛(负责人 2026-07-08 首页改版拍板):关系档一人一色、全站单源——
+// 直接=紫 / 间接=蓝 / 情绪=橙 / 弱=灰 / 触发源=灰蓝 / 待验证=黄;
+// 【红色只留给合规提示与异常】(此前直接映射用红,页面像满屏警告)。
 const TIER_CLS = {
-  direct: "bg-rose-100 text-rose-700",
-  indirect: "bg-amber-100 text-amber-700",
-  sentiment: "bg-slate-100 text-slate-500",
+  direct: "bg-violet-100 text-violet-700",
+  indirect: "bg-blue-100 text-blue-700",
+  sentiment: "bg-orange-100 text-orange-700",
   weak: "bg-gray-200 text-gray-500",
-  trigger: "bg-indigo-100 text-indigo-700", // 触发源:美股/海外事件源,与关系模型审阅页同源
-  generic: "bg-gray-100 text-gray-600",
+  trigger: "bg-slate-200 text-slate-600",
+  generic: "bg-amber-50 text-amber-700", // 待验证
 };
 
 // 前台长标签键(ChainRoster 成分股标 / 链页事件卡 relationLabelFor / /stocks 关系分布)。
