@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     return page("链接无效", `<h2 style="font-size:18px;margin:0 0 8px">链接无效或已过期</h2>
       <p style="color:#888;font-size:14px;margin:0">请直接在 <a href="/" style="color:#2563eb">StockTell</a> 站内设置推送偏好。</p>`, 400);
   }
-  const base = process.env.NEXTAUTH_URL || "https://www.maoadao.com";
+  const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
 
   if (action === "resub") {
     const ok = await setOptOut(u, false);

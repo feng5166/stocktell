@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "no_targets" }, { status: 400 });
   }
 
-  const base = process.env.NEXTAUTH_URL || "https://www.maoadao.com";
+  const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
   const bodyHtml = esc(text).replace(/\n/g, "<br>");
 
   const results: { id: string; ok: boolean }[] = [];
