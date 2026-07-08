@@ -66,7 +66,7 @@ function Card({ c, rank }: { c: HomeReasoningCard; rank: number }) {
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">
+            <span className="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-brand-100">
               {c.chainName}
             </span>
             {c.trigger && (
