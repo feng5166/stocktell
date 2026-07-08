@@ -30,14 +30,9 @@ export async function GET(req: NextRequest) {
     await alertCron("outcome 自愈补记", `✅ 已自动补记漏账:${lines.join("、")}——无需人工 backfill`).catch(() => null);
   }
 
-  const gate = await tradingDayGate(date, "outcome(收盘记账)", {
-    onUnknown: "skip",
-    recoveryHint: `17:30 二次班次与次日回看会自动补记;急可手动 /api/admin/backfill-outcomes?date=${date}`,
-  });
-  if (gate) return NextResponse.json({ ok: true, ...gate, healed: healRes?.healed ?? [] });
-
-  try {
-    // 17:30 二次班次幂等:15:30 已记过(count>0)就不重跑判定与告警链,只做上面的自愈回看
+  // 已记账早退【必须在日历闸门之前】(07-08 实测教训:闸门先行时,账已记完的重跑/二次班次
+  // 撞上 Tushare 抖动仍会空发「无法确认交易日」告警——账都落了,日历确认不确认已经不重要)
+  {
     const { getPrisma } = await import("@/lib/prisma");
     const already = await getPrisma()?.briefingOutcome
       .count({ where: { date, isBacktest: false } })
@@ -45,6 +40,15 @@ export async function GET(req: NextRequest) {
     if ((already ?? 0) > 0) {
       return NextResponse.json({ date, ok: true, skipped: "already-recorded", healed: healRes?.healed ?? [] });
     }
+  }
+
+  const gate = await tradingDayGate(date, "outcome(收盘记账)", {
+    onUnknown: "skip",
+    recoveryHint: `17:30 二次班次与次日回看会自动补记;急可手动 /api/admin/backfill-outcomes?date=${date}`,
+  });
+  if (gate) return NextResponse.json({ ok: true, ...gate, healed: healRes?.healed ?? [] });
+
+  try {
     const res = await recordOutcomes(date);
     // 交易日却没简报可记:先读 brief-status 分级(2.1-B)——美股休市等设计性无简报是【正常】,
     // 0 简报本来就无账可记,绝不能喊"需补发"(2026-07-06 休市交易日误报实录:补发指令是误导,勿照做)。
