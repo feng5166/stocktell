@@ -40,7 +40,7 @@ function formatBriefMessage(
     if (take) lines.push(`   怎么想:${take}`);
     lines.push("");
   }
-  lines.push("stocktell.me/#mine 看完整简报");
+  lines.push("maoadao.com/#mine 看完整简报");
   lines.push("以上不构成投资建议");
   return lines.join("\n");
 }
@@ -54,7 +54,7 @@ function formatAlertsMessage(date: string, alerts: string[]): string {
     "",
     ...alerts.map((a) => `· ${a}`),
     "",
-    "stocktell.me/#mine 看详情",
+    "maoadao.com/#mine 看详情",
     "以上不构成投资建议",
   ];
   return lines.join("\n");

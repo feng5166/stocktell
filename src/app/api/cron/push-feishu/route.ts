@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       }
     }
     lines.push("", "—", "StockTell · 不构成投资建议");
-    lines.push("https://stocktell.me");
+    lines.push("https://www.maoadao.com");
 
     const res = await sendFeishu(lines.join("\n"));
     return NextResponse.json({
