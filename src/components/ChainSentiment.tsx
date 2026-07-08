@@ -137,8 +137,8 @@ export function ChainSentiment({
           <span className={`rounded px-1.5 py-0.5 text-meta ${mood.c}`}>{mood.t}</span>
         )}
         {a?.pctLive ? (
-          <span className="ml-auto flex items-center gap-1 text-meta text-rose-500">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+          <span className="ml-auto flex items-center gap-1 text-meta text-emerald-600">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
             实时 {a.pctAsOf}
           </span>
         ) : (
