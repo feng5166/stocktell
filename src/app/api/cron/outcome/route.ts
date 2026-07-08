@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordOutcomes } from "@/lib/outcomes";
+import { recordOutcomes, catchUpMissedOutcomes } from "@/lib/outcomes";
 import { todayISO } from "@/lib/date";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
@@ -20,13 +20,31 @@ export async function GET(req: NextRequest) {
   // 只在 A 股交易日记账(fail-closed;unknown 跳过并告警)。dedupe=false:15:30 与盘前不同时段、
   // 不同关切(战绩数据),自己独立告警,不被盘前的当日去重压掉。
   const date = todayISO();
+
+  // 自愈回看(2026-07-08):先补历史欠账——近 5 日内「有简报+交易日+零记录」的日子自动补记。
+  // 放在今日闸门【之前】:今天即使因日历不可用跳过,历史欠账照样收敛;成功补记发 notice 飞书
+  // (让负责人知道自愈发生了,不再需要人工 backfill)。fail-safe:自愈失败不影响今日主流程。
+  const healRes = await catchUpMissedOutcomes(date).catch(() => null);
+  if (healRes && healRes.healed.length > 0) {
+    const lines = healRes.healed.map((h) => `${h.date}(${h.judged}/${h.evaluated} 判定)`);
+    await alertCron("outcome 自愈补记", `✅ 已自动补记漏账:${lines.join("、")}——无需人工 backfill`).catch(() => null);
+  }
+
   const gate = await tradingDayGate(date, "outcome(收盘记账)", {
     onUnknown: "skip",
-    recoveryHint: `Tushare 恢复后用 /api/admin/backfill-outcomes?date=${date} 补记`,
+    recoveryHint: `17:30 二次班次与次日回看会自动补记;急可手动 /api/admin/backfill-outcomes?date=${date}`,
   });
-  if (gate) return NextResponse.json({ ok: true, ...gate });
+  if (gate) return NextResponse.json({ ok: true, ...gate, healed: healRes?.healed ?? [] });
 
   try {
+    // 17:30 二次班次幂等:15:30 已记过(count>0)就不重跑判定与告警链,只做上面的自愈回看
+    const { getPrisma } = await import("@/lib/prisma");
+    const already = await getPrisma()?.briefingOutcome
+      .count({ where: { date, isBacktest: false } })
+      .catch(() => 0);
+    if ((already ?? 0) > 0) {
+      return NextResponse.json({ date, ok: true, skipped: "already-recorded", healed: healRes?.healed ?? [] });
+    }
     const res = await recordOutcomes(date);
     // 交易日却没简报可记:先读 brief-status 分级(2.1-B)——美股休市等设计性无简报是【正常】,
     // 0 简报本来就无账可记,绝不能喊"需补发"(2026-07-06 休市交易日误报实录:补发指令是误导,勿照做)。
@@ -62,7 +80,7 @@ export async function GET(req: NextRequest) {
     // fail-safe:队列坏了不连累记账;不飞书——队列刷屏=没人看,admin 页可见即可。
     // 不变量#4:这里【只入队】,绝不改 staticRelations。
     const review = await feedReviewQueueFromOutcomes(date).catch(() => null);
-    return NextResponse.json({ date, ...res, review });
+    return NextResponse.json({ date, ...res, review, healed: healRes?.healed ?? [] });
   } catch (e) {
     await alertCron("outcome(记账)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });

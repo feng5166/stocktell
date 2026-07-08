@@ -19,6 +19,7 @@
       "path": "/api/cron/outcome",
       "schedule": "30 7 * * *"
     },
+    { "path": "/api/cron/outcome", "schedule": "30 9 * * *" },
     {
       "path": "/api/cron/push-weixin",
       "schedule": "10 23 * * *"
