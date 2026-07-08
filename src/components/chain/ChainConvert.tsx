@@ -286,7 +286,7 @@ export function ChainConvert({
                   </div>
                 </div>
                 <div className="bg-gray-50 px-5 py-2 text-center text-[11px] text-gray-400">
-                  信息整理,不构成投资建议 · maoadao.com
+                  信息整理,不构成投资建议 · StockTell
                 </div>
               </div>
             )}
