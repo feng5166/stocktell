@@ -199,31 +199,35 @@ async function genRisk(
   }));
   const spillNote = own.length === 0 ? "\n注意:本链今日无直接触发事件,属链外情绪外溢——风险提示要点破这一点。" : "";
   const sys = RISK_PROMPT.replace("{CHAIN}", chainName).replace("{VERIFY}", verify);
-  try {
-    meta.llmCalls++;
-    const resp = await chatTimed("insight-daily-risk", llm.provider, () =>
-      llm.client.chat.completions.create(
-        {
-          model: llm.model,
-          max_tokens: 200,
-          messages: [
-            { role: "system", content: sys },
-            { role: "user", content: `今天与本链相关的事件(JSON):\n${JSON.stringify(payload)}${spillNote}` },
-          ],
-        },
-        { maxRetries: 1, timeout: 10000 }
-      )
-    );
-    const txt = resp.choices[0]?.message?.content?.trim().replace(/^["「『]|["」』]$/g, "");
-    if (!txt || txt.length < 25 || txt.length > 120) return null;
-    // 合规预检:禁词命中/盘面数字 → 弃用走规则兜底(别让风险行把整篇拖进 blocked)
-    const { scanBannedWords, hasSpecificMove } = await import("@/lib/content-guard");
-    if (scanBannedWords(txt).length > 0 || hasSpecificMove(txt)) return null;
-    if (txt.includes("不等于国内订单")) return null; // 模板腔复读,视同失败
-    return txt;
-  } catch {
-    return null;
+  const { scanBannedWords, hasSpecificMove } = await import("@/lib/content-guard");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      meta.llmCalls++;
+      if (attempt > 0) meta.retries++;
+      const resp = await chatTimed("insight-daily-risk", llm.provider, () =>
+        llm.client.chat.completions.create(
+          {
+            model: llm.model,
+            max_tokens: 220,
+            messages: [
+              { role: "system", content: sys },
+              { role: "user", content: `今天与本链相关的事件(JSON):\n${JSON.stringify(payload)}${spillNote}` },
+            ],
+          },
+          { maxRetries: 1, timeout: 12000 }
+        )
+      );
+      const txt = resp.choices[0]?.message?.content?.trim().replace(/^["「『]|["」』]$/g, "");
+      // 合规预检:禁词/盘面数字/模板腔复读 → 本次弃用重试(别让风险行把整篇拖进 blocked)
+      if (!txt || txt.length < 25 || txt.length > 145) continue;
+      if (scanBannedWords(txt).length > 0 || hasSpecificMove(txt)) continue;
+      if (txt.includes("不等于国内订单")) continue;
+      return txt;
+    } catch {
+      /* 重试一次后走规则兜底 */
+    }
   }
+  return null;
 }
 
 /* ---------- S2:环节热力(LLM 给方向+原因;relation 只来自链配置;规则兜底) ---------- */
