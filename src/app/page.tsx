@@ -92,10 +92,8 @@ export default async function Home() {
         {bridge && <HolidayBridgeSection bridge={bridge} />}
 
         {/* 1. 今日最重要的因果链(P0 一张真卡;chains.ts 加链自动进卡位) */}
-        <ReasoningCards cards={cards} />
-
-        {/* 2. 降位保留(拍板⑦):链情绪 + 隔夜事件雷达(今日触发源;P2 热力上线后评估去留) */}
-        <div className="mt-5">
+        {/* 1. 链情绪 + 隔夜事件雷达(负责人 2026-07-09:上移到因果链之前——先看盘面状态与触发源,再看推理) */}
+        <div className="mt-2">
           <ChainSentiment
             initial={snap?.data}
             refresh={snap ? !snap.fresh : false}
@@ -103,6 +101,11 @@ export default async function Home() {
           />
         </div>
         <OvernightRadar relMap={relLabelMap} />
+
+        {/* 2. 今日最重要的因果链 */}
+        <div className="mt-5">
+          <ReasoningCards cards={cards} />
+        </div>
 
         {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
         {items.length === 0 ? (
