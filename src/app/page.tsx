@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { HomeHero } from "@/components/home/HomeHero";
+import { ChainStatusBoard, type ChainStatusRow } from "@/components/home/ChainStatusBoard";
 import { ReasoningCards } from "@/components/home/ReasoningCards";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
@@ -18,7 +19,9 @@ import {
   type BriefTone,
 } from "@/lib/brief-status";
 import { getHolidayBridge, type HolidayBridgeDoc } from "@/lib/holiday-bridge";
-import { getChain } from "@/data/chains";
+import { getChain, CHAINS } from "@/data/chains";
+import { allRelations } from "@/data/chain-relations";
+import { resolvePrimary } from "@/lib/relation-resolver";
 import {
   listBriefing,
   latestBriefing,
@@ -69,6 +72,33 @@ export default async function Home() {
   const cards = await buildReasoningCards(items, shownDate, stale).catch(() => []);
   const aiChain = getChain("ai");
   const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
+
+  // 改版(2026-07-08):Hero 总判断 + 三指标 + 各链状态仪表盘,全部由已有数据组装(零新增请求)。
+  // 待验证关系=静态关系库 candidate 档(公开口径,不用队列内部数);触发归链走 resolver。
+  const rels = allRelations();
+  const pendingTotal = rels.filter((r) => r.relationType === "candidate").length;
+  const triggeredByChain = new Map<string, number>();
+  for (const it of items) {
+    const cid = it.triggerCode ? resolvePrimary(it.triggerCode)?.chainId : null;
+    if (cid) triggeredByChain.set(cid, (triggeredByChain.get(cid) ?? 0) + 1);
+  }
+  const heroMetrics = {
+    events: items.length,
+    triggeredChains: cards.filter((c) => c.trigger).length,
+    totalChains: cards.length,
+    pending: pendingTotal,
+  };
+  const statusRows: ChainStatusRow[] = cards.map((c) => {
+    const chain = CHAINS[c.chainId];
+    return {
+      chainId: c.chainId,
+      name: chain?.short ?? c.chainName,
+      status: c.status ?? "观察",
+      triggered: triggeredByChain.get(c.chainId) ?? 0,
+      direct: rels.filter((r) => r.chainId === c.chainId && r.relationType === "direct").length,
+      pending: rels.filter((r) => r.chainId === c.chainId && r.relationType === "candidate").length,
+    };
+  });
   // 事件卡关系标签(替代「高影响」):服务端按 insight 人工核过的关系分级推导
   const relations = Object.fromEntries(
     items.map((it) => [it.id, resolveRelationLabelForItem(it)])
@@ -84,9 +114,15 @@ export default async function Home() {
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日推理" />
 
-      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <HomeHero shownDate={shownDate} insightHref={insightHref} />
+      {/* Hero 全宽深色带(视觉重构):内部自约束 max-w-3xl,底部渐变回浅色 */}
+      <HomeHero
+        shownDate={shownDate}
+        insightHref={insightHref}
+        judgment={cards[0]?.humanSummary ?? null}
+        metrics={heroMetrics}
+      />
 
+      <main className="mx-auto max-w-3xl px-4 pb-6 sm:px-6">
         <BriefStatusBanner status={briefStatus} stale={stale} shownDate={shownDate} />
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
@@ -94,21 +130,25 @@ export default async function Home() {
         {/* 1. 今日最重要的因果链(P0 一张真卡;chains.ts 加链自动进卡位) */}
         <ReasoningCards cards={cards} />
 
-        {/* 2. 降位保留(拍板⑦):链情绪 + 隔夜事件雷达(今日触发源;P2 热力上线后评估去留) */}
-        <div className="mt-5">
+        {/* 2. 各链今日状态仪表盘(改版 §4:三秒看懂今天哪条链在动) */}
+        <ChainStatusBoard rows={statusRows} date={shownDate} />
+
+        {/* 3. 降位保留(拍板⑦):市场情绪速览 + 隔夜事件雷达(今日触发源) */}
+        <div className="mt-8">
           <ChainSentiment
             initial={snap?.data}
             refresh={snap ? !snap.fresh : false}
             action={<ChainHomeEntry />}
+            title="市场情绪速览"
           />
         </div>
         <OvernightRadar relMap={relLabelMap} />
 
-        {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
+        {/* 4. 和我相关(P0 原样保留)+ 今日关键事件(默认 3 条,改版 §6:不做长内容流) */}
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
-          <div className="mt-5">
+          <div className="mt-8">
             <BriefingFeed
               items={items}
               loggedIn={false}
@@ -121,7 +161,10 @@ export default async function Home() {
           </div>
         )}
 
-        <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
+        {/* 5. 产业链档案(改版 §6:固定入口,首页不再像无限内容流)+ 最近归档 */}
+        <ChainArchive />
+
+        <p className="mt-9 text-center text-xs leading-relaxed text-gray-400">
           我们不做新闻堆叠,也不推荐买卖。StockTell 只回答一个问题:这件事会沿着哪条产业链传导,哪些
           A 股是直接相关,哪些只是情绪映射。
         </p>
@@ -209,6 +252,34 @@ function HolidayBridgeSection({ bridge }: { bridge: HolidayBridgeDoc }) {
       <p className="mt-3 text-meta text-gray-400">
         以上为研究框架梳理·非确认,不构成投资建议;验证点用于观察产业链传导是否兑现,不预示涨跌。
       </p>
+    </section>
+  );
+}
+
+// 产业链档案:核心链固定入口 + 历史归档。零请求(读静态 CHAINS 配置)。
+function ChainArchive() {
+  const chains = Object.values(CHAINS).filter((c) => c.insightSlug);
+  return (
+    <section className="mt-8">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-h2 font-semibold text-gray-900">产业链档案</h2>
+        <Link href="/daily" className="text-xs text-brand-600 hover:underline">
+          最近归档 →
+        </Link>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        {chains.map((c) => (
+          <Link
+            key={c.id}
+            href={`/chain/${c.id}`}
+            className="block rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-gray-100 transition-shadow hover:shadow"
+          >
+            <div className="text-sm font-semibold text-gray-800">{c.name}</div>
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-500">{c.tagline}</p>
+            <div className="mt-2 text-xs font-medium text-brand-600">链页与深读 →</div>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
