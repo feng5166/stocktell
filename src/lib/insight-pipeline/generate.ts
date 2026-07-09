@@ -13,7 +13,6 @@ import { resolveInChainMappingLabel } from "@/lib/relation-resolver";
 import { chainIdFromSlug } from "@/lib/relation-rank";
 import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { fallbackChainTake } from "@/lib/chain-take";
-import { dailyRisk } from "@/lib/home-feed";
 import { runGuards, type GuardResult } from "./guard";
 import { heatSignature, getRecentHeatSignatures } from "./docs";
 import type { DailyInsightPayload, HeatDirection } from "./schema";
