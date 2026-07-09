@@ -6,6 +6,7 @@ import { CHAINS } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { FRONT_RELATION_RANK } from "@/lib/relation-rank";
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
+import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import type { BriefingItem } from "@/lib/briefings";
 import type { Relation } from "@/data/insight-chains";
@@ -31,6 +32,16 @@ export interface HomeReasoningCard {
   flow: string[]; // 链路式传导(insight 主跳压缩:事件→需求→环节→A股映射),主卡「为什么会传导」
   verify: string[]; // 后续验证什么(顶层环节的验证点模板)
   status: string | null; // 今日热力主方向(升温/降温/分化/观察;null=无当日 daily)
+}
+
+// 首页兜底路径的按链分账(与生成器同规则;正常日走 daily payload,不经这里)
+function ownItems(items: BriefingItem[], chainId: string): BriefingItem[] {
+  const own = items.filter(
+    (it) =>
+      (it.triggerCode && resolvePrimary(it.triggerCode)?.chainId === chainId) ||
+      it.beneficiaries.some((b) => !!resolveInChain(b.code, chainId))
+  );
+  return own.length ? own : items; // 全无归属时退回全量(别让卡片空白)
 }
 
 // 今日一句话风险(评审:不再用 insight 的演示事件静态风险——"AI 变便宜"前提和
@@ -118,10 +129,10 @@ export async function buildReasoningCards(
       insightSlug: chain.insightSlug,
       date: shownDate,
       stale,
-      trigger: daily?.payload.trigger.summary ?? triggerSummary(items),
+      trigger: daily?.payload.trigger.summary ?? triggerSummary(ownItems(items, chain.id)),
       humanSummary: take,
       tiers,
-      risk: daily?.payload.risk ?? dailyRisk(items),
+      risk: daily?.payload.risk ?? dailyRisk(ownItems(items, chain.id)),
     });
   }
   return cards;
