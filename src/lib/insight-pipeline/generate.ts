@@ -455,8 +455,11 @@ export async function generateDailyInsight(
   const meta = { llmCalls: 0, searchCalls: 0, retries: 0 };
   const toSegment = sectorToSegment(chain.segments);
 
-  // 按链分账:概述/风险只讲本链的事;本链无直接触发时概述如实标注「外溢」
-  const own = chainOwnItems(items, chainId);
+  // 按链分账:概述/风险只讲本链的事;本链无直接触发时概述如实标注「外溢」。
+  // ⚠️ 归属必须用【关系模型】的链 id(chainIdFromSlug):CHAINS 注册 id 'ai' ≠ 关系链 'ai-infra',
+  // 直接用 chainId 会让 AI 链永远匹配不到自己的触发源(07-09 实踩:AI 链被误标"情绪外溢")。
+  const relChainId = chainIdFromSlug(chain.insightSlug) ?? chainId;
+  const own = chainOwnItems(items, relChainId);
   const trigger = own.length
     ? buildTrigger(own)
     : { ...buildTrigger(items), summary: `${buildTrigger(items).summary}(链外事件,本链属情绪外溢)` };

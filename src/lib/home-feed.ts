@@ -6,6 +6,7 @@ import { CHAINS } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { FRONT_RELATION_RANK } from "@/lib/relation-rank";
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
+import { chainIdFromSlug } from "@/lib/relation-rank";
 import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import type { BriefingItem } from "@/lib/briefings";
@@ -29,9 +30,6 @@ export interface HomeReasoningCard {
   humanSummary: string | null; // 今日人话判断(chain-take);null=生成中
   tiers: { emoji: string; level: string; what: string; rel?: Relation }[]; // 三层环节(insight 结构)
   risk: string; // 一句话风险(今日侧:按当日触发方向生成,不再用 insight 演示事件的静态风险)
-  flow: string[]; // 链路式传导(insight 主跳压缩:事件→需求→环节→A股映射),主卡「为什么会传导」
-  verify: string[]; // 后续验证什么(顶层环节的验证点模板)
-  status: string | null; // 今日热力主方向(升温/降温/分化/观察;null=无当日 daily)
 }
 
 // 首页兜底路径的按链分账(与生成器同规则;正常日走 daily payload,不经这里)
@@ -102,50 +100,19 @@ export async function buildReasoningCards(
       (await getChainTake(chain.id, shownDate).catch(() => null)) ||
       fallbackChainTake(items);
 
-    // 链路式传导(2026-07-08 首页改版):insight 主跳节点压缩成短链,主卡用箭头流呈现
-    const flowNodes = [
-      insight.mainHops[0]?.from,
-      insight.mainHops[0]?.to,
-      insight.mainHops[1]?.to,
-    ]
-      .filter((x): x is string => !!x)
-      .map((x) => x.replace(/[((].*$/, "").trim())
-      .filter((x) => x.length > 0 && x.length <= 18);
-    const flow = [...flowNodes, "A 股映射"];
-    // 后续验证:顶层环节命中链配置的 verifyTemplate;不命中给通用四点
-    const topSeg = (daily && topHeatTiers(daily.payload.heat)?.[0]?.what) || insight.tldr.tiers[0]?.what || "";
-    const verify =
-      chain.segments?.find((sg) => topSeg.includes(sg.name) || sg.name.includes(topSeg))?.verifyTemplate ??
-      ["订单", "客户", "收入占比", "毛利率"];
-    // 今日热力主方向(状态仪表盘用)
-    const status = daily ? dominantDirection(daily.payload.heat) : null;
-
     cards.push({
-      flow,
-      verify,
-      status,
       chainId: chain.id,
       chainName: chain.name,
       insightSlug: chain.insightSlug,
       date: shownDate,
       stale,
-      trigger: daily?.payload.trigger.summary ?? triggerSummary(ownItems(items, chain.id)),
+      trigger: daily?.payload.trigger.summary ?? triggerSummary(ownItems(items, chainIdFromSlug(chain.insightSlug) ?? chain.id)),
       humanSummary: take,
       tiers,
-      risk: daily?.payload.risk ?? dailyRisk(ownItems(items, chain.id)),
+      risk: daily?.payload.risk ?? dailyRisk(ownItems(items, chainIdFromSlug(chain.insightSlug) ?? chain.id)),
     });
   }
   return cards;
-}
-
-// 今日热力主方向:非「观察」环节里的多数方向;全观察=观察。
-function dominantDirection(heat: { direction: string }[]): string {
-  const active = heat.filter((h) => h.direction !== "观察");
-  if (active.length === 0) return "观察";
-  const cnt = new Map<string, number>();
-  for (const h of active) cnt.set(h.direction, (cnt.get(h.direction) ?? 0) + 1);
-  const [dir, n] = Array.from(cnt.entries()).sort((a, b) => b[1] - a[1])[0];
-  return n < active.length ? (cnt.size > 1 ? "分化" : dir) : dir;
 }
 
 // daily heat → 因果链卡三层:取"升温/降温/分化"里映射最强的前 3。
