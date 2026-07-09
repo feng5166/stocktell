@@ -74,6 +74,7 @@ export function generateMetadata({ params }: { params: { code: string } }): Meta
     title,
     description,
     alternates: { canonical: `/stock/${s.code}` },
+    openGraph: { title, description, type: "article" },
   };
 }
 

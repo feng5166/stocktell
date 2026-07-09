@@ -29,6 +29,15 @@ export const metadata: Metadata = {
   title: "StockTell｜今日产业链推理:把全球事件翻译成 A 股产业链映射",
   description:
     "StockTell 不是新闻聚合,也不提供买卖建议。我们把全球事件拆解为产业链传导、A 股映射、关系强弱和可核实依据,帮助用户理解今天哪些产业链值得关注。",
+  // SEO 底座(2026-07-09):全局 OG/Twitter 兜底;分享图走 /opengraph-image(动态生成)
+  openGraph: {
+    siteName: "StockTell",
+    type: "website",
+    locale: "zh_CN",
+    title: "StockTell｜今日产业链推理",
+    description: "把全球事件翻译成产业链传导与 A 股映射:关系分级、验证点、历史复盘。不构成投资建议。",
+  },
+  twitter: { card: "summary_large_image", title: "StockTell｜今日产业链推理" },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

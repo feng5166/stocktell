@@ -6,6 +6,12 @@ export function SiteFooter() {
   return (
     <footer className="mx-auto max-w-5xl px-4 pb-8 pt-6 text-center">
       <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-gray-500">
+        <Link href="/chains" className="hover:text-gray-700">
+          产业链总览
+        </Link>
+        <span aria-hidden className="text-gray-300">
+          ·
+        </span>
         <Link href="/daily" className="hover:text-gray-700">
           简报归档
         </Link>
@@ -23,6 +29,12 @@ export function SiteFooter() {
         </span>
         <Link href="/privacy" className="hover:text-gray-700">
           隐私政策
+        </Link>
+        <span aria-hidden className="text-gray-300">
+          ·
+        </span>
+        <Link href="/disclaimer" className="hover:text-gray-700">
+          免责声明
         </Link>
         <span aria-hidden className="text-gray-300">
           ·
