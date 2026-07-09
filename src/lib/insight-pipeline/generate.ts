@@ -208,7 +208,7 @@ async function genRisk(
         llm.client.chat.completions.create(
           {
             model: llm.model,
-            max_tokens: 220,
+            max_tokens: 300, // 思维链型 fast 模型可能吃掉配额致输出截断(本地实测第三次 18 字残句)
             messages: [
               { role: "system", content: sys },
               { role: "user", content: `今天与本链相关的事件(JSON):\n${JSON.stringify(payload)}${spillNote}` },
