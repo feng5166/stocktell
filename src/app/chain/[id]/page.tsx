@@ -31,6 +31,7 @@ export function generateMetadata({ params }: { params: { id: string } }): Metada
     title: `${chain.name} · 今日解读 · StockTell`,
     description: chain.tagline,
     openGraph: { title: `${chain.name} · 今日解读`, description: chain.tagline },
+    alternates: { canonical: `/chain/${chain.id}` },
   };
 }
 

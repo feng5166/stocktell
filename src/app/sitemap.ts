@@ -19,7 +19,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/stocks`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/relations`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/daily`, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/chains`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/about`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/disclaimer`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${BASE}/privacy`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${BASE}/terms`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${BASE}/pro`, changeFrequency: "monthly", priority: 0.3 },
   ];
   // 产业链页 + 三条核心链 insight(PRODUCT-CORE:链页承担 分享落地+SEO+转化)
   for (const c of Object.values(CHAINS)) {
