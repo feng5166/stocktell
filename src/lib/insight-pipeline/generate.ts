@@ -11,6 +11,7 @@ import { getChain, type ChainSegment } from "@/data/chains";
 import { STOCK_MAP } from "@/data/stocks";
 import { resolveInChainMappingLabel } from "@/lib/relation-resolver";
 import { chainIdFromSlug } from "@/lib/relation-rank";
+import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { fallbackChainTake } from "@/lib/chain-take";
 import { dailyRisk } from "@/lib/home-feed";
 import { runGuards, type GuardResult } from "./guard";
@@ -55,6 +56,36 @@ function sectorToSegment(segments: ChainSegment[]): (sector: string | undefined)
 }
 
 /* ---------- S0:触发(纯规则) ---------- */
+// 按链分账(2026-07-09 负责人反馈「三条链说的都一样」):trigger 概述与一句话风险此前吃
+// 全天全量条目,三链同文。归属规则=触发源归本链,或任一受益股在本链有关系档。
+function chainOwnItems(items: BriefingItem[], chainId: string): BriefingItem[] {
+  return items.filter(
+    (it) =>
+      (it.triggerCode && resolvePrimary(it.triggerCode)?.chainId === chainId) ||
+      it.beneficiaries.some((b) => !!resolveInChain(b.code, chainId))
+  );
+}
+
+// 链专属一句话风险:验证点用本链直接环节的模板词(不再全链一句「订单、毛利率、资本开支」);
+// 本链今日无直接触发=如实说「情绪外溢」,不硬套海外涨跌方向。
+function chainRisk(
+  segments: { defaultRelation: string; verifyTemplate: string[] }[] | undefined,
+  own: BriefingItem[],
+  all: BriefingItem[]
+): string {
+  const verify =
+    segments?.find((sg) => sg.defaultRelation === "直接映射")?.verifyTemplate?.slice(0, 3).join("、") ??
+    "订单、毛利率、资本开支";
+  if (own.length === 0)
+    return `本链今日无直接触发事件,更多是链外事件的情绪外溢;是否有真实传导,以${verify}的变化为准,不以海外涨跌为准。`;
+  const ups = own.filter((it) => (it.triggerChange ?? 0) > 0).length;
+  const downs = own.filter((it) => (it.triggerChange ?? 0) < 0).length;
+  void all;
+  if (downs > 0 && ups === 0) return `海外下跌不等于国内订单恶化,需要${verify}验证。`;
+  if (ups > 0 && downs === 0) return `海外上涨不等于国内订单改善,映射能否兑现要看${verify}验证。`;
+  return `海外涨跌分化,不直接等于国内基本面变化;每条映射都要用${verify}验证。`;
+}
+
 function buildTrigger(items: BriefingItem[]): DailyInsightPayload["trigger"] {
   const seen = new Set<string>();
   const events: DailyInsightPayload["trigger"]["events"] = [];
@@ -425,11 +456,15 @@ export async function generateDailyInsight(
   const meta = { llmCalls: 0, searchCalls: 0, retries: 0 };
   const toSegment = sectorToSegment(chain.segments);
 
-  const trigger = buildTrigger(items);
+  // 按链分账:概述/风险只讲本链的事;本链无直接触发时概述如实标注「外溢」
+  const own = chainOwnItems(items, chainId);
+  const trigger = own.length
+    ? buildTrigger(own)
+    : { ...buildTrigger(items), summary: `${buildTrigger(items).summary}(链外事件,本链属情绪外溢)` };
   const judgment = await genJudgment(chain.name, chain.segments, chain.tagline, items, meta);
   const heat = await genHeat(chain.segments, items, toSegment, opts?.yesterdayHeat ?? null, meta);
   const mappingsDelta = buildMappingsDelta(items, chain.segments, toSegment, chain.insightSlug);
-  const risk = dailyRisk(items);
+  const risk = chainRisk(chain.segments, own, items);
   const references = await buildReferences(trigger, meta);
 
   const payload: DailyInsightPayload = {
