@@ -1,15 +1,28 @@
-/* eslint-disable react/no-unescaped-entities */
 import { SiteHeader } from "@/components/SiteHeader";
 import { FeedbackLink } from "@/components/FeedbackLink";
 
 export const metadata = {
   title: "关于我们 · StockTell",
   description:
-    "StockTell:用 AI 把复杂的市场与产业链信息,翻译成普通散户能懂的解读。香港极光智能科技(AuroraAI Limited)出品。",
+    "StockTell 是一个面向产业链投资理解的 AI 推理工具:解释全球事件如何传导到产业链、产业环节和相关公司。不荐股、不提供买卖建议,不构成投资建议。",
 };
 
-const TIMELINE = [
-  ["2026.06", "StockTell 正式上线 —— 面向 A 股散户的「AI 盯盘搭子」"],
+const CHAIN_FORMULA = "全球事件 → 产业链传导 → 环节变化 → 股票映射 → 关系类型 → 验证点";
+
+const EXPLAIN_POINTS = [
+  "这件事为什么重要;",
+  "它可能传导到哪条产业链;",
+  "影响的是哪个环节;",
+  "哪些公司是直接映射;",
+  "哪些只是间接或情绪映射;",
+  "后续应该通过订单、客户、收入占比、毛利率、商业化收入等公开信息验证什么。",
+];
+
+const AUDIENCE = [
+  "希望理解 AI、半导体、电力、机器人等主题背后产业链逻辑的个人投资者;",
+  "不满足于「概念股列表」,希望区分真实传导和情绪映射的用户;",
+  "需要快速建立事件到标的结构化理解的轻量投研用户;",
+  "希望跟踪自选股在产业链中位置变化的长期观察者。",
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -30,72 +43,100 @@ export default function AboutPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <div className="flex items-center gap-2.5">
-          <h1 className="text-h1 font-semibold tracking-tight">关于我们</h1>
+          <h1 className="text-h1 font-semibold tracking-tight">关于 StockTell</h1>
           <FeedbackLink />
         </div>
         <p className="mt-2 text-title leading-relaxed text-gray-500">
-          用 AI,把复杂的市场,翻译成你听得懂的人话。
+          面向产业链投资理解的 AI 推理工具。
         </p>
 
-        <Section title="公司简介">
+        <Section title="我们是谁">
           <p>
-            我们的旅程缘起于 2023 年的黑客松比赛,并于 2024 年正式成立
-            <b>香港极光智能科技有限公司(AuroraAI Limited)</b>。作为一家创新的人工智能公司,我们一直在做同一件事:
-            <b>用大型语言模型(LLM),把专业、复杂、零散的信息,翻译成普通人能听懂、用得上的解读。</b>
+            StockTell 是一个面向产业链投资理解的 <b>AI 推理工具</b>。
           </p>
           <p>
-            最初,我们曾经想用 AI 重新解读东方玄学与命运;如今,我们把同样的理念带进资本市场,推出
-            <b> StockTell</b> —— 一个面向 A 股散户的「AI 盯盘搭子」。我们相信,金融信息和命运一样,长期被"专业门槛"挡在普通人之外;而 AI 最擅长的,正是把这层门槛打薄。
-          </p>
-        </Section>
-
-        <Section title="我们的使命">
-          <p>
-            让每一个普通散户,都能<b>看得懂行情背后的逻辑、不被情绪带着走、少踩坑</b>。
+            我们不做股票推荐,也不提供买卖建议。StockTell 关注的是:一个全球事件发生后,它会如何传导到产业链、产业环节和相关公司,以及这些关系是<b>直接映射、间接映射、情绪映射,还是仍需要验证</b>。
           </p>
           <p>
-            我们不想让你坠入恐慌、盲目追涨杀跌,也不想让你一味依赖所谓"大神"的喊单。StockTell 想帮你做到的是
-            <b> Be Your Own Investor —— 做自己投资的明白人</b>:把隔夜美股异动、产业链传导、基本面变化这些专业又零散的信息,翻译成"这跟你手里的票什么关系、你该怎么想",照亮你自己的判断。
+            在传统股票信息里,用户经常看到的是「某某概念股」「某某板块异动」「某某公司受益」。但这些说法往往混在一起,难以区分真实产业链关系和市场情绪联想。StockTell 希望把这件事拆清楚。
           </p>
-        </Section>
-
-        <Section title="成长时间轴">
-          <p>
-            2023 年,一场黑客松让几个年轻人相遇。我们在各自的人生里都有过"尽力却依旧不如意"的时刻,因此格外想用技术,帮普通人把看不懂的东西看明白。
+          <p>我们的核心框架是:</p>
+          <p className="rounded-xl bg-gray-50 px-4 py-3 font-mono text-sm text-gray-800">
+            {CHAIN_FORMULA}
           </p>
-          <ul className="mt-2 space-y-2">
-            {TIMELINE.map(([date, text]) => (
-              <li key={date} className="flex gap-3">
-                <span className="shrink-0 font-mono text-body text-amber-700">{date}</span>
-                <span className="text-gray-700">{text}</span>
-              </li>
+          <p>也就是说,StockTell 不是简单告诉你「哪些股票相关」,而是进一步解释:</p>
+          <ul className="list-disc space-y-1.5 pl-5">
+            {EXPLAIN_POINTS.map((t) => (
+              <li key={t}>{t}</li>
             ))}
           </ul>
-          <p className="mt-3">
-            从"解读命运"到"解读市场",变的是领域,不变的是我们对"把专业的事讲成人话"的执着。<span className="text-gray-400">未完待续……</span>
+          <p>
+            目前 StockTell 重点覆盖 AI 推理基础设施、AI 数据中心电力基础设施、AI 应用等方向,并持续扩展到半导体设备、HBM / 存储、机器人等产业链。
+          </p>
+          <p>
+            我们相信,投资判断的第一步不是预测涨跌,而是<b>先看清关系</b>。
+            <br />
+            StockTell 希望帮助用户从新闻和行情噪音中,建立更结构化的产业链理解。
           </p>
         </Section>
 
-        <Section title="我们的团队">
+        <Section title="我们不做什么">
           <p>
-            StockTell 的团队成员背景多元:既有来自顶尖学府和知名大厂,也有来自普通院校、小型创业公司,还有人经历过延期毕业、休学。这些经历塑造了我们 —— 坦然面对过去,脚踏实地,专注当下,不美化未曾走过的路。团队分布在全球各地,境内多在长三角,其余多在东南亚与北美;对大多数成员而言,这并不是第一个创业项目。
+            <b>StockTell 不是荐股工具。</b>
+            <br />
+            我们不提供买入、卖出、追涨、低吸、抄底等交易建议。
           </p>
           <p>
-            <b>创始人兼 CEO · Mars Chen</b> 毕业于香港大学,职业经历丰富:曾任创业公司首席运营官,也曾是字节跳动诸多产品的产品经理。近年来,他将大型人工智能模型先后应用于文化研究、心理学,以及如今的<b>金融信息解读 —— 帮普通散户看懂市场</b>。
+            <b>StockTell 也不是新闻聚合站。</b>
+            <br />
+            我们不会简单堆叠资讯,而是尝试把事件放回产业链结构里解释。
+          </p>
+          <p>
+            <b>StockTell 更不是「AI 炒股大师」。</b>
+            <br />
+            AI 在这里的作用,是辅助整理信息、识别关系、生成验证框架,而不是替用户做投资决策。
           </p>
         </Section>
 
-        <Section title="把专业金融分析与 AI 融合">
+        <Section title="我们做什么">
+          <p>StockTell 做的是产业链关系解释。我们希望回答三个问题:</p>
           <p>
-            投资研究本质上是一条<b>建立在严谨逻辑链上的推理</b>:美股为什么动 → 产业链如何传导 → 哪些 A 股被带动或承压 → 当前定价是否合理。这种"链式推理"天然适合用先进的推理模型来增强。我们汲取专业分析师的领域知识,构建产业链知识图谱,并用人工精标的推理链数据做模型蒸馏与微调,在保持专业严谨的同时,把模型幻觉率维持在较低水平。
+            <b>第一,这件事为什么会传导?</b>
+            <br />
+            例如,海外 AI 基础设施事件,为什么会影响服务器、光模块、液冷、电力设备等环节。
           </p>
           <p>
-            更重要的是,我们坚持<b>优先提供情感价值,而不是制造焦虑与恐慌</b>。盯盘最怕被情绪牵着走,所以 StockTell 更像一个懂行、靠谱、会说人话的搭子:主动陪你、提醒你别踩坑,而不是冷冰冰地报涨跌、或用"暴跌""崩盘"吓你。为此我们打磨了 AI 的语言风格与界面体验,并持续打造更自然的对话式解读与场景化能力。
+            <b>第二,传导到了哪里?</b>
+            <br />
+            是 AI 推理基础设施链、数据中心电力链,还是 AI 应用侧商业化逻辑。
+          </p>
+          <p>
+            <b>第三,这个关系是否需要验证?</b>
+            <br />
+            直接映射也不等于确定受益。真正需要看的,是订单、客户、收入占比、毛利率、产品商业化等公开证据。
+          </p>
+        </Section>
+
+        <Section title="适合谁使用">
+          <p>StockTell 适合有一定产业链投资意识的用户,包括:</p>
+          <ul className="list-disc space-y-1.5 pl-5">
+            {AUDIENCE.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </Section>
+
+        <Section title="重要说明">
+          <p>
+            StockTell 提供的是产业链关系分析和信息整理,<b>不构成任何投资建议</b>。
+          </p>
+          <p>
+            页面中的关系类型、历史统计和验证点,仅用于帮助用户理解产业链结构和后续应核验的信息,不代表未来价格表现,也不代表收益承诺。
           </p>
         </Section>
 
         <p className="mt-10 border-t border-gray-100 pt-4 text-meta text-gray-400">
-          以上为公司介绍与信息整理,不构成投资建议。投资有风险,决策需谨慎。
+          投资有风险,决策需独立判断。
         </p>
       </main>
     </div>
