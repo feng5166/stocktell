@@ -134,6 +134,41 @@ const tradingDayCache = new Map<string, boolean>();
 // 调用方据此各自决策:检查型(看门狗)把 unknown 当交易日(宁多报一条可忽略的告警);
 // 会对用户做不可逆动作的(生成/推送/记账)把 unknown 当"这天不动 + 发告警"(假日误发不可撤回,
 // 但也不能静默漏掉真交易日 → 用告警让人工确认/手动触发,而非无声跳过)。
+// 日历 KV 预缓存(2026-07-09:Tushare 从 Vercel 东京三天内三次不可达,07:00 简报/15:30 记账
+// 连续被迫 fail-safe 跳过)。trade_cal 是【静态数据】——每次成功查询顺带把未来 35 天整段
+// 写进 KV(3 天节流);Tushare 抖动时读 KV,窗口内恒有权威答案,unknown 从"每次抖动必现"
+// 收敛为"连续 35 天全抖才可能"。KV 自身失败不影响主路径(fail-safe 降级回原行为)。
+const CAL_KV_KEY = "ashare-cal-window"; // { asof: "YYYY-MM-DD", days: Record<ymd, 0|1> }
+type CalWindow = { asof: string; days: Record<string, number> };
+let calPrefetchedAt: string | null = null; // 实例内节流标记
+
+async function prefetchCalWindow(fromISO: string): Promise<void> {
+  if (calPrefetchedAt === fromISO) return; // 同日已预取(本实例)
+  try {
+    const { kvGet, kvSet } = await import("@/lib/kv");
+    const existing = await kvGet<CalWindow>(CAL_KV_KEY).catch(() => null);
+    if (existing?.asof) {
+      const ageDays = (new Date(`${fromISO}T12:00:00Z`).getTime() - new Date(`${existing.asof}T12:00:00Z`).getTime()) / 86400_000;
+      if (ageDays < 3) { calPrefetchedAt = fromISO; return; } // 3 天节流
+    }
+    const end = new Date(new Date(`${fromISO}T12:00:00Z`).getTime() + 35 * 86400_000).toISOString().slice(0, 10);
+    const d = await tsCall(
+      "trade_cal",
+      { exchange: "SSE", start_date: fromISO.replace(/-/g, ""), end_date: end.replace(/-/g, "") },
+      "cal_date,is_open"
+    ).catch(() => null);
+    if (!d || d.items.length < 20) return; // 拉不全不覆盖旧窗口
+    const di = d.fields.indexOf("cal_date");
+    const oi = d.fields.indexOf("is_open");
+    const days: Record<string, number> = {};
+    for (const row of d.items) days[String(row[di])] = Number(row[oi]);
+    await kvSet(CAL_KV_KEY, { asof: fromISO, days });
+    calPrefetchedAt = fromISO;
+  } catch {
+    /* 预取失败不影响主路径 */
+  }
+}
+
 export async function ashareDayStatus(
   dateISO: string
 ): Promise<"trading" | "closed" | "unknown"> {
@@ -151,11 +186,29 @@ export async function ashareDayStatus(
     "cal_date,is_open"
   ).catch(() => null);
 
-  if (!d || d.items.length === 0) return "unknown"; // 工作日 + Tushare 不可用
+  if (!d || d.items.length === 0) {
+    // Tushare 不可达 → 读 KV 预缓存窗口(治 unknown 的第二源;窗口没有才真 unknown)
+    try {
+      const { kvGet } = await import("@/lib/kv");
+      const win = await kvGet<CalWindow>(CAL_KV_KEY).catch(() => null);
+      const v = win?.days?.[ymd];
+      if (v !== undefined) {
+        const open = v === 1;
+        tradingDayCache.set(ymd, open);
+        capDates(tradingDayCache, 500);
+        return open ? "trading" : "closed";
+      }
+    } catch {
+      /* KV 也失败 → 维持 unknown */
+    }
+    return "unknown"; // 工作日 + Tushare 不可用 + KV 无窗口
+  }
   const idx = d.fields.indexOf("is_open");
   const open = String(d.items[0][idx]) === "1";
   tradingDayCache.set(ymd, open); // 仅缓存权威结果,unknown 不缓存(下次重试)
   capDates(tradingDayCache, 500);
+  // 成功路径顺带预取未来窗口(3 天节流,不增加高频调用)
+  void prefetchCalWindow(dateISO);
   return open ? "trading" : "closed";
 }
 
