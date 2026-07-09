@@ -172,6 +172,60 @@ async function genJudgment(
   return { text: fallbackChainTake(items) ?? "", degraded: true };
 }
 
+/* ---------- S1b:一句话风险(2026-07-09 负责人反馈「太模板化」:三链骨架句相同)。
+   LLM 针对本链今日事件写「这个判断最可能错在哪/什么信号能证伪」;合规预检(禁词/长度)
+   不过或 LLM 失败 → 回退 chainRisk 规则模板。与判断同模型 fast,+1 短调用/链。 ---------- */
+const RISK_PROMPT = `你是 StockTell 的产业链风险提示助手。为「{CHAIN}」写今天的一句话风险提示。
+要求:
+- 只写一句(35~90字),指出【今天这个链级判断最可能错在哪、什么信号能证伪】——要落到今天的具体事件与本链验证点,不写放之四海皆准的套话。
+- 禁止"海外上涨不等于国内订单改善"这类模板句式(换成对今天情况的具体提醒);禁止预测涨跌、禁止操作建议、禁止盘口词(低吸/追/抄底/放量/缩量/企稳/破位/补跌等),不带具体涨跌数字。
+- 可参考的验证点:{VERIFY}(择相关者,不必全列)。
+只输出这一句,不要引号、不要任何其他内容。`;
+
+async function genRisk(
+  chainName: string,
+  verify: string,
+  own: BriefingItem[],
+  all: BriefingItem[],
+  meta: { llmCalls: number; retries: number }
+): Promise<string | null> {
+  const llm = await getLLMFor("fast");
+  if (!llm) return null;
+  const src = own.length ? own : all;
+  const payload = src.slice(0, 6).map((it) => ({
+    trigger: it.triggerName,
+    direction: (it.triggerChange ?? 0) >= 0 ? "隔夜涨" : "隔夜跌",
+    title: it.title,
+  }));
+  const spillNote = own.length === 0 ? "\n注意:本链今日无直接触发事件,属链外情绪外溢——风险提示要点破这一点。" : "";
+  const sys = RISK_PROMPT.replace("{CHAIN}", chainName).replace("{VERIFY}", verify);
+  try {
+    meta.llmCalls++;
+    const resp = await chatTimed("insight-daily-risk", llm.provider, () =>
+      llm.client.chat.completions.create(
+        {
+          model: llm.model,
+          max_tokens: 200,
+          messages: [
+            { role: "system", content: sys },
+            { role: "user", content: `今天与本链相关的事件(JSON):\n${JSON.stringify(payload)}${spillNote}` },
+          ],
+        },
+        { maxRetries: 1, timeout: 10000 }
+      )
+    );
+    const txt = resp.choices[0]?.message?.content?.trim().replace(/^["「『]|["」』]$/g, "");
+    if (!txt || txt.length < 25 || txt.length > 120) return null;
+    // 合规预检:禁词命中/盘面数字 → 弃用走规则兜底(别让风险行把整篇拖进 blocked)
+    const { scanBannedWords, hasSpecificMove } = await import("@/lib/content-guard");
+    if (scanBannedWords(txt).length > 0 || hasSpecificMove(txt)) return null;
+    if (txt.includes("不等于国内订单")) return null; // 模板腔复读,视同失败
+    return txt;
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- S2:环节热力(LLM 给方向+原因;relation 只来自链配置;规则兜底) ---------- */
 const HEAT_PROMPT = `你是 StockTell 的产业链解读助手。根据今天的触发事件,为下列产业链环节逐一标注今日方向与一句话原因。
 方向只能取:升温 | 降温 | 分化 | 观察(没被今天事件波及=观察)。
@@ -466,7 +520,11 @@ export async function generateDailyInsight(
   const judgment = await genJudgment(chain.name, chain.segments, chain.tagline, items, meta);
   const heat = await genHeat(chain.segments, items, toSegment, opts?.yesterdayHeat ?? null, meta);
   const mappingsDelta = buildMappingsDelta(items, chain.segments, toSegment, chain.insightSlug);
-  const risk = chainRisk(chain.segments, own, items);
+  const verifyWords =
+    chain.segments?.find((sg) => sg.defaultRelation === "直接映射")?.verifyTemplate?.slice(0, 3).join("、") ??
+    "订单、毛利率、资本开支";
+  const risk =
+    (await genRisk(chain.name, verifyWords, own, items, meta)) ?? chainRisk(chain.segments, own, items);
   const references = await buildReferences(trigger, meta);
 
   const payload: DailyInsightPayload = {
