@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # 需完整历史 + 能 checkout stocktell2.0 做双分支同步(见末尾 Commit 步)
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
@@ -32,15 +34,26 @@ jobs:
           node scripts/enrich-concepts.mjs
           node scripts/concept-coverage.mjs
           node scripts/gen-etf-holdings.mjs
-      - name: Commit if changed
+      - name: Commit if changed (sync 双分支 main + stocktell2.0)
         run: |
+          set -e
           FILES="src/data/enrichment.generated.ts src/data/concepts.generated.ts docs/concept-coverage.generated.md src/data/etf-holdings.generated.ts"
           if git diff --quiet -- $FILES; then
             echo "无变化,跳过提交"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add $FILES
-            git commit -m "chore(data): 周更 Tushare 增强(市值/换手/热度 + 概念 + 覆盖 + ETF持仓) [skip ci]"
-            git push
+            exit 0
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          MSG="chore(data): 周更 Tushare 增强(市值/换手/热度 + 概念 + 覆盖 + ETF持仓) [skip ci]"
+          git add $FILES
+          git commit -m "$MSG"
+          # 主分支:push 即触发 Vercel 部署
+          git push origin HEAD:main
+          NEW=$(git rev-parse HEAD)
+          # 双分支同步(§6:git diff main..stocktell2.0 必须为空)——此前只推 main,每周六都
+          # 短暂打破不变量、要人肉补。数据提交只动 generated 文件,cherry-pick 到 2.0 干净;
+          # 若某天两分支 generated 基线已分叉致 cherry-pick 冲突 → 本步失败告警,正好暴露分叉。
+          git fetch origin stocktell2.0
+          git checkout -B stocktell2.0 origin/stocktell2.0
+          git cherry-pick "$NEW"
+          git push origin stocktell2.0
