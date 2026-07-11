@@ -4,9 +4,18 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { STOCK_MAP } from "@/data/stocks";
 import { CHAINS } from "@/data/chains";
-import { REL_CHIP_CLS_SHORT } from "@/lib/relation-rank";
+import { REL_CHIP_CLS_SHORT, EVIDENCE_LABEL, chainIdFromSlug } from "@/lib/relation-rank";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
+import { resolveInChain } from "@/lib/relation-resolver";
+import { EvidencePanel } from "@/components/EvidencePanel";
+import {
+  fromInsightRef,
+  fromDailyRef,
+  fromRelationRef,
+  matchReferences,
+  type EvidenceItem,
+} from "@/lib/evidence";
 import {
   INSIGHT_CHAINS,
   type InsightChain,
@@ -96,8 +105,9 @@ function Pill({ text, cls }: { text: string; cls: string }) {
   return <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] ${cls}`}>{text}</span>;
 }
 
-// 主线跳:人话主线 + 反转人话 + 依据行(置信度前置)
-function HopRow({ h }: { h: Hop }) {
+// 主线跳:人话主线 + 反转人话 + 依据行(置信度前置)+ 就近证据入口(PR1:
+// 有匹配来源给「依据 N 条」,没有则 EvidencePanel 空态如实标「推理假设 · 待验证」)
+function HopRow({ h, evidence, insightId }: { h: Hop; evidence: EvidenceItem[]; insightId: string }) {
   return (
     <li className="rounded-lg bg-gray-50 px-3 py-2.5">
       <p className="text-sm leading-relaxed text-gray-800">{h.plain}</p>
@@ -111,6 +121,14 @@ function HopRow({ h }: { h: Hop }) {
         依据·{h.evidenceType}
         {h.evidenceExample ? `:${h.evidenceExample}` : ""}
       </p>
+      <div className="mt-1">
+        <EvidencePanel
+          insightId={insightId}
+          targetType="hop"
+          targetId={String(h.order)}
+          items={evidence}
+        />
+      </div>
     </li>
   );
 }
@@ -158,6 +176,22 @@ export default async function InsightPage({ params }: { params: { slug: string }
     ? await getPublishedDaily(chainPage.id, todayISO()).catch(() => null)
     : null;
 
+  // ---- References 就近可见(PR1):静态 references 经迁移期规则匹配绑到 hop/heat/mapping ----
+  const staticEv = c.references.map(fromInsightRef);
+  const hopEv = (order: number) => matchReferences({ type: "hop", order }, staticEv);
+  const heatEv = (segment: string) => matchReferences({ type: "heat", segment }, staticEv);
+  const mapEv = (m: StockMap) =>
+    matchReferences({ type: "mapping", name: m.name, code: m.code, segment: m.segment }, staticEv);
+  // 匹配不到任何判断的引用留「其他来源」,不硬绑(PRD §3.4)
+  const matchedIds = new Set<string>();
+  for (const h of c.mainHops) for (const e of hopEv(h.order)) matchedIds.add(e.id);
+  for (const r of c.heatmap) for (const e of heatEv(r.segment)) matchedIds.add(e.id);
+  for (const m of c.mappings) for (const e of mapEv(m)) matchedIds.add(e.id);
+  const otherEv = staticEv.filter((e) => !matchedIds.has(e.id));
+  // mapping 行的关系依据/验证点:走统一关系模型本链档(resolver 唯一入口;
+  // chainIdFromSlug:insight slug ≠ 关系链 id,datacenter-power→data-center-power)
+  const relChainId = chainIdFromSlug(params.slug);
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
@@ -200,6 +234,17 @@ export default async function InsightPage({ params }: { params: { slug: string }
             <p className="mt-2 text-xs leading-relaxed text-gray-500">
               <span className="font-medium text-gray-600">今日风险</span>:{daily.payload.risk}
             </p>
+            {/* PR1 P0:当日 references 前移到最新判断旁(此前只在归档页底部) */}
+            <div className="mt-1.5">
+              <EvidencePanel
+                insightId={params.slug}
+                date={daily.date}
+                targetType="judgment"
+                targetId="daily"
+                items={daily.payload.references.map(fromDailyRef)}
+                label={`今日依据 ${daily.payload.references.length} 条`}
+              />
+            </div>
           </section>
         )}
 
@@ -268,7 +313,7 @@ export default async function InsightPage({ params }: { params: { slug: string }
             </summary>
             <ul className="mt-2 space-y-1.5">
               {c.mainHops.map((h) => (
-                <HopRow key={h.order} h={h} />
+                <HopRow key={h.order} h={h} evidence={hopEv(h.order)} insightId={params.slug} />
               ))}
             </ul>
           </details>
@@ -309,6 +354,13 @@ export default async function InsightPage({ params }: { params: { slug: string }
                           {hop.evidenceExample ? `:${hop.evidenceExample}` : ""}
                         </p>
                       )}
+                      {/* PR1:环节级来源就近可见;无匹配来源=如实标推理假设 */}
+                      <EvidencePanel
+                        insightId={params.slug}
+                        targetType="heat"
+                        targetId={r.segment}
+                        items={heatEv(r.segment)}
+                      />
                     </div>
                   </details>
                 </div>
@@ -357,14 +409,42 @@ export default async function InsightPage({ params }: { params: { slug: string }
                   )}
                   <details>
                     <summary className="cursor-pointer text-[11px] text-gray-400">
-                      为什么是这几只 · 关系依据
+                      为什么是这几只 · 关系依据 / 验证点
                     </summary>
-                    <ul className="mt-1 space-y-1">
-                      {items.map((m) => (
-                        <li key={m.name} className="text-xs leading-relaxed text-gray-500">
-                          <b className="text-gray-600">{m.name}</b>:{m.reason}
-                        </li>
-                      ))}
+                    <ul className="mt-1 space-y-1.5">
+                      {items.map((m) => {
+                        // 关系依据 = 统一关系模型本链档的 references + 静态引用按名/码/环节匹配(去重)
+                        const rel = m.code ? resolveInChain(m.code, relChainId) : null;
+                        const seen = new Set<string>();
+                        const evidence = [
+                          ...(rel?.references ?? []).map(fromRelationRef),
+                          ...mapEv(m),
+                        ].filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)));
+                        return (
+                          <li key={m.name} className="text-xs leading-relaxed text-gray-500">
+                            <b className="text-gray-600">{m.name}</b>
+                            {rel?.evidenceStatus && EVIDENCE_LABEL[rel.evidenceStatus] && (
+                              <span className="ml-1 rounded bg-gray-100 px-1 py-0.5 text-[11px] text-gray-500">
+                                {EVIDENCE_LABEL[rel.evidenceStatus]}
+                              </span>
+                            )}
+                            :{m.reason}
+                            {rel && rel.verificationPoints.length > 0 && (
+                              <span className="block text-[11px] text-gray-400">
+                                验证点:{rel.verificationPoints.slice(0, 3).join(" / ")}
+                              </span>
+                            )}
+                            <EvidencePanel
+                              insightId={params.slug}
+                              targetType="mapping"
+                              targetId={m.code ?? m.name}
+                              items={evidence}
+                              label={`关系依据 ${evidence.length} 条`}
+                              emptyText="关系依据待补 · 以验证点自行核实"
+                            />
+                          </li>
+                        );
+                      })}
                     </ul>
                   </details>
                 </div>
@@ -384,44 +464,18 @@ export default async function InsightPage({ params }: { params: { slug: string }
               <li key={i}>· {u}</li>
             ))}
           </ul>
-          <details className="mt-2.5">
-            <summary className="cursor-pointer text-xs text-gray-500">📚 去哪核实(references)</summary>
-            <ul className="mt-2 space-y-2">
-              {c.references.map((ref) => (
-                <li key={ref.name} className="text-xs leading-relaxed">
-                  <a
-                    href={ref.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-brand-600 hover:underline"
-                  >
-                    {ref.name} ↗
-                  </a>
-                  <span className="ml-1.5 rounded bg-gray-100 px-1 py-0.5 text-[11px] text-gray-500">
-                    {ref.type}
-                  </span>
-                  {ref.kind === "具体来源" ? (
-                    <span className="ml-1 rounded bg-sky-50 px-1 py-0.5 text-[11px] text-sky-700">
-                      已核实{ref.date ? ` · ${ref.date}` : ""}
-                    </span>
-                  ) : (
-                    <span className="ml-1 rounded bg-gray-50 px-1 py-0.5 text-[11px] text-gray-400">
-                      常设入口
-                    </span>
-                  )}
-                  {ref.supports && (
-                    <span className="ml-1 rounded bg-brand-50 px-1 py-0.5 text-[11px] text-brand-700">
-                      支撑:{ref.supports}
-                    </span>
-                  )}
-                  <span className="block text-gray-500">{ref.note}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
-              「已核实」= 真实文档/披露页,链接实测可达;「常设入口」= 官方长期页面;「支撑」= 这条来源对应推理链的哪一跳/哪个环节。正式版每跳挂当天具体引用(季报/公告段落)+ 时间戳。
-            </p>
-          </details>
+          {/* PR1:引用已就近绑到 hop/heat/mapping;匹配不到具体判断的留这里,不硬绑 */}
+          {otherEv.length > 0 && (
+            <div className="mt-2.5">
+              <EvidencePanel
+                insightId={params.slug}
+                targetType="other"
+                targetId="unmatched"
+                items={otherEv}
+                label={`其他来源(未绑定到具体判断)· ${otherEv.length} 条`}
+              />
+            </div>
+          )}
         </Section>
 
         {/* ===== CTA:真按钮,不做交易导向 ===== */}

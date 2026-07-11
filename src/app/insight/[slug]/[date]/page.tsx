@@ -7,6 +7,8 @@ import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { getPublishedDaily, listPublishedDailyDates } from "@/lib/insight-pipeline/docs";
 import { DISCLAIMER } from "@/lib/constants";
 import { safeJsonLd } from "@/lib/site";
+import { EvidencePanel } from "@/components/EvidencePanel";
+import { fromDailyRef } from "@/lib/evidence";
 
 // 每日 insight 归档页(2.1-W4):把每天的链级推理沉淀成可被搜索引擎抓取的内容资产。
 // 只渲染 published(fallback 引擎产出的 doc 也是人审后 published,不伪装口径由置信度徽章表达);
@@ -104,6 +106,17 @@ export default async function InsightArchivePage({
           <h2 className="text-xs font-medium text-gray-500">事件与判断</h2>
           <p className="mt-1 text-xs leading-relaxed text-gray-500">{p.trigger.summary}</p>
           <p className="mt-2 text-sm leading-relaxed text-gray-800">{p.judgment}</p>
+          {/* PR1:当日依据就近可见(此前只在页底);无引用时如实标推理假设 */}
+          <div className="mt-1.5">
+            <EvidencePanel
+              insightId={params.slug}
+              date={params.date}
+              targetType="judgment"
+              targetId="judgment"
+              items={p.references.map(fromDailyRef)}
+              label={`今日依据 ${p.references.length} 条`}
+            />
+          </div>
         </section>
 
         <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
@@ -146,27 +159,16 @@ export default async function InsightArchivePage({
         <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-xs font-medium text-gray-500">当日风险</h2>
           <p className="mt-1 text-xs leading-relaxed text-gray-600">{p.risk}</p>
+          <div className="mt-1.5">
+            <EvidencePanel
+              insightId={params.slug}
+              date={params.date}
+              targetType="risk"
+              targetId="risk"
+              items={p.references.map(fromDailyRef)}
+            />
+          </div>
         </section>
-
-        {p.references.length > 0 && (
-          <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="text-xs font-medium text-gray-500">依据来源</h2>
-            <ul className="mt-2 space-y-1">
-              {p.references.map((r) => (
-                <li key={r.url} className="text-xs leading-relaxed text-gray-600">
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">
-                    {r.name}
-                  </a>
-                  <span className="text-gray-400">
-                    {" "}
-                    · {r.kind}
-                    {r.date ? ` · ${r.date}` : ""} · {r.supports}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
 
         <nav className="mb-4 flex items-center justify-between text-xs">
           {older ? (
