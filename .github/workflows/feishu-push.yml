@@ -11,12 +11,31 @@ jobs:
   push:
     runs-on: ubuntu-latest
     steps:
-      # -f:HTTP ≥400(交易日缺简报时路由故意返回 500)要让本 step 失败 → GH 失败邮件,
-      # 成为飞书之外的第二告警通道(2.1-B:此前 500 被吞,GH 永远绿)。
-      - name: Push today's briefing to Feishu
+      # push-feishu 是 Vercel cron 共模盲区的外部哨:交易日缺简报时路由故意返回 500。
+      # 500 → ①外部自愈:补触发 /api/cron/briefing(正常生成入口,幂等——已发布=廉价 no-op,
+      #        缺失=走正常生成写 generated + 邮件/推送)。这补的正是 2026-07-09 的洞:Vercel 漏派
+      #        briefing 主/补两跑,靠站内自愈救不了,须站外补触发。用 cron 入口而非 generate?replace
+      #        (后者产 manual_reissue 且偏破坏),更干净、只需 CRON_SECRET。
+      #        ②复推校验:自愈后仍 500 → 本 step 失败 → GH 失败邮件(保留飞书之外的第二告警通道)。
+      - name: Push today's briefing to Feishu (self-heal if missing)
         run: |
-          curl -sSf -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          set -o pipefail
+          code=$(curl -sS -o /tmp/pf.out -w "%{http_code}" -X GET \
+            "https://stocktell.vercel.app/api/cron/push-feishu" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          cat /tmp/pf.out; echo
+          if [ "$code" = "500" ]; then
+            echo "::warning::push-feishu 报告交易日缺简报(HTTP 500)—— 外部自愈:补触发 /api/cron/briefing"
+            # 幂等生成入口;-m 300 覆盖 briefing maxDuration=300;自愈本身失败不阻断,交下面复推判定
+            curl -sS -m 300 -X GET "https://stocktell.vercel.app/api/cron/briefing" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" || true
+            echo "--- 自愈后复推校验 ---"
+            # -f:自愈没救回(仍 500)→ step 失败打红,第二告警通道保留
+            curl -sSf -X GET "https://stocktell.vercel.app/api/cron/push-feishu" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          elif [ "$code" -ge 400 ]; then
+            echo "push-feishu 返回 HTTP $code(非缺简报的 5xx/4xx)"; exit 1
+          fi
       # Web Push 已关闭(改由邮件 + 微信承载);不再触发 /api/cron/push-web。
       - name: Check bridge HTTPS cert expiry (alert if <14d)
         if: always() # 简报 step 红了也照测证书,别让两个哨互相遮蔽
