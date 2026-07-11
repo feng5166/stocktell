@@ -7,7 +7,7 @@
 > 2. **接入后立刻更新本文档**(加一行/一节:用途、关键文件、环境变量、坑)。
 > 3. 新增环境变量,记得在 **Vercel 项目环境变量**里配置(本地 `.env.local` 仅本地用;线上不读它)。
 >
-> 最后更新:2026-06-29
+> 最后更新:2026-07-11(行情主/备口径校准:个股腾讯主源/新浪补缺,美股指数 Yahoo 主源——与 `/methodology` 公开口径同步,改行情源两处一起改)
 
 ---
 
@@ -81,10 +81,11 @@
 
 | 服务 | 用途 | 关键文件 | 备注 |
 |---|---|---|---|
-| **新浪行情** `hq.sinajs.cn` / `finance.sina.com.cn` | A股/美股实时行情 | `src/lib/quotes.ts` | 免 key;失败读 `quotes_cache` |
+| **腾讯行情** `qt.gtimg.cn` | A股/美股个股实时行情【主源】 | `src/lib/quotes.ts` | 免 key;原主源新浪被封 Vercel 机房 IP/慢速拒绝拖 5s 后切腾讯优先 |
+| **新浪行情** `hq.sinajs.cn` | A股/美股个股实时行情【补缺】 | `src/lib/quotes.ts` | 免 key;腾讯缺失时回落;两源都失败读 `quotes_cache` |
 | **东方财富** `push2his.eastmoney.com` / `quote.eastmoney.com` | 美股历史日线、A股资金面 | `src/lib/history.ts`、`src/lib/us-history.ts` | 免 key;**会封 Vercel IP**(美股历史改用 Yahoo) |
 | **Tushare** `api.tushare.pro` | 交易日历(trade_cal)/ 基本面(daily_basic)/ 资金面(moneyflow/top_list/margin)/ **雷区雷达**(share_float 解禁、stk_holdertrade 增减持、pledge_stat 质押、repurchase 回购、namechange ST 判定)/ **财报体检**(income/balancesheet/cashflow/fina_indicator)/ **相似性**(dailyHistory 2年日线) | `src/lib/tushare.ts`、`risk-radar.ts`、`financials.ts`、`similarity.ts`、`api/fundamentals`、`api/similarity` | 需 `TUSHARE_TOKEN`(6000积分)。**缓存(2026-07-01 起)**:基本面/资金面/雷区/财报/相似性结果落 **DB 跨实例缓存**——`quotes_cache`(按 `<类>:code:当天`)+ `fund_day_cache`(按 ymd),**非 `unstable_cache`**(Vercel 不跨实例、冷启重打)。失败用 `tsCallStrict` 区分「回源失败 vs 成功但空行」:**只在确有回源时才写缓存(不毒化)** + `alertThrottled` 飞书告警。仅 `fundFlowFor` 批量外层仍留轻量 unstable_cache(内层 bundle 已 DB 缓存) |
-| **Yahoo Finance** `query1.finance.yahoo.com` | 美股历史日线(相似性用) | `src/lib/yahoo.ts` | 免 key;Tushare us_daily 要付费 + 东财封 IP,故走 Yahoo |
+| **Yahoo Finance** `query1.finance.yahoo.com` | 美股历史日线(相似性用)+ **美股大盘指数主源**(纳指/标普/费半,新浪/腾讯补缺)+ 行情地板健康探针 | `src/lib/yahoo.ts`、`src/lib/quotes.ts` | 免 key;Tushare us_daily 要付费 + 东财封 IP;新浪封 Vercel IP、腾讯美股指数无费半,故指数主走 Yahoo |
 
 ---
 

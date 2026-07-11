@@ -18,6 +18,12 @@ export function SiteFooter() {
         <span aria-hidden className="text-gray-300">
           ·
         </span>
+        <Link href="/methodology?from=footer" className="hover:text-gray-700">
+          数据与方法
+        </Link>
+        <span aria-hidden className="text-gray-300">
+          ·
+        </span>
         <Link href="/pro" className="hover:text-gray-700">
           专业版(规划中)
         </Link>

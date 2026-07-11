@@ -85,7 +85,12 @@ export default function RelationsGlossaryPage() {
 
       <p className="mt-8 border-t border-gray-200 pt-4 text-xs leading-relaxed text-gray-400">
         StockTell 是 A 股散户的产业理解工具、不是荐股 / 喊单工具。所有关系为「研究框架梳理·非确认」,不构成投资建议。
-        看具体产业链 → <Link href="/stocks" className="text-brand-600 hover:underline">产业链股票地图</Link>。
+        看具体产业链 → <Link href="/stocks" className="text-brand-600 hover:underline">产业链股票地图</Link>;
+        数据来自哪里、AI 与人工各负责什么 →{" "}
+        <Link href="/methodology?from=relations" className="text-brand-600 hover:underline">
+          数据来源与方法
+        </Link>
+        。
       </p>
     </div>
   );
