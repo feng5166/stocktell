@@ -113,6 +113,9 @@ export function EvidencePanel({
         <li className="border-t border-gray-100 pt-1.5 text-[11px] leading-relaxed text-gray-400">
           「已核实可达」只代表该材料真实存在、链接实测可达,不代表 StockTell 的推论必然成立;
           「常设核实入口」是去哪核实的长期入口,不等于已证明具体结论。
+          <a href="/methodology?from=evidence" className="ml-1 text-brand-500 hover:underline">
+            这些标签是什么意思?
+          </a>
         </li>
       </ul>
     </details>
