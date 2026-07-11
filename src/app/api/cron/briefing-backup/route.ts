@@ -23,7 +23,11 @@ export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  const base = process.env.NEXTAUTH_URL || SITE_URL;
+  // 自愈 self-fetch 固定走 Vercel 平台生产域(SITE_URL = *.vercel.app,始终可解析、GH Actions
+  // 已证可达且未被部署保护拦),【不再】用 NEXTAUTH_URL —— 它是面向用户/OAuth 的自有域名,
+  // 备案切换窗口内解析可能停摆(2026-07-09 实况:主域切 maoadao.com 备案期解析停,补位 self-fetch
+  // 连不上、自愈打不通,当天简报只能人工补发)。self-fetch 不依赖自有域名 DNS,自愈才不受备案影响。
+  const base = SITE_URL;
   const secret = process.env.CRON_SECRET || "";
   // 本函数 maxDuration=300 与下游主流程最坏耗时相同,裸等会先被平台硬杀。留余量 280s 主动 abort,
   // 但 abort ≠ 失败:补位真正管用的那天(07:00 漏了)下游要跑满生成+推送 ~300s,280s abort 属正常,
