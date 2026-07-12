@@ -9,6 +9,7 @@ import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { resolveInChain } from "@/lib/relation-resolver";
 import { EvidencePanel } from "@/components/EvidencePanel";
+import { AskButton, InsightChatPanel } from "@/components/InsightChat";
 import {
   fromInsightRef,
   fromRelationRef,
@@ -107,7 +108,18 @@ function Pill({ text, cls }: { text: string; cls: string }) {
 
 // 主线跳:人话主线 + 反转人话 + 依据行(置信度前置)+ 就近证据入口(PR1:
 // 有匹配来源给「依据 N 条」,没有则 EvidencePanel 空态如实标「推理假设 · 待验证」)
-function HopRow({ h, evidence, insightId }: { h: Hop; evidence: EvidenceItem[]; insightId: string }) {
+// PR4:askOn 时挂「追问这一跳」锚点按钮(情境追问,非通用聊天)
+function HopRow({
+  h,
+  evidence,
+  insightId,
+  askOn,
+}: {
+  h: Hop;
+  evidence: EvidenceItem[];
+  insightId: string;
+  askOn?: boolean;
+}) {
   return (
     <li className="rounded-lg bg-gray-50 px-3 py-2.5">
       <p className="text-sm leading-relaxed text-gray-800">{h.plain}</p>
@@ -121,13 +133,18 @@ function HopRow({ h, evidence, insightId }: { h: Hop; evidence: EvidenceItem[]; 
         依据·{h.evidenceType}
         {h.evidenceExample ? `:${h.evidenceExample}` : ""}
       </p>
-      <div className="mt-1">
+      <div className="mt-1 flex items-start justify-between gap-2">
         <EvidencePanel
           insightId={insightId}
           targetType="hop"
           targetId={String(h.order)}
           items={evidence}
         />
+        {askOn && (
+          <AskButton
+            anchor={{ type: "hop", id: String(h.order), label: `这一跳(${h.from} → ${h.to})` }}
+          />
+        )}
       </div>
     </li>
   );
@@ -191,6 +208,8 @@ export default async function InsightPage({ params }: { params: { slug: string }
   // mapping 行的关系依据/验证点:走统一关系模型本链档(resolver 唯一入口;
   // chainIdFromSlug:insight slug ≠ 关系链 id,datacenter-power→data-center-power)
   const relChainId = chainIdFromSlug(params.slug);
+  // 情境追问总开关(PR4):env 关 = 页面不渲染任何入口与面板,可整体下线(PRD §5.6)
+  const askOn = process.env.INSIGHT_CHAT_ENABLED === "1";
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -235,7 +254,7 @@ export default async function InsightPage({ params }: { params: { slug: string }
               <span className="font-medium text-gray-600">今日风险</span>:{daily.payload.risk}
             </p>
             {/* PR1 P0:当日 references 前移到最新判断旁;PR3:v2 按 targets 选取(v1 兼容=全量) */}
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex items-start justify-between gap-2">
               <EvidencePanel
                 insightId={params.slug}
                 date={daily.date}
@@ -244,6 +263,12 @@ export default async function InsightPage({ params }: { params: { slug: string }
                 items={dailyRefsFor("judgment", daily.payload.references)}
                 label={`今日依据 ${dailyRefsFor("judgment", daily.payload.references).length} 条`}
               />
+              {askOn && (
+                <span className="flex shrink-0 gap-1">
+                  <AskButton anchor={{ type: "judgment", id: "daily", label: "今日判断" }} />
+                  <AskButton anchor={{ type: "risk", id: "risk", label: "当前风险/证伪条件" }} />
+                </span>
+              )}
             </div>
           </section>
         )}
@@ -313,7 +338,7 @@ export default async function InsightPage({ params }: { params: { slug: string }
             </summary>
             <ul className="mt-2 space-y-1.5">
               {c.mainHops.map((h) => (
-                <HopRow key={h.order} h={h} evidence={hopEv(h.order)} insightId={params.slug} />
+                <HopRow key={h.order} h={h} evidence={hopEv(h.order)} insightId={params.slug} askOn={askOn} />
               ))}
             </ul>
           </details>
@@ -355,12 +380,17 @@ export default async function InsightPage({ params }: { params: { slug: string }
                         </p>
                       )}
                       {/* PR1:环节级来源就近可见;无匹配来源=如实标推理假设 */}
-                      <EvidencePanel
-                        insightId={params.slug}
-                        targetType="heat"
-                        targetId={r.segment}
-                        items={heatEv(r.segment)}
-                      />
+                      <div className="flex items-start justify-between gap-2">
+                        <EvidencePanel
+                          insightId={params.slug}
+                          targetType="heat"
+                          targetId={r.segment}
+                          items={heatEv(r.segment)}
+                        />
+                        {askOn && (
+                          <AskButton anchor={{ type: "heat", id: r.segment, label: `「${r.segment}」环节` }} />
+                        )}
+                      </div>
                     </div>
                   </details>
                 </div>
@@ -434,14 +464,21 @@ export default async function InsightPage({ params }: { params: { slug: string }
                                 验证点:{rel.verificationPoints.slice(0, 3).join(" / ")}
                               </span>
                             )}
-                            <EvidencePanel
-                              insightId={params.slug}
-                              targetType="mapping"
-                              targetId={m.code ?? m.name}
-                              items={evidence}
-                              label={`关系依据 ${evidence.length} 条`}
-                              emptyText="关系依据待补 · 以验证点自行核实"
-                            />
+                            <span className="flex items-start justify-between gap-2">
+                              <EvidencePanel
+                                insightId={params.slug}
+                                targetType="mapping"
+                                targetId={m.code ?? m.name}
+                                items={evidence}
+                                label={`关系依据 ${evidence.length} 条`}
+                                emptyText="关系依据待补 · 以验证点自行核实"
+                              />
+                              {askOn && (
+                                <AskButton
+                                  anchor={{ type: "mapping", id: m.code ?? m.name, label: `${m.name} 为什么被映射` }}
+                                />
+                              )}
+                            </span>
                           </li>
                         );
                       })}
@@ -534,6 +571,14 @@ export default async function InsightPage({ params }: { params: { slug: string }
 
         <p className="mb-2 text-meta leading-relaxed text-gray-400">🧪 {c.eventNote}</p>
         <p className="text-meta leading-relaxed text-gray-400">{c.disclaimer}</p>
+        {/* 情境追问面板(每页一个,AskButton 经 CustomEvent 唤起;开关关=不渲染) */}
+        {askOn && (
+          <InsightChatPanel
+            insightId={params.slug}
+            date={daily?.date}
+            chainTitle={c.title.replace(" · 因果链", "")}
+          />
+        )}
       </main>
     </div>
   );

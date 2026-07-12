@@ -254,6 +254,25 @@ const DROP_RELATION_REVIEW_OLD_UNIQUE = `DROP INDEX IF EXISTS "relation_review_q
 const IDX_RELATION_REVIEW_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "relation_review_queue_code_chain_id_source_key" ON "relation_review_queue" ("code", "chain_id", "source")`;
 const IDX_RELATION_REVIEW_STATUS = `CREATE INDEX IF NOT EXISTS "relation_review_queue_status_last_seen_idx" ON "relation_review_queue" ("status", "last_seen")`;
 
+// 情境式追问消息表(PR4,prd-trust-chat-pro-intent §5.6):配额按 (user_id, created_at) 计数,
+// 索引是配额路径的依赖;缺表时对话接口 fail-closed(拒绝提问)不静默放行。哨兵同步加(instrumentation.ts)。
+const T_CHAT_MESSAGE = `CREATE TABLE IF NOT EXISTS "chat_message" (
+  "id" TEXT NOT NULL,
+  "user_id" TEXT NOT NULL,
+  "thread_key" TEXT NOT NULL,
+  "insight_slug" TEXT NOT NULL,
+  "date" TEXT,
+  "anchor_type" TEXT NOT NULL,
+  "anchor_id" TEXT NOT NULL,
+  "role" TEXT NOT NULL,
+  "content" TEXT NOT NULL,
+  "result" TEXT,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "chat_message_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_CHAT_USER_CREATED = `CREATE INDEX IF NOT EXISTS "chat_message_user_id_created_at_idx" ON "chat_message" ("user_id", "created_at")`;
+const IDX_CHAT_THREAD_CREATED = `CREATE INDEX IF NOT EXISTS "chat_message_thread_key_created_at_idx" ON "chat_message" ("thread_key", "created_at")`;
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -317,6 +336,9 @@ export async function POST(req: NextRequest) {
         await tx.$executeRawUnsafe(DROP_RELATION_REVIEW_OLD_UNIQUE);
         await tx.$executeRawUnsafe(IDX_RELATION_REVIEW_UNIQUE);
         await tx.$executeRawUnsafe(IDX_RELATION_REVIEW_STATUS);
+        await tx.$executeRawUnsafe(T_CHAT_MESSAGE);
+        await tx.$executeRawUnsafe(IDX_CHAT_USER_CREATED);
+        await tx.$executeRawUnsafe(IDX_CHAT_THREAD_CREATED);
       },
       { timeout: 30000 }
     );

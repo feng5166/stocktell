@@ -18,6 +18,10 @@ export async function register() {
         index: "relation_review_queue_code_chain_id_source_key",
         hint: "relationReviewQueue 按源分账唯一索引(V1)缺失——AI 审阅/用户提交/复盘入队会被旧索引静默吞掉",
       },
+      {
+        index: "chat_message_user_id_created_at_idx",
+        hint: "chat_message 配额计数索引(PR4)缺失——情境追问的 DB 配额查询走全表扫或表根本没建,对话接口会 fail-closed 全拒",
+      },
     ];
     const rows = (await db.$queryRawUnsafe(
       `SELECT indexname FROM pg_indexes WHERE indexname IN (${SENTINELS.map((s) => `'${s.index}'`).join(",")})`
