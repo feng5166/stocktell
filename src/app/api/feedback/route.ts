@@ -60,22 +60,24 @@ export async function POST(req: NextRequest) {
   const contact = String(body.contact ?? "").trim().slice(0, 200);
   const email = sessEmail || contact || null;
 
-  // 尽力存库(表未建/无库都不致命,飞书照发)
+  // 尽力存库(表未建/无库不单独致命,飞书兜底;review P2:但双通道都失败不能再回「已记录」)
   const db = getPrisma();
+  let dbOk = false;
   if (db) {
     try {
       await db.feedback.create({
         data: { userId, email, category, content, path, userAgent },
       });
+      dbOk = true;
     } catch {
-      /* 表未建或写入失败 → 忽略,靠飞书兜底 */
+      /* 表未建或写入失败 → 靠飞书兜底,由下方双失败判定收口 */
     }
   }
 
   // 飞书通知:第一时间看到
   // 注意:飞书文本消息里别用 BMP 外的 emoji(如 💬 U+1F4AC 会显示成 💬 乱码);
   // 用 BMP 内的 Dingbats(如 ✉ U+2709 / ✅ U+2705)才正常。
-  await sendFeishu(
+  const feishu = await sendFeishu(
     [
       "✉ StockTell 用户反馈",
       `类型:${category}`,
@@ -85,7 +87,14 @@ export async function POST(req: NextRequest) {
       `页面:${path || "(未知)"}`,
       `时间:${beijingTime()}`,
     ].join("\n")
-  ).catch(() => {});
+  ).catch(() => ({ ok: false }));
 
+  // review P2:DB 和飞书都失败=反馈真的丢了,回「已记录」是骗用户 → 如实 500 让前端提示重试
+  if (!dbOk && !feishu.ok) {
+    return NextResponse.json(
+      { ok: false, error: "暂时没能记录,请稍后重试" },
+      { status: 500 }
+    );
+  }
   return NextResponse.json({ ok: true });
 }

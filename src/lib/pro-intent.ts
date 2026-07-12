@@ -33,15 +33,18 @@ export type ProIntentPayload = {
 };
 
 // 服务端白名单解析:枚举外值丢弃;不合法(0 选择/无场景)返回 null → 400。
+// review P2:不能用 `in`——原型链键("toString"/"constructor")会通过 `k in obj`,
+// 伪造 choices 可携带垃圾键进聚合;必须 hasOwnProperty。同时去重(["other","other"] 只算一项)。
+const isChoice = (c: unknown): c is ProIntentChoice =>
+  typeof c === "string" && Object.prototype.hasOwnProperty.call(PRO_INTENT_CHOICES, c);
+const isUseCase = (u: unknown): u is ProUseCase =>
+  typeof u === "string" && Object.prototype.hasOwnProperty.call(PRO_USE_CASES, u);
 export function parseProIntent(raw: unknown): ProIntentPayload | null {
   const it = (raw ?? {}) as Partial<{ choices: unknown; useCase: unknown; other: unknown }>;
-  const choices = (Array.isArray(it.choices) ? it.choices : [])
-    .filter((c): c is ProIntentChoice => typeof c === "string" && c in PRO_INTENT_CHOICES)
-    .slice(0, PRO_INTENT_MAX_CHOICES);
-  const useCase =
-    typeof it.useCase === "string" && it.useCase in PRO_USE_CASES
-      ? (it.useCase as ProUseCase)
-      : null;
+  const choices = Array.from(
+    new Set((Array.isArray(it.choices) ? it.choices : []).filter(isChoice))
+  ).slice(0, PRO_INTENT_MAX_CHOICES);
+  const useCase = isUseCase(it.useCase) ? it.useCase : null;
   if (choices.length < 1 || !useCase) return null;
   const other = String(it.other ?? "").trim().slice(0, PRO_INTENT_OTHER_MAX);
   return { choices, useCase, ...(other && choices.includes("other") ? { other } : {}) };

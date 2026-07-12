@@ -76,6 +76,9 @@ const V2_SOURCE_LABEL: Record<RefSourceType, string> = {
 export function fromDailyRef(r: DailyReference): EvidenceItem {
   if (isRefV2(r)) {
     const standing = r.kind === "standing_entry";
+    // review P2:常设入口也会被生产管线探测——探测过且失败(checkedAt 在、verified=false)
+    // 必须显示「当前不可达」,不能用「常设核实入口」把死链藏起来(用户点不开=入口失效)。
+    const probedDead = Boolean(r.checkedAt) && !r.verified;
     return {
       id: r.id || r.url || r.name,
       name: r.name,
@@ -85,7 +88,13 @@ export function fromDailyRef(r: DailyReference): EvidenceItem {
       date: standing ? undefined : r.publishedAt,
       supports: r.supportsText,
       role: r.role,
-      verify: standing ? "standing" : r.verified ? "verified" : r.checkedAt ? "unreachable" : "pending",
+      verify: probedDead
+        ? "unreachable"
+        : standing
+          ? "standing"
+          : r.verified
+            ? "verified"
+            : "pending",
       targets: r.targets,
     };
   }

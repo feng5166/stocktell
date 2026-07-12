@@ -456,11 +456,13 @@ async function buildReferences(
   meta: { searchCalls: number }
 ): Promise<import("./schema").ReferenceV2[]> {
   const refs: import("./schema").ReferenceV2[] = [];
-  // 当日来源统一绑定 judgment+risk:检索命中的是触发事件材料,支撑「今日判断」与
-  // 「今日风险」同一事实底座;hop/heat/mapping 级绑定属静态骨架(insight-chains targets)。
-  const DAY_TARGETS: import("./schema").ReferenceV2["targets"] = [
+  // 绑定口径(review P1 修订:不把来源绑到它并不支撑的判断上):
+  // - 检索命中的新闻材料:核实的是【触发事件】=今日判断的事实前提 → 只绑 judgment;
+  //   「今日风险」是证伪点(推理),没有来源直接支撑 → 不绑,风险行如实显示「推理假设」。
+  // - 常设入口(IR/巨潮):是「去哪核实」的长期入口,不支撑任何当日具体判断 → targets 留空,
+  //   展示层归入判断旁的入口列表但靠「常设核实入口」徽章与卡底说明表达其角色。
+  const NEWS_TARGETS: import("./schema").ReferenceV2["targets"] = [
     { type: "judgment", id: "judgment" },
-    { type: "risk", id: "risk" },
   ];
   if (bochaEnabled()) {
     const tops = trigger.events.filter((e) => e.magnitude === "大").slice(0, 2);
@@ -489,7 +491,7 @@ async function buildReferences(
             verified: false,
             role: "fact",
             supportsText: `触发事件:${ev.name}`,
-            targets: DAY_TARGETS,
+            targets: NEWS_TARGETS,
           });
         }
       } catch {
@@ -507,7 +509,7 @@ async function buildReferences(
       verified: false,
       role: "fact",
       supportsText: s.supportsText,
-      targets: DAY_TARGETS,
+      targets: [], // 常设入口不声称支撑具体判断(见上绑定口径)
     });
   const capped = refs.slice(0, 5);
   capped.forEach((r, i) => (r.id = `r${i + 1}`));

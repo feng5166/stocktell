@@ -27,18 +27,21 @@ export default function ProIntentForm() {
   const [other, setOther] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "ok" | "fail">("idle");
   const [err, setErr] = useState("");
-  const entry = useMemo(
-    () =>
-      typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("from") ?? "direct"
-        : "direct",
-    []
-  );
+  const entry = useMemo(() => {
+    if (typeof window === "undefined") return "direct";
+    // review P2:?from 任意值会直进 Umami(基数污染/注入)——白名单外一律归 direct
+    const ALLOWED = new Set(["footer", "evidence", "relations", "nudge_evidence", "nudge_chat"]);
+    const raw = new URLSearchParams(window.location.search).get("from") ?? "direct";
+    return ALLOWED.has(raw) ? raw : "direct";
+  }, []);
 
   useEffect(() => {
     track("pro_intent_view", { entry, trigger: "page" });
     try {
-      if (localStorage.getItem(LS_KEY)) setState("ok"); // 展示抑制:同浏览器恢复已记录态
+      // review P2:此前有 LS 键就永久锁死「已记录」——30 天展示抑制要真的只抑制 30 天
+      const at = Number(localStorage.getItem(LS_KEY) ?? 0);
+      if (at > 0 && Date.now() - at < 30 * 24 * 3600 * 1000) setState("ok");
+      else if (at > 0) localStorage.removeItem(LS_KEY); // 过期清掉,表单重新可用
     } catch {
       /* 隐私模式忽略 */
     }

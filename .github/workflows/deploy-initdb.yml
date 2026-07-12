@@ -1,11 +1,11 @@
 name: Post-deploy init-db
 
-# 部署后 schema 收敛(2026-07-12):push main → Vercel 自动部署;本工作流等新部署【真实接管
-# 流量】(轮询 /api/version 直到线上 SHA == 本次提交)后,幂等重跑 init-db。
-# 解决的洞:实例启动(schema 哨兵核对)与人工 init-db 之间存在几分钟窗口,期间新表缺失、
-# 哨兵会如实告警、依赖新表的接口 fail-closed(2026-07-12 chat_message 实踩)。
-# 鉴权:只用已有 CRON_SECRET(ensure-schema 端点在服务端用自己的 ADMIN_TOKEN env 自调 init-db,
-# ADMIN_TOKEN 不进 GH)。init-db 幂等(CREATE ... IF NOT EXISTS),每次部署跑一遍无副作用。
+# 部署迁移收敛(2026-07-12;review P1 修订:迁移顺序)。
+# 主路径=【前置迁移】:push 后立即从 runner 直连库跑幂等 DDL(scripts/run-ddl.ts,与 init-db
+# 同一份 src/lib/db-ddl.ts)——DDL 秒级完成,Vercel 构建要 2~3 分钟,新代码上线时库已是新形态,
+# 「新代码 + 旧库」窗口消除。需 GH secret POSTGRES_URL_NON_POOLING(直连串);未配置时降级为
+# 仅部署后收敛(诚实声明:此时存在构建时长级窗口,依赖各接口对缺表 fail-closed)。
+# 兜底路径=部署接管流量后再跑一次 ensure-schema(防前置迁移被跳过/失败,幂等无害)。
 on:
   push:
     branches: [main]
@@ -15,6 +15,21 @@ jobs:
   ensure-schema:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Migrate first(前置迁移,消除新代码+旧库窗口)
+        env:
+          POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
+        run: |
+          if [ -z "$POSTGRES_URL_NON_POOLING" ]; then
+            echo "::warning::未配置 POSTGRES_URL_NON_POOLING secret——本次跳过前置迁移,退回部署后收敛(存在构建时长级的新代码+旧库窗口)"
+            exit 0
+          fi
+          npm ci
+          npx tsx scripts/run-ddl.ts
       - name: Wait for the pushed commit to be live
         run: |
           echo "等待部署接管流量:期望 SHA=${{ github.sha }}"
@@ -29,7 +44,7 @@ jobs:
           # 10 分钟没等到:构建失败或被 Vercel 跳过 → 打红让人看一眼(不盲跑 init-db,
           # 打到旧部署上不修新 DDL,假绿更糟)
           echo "::error::10 分钟内未见新部署上线(Vercel 构建失败/跳过?)"; exit 1
-      - name: Run idempotent init-db via ensure-schema
+      - name: Run idempotent init-db via ensure-schema(兜底)
         run: |
           curl -sSf -m 90 "https://stocktell.vercel.app/api/cron/ensure-schema" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

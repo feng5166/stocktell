@@ -10,7 +10,12 @@
 import { INSIGHT_CHAINS, type InsightChain } from "@/data/insight-chains";
 import { CHAINS } from "@/data/chains";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
-import { isRefV2 } from "@/lib/insight-pipeline/schema";
+import {
+  fromInsightRef,
+  dailyRefsFor,
+  matchReferences,
+  type EvidenceItem,
+} from "@/lib/evidence";
 import { todayISO } from "@/lib/date";
 import { resolveInChain } from "@/lib/relation-resolver";
 import { chainIdFromSlug } from "@/lib/relation-rank";
@@ -40,13 +45,45 @@ export const chatEnabled = () => process.env.INSIGHT_CHAT_ENABLED === "1"; // �
 
 // ---- ① 输入意图规则(确定性重定向;LLM 分类只是纵深,不作唯一闸)----
 // 买卖/涨跌预测/目标价/仓位/择时词面。宁可误伤后靠建议问题引导,不可漏放(验收:100% 重定向)。
-const TRADING_INTENT =
-  /买|卖|加仓|减仓|建仓|清仓|满仓|空仓|梭哈|全仓|半仓|几成仓|仓位|抄底|低吸|高抛|追高|追进|上车|入手|进场|离场|出货|接盘|止损|止盈|做T|打板|目标价|能涨|会涨|要涨|能跌|会跌|要跌|涨到|跌到|翻倍|涨停|跌停|能到多少|什么价位|多少钱可以|现在进|明天走势|后市怎么|择时|挣钱|赚钱|赔钱|亏钱/;
+// review P1 修订:补「持有/调仓/上涨空间/买卖点/操作建议/波段」等常见绕过族;
+// 「操作」排除「操作系统」(insight 语境的真实误伤源);词表变更必须同步 scripts/chat-guard-test.ts。
+const TRADING_INTENT = new RegExp(
+  [
+    // 买卖动作
+    "买|卖|入手|上车|进场|离场|出货|接盘|出掉|该出|出手|抛|建仓|清仓|平仓",
+    // 仓位管理
+    "加仓|减仓|补仓|换仓|调仓|满仓|空仓|梭哈|全仓|半仓|重仓|轻仓|几成仓|仓位|减持点|增持点",
+    // 持有/退出族(review 点名)
+    "持有|持仓|拿住|拿着|继续拿|还能拿|拿多久|割肉|解套|回本|落袋|获利了结|止损|止盈|止益",
+    // 涨跌预测/空间(review 点名)
+    "能涨|会涨|要涨|能跌|会跌|要跌|涨到|跌到|翻倍|涨停|跌停|上涨空间|下跌空间|涨幅空间|空间多大|还有多少空间|能到多少|涨多少|跌多少",
+    // 价格/点位/择时
+    "目标价|什么价位|多少钱可以|什么点位|买点|卖点|入场点|进出点|现在进|明天走势|后市怎么|择时|时机|等回调|抢反弹|博反弹",
+    // 操作建议/风格(排除「操作系统」)
+    "操作(?!系统)|怎么办|如何布局|怎么布局|值得买|值得入|能不能买|可以买|该买|该不该买|做T|打板|波段|短线|抄底|低吸|高抛|追高|追进",
+    // 盈亏
+    "挣钱|赚钱|赔钱|亏钱|能赚|会亏",
+  ].join("|")
+);
 export function classifyIntent(q: string): "trading" | "pass" {
   return TRADING_INTENT.test(q) || scanBannedWords(q).length > 0 ? "trading" : "pass";
 }
 
-// 重定向安全答(规则命中/输出违规共用;引用清空,免责由应用层固定追加)
+// 无依据安全答(review P1:模型自报 no_evidence 或 grounded 被降级时,【不得】展示模型
+// 生成的正文——那段话本身就是没有引用支撑的断言,展示它=幻觉正文过闸。整答替换为固定文案。)
+export function noEvidenceAnswer(anchorLabel: string): GroundedAnswer {
+  return {
+    oneLiner: "当前给定的材料不足以回答这个问题——我们不用模型的训练记忆补当前事实。",
+    explanation: [
+      `可以先看${anchorLabel}旁的引用来源自行核实,或换一个更贴近本锚点已有材料的问法。`,
+    ],
+    referenceIds: [],
+    uncertainty: "本轮未给出判断。",
+    result: "no_evidence",
+  };
+}
+
+// 重定向安全答(规则命中/输出违规/模型自报 redirected 共用;引用清空,免责由应用层固定追加)
 export function redirectedAnswer(anchorLabel: string): GroundedAnswer {
   return {
     oneLiner: "这个问题涉及买卖决策或行情预测,StockTell 不做这类判断——个股永远只是关系分级的说明性示例。",
@@ -86,20 +123,31 @@ export async function assembleChatContext(
   const allowedRefs = new Map<string, ChatReferenceOut>();
   const ctx: string[] = [`产业链:${chainTitle}。定位:${chain.oneLinerPlain}`];
 
-  // 静态引用注册(s1..sn)——含 supports,模型据此判断引用是否支撑回答
-  chain.references.forEach((r, i) => {
-    const id = `s${i + 1}`;
-    allowedRefs.set(id, { id, name: r.name, url: r.url });
-    ctx.push(`[来源 ${id}] ${r.name}(${r.kind}·${r.type})支撑:${r.supports ?? r.note}`);
+  // 引用白名单【按锚点收窄】(review P1:此前注册整条链全部引用,模型可拿无关来源把
+  // 回答"洗成"grounded)。只注册支撑当前锚点的来源——复用展示层同一套匹配
+  // (静态 targets/文本规则、当日 targets),两侧口径一致。收窄后为空=模型只能 no_evidence,诚实。
+  const staticEv = chain.references.map(fromInsightRef);
+  const anchorEv: EvidenceItem[] =
+    anchor.type === "hop"
+      ? matchReferences({ type: "hop", order: Number(anchor.id) }, staticEv)
+      : anchor.type === "heat"
+        ? matchReferences({ type: "heat", segment: anchor.id }, staticEv)
+        : anchor.type === "mapping"
+          ? matchReferences(
+              { type: "mapping", name: anchor.id, code: anchor.id },
+              staticEv
+            )
+          : // judgment/risk:当日材料(触发事件新闻+常设核实入口)。risk 本身无直接支撑来源
+            // (证伪点属推理,展示层如实标推理假设),但解释风险可引用当日事实材料,故同集。
+            (daily ? dailyRefsFor("judgment", daily.payload.references) : []);
+  anchorEv.forEach((e, i) => {
+    const id = `a${i + 1}`;
+    allowedRefs.set(id, { id, name: e.name, url: e.url });
+    ctx.push(
+      `[来源 ${id}] ${e.name}(${e.kind === "standing" ? "常设核实入口" : "具体来源"})支撑:${e.supports ?? "—"}`
+    );
   });
-  // 当日引用注册(d1..dn;v1/v2 双读)
   if (daily) {
-    daily.payload.references.forEach((r, i) => {
-      const id = `d${i + 1}`;
-      const supports = isRefV2(r) ? r.supportsText : r.supports;
-      allowedRefs.set(id, { id, name: r.name, url: r.url });
-      ctx.push(`[来源 ${id}] ${r.name}(当日)支撑:${supports}`);
-    });
     ctx.push(`当日(${daily.date})链级判断:${daily.payload.judgment}`);
     ctx.push(`当日风险:${daily.payload.risk}`);
   }
@@ -230,8 +278,13 @@ export async function runInsightChat(
     parsed.referenceIds = parsed.referenceIds.filter((id) => ctx.allowedRefs.has(id));
     if (parsed.result === "grounded" && parsed.referenceIds.length === 0)
       parsed.result = "no_evidence";
-    if (parsed.result === "redirected") parsed.referenceIds = [];
-    // ③ 输出过滤:禁词/具体涨跌数字命中 → 整答替换,绝不放行原文
+    // review P1:非 grounded 的模型正文一律不展示——no_evidence 的正文=无引用断言(幻觉过闸),
+    // redirected 的正文=模型自由发挥的拒答(可能跑偏)。都换成应用层固定文案。
+    if (parsed.result === "no_evidence")
+      return { answer: noEvidenceAnswer(ctx.anchorLabel), provider: llm.provider };
+    if (parsed.result === "redirected")
+      return { answer: redirectedAnswer(ctx.anchorLabel), provider: llm.provider };
+    // ③ 输出过滤(此时只剩 grounded):禁词/具体涨跌数字命中 → 整答替换,绝不放行原文
     const prose = [parsed.oneLiner, ...parsed.explanation, parsed.uncertainty].join("\n");
     if (scanBannedWords(prose).length > 0 || hasSpecificMove(prose)) {
       return { answer: redirectedAnswer(ctx.anchorLabel), provider: llm.provider };
