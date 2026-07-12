@@ -1,0 +1,36 @@
+name: Post-deploy init-db
+
+# 部署后 schema 收敛(2026-07-12):push main → Vercel 自动部署;本工作流等新部署【真实接管
+# 流量】(轮询 /api/version 直到线上 SHA == 本次提交)后,幂等重跑 init-db。
+# 解决的洞:实例启动(schema 哨兵核对)与人工 init-db 之间存在几分钟窗口,期间新表缺失、
+# 哨兵会如实告警、依赖新表的接口 fail-closed(2026-07-12 chat_message 实踩)。
+# 鉴权:只用已有 CRON_SECRET(ensure-schema 端点在服务端用自己的 ADMIN_TOKEN env 自调 init-db,
+# ADMIN_TOKEN 不进 GH)。init-db 幂等(CREATE ... IF NOT EXISTS),每次部署跑一遍无副作用。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  ensure-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the pushed commit to be live
+        run: |
+          echo "等待部署接管流量:期望 SHA=${{ github.sha }}"
+          for i in $(seq 1 40); do
+            LIVE=$(curl -sS -m 15 "https://stocktell.vercel.app/api/version" | python3 -c "import json,sys; print(json.load(sys.stdin).get('sha') or '')" 2>/dev/null || echo "")
+            if [ "$LIVE" = "${{ github.sha }}" ]; then
+              echo "新部署已上线(第 $i 次探测)"; exit 0
+            fi
+            echo "第 $i/40 次:线上 SHA=${LIVE:-unknown},等 15s…"
+            sleep 15
+          done
+          # 10 分钟没等到:构建失败或被 Vercel 跳过 → 打红让人看一眼(不盲跑 init-db,
+          # 打到旧部署上不修新 DDL,假绿更糟)
+          echo "::error::10 分钟内未见新部署上线(Vercel 构建失败/跳过?)"; exit 1
+      - name: Run idempotent init-db via ensure-schema
+        run: |
+          curl -sSf -m 90 "https://stocktell.vercel.app/api/cron/ensure-schema" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          echo "init-db 已收敛"
