@@ -9,6 +9,7 @@ import { DISCLAIMER } from "@/lib/constants";
 import { safeJsonLd } from "@/lib/site";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { AskButton, InsightChatPanel } from "@/components/InsightChat";
+import { ProIntentNudge } from "@/components/ProIntentNudge";
 import { dailyRefsFor } from "@/lib/evidence";
 
 // 每日 insight 归档页(2.1-W4):把每天的链级推理沉淀成可被搜索引擎抓取的内容资产。
@@ -201,6 +202,7 @@ export default async function InsightArchivePage({
         {askOn && (
           <InsightChatPanel insightId={params.slug} date={params.date} chainTitle={chainName} />
         )}
+        <ProIntentNudge />
       </main>
     </div>
   );

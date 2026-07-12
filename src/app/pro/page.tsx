@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DISCLAIMER } from "@/lib/constants";
-import ProIntentButtons from "./ProIntentButtons";
+import ProIntentForm from "./ProIntentForm";
 
 // 专业版占位页(2.2-C,2026-07-07 拍板:不上付费墙,只收意向信号)。
 // 措辞纪律:①"规划中/候选",不承诺上线时间与内容 ②当前不收费,点击只是登记意向
@@ -78,16 +78,18 @@ export default function ProPage() {
           ))}
         </div>
 
+        {/* PR5(意向 v2):从「两个按钮只证明点过」升级为结构化能力选择——回答用户究竟想为
+            什么能力付费;不问价格、无「立即订阅」、不建 plan(PRD §6)。 */}
         <section className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-800">告诉我们你要什么</h2>
           <p className="mb-3 mt-1 text-xs leading-relaxed text-gray-500">
-            点一下即可登记(匿名也可以);想说得具体些,用右下角反馈入口。现在就想收每日推理?
+            当前全部功能免费,本次只收集需求——不收费、不绑卡、不承诺时间。现在就想收每日推理?
             <Link href="/stocks" className="text-brand-600 hover:underline">
               加自选
             </Link>
             并登录后即可收到盘前邮件早报(免费)。
           </p>
-          <ProIntentButtons />
+          <ProIntentForm />
         </section>
 
         <p className="text-center text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
