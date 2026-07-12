@@ -10,6 +10,7 @@ import { todayISO } from "@/lib/date";
 import { resolveInChain } from "@/lib/relation-resolver";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { AskButton, InsightChatPanel } from "@/components/InsightChat";
+import { ProIntentNudge } from "@/components/ProIntentNudge";
 import {
   fromInsightRef,
   fromRelationRef,
@@ -579,6 +580,8 @@ export default async function InsightPage({ params }: { params: { slug: string }
             chainTitle={c.title.replace(" · 因果链", "")}
           />
         )}
+        {/* Pro 意向轻入口(PR5):证据展开/追问后才显示,30 天展示抑制 */}
+        <ProIntentNudge />
       </main>
     </div>
   );

@@ -113,6 +113,8 @@ export function InsightChatPanel({
             latency_bucket: bucket,
             provider: String(j.provider ?? ""),
           });
+          // PR5 轻入口信号:完成一次追问(回答到手后才发,不打断对话)
+          window.dispatchEvent(new CustomEvent("stocktell:deep-engaged", { detail: { trigger: "chat" } }));
         } else if (r.status === 401) {
           setTurns((t) => t.slice(0, -1));
           setNotice("追问需要先登录(右上角登录后再来)。");

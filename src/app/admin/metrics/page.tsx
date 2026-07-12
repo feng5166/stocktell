@@ -92,7 +92,7 @@ export default async function AdminMetricsPage() {
   // (正则不匹配时 replace 原样返回、过滤零行且 catch 不触发=静默归零);清理①:八读并行。
   const biz = db
     ? await (async () => {
-        const [users, usersNew7d, watchRows, watchNew7d, digestToday, proIntent, subIntent, reviewPending] =
+        const [users, usersNew7d, watchRows, watchNew7d, digestToday, proIntent, subIntent, reviewPending, proV2Rows] =
           await Promise.all([
             db.user.count().catch(() => -1),
             db.user.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
@@ -102,8 +102,45 @@ export default async function AdminMetricsPage() {
             intentCount(db, "专业版意向"),
             intentCount(db, "订阅意向"),
             db.relationReview.count({ where: { status: "pending" } }).catch(() => -1),
+            // PR5:Pro 意向 v2(结构化)——按能力/场景枚举聚合,不再只是按钮点击数
+            db.feedback
+              .findMany({
+                where: { category: "pro_intent_v2" },
+                select: { userId: true, content: true, createdAt: true },
+                orderBy: { createdAt: "desc" },
+                take: 1000,
+              })
+              .catch(() => [] as Array<{ userId: string | null; content: string; createdAt: Date }>),
           ]);
-        return { users, usersNew7d, watchRows, watchNew7d, digestToday, proIntent, subIntent, reviewPending };
+        // 口径(PRD §6.3):登录用户按【最新一条】意向统计(findMany 已按时间倒序,首见即最新);
+        // 匿名按次。choices/useCase 来自服务端序列化的稳定枚举 JSON,解析失败的行跳过。
+        const seenUser = new Set<string>();
+        const choiceAgg = new Map<string, number>();
+        const caseAgg = new Map<string, number>();
+        let proV2 = 0;
+        for (const r of proV2Rows) {
+          if (r.userId) {
+            if (seenUser.has(r.userId)) continue;
+            seenUser.add(r.userId);
+          }
+          try {
+            const o = JSON.parse(r.content) as { choices?: string[]; useCase?: string };
+            proV2++;
+            for (const c of o.choices ?? []) choiceAgg.set(c, (choiceAgg.get(c) ?? 0) + 1);
+            if (o.useCase) caseAgg.set(o.useCase, (caseAgg.get(o.useCase) ?? 0) + 1);
+          } catch {
+            /* 非结构化残留行跳过 */
+          }
+        }
+        const fmt = (m: Map<string, number>) =>
+          Array.from(m.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([k, n]) => `${k}×${n}`)
+            .join(" / ") || "—";
+        return {
+          users, usersNew7d, watchRows, watchNew7d, digestToday, proIntent, subIntent, reviewPending,
+          proV2, proV2Choices: fmt(choiceAgg), proV2Cases: fmt(caseAgg),
+        };
       })()
     : null;
 
@@ -127,8 +164,9 @@ export default async function AdminMetricsPage() {
               ["注册用户", `${biz.users}(7日+${biz.usersNew7d})`],
               ["自选条目", `${biz.watchRows}(7日+${biz.watchNew7d})`],
               ["今日早报送达", String(biz.digestToday)],
-              ["专业版意向(登录去重+匿名按次)", String(biz.proIntent)],
-              ["订阅意向(登录去重+匿名按次)", String(biz.subIntent)],
+              ["Pro 意向 v2(结构化,登录取最新)", String(biz.proV2)],
+              ["专业版意向(旧按钮,历史保留)", String(biz.proIntent)],
+              ["订阅意向(旧指标已废弃,历史保留)", String(biz.subIntent)],
               ["待审关系队列", String(biz.reviewPending)],
             ].map(([label, val]) => (
               <div key={label} className="rounded-lg bg-gray-50 px-3 py-2">
@@ -137,6 +175,13 @@ export default async function AdminMetricsPage() {
               </div>
             ))}
           </div>
+          {biz.proV2 > 0 && (
+            <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-600">
+              <p><b className="text-gray-700">v2 能力票选:</b>{biz.proV2Choices}</p>
+              <p className="mt-0.5"><b className="text-gray-700">使用场景:</b>{biz.proV2Cases}</p>
+              <p className="mt-0.5 text-gray-400">枚举含义见 src/lib/pro-intent.ts;other 自由文本进 /admin 反馈列表看原文。</p>
+            </div>
+          )}
         </section>
       )}
 

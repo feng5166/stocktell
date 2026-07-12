@@ -61,6 +61,8 @@ export function EvidencePanel({
             target_id: targetId,
             reference_kind: referenceKind,
           });
+          // PR5 轻入口信号:完成一次证据展开(ProIntentNudge 监听;无监听者=无副作用)
+          window.dispatchEvent(new CustomEvent("stocktell:deep-engaged", { detail: { trigger: "evidence" } }));
         }
       }}
     >
