@@ -385,10 +385,23 @@ function buildMappingsDelta(
   return out;
 }
 
-/* ---------- S5:references(检索+实测,绝不自产) ---------- */
+/* ---------- S5:references(检索+实测,绝不自产;PR3 起产 Reference v2) ---------- */
+// v2 结构(schema.ts ReferenceV2):id 用 r1..rn 确定性编号(replay 可比、埋点/追问引用用);
+// targets 机器绑定——当日检索来源支撑的是「今日判断/今日风险」(judgment/risk 固定 id);
+// 常设入口 standing_entry 不带 publishedAt(不伪造发布日期,schema 校验强制)。
 const STANDING_REFS = [
-  { name: "英伟达投资者关系", url: "https://investor.nvidia.com", supports: "海外算力链事件与指引核验", kind: "常设入口" as const },
-  { name: "巨潮资讯网", url: "http://www.cninfo.com.cn", supports: "A 股映射公司公告/财报核验", kind: "常设入口" as const },
+  {
+    name: "英伟达投资者关系",
+    url: "https://investor.nvidia.com",
+    sourceType: "official" as const,
+    supportsText: "海外算力链事件与指引核验",
+  },
+  {
+    name: "巨潮资讯网",
+    url: "http://www.cninfo.com.cn",
+    sourceType: "filing" as const,
+    supportsText: "A 股映射公司公告/财报核验",
+  },
 ];
 
 // SSRF 防护(#11):references URL 来自博查检索的外部页面,cron 无人值守自动 HEAD 探测。
@@ -441,8 +454,14 @@ async function verifyUrl(url: string): Promise<boolean> {
 async function buildReferences(
   trigger: DailyInsightPayload["trigger"],
   meta: { searchCalls: number }
-): Promise<DailyInsightPayload["references"]> {
-  const refs: DailyInsightPayload["references"] = [];
+): Promise<import("./schema").ReferenceV2[]> {
+  const refs: import("./schema").ReferenceV2[] = [];
+  // 当日来源统一绑定 judgment+risk:检索命中的是触发事件材料,支撑「今日判断」与
+  // 「今日风险」同一事实底座;hop/heat/mapping 级绑定属静态骨架(insight-chains targets)。
+  const DAY_TARGETS: import("./schema").ReferenceV2["targets"] = [
+    { type: "judgment", id: "judgment" },
+    { type: "risk", id: "risk" },
+  ];
   if (bochaEnabled()) {
     const tops = trigger.events.filter((e) => e.magnitude === "大").slice(0, 2);
     for (const ev of tops.length ? tops : trigger.events.slice(0, 2)) {
@@ -461,12 +480,16 @@ async function buildReferences(
         });
         if (rel?.url) {
           refs.push({
+            id: "", // 统一在 cap 后按序补 r1..rn(确定性,replay 可比)
             name: rel.name?.slice(0, 60) || `${ev.name} 相关报道`,
             url: rel.url,
-            date: rel.datePublished ?? undefined,
-            supports: `触发事件:${ev.name}`,
-            kind: "具体来源",
+            sourceType: "news",
+            kind: "specific",
+            publishedAt: rel.datePublished ?? undefined,
             verified: false,
+            role: "fact",
+            supportsText: `触发事件:${ev.name}`,
+            targets: DAY_TARGETS,
           });
         }
       } catch {
@@ -474,8 +497,20 @@ async function buildReferences(
       }
     }
   }
-  for (const s of STANDING_REFS) refs.push({ ...s, verified: false });
+  for (const s of STANDING_REFS)
+    refs.push({
+      id: "",
+      name: s.name,
+      url: s.url,
+      sourceType: s.sourceType,
+      kind: "standing_entry",
+      verified: false,
+      role: "fact",
+      supportsText: s.supportsText,
+      targets: DAY_TARGETS,
+    });
   const capped = refs.slice(0, 5);
+  capped.forEach((r, i) => (r.id = `r${i + 1}`));
   // 回放/CI 免网:INSIGHT_SKIP_URL_VERIFY=1 时跳过 HEAD 可达探测(refs 保持 verified=false,不出伪验证)。
   // pipeline-replay 兜底路径置此开关 → compliance-block 作 PR 门禁零网络、回放结果确定性。
   // review F7:该开关【严禁】配置到 Vercel——误设会让每日 insight 全部 refs 永久 verified=false,
@@ -486,7 +521,10 @@ async function buildReferences(
   if (process.env.INSIGHT_SKIP_URL_VERIFY !== "1") {
     await Promise.all(
       capped.map(async (r) => {
+        if (!r.url) return; // v2 url 可选(人工录入无链接来源);无链接不探测、verified 保持 false
         r.verified = await verifyUrl(r.url);
+        // checkedAt 只在真跑了探测时落(v2):跳过探测的回放/CI 不出伪时间戳
+        r.checkedAt = new Date().toISOString();
       })
     );
   }
@@ -532,7 +570,7 @@ export async function generateDailyInsight(
   const references = await buildReferences(trigger, meta);
 
   const payload: DailyInsightPayload = {
-    version: 1,
+    version: 2, // PR3:references 为 ReferenceV2(历史 v1 归档不迁移,读取端双读)
     chainId,
     date,
     trigger,

@@ -9,7 +9,7 @@
 // 纯函数、零依赖 DB,server/client 都可 import。
 import type { InsightChain } from "@/data/insight-chains";
 import type { RelationReference } from "@/data/chain-relations";
-import type { DailyInsightPayload } from "@/lib/insight-pipeline/schema";
+import { isRefV2, type DailyReference, type RefSourceType } from "@/lib/insight-pipeline/schema";
 
 // 核实状态四档(PRD §3.3):与「结论置信度」分开表达——链接可达只代表材料存在,
 // 不代表 StockTell 的推论成立(置信度仍由判断行自己的置信徽章表达)。
@@ -25,19 +25,20 @@ export type EvidenceVerify =
 export type EvidenceRole = "fact" | "reasoning" | "hypothesis";
 
 export type EvidenceItem = {
-  id: string; // 埋点用稳定标识(url 优先,无 url 用 name);v2 换成真 id
+  id: string; // 埋点/追问引用标识(v2 用真 id;v1 回退 url→name)
   name: string;
   url?: string;
-  sourceType?: string; // 展示用来源类型(沿用各套现有自由文本;v2 收敛为枚举)
+  sourceType?: string; // 展示用来源类型(v1 沿用自由文本;v2 枚举→中文标签)
   kind: "specific" | "standing"; // 具体来源 / 常设入口
   date?: string; // 只有具体材料才有(常设入口不伪造发布日期)
   supports?: string; // 一句话:支撑当前判断的哪部分
   role: EvidenceRole;
   verify: EvidenceVerify;
+  // v2 机器绑定(来自 ReferenceV2.targets / 静态 targets):存在时匹配以它为准,文本规则不再参与
+  targets?: { type: string; id: string }[];
 };
 
 type InsightRef = InsightChain["references"][number];
-type DailyRef = DailyInsightPayload["references"][number];
 
 // ---- adapter ①:静态骨架 InsightChain.references ----
 // 人工定稿数据:「具体来源」在定稿时已人工核实链接(页面既有口径"已核实"),映射 verified;
@@ -54,13 +55,40 @@ export function fromInsightRef(r: InsightRef): EvidenceItem {
     supports: r.supports ?? r.note,
     role: "fact",
     verify: standing ? "standing" : "verified",
+    targets: r.targets, // PR3:静态骨架逐条人工绑定的稳定 targets(有则精确匹配)
   };
 }
 
-// ---- adapter ②:每日 DailyInsightPayload.references ----
-// 生产侧带 HEAD 探测结果(verified 布尔):具体来源 verified=false → 「当前不可达」
-// (生产管线必跑探测;回放/CI 的 SKIP 开关严禁上 Vercel,故 false 即探测失败,不粉饰)。
-export function fromDailyRef(r: DailyRef): EvidenceItem {
+// v2 sourceType 枚举 → 前台中文标签(PRD §3.3 来源类型列)
+const V2_SOURCE_LABEL: Record<RefSourceType, string> = {
+  official: "公司官网/IR",
+  filing: "法定披露",
+  regulatory: "监管文件",
+  market: "行情数据",
+  news: "新闻",
+  research: "第三方研究",
+  history: "历史复盘",
+};
+
+// ---- adapter ②:每日 DailyReference(v1/v2 双读,PR3)----
+// v1(历史归档):verified=false → 「当前不可达」(生产管线必跑探测;SKIP 开关严禁上 Vercel)。
+// v2:checkedAt 缺席=没跑过探测 → 「待验证」,跑过且 false → 「当前不可达」——比 v1 更诚实。
+export function fromDailyRef(r: DailyReference): EvidenceItem {
+  if (isRefV2(r)) {
+    const standing = r.kind === "standing_entry";
+    return {
+      id: r.id || r.url || r.name,
+      name: r.name,
+      url: r.url,
+      sourceType: V2_SOURCE_LABEL[r.sourceType] ?? r.sourceType,
+      kind: standing ? "standing" : "specific",
+      date: standing ? undefined : r.publishedAt,
+      supports: r.supportsText,
+      role: r.role,
+      verify: standing ? "standing" : r.verified ? "verified" : r.checkedAt ? "unreachable" : "pending",
+      targets: r.targets,
+    };
+  }
   const standing = r.kind === "常设入口";
   return {
     id: r.url || r.name,
@@ -72,6 +100,15 @@ export function fromDailyRef(r: DailyRef): EvidenceItem {
     role: "fact",
     verify: standing ? "standing" : r.verified ? "verified" : "unreachable",
   };
+}
+
+// 当日引用按 judgment/risk 目标选取(页面用):v2 有显式 targets 的按 targets 过滤;
+// v1 与无 targets 的保持旧口径=当日全部引用都属于今日判断/风险(不让历史归档突然变空)。
+export function dailyRefsFor(kind: "judgment" | "risk", refs: DailyReference[]): EvidenceItem[] {
+  const items = refs.map(fromDailyRef);
+  return items.filter(
+    (i) => !i.targets?.length || i.targets.some((t) => t.type === kind)
+  );
 }
 
 // ---- adapter ③:长期关系 RelationReference ----
@@ -123,7 +160,26 @@ const tokenize = (s: string): string[] =>
 const stepNumbers = (supports: string): number[] =>
   Array.from(supports.matchAll(/第(\d+)步/g)).map((m) => Number(m[1]));
 
+// 目标的稳定 id 集(PR3 约定,与静态数据 targets 同一套):hop=order 字符串、
+// heat=环节原名、mapping=code(无 code 用 name;两者都算,防绑定用了另一个)。
+function stableIdsOf(target: EvidenceTarget): string[] {
+  switch (target.type) {
+    case "hop":
+      return [String(target.order)];
+    case "heat":
+      return [target.segment];
+    case "mapping":
+      return [target.code, target.name].filter((x): x is string => Boolean(x));
+  }
+}
+
 function matchesTarget(item: EvidenceItem, target: EvidenceTarget): boolean {
+  // v2 显式绑定优先:有 targets 就只认 targets(机器可靠,不再跑文本规则——
+  // 否则「绑了 A 却被文本规则蹭到 B」会让人工绑定失去意义)
+  if (item.targets?.length) {
+    const ids = stableIdsOf(target);
+    return item.targets.some((t) => t.type === target.type && ids.includes(t.id));
+  }
   const supports = item.supports ?? "";
   switch (target.type) {
     case "hop":

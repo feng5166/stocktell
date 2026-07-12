@@ -8,7 +8,7 @@ import { getPublishedDaily, listPublishedDailyDates } from "@/lib/insight-pipeli
 import { DISCLAIMER } from "@/lib/constants";
 import { safeJsonLd } from "@/lib/site";
 import { EvidencePanel } from "@/components/EvidencePanel";
-import { fromDailyRef } from "@/lib/evidence";
+import { dailyRefsFor } from "@/lib/evidence";
 
 // 每日 insight 归档页(2.1-W4):把每天的链级推理沉淀成可被搜索引擎抓取的内容资产。
 // 只渲染 published(fallback 引擎产出的 doc 也是人审后 published,不伪装口径由置信度徽章表达);
@@ -106,15 +106,15 @@ export default async function InsightArchivePage({
           <h2 className="text-xs font-medium text-gray-500">事件与判断</h2>
           <p className="mt-1 text-xs leading-relaxed text-gray-500">{p.trigger.summary}</p>
           <p className="mt-2 text-sm leading-relaxed text-gray-800">{p.judgment}</p>
-          {/* PR1:当日依据就近可见(此前只在页底);无引用时如实标推理假设 */}
+          {/* PR1:当日依据就近可见(此前只在页底);PR3:v2 按 targets 选取,v1 归档兼容=全量 */}
           <div className="mt-1.5">
             <EvidencePanel
               insightId={params.slug}
               date={params.date}
               targetType="judgment"
               targetId="judgment"
-              items={p.references.map(fromDailyRef)}
-              label={`今日依据 ${p.references.length} 条`}
+              items={dailyRefsFor("judgment", p.references)}
+              label={`今日依据 ${dailyRefsFor("judgment", p.references).length} 条`}
             />
           </div>
         </section>
@@ -165,7 +165,7 @@ export default async function InsightArchivePage({
               date={params.date}
               targetType="risk"
               targetId="risk"
-              items={p.references.map(fromDailyRef)}
+              items={dailyRefsFor("risk", p.references)}
             />
           </div>
         </section>
