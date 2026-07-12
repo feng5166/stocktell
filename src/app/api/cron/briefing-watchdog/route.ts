@@ -35,6 +35,11 @@ async function sweepCaches() {
   const db = getPrisma();
   if (!db) return;
   const day = 24 * 3600 * 1000;
+  // 情境追问消息 30 天留存(review P1:隐私与删除设计——原问题不无限期落库)。
+  // 口径与 /privacy「情境式追问」节一致:改这里必须同步隐私政策文案。
+  await db.chatMessage
+    .deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 30 * day) } } })
+    .catch(() => {});
   await db.morningBriefCache
     .deleteMany({
       where: {

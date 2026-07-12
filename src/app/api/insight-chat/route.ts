@@ -69,11 +69,15 @@ export async function POST(req: NextRequest) {
   const threadKey = `${userId}:${slug}:${date ?? "latest"}:${anchor.type}:${anchor.id}`;
   const dayStart = new Date(`${todayISO()}T00:00:00+08:00`); // 配额按北京自然日
 
-  // 事务:并发闸 → 插入本轮 user 消息 → 当日计数,超限抛错整体回滚(原子,多实例一致)
+  // 事务:并发闸 → 插入本轮 user 消息 → 当日计数,超限抛错整体回滚。
+  // review P1:READ COMMITTED 下并发事务互不可见,findFirst/count 各自都能通过 → 竞态。
+  // 修法=事务首句取【每用户 advisory 事务锁】(pg_advisory_xact_lock,事务结束自动释放):
+  // 同一用户的判定-插入-计数被串行化,busy 闸与额度上限在多实例并发下也严格成立。
   let userMsgId = "";
   let used = 0;
   try {
     await db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
       const last = await tx.chatMessage.findFirst({
         where: { userId },
         orderBy: { createdAt: "desc" },

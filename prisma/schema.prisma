@@ -310,7 +310,8 @@ model RelationReview {
 // 单表即「等价表」:threadKey 归组(user:slug:date|latest:anchorType:anchorId)。
 // 配额=按 user 当日 user-role 消息计数(Postgres 计数,多实例一致——【不能】用进程内 rate-limit);
 // 并发 1=最新 user 消息未获回复且未超时则拒新问。content:user=原问题,assistant=GroundedAnswer JSON。
-// 隐私:原问题只落本表(服务端留存),绝不进 Umami/日志响应体。
+// 隐私(review P1):原问题只落本表,留存 30 天(briefing-watchdog sweepCaches 自动清,
+// 口径同 /privacy「情境式追问」节);绝不进 Umami/日志响应体;提前删除走隐私政策联系渠道。
 model ChatMessage {
   id          String   @id @default(cuid())
   userId      String   @map("user_id")

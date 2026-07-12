@@ -5,16 +5,18 @@
 # 本脚本用 NextAuth 凭证登录拿到会话 cookie,再跑登录态用例,任何人/CI 都能自动验证。
 #
 # 用法:
-#   bash scripts/smoke.sh                      # 默认打生产 www.stocktell.me
+#   bash scripts/smoke.sh                      # 默认打生产 stocktell.vercel.app
 #   BASE_URL=https://<preview>.vercel.app bash scripts/smoke.sh
 #   QA_EMAIL=... QA_PASSWORD=... bash scripts/smoke.sh   # 用自定义测试账号
 #
 # 退出码:全部通过=0,有失败=1(CI 可据此判定)。
 # 说明:默认用一个专用 QA 账号(无敏感数据),用例结束会清理自己写入的自选。
+# ⚠️ 默认域名与 lib/site.ts SITE_URL 同源(review 修:曾指向已停解析的 www.stocktell.me,
+#    5 项网络检查全是假失败还被当成"冒烟跑过");换主域两处一起改。
 
 set -uo pipefail
 
-BASE="${BASE_URL:-https://www.stocktell.me}"
+BASE="${BASE_URL:-https://stocktell.vercel.app}"
 EMAIL="${QA_EMAIL:-selftest-qa@stocktell.app}"
 PASS="${QA_PASSWORD:-SelfTest-QA-2026!}"
 JAR="$(mktemp -t stbot-jar.XXXXXX)"
@@ -33,6 +35,8 @@ echo "== StockTell 冒烟测试 @ $BASE =="
 # ---------- 数据自检(静态,不依赖网络) ----------
 echo "[数据自检]"
 if node "$(dirname "$0")/data-check.mjs"; then ok "AI产业链数据自检通过(无硬错误)"; else ng "AI产业链数据自检有硬错误"; fi
+# 追问护栏 + Pro 意向白名单(静态零网络;词表/枚举变更必须同步该用例)
+if npx tsx "$(dirname "$0")/chat-guard-test.ts" >/dev/null 2>&1; then ok "追问护栏/意向白名单测试通过"; else ng "追问护栏/意向白名单测试失败(npx tsx scripts/chat-guard-test.ts 看明细)"; fi
 
 # ---------- 公开接口 ----------
 echo "[公开接口]"

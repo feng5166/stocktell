@@ -141,6 +141,12 @@ export function validateDailyPayload(
     const ids = new Set<string>();
     for (const r of d.references) {
       if (!r || typeof r !== "object") { errs.push("references 含空元素"); continue; }
+      // review P2:v2 payload 不得混入 v1 引用——guard 的 supports 双读会静默吞掉混写,
+      // 但混写意味着某段生成/人审代码没升级,必须在校验层炸出来
+      if (d.version === 2 && !isRefV2(r)) {
+        errs.push(`references[${(r as { name?: string }).name ?? "?"}] v2 payload 混入 v1 引用`);
+        continue;
+      }
       if (isRefV2(r)) {
         // v2 形状校验(PR3):枚举外值/缺 id/常设入口带日期,任一即失败
         if (!r.id?.trim()) errs.push(`references[${r.name}] 缺 id`);
