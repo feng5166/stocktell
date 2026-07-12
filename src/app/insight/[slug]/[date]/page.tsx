@@ -8,6 +8,7 @@ import { getPublishedDaily, listPublishedDailyDates } from "@/lib/insight-pipeli
 import { DISCLAIMER } from "@/lib/constants";
 import { safeJsonLd } from "@/lib/site";
 import { EvidencePanel } from "@/components/EvidencePanel";
+import { AskButton, InsightChatPanel } from "@/components/InsightChat";
 import { dailyRefsFor } from "@/lib/evidence";
 
 // 每日 insight 归档页(2.1-W4):把每天的链级推理沉淀成可被搜索引擎抓取的内容资产。
@@ -62,6 +63,8 @@ export default async function InsightArchivePage({
   if (!doc) notFound();
   const p = doc.payload;
   const chainName = c.title.replace(" · 因果链", "");
+  // 情境追问总开关(PR4):env 关 = 不渲染任何入口与面板(PRD §5.6)
+  const askOn = process.env.INSIGHT_CHAT_ENABLED === "1";
   // 前后日导航(归档互链,SEO 抓取路径)
   const dates = await listPublishedDailyDates(chainId, 120).catch(() => [] as string[]);
   const idx = dates.indexOf(params.date);
@@ -107,7 +110,7 @@ export default async function InsightArchivePage({
           <p className="mt-1 text-xs leading-relaxed text-gray-500">{p.trigger.summary}</p>
           <p className="mt-2 text-sm leading-relaxed text-gray-800">{p.judgment}</p>
           {/* PR1:当日依据就近可见(此前只在页底);PR3:v2 按 targets 选取,v1 归档兼容=全量 */}
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex items-start justify-between gap-2">
             <EvidencePanel
               insightId={params.slug}
               date={params.date}
@@ -116,6 +119,7 @@ export default async function InsightArchivePage({
               items={dailyRefsFor("judgment", p.references)}
               label={`今日依据 ${dailyRefsFor("judgment", p.references).length} 条`}
             />
+            {askOn && <AskButton anchor={{ type: "judgment", id: "judgment", label: "当日判断" }} />}
           </div>
         </section>
 
@@ -159,7 +163,7 @@ export default async function InsightArchivePage({
         <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-xs font-medium text-gray-500">当日风险</h2>
           <p className="mt-1 text-xs leading-relaxed text-gray-600">{p.risk}</p>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex items-start justify-between gap-2">
             <EvidencePanel
               insightId={params.slug}
               date={params.date}
@@ -167,6 +171,7 @@ export default async function InsightArchivePage({
               targetId="risk"
               items={dailyRefsFor("risk", p.references)}
             />
+            {askOn && <AskButton anchor={{ type: "risk", id: "risk", label: "当日风险/证伪条件" }} />}
           </div>
         </section>
 
@@ -193,6 +198,9 @@ export default async function InsightArchivePage({
         <p className="text-center text-xs leading-relaxed text-gray-400">
           关系标注为研究框架梳理·非确认;历史归档不代表未来表现。{DISCLAIMER}
         </p>
+        {askOn && (
+          <InsightChatPanel insightId={params.slug} date={params.date} chainTitle={chainName} />
+        )}
       </main>
     </div>
   );
