@@ -239,25 +239,29 @@ export default function AdminInsightsClient() {
 
             <Field label={`references(${draft.references.filter((r) => r.verified).length}/${draft.references.length} 可达)`}>
               <div className="space-y-1">
-                {draft.references.map((r, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-xs">
-                    <span className={r.verified ? "text-emerald-600" : "text-rose-500"}>{r.verified ? "✓" : "✗"}</span>
-                    <a href={r.url} target="_blank" rel="noreferrer" className="w-40 shrink-0 truncate text-brand-600 hover:underline">{r.name}</a>
-                    <input
-                      value={r.supports}
-                      onChange={(e) => {
-                        const refs = [...draft.references];
-                        refs[i] = { ...r, supports: e.target.value };
-                        set("references", refs);
-                      }}
-                      className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-0.5 text-[11px]"
-                    />
-                    <button
-                      onClick={() => set("references", draft.references.filter((_, j) => j !== i))}
-                      className="text-rose-400 hover:text-rose-600"
-                    >删</button>
-                  </div>
-                ))}
+                {draft.references.map((r, i) => {
+                  // PR3 v1/v2 双读:v2 编辑 supportsText,v1 编辑 supports(改哪个字段跟形状走,不混写)
+                  const v2 = "supportsText" in r;
+                  return (
+                    <div key={i} className="flex items-center gap-1.5 text-xs">
+                      <span className={r.verified ? "text-emerald-600" : "text-rose-500"}>{r.verified ? "✓" : "✗"}</span>
+                      <a href={r.url} target="_blank" rel="noreferrer" className="w-40 shrink-0 truncate text-brand-600 hover:underline">{r.name}</a>
+                      <input
+                        value={v2 ? r.supportsText : r.supports}
+                        onChange={(e) => {
+                          const refs = [...draft.references];
+                          refs[i] = v2 ? { ...r, supportsText: e.target.value } : { ...r, supports: e.target.value };
+                          set("references", refs);
+                        }}
+                        className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-0.5 text-[11px]"
+                      />
+                      <button
+                        onClick={() => set("references", draft.references.filter((_, j) => j !== i))}
+                        className="text-rose-400 hover:text-rose-600"
+                      >删</button>
+                    </div>
+                  );
+                })}
               </div>
             </Field>
 

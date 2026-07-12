@@ -70,8 +70,21 @@ export interface InsightChain {
   uncertainties: string[]; // 已知不确定性(深度)
   // 去哪核实:kind=具体来源(真实文档/披露页,URL 已实测可达)或 常设入口(官方 IR/定价页);
   // supports=这条来源支撑推理链的哪一跳/哪个环节(评审拍板:references 要对得上跳)。
+  // targets(PR3,Reference v2):机器可靠绑定的稳定 ID——hop=order 字符串、heat=heatmap 行
+  // segment 原名、mapping=code(无 code 用 name)。有 targets 的引用按 targets 精确挂载
+  // (lib/evidence.ts matchReferences 显式优先);名单式引用(巨潮/上交所"多票核验")不硬绑,
+  // 留 supports 文本匹配或落「其他来源」。改环节名/跳序时必须同步改这里的 targets。
   // 正式上线时每跳另挂当天具体来源+时间戳(1.0=具体季报/公告段落+具体日期)。绝不编造链接。
-  references: { kind: "具体来源" | "常设入口"; name: string; url: string; type: string; note: string; date?: string; supports?: string }[];
+  references: {
+    kind: "具体来源" | "常设入口";
+    name: string;
+    url: string;
+    type: string;
+    note: string;
+    date?: string;
+    supports?: string;
+    targets?: { type: "hop" | "heat" | "mapping"; id: string }[];
+  }[];
   disclaimer: string;
 }
 
@@ -80,7 +93,7 @@ const AI_INFRA: InsightChain = {
   title: "AI 推理基础设施 · 因果链",
   // ⚠️ 模板规则:凡改本文件内容(文案/结构/references),必须同步 bump updatedAt——
   // 页头"更新 X"和免责句承诺的「更新时间」都指着它,内容动了日期不动=自打脸。
-  updatedAt: "2026-07-03",
+  updatedAt: "2026-07-12",
   event:
     "英伟达季度财报上调数据中心收入指引,叠加新一代推理模型发布带动「单位算力 token 成本明显下降」——即一次「模型能力跃迁 / 推理成本↓」型全球事件。",
   eventNote:
@@ -197,12 +210,12 @@ const AI_INFRA: InsightChain = {
     "有没有被资金提前炒过头(price-in)没校验,需结合当日行情与资金面再看。",
   ],
   references: [
-    { kind: "具体来源", date: "2025-11-19", name: "英伟达 2026 财年 Q3 财报新闻稿", url: "https://nvidianews.nvidia.com/news/nvidia-announces-financial-results-for-third-quarter-fiscal-2026", type: "事件来源", supports: "事件本身 · 主线第2步(算力需求还在涨)", note: "数据中心分部收入与下季指引原文(本演示事件的原型)" },
-    { kind: "具体来源", date: "2025-10", name: "微软 2026 财年 Q1 业绩发布页", url: "https://www.microsoft.com/en-us/investor/earnings/FY-2026-Q1/press-release-webcast", type: "云厂 capex", supports: "主线第2步(云厂买更多芯片、建更多数据中心)", note: "云厂资本开支与「AI/数据中心投入」口径(Alphabet/Meta/亚马逊同理)" },
-    { kind: "具体来源", name: "中际旭创 · 巨潮资讯法定披露页", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=300308", type: "光模块厂财报", supports: "光模块环节 · 直接相关票的订单验证", note: "定期报告与业绩/订单公告原文,以此为准" },
-    { kind: "常设入口", name: "OpenAI 官方定价页", url: "https://openai.com/api/pricing/", type: "官方定价", supports: "主线第1步(AI 算一次更便宜)", note: "核实「AI 算一次更便宜」:每百万 token 价格逐代变化" },
-    { kind: "常设入口", name: "美光投资者关系", url: "https://investors.micron.com", type: "财报", supports: "HBM/存储环节", note: "HBM 产能与预定情况(SK 海力士同理)" },
-    { kind: "常设入口", name: "台积电投资者关系(法说会)", url: "https://investor.tsmc.com", type: "法说会", supports: "先进封装(CoWoS)环节", note: "CoWoS 先进封装扩产表述" },
+    { kind: "具体来源", date: "2025-11-19", name: "英伟达 2026 财年 Q3 财报新闻稿", url: "https://nvidianews.nvidia.com/news/nvidia-announces-financial-results-for-third-quarter-fiscal-2026", type: "事件来源", supports: "事件本身 · 主线第2步(算力需求还在涨)", note: "数据中心分部收入与下季指引原文(本演示事件的原型)", targets: [{ type: "hop", id: "2" }] },
+    { kind: "具体来源", date: "2025-10", name: "微软 2026 财年 Q1 业绩发布页", url: "https://www.microsoft.com/en-us/investor/earnings/FY-2026-Q1/press-release-webcast", type: "云厂 capex", supports: "主线第2步(云厂买更多芯片、建更多数据中心)", note: "云厂资本开支与「AI/数据中心投入」口径(Alphabet/Meta/亚马逊同理)", targets: [{ type: "hop", id: "2" }] },
+    { kind: "具体来源", name: "中际旭创 · 巨潮资讯法定披露页", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=300308", type: "光模块厂财报", supports: "光模块环节 · 直接相关票的订单验证", note: "定期报告与业绩/订单公告原文,以此为准", targets: [{ type: "heat", id: "光模块 / 高速互连" }, { type: "mapping", id: "300308" }] },
+    { kind: "常设入口", name: "OpenAI 官方定价页", url: "https://openai.com/api/pricing/", type: "官方定价", supports: "主线第1步(AI 算一次更便宜)", note: "核实「AI 算一次更便宜」:每百万 token 价格逐代变化", targets: [{ type: "hop", id: "1" }] },
+    { kind: "常设入口", name: "美光投资者关系", url: "https://investors.micron.com", type: "财报", supports: "HBM/存储环节", note: "HBM 产能与预定情况(SK 海力士同理)", targets: [{ type: "heat", id: "存储 / HBM" }] },
+    { kind: "常设入口", name: "台积电投资者关系(法说会)", url: "https://investor.tsmc.com", type: "法说会", supports: "先进封装(CoWoS)环节", note: "CoWoS 先进封装扩产表述", targets: [{ type: "heat", id: "先进封装 / 封测" }] },
   ],
   disclaimer:
     "本内容为 AI 推理基础设施产业链的关联梳理,基于公开、公认的行业因果逻辑。当前页面包含部分已核实官方来源和部分常设核验入口;演示事件仍为样板事件,正式上线时会替换为当天真实事件,并为每一跳补充具体来源、发布时间、引用字段和更新时间。文中所有关系均为「关联/映射/受影响」,属非确认因果关系、仅统计非预测,不构成任何投资建议、不含买卖指令、目标价或涨跌预测。多跳链为「逻辑 + 证据」框架,非回测统计胜率。本工具不提供证券投资咨询服务,所列个股仅为产业链关联的说明性示例,不构成任何推荐;个股波动风险自负。",
@@ -216,7 +229,7 @@ const AI_INFRA: InsightChain = {
 const DATACENTER_POWER: InsightChain = {
   slug: "datacenter-power",
   title: "AI 数据中心扩张,为什么会传导到电力设备链?",
-  updatedAt: "2026-07-03",
+  updatedAt: "2026-07-12",
   event:
     "云厂商上修数据中心资本开支,叠加新一代 AI 服务器单机柜功率密度大幅提升(数十 kW 级),供配电与散热由配套项变成数据中心新瓶颈——即一次「AI 数据中心扩张 / 功率密度提升」型结构性事件。",
   eventNote:
@@ -337,10 +350,10 @@ const DATACENTER_POWER: InsightChain = {
     "有没有被资金按「AI 电力」主题提前炒过头(price-in)没校验,需结合当日行情与资金面再看。",
   ],
   references: [
-    { kind: "常设入口", name: "微软投资者关系(季度 capex)", url: "https://www.microsoft.com/en-us/investor", type: "云厂 capex", supports: "主线第1步(云厂数据中心资本开支)", note: "云厂资本开支与「数据中心 / AI 基础设施投入」口径(Alphabet / Meta / 亚马逊同理)" },
-    { kind: "常设入口", name: "NVIDIA 数据中心 / GB 系列", url: "https://www.nvidia.com/en-us/data-center/", type: "服务器功率密度", supports: "主线第2步(单机柜功率密度提升)", note: "高功率 AI 服务器与机柜供电 / 散热要求,核实「单机柜数十 kW」的来源" },
-    { kind: "常设入口", name: "Vertiv 投资者关系", url: "https://investors.vertiv.com", type: "数据中心供电 / 液冷", supports: "供配电 / 液冷环节(海外对标)", note: "数据中心供配电与热管理方案商口径,A 股供配电 / 液冷标的的海外对标" },
-    { kind: "常设入口", name: "施耐德电气(Schneider)", url: "https://www.se.com/ww/en/about-us/investor-relations/", type: "数据中心供配电", supports: "供配电 / UPS / HVDC 环节(海外对标)", note: "数据中心供配电与能效方案口径" },
+    { kind: "常设入口", name: "微软投资者关系(季度 capex)", url: "https://www.microsoft.com/en-us/investor", type: "云厂 capex", supports: "主线第1步(云厂数据中心资本开支)", note: "云厂资本开支与「数据中心 / AI 基础设施投入」口径(Alphabet / Meta / 亚马逊同理)", targets: [{ type: "hop", id: "1" }] },
+    { kind: "常设入口", name: "NVIDIA 数据中心 / GB 系列", url: "https://www.nvidia.com/en-us/data-center/", type: "服务器功率密度", supports: "主线第2步(单机柜功率密度提升)", note: "高功率 AI 服务器与机柜供电 / 散热要求,核实「单机柜数十 kW」的来源", targets: [{ type: "hop", id: "2" }] },
+    { kind: "常设入口", name: "Vertiv 投资者关系", url: "https://investors.vertiv.com", type: "数据中心供电 / 液冷", supports: "供配电 / 液冷环节(海外对标)", note: "数据中心供配电与热管理方案商口径,A 股供配电 / 液冷标的的海外对标", targets: [{ type: "heat", id: "数据中心供配电 / UPS / HVDC" }, { type: "heat", id: "数据中心温控 / 液冷(专业厂)" }] },
+    { kind: "常设入口", name: "施耐德电气(Schneider)", url: "https://www.se.com/ww/en/about-us/investor-relations/", type: "数据中心供配电", supports: "供配电 / UPS / HVDC 环节(海外对标)", note: "数据中心供配电与能效方案口径", targets: [{ type: "heat", id: "数据中心供配电 / UPS / HVDC" }] },
     { kind: "常设入口", name: "巨潮资讯网", url: "http://www.cninfo.com.cn", type: "A 股映射核验", supports: "各 A 股映射公司数据中心业务 / 订单核验", note: "盛弘 / 科士达 / 英维克 / 金盘 / 申菱等年报 / 公告里数据中心供配电 / 温控 / 液冷 / 变压器业务描述,以此为准" },
     { kind: "常设入口", name: "工业和信息化部(绿色数据中心 / 能耗)", url: "https://www.miit.gov.cn", type: "政策 / 能耗", supports: "数据中心能耗 / PUE 约束(需求侧背景)", note: "国家 / 部委关于数据中心能耗、绿色数据中心、电力负荷的政策文件" },
   ],
@@ -361,7 +374,7 @@ const DATACENTER_POWER: InsightChain = {
 const AI_APPLICATION: InsightChain = {
   slug: "ai-application",
   title: "海外 AI 应用大涨,为什么不等于国内 AI 应用受益?",
-  updatedAt: "2026-07-03",
+  updatedAt: "2026-07-12",
   event:
     "海外企业级 AI 应用商业化被重新定价——Palantir / ServiceNow 等公司 AI 相关收入或估值大幅提升,标志「AI 应用开始真正赚钱」——即一次「AI 应用商业化验证」型全球事件。",
   eventNote:
@@ -454,9 +467,9 @@ const AI_APPLICATION: InsightChain = {
     "有没有被资金按「AI 应用」主题提前炒过头(price-in)没校验,需结合当日行情与资金面再看。",
   ],
   references: [
-    { kind: "常设入口", name: "Palantir 投资者关系", url: "https://investors.palantir.com", type: "海外应用商业化", supports: "主线第1步(海外 AI 应用赚钱的触发源)", note: "企业级 AI 应用 ARR / 收入口径,本链触发源(事件侧),非 A 股映射" },
-    { kind: "常设入口", name: "ServiceNow 投资者关系", url: "https://investors.servicenow.com", type: "企业 SaaS AI", supports: "主线第1步(AI 应用商业化验证)", note: "AI 工作流 / Agent 商业化口径" },
-    { kind: "常设入口", name: "金山办公 · 巨潮资讯法定披露", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=688111", type: "国内 AI 应用收入", supports: "分支(国内应用自身 AI 付费验证)", note: "WPS AI 订阅 / AI 收入以定期报告为准" },
+    { kind: "常设入口", name: "Palantir 投资者关系", url: "https://investors.palantir.com", type: "海外应用商业化", supports: "主线第1步(海外 AI 应用赚钱的触发源)", note: "企业级 AI 应用 ARR / 收入口径,本链触发源(事件侧),非 A 股映射", targets: [{ type: "hop", id: "1" }] },
+    { kind: "常设入口", name: "ServiceNow 投资者关系", url: "https://investors.servicenow.com", type: "企业 SaaS AI", supports: "主线第1步(AI 应用商业化验证)", note: "AI 工作流 / Agent 商业化口径", targets: [{ type: "hop", id: "1" }] },
+    { kind: "常设入口", name: "金山办公 · 巨潮资讯法定披露", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=688111", type: "国内 AI 应用收入", supports: "分支(国内应用自身 AI 付费验证)", note: "WPS AI 订阅 / AI 收入以定期报告为准", targets: [{ type: "mapping", id: "688111" }, { type: "heat", id: "办公 / 生产力 AI" }] },
     { kind: "常设入口", name: "巨潮资讯网", url: "http://www.cninfo.com.cn", type: "A 股映射核验", supports: "各 A 股应用公司 AI 收入 / 付费核验", note: "科大讯飞 / 同花顺 / 昆仑万维等 AI 业务收入构成,以此为准" },
   ],
   disclaimer:
@@ -475,7 +488,7 @@ const AI_APPLICATION: InsightChain = {
 const SEMICONDUCTOR_EQUIPMENT: InsightChain = {
   slug: "semiconductor-equipment",
   title: "AI 芯片扩产,为什么会传导到半导体设备链?",
-  updatedAt: "2026-07-07",
+  updatedAt: "2026-07-12",
   event:
     "海外头部设备商(ASML / Lam 等)财报与订单指引走强,叠加先进制程产能紧缺、晶圆厂上修资本开支——即一次「先进制程扩产 / 设备订单周期上行」型结构性事件。",
   eventNote:
@@ -582,8 +595,8 @@ const SEMICONDUCTOR_EQUIPMENT: InsightChain = {
     "有没有被资金按「半导体设备」主题提前炒过头(price-in)没校验,需结合当日行情与资金面再看。",
   ],
   references: [
-    { kind: "常设入口", name: "ASML 投资者关系", url: "https://www.asml.com/en/investors", type: "设备订单 / backlog", supports: "主线第2步(设备订单上行)", note: "光刻设备订单与 backlog 口径,设备周期最权威的前瞻指标之一" },
-    { kind: "常设入口", name: "Lam Research 投资者关系", url: "https://investor.lamresearch.com", type: "刻蚀/沉积设备景气", supports: "主线第2步 + 分支第3步(刻蚀/沉积环节)", note: "刻蚀与沉积设备商订单口径,国内同环节标的的海外对标" },
+    { kind: "常设入口", name: "ASML 投资者关系", url: "https://www.asml.com/en/investors", type: "设备订单 / backlog", supports: "主线第2步(设备订单上行)", note: "光刻设备订单与 backlog 口径,设备周期最权威的前瞻指标之一", targets: [{ type: "hop", id: "2" }] },
+    { kind: "常设入口", name: "Lam Research 投资者关系", url: "https://investor.lamresearch.com", type: "刻蚀/沉积设备景气", supports: "主线第2步 + 分支第3步(刻蚀/沉积环节)", note: "刻蚀与沉积设备商订单口径,国内同环节标的的海外对标", targets: [{ type: "hop", id: "2" }, { type: "heat", id: "刻蚀设备" }, { type: "heat", id: "薄膜沉积" }] },
     { kind: "常设入口", name: "上交所公告检索", url: "http://www.sse.com.cn/disclosure/listedinfo/announcement/", type: "A 股映射核验(科创板)", supports: "中微/拓荆/芯源微/华海清科/盛美/概伦的订单与收入核验", note: "按代码检索年报、订单公告与业务披露,以此为准" },
     { kind: "常设入口", name: "巨潮资讯网", url: "http://www.cninfo.com.cn", type: "A 股映射核验(深市)", supports: "北方华创 / 长川科技的订单与收入核验", note: "定期报告 / 业绩快报 / 订单公告原文" },
   ],

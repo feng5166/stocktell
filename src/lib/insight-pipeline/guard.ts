@@ -3,7 +3,7 @@
 // 警告型(warnings):照常进审,审核页与飞书标注。
 import { hasSpecificMove, scanBannedWords } from "@/lib/content-guard";
 import type { ChainSegment } from "@/data/chains";
-import { validateDailyPayload, type DailyInsightPayload } from "./schema";
+import { validateDailyPayload, isRefV2, type DailyInsightPayload } from "./schema";
 
 export { scanBannedWords }; // 兼容既有从 guard 引用的位置
 
@@ -32,7 +32,8 @@ function ourProse(p: DailyInsightPayload): string {
     ...p.heat.map((h) => h.reason),
     ...p.mappingsDelta.flatMap((m) => [m.todayWhy, ...m.verify]),
     p.risk,
-    ...p.references.map((r) => r.supports), // supports 是我们写的,name 是外部标题
+    // supports/supportsText 是我们写的(v1/v2 双读),name 是外部标题
+    ...p.references.map((r) => (isRefV2(r) ? r.supportsText : r.supports)),
   ].join("\n");
 }
 

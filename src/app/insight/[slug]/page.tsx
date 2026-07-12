@@ -11,9 +11,9 @@ import { resolveInChain } from "@/lib/relation-resolver";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import {
   fromInsightRef,
-  fromDailyRef,
   fromRelationRef,
   matchReferences,
+  dailyRefsFor,
   type EvidenceItem,
 } from "@/lib/evidence";
 import {
@@ -234,15 +234,15 @@ export default async function InsightPage({ params }: { params: { slug: string }
             <p className="mt-2 text-xs leading-relaxed text-gray-500">
               <span className="font-medium text-gray-600">今日风险</span>:{daily.payload.risk}
             </p>
-            {/* PR1 P0:当日 references 前移到最新判断旁(此前只在归档页底部) */}
+            {/* PR1 P0:当日 references 前移到最新判断旁;PR3:v2 按 targets 选取(v1 兼容=全量) */}
             <div className="mt-1.5">
               <EvidencePanel
                 insightId={params.slug}
                 date={daily.date}
                 targetType="judgment"
                 targetId="daily"
-                items={daily.payload.references.map(fromDailyRef)}
-                label={`今日依据 ${daily.payload.references.length} 条`}
+                items={dailyRefsFor("judgment", daily.payload.references)}
+                label={`今日依据 ${dailyRefsFor("judgment", daily.payload.references).length} 条`}
               />
             </div>
           </section>
