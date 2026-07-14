@@ -64,7 +64,7 @@ export default async function TrackPage() {
               />
             </svg>
             <span className="font-medium">
-              复盘规则 · 验证成立 / 未验证 / 待观察 怎么算的
+              复盘规则 · 验证成立 / 验证不成立 / 待观察 怎么算的
             </span>
             <svg
               viewBox="0 0 20 20"
@@ -88,7 +88,7 @@ export default async function TrackPage() {
             </li>
             <li>
               <Dot className="bg-gray-400" />
-              <b className="text-gray-600">未验证</b>:已复盘,但后续表现不支持当时判断(方向不对或幅度不够)
+              <b className="text-gray-600">验证不成立</b>:已复盘,但后续表现不支持当时判断(方向不对或幅度不够)——不是"还没验证",是"验证了、没成立"
             </li>
             <li>
               <Dot className="bg-gray-300" />
@@ -97,7 +97,7 @@ export default async function TrackPage() {
           </ul>
           <p className="mt-2">
             <b className="text-gray-600">
-              关系验证率 = 验证成立 ÷ 已复盘(已复盘 = 验证成立 + 未验证)
+              关系验证率 = 验证成立 ÷ 已复盘(已复盘 = 验证成立 + 验证不成立)
             </b>
             。历史统计只评估推理质量、不代表未来收益,复盘的是产业链关系不是买卖建议。
           </p>

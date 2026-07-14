@@ -95,7 +95,7 @@ export function OutcomeTable({ rows }: { rows: OutcomeRow[] }) {
                   ) : r.hit ? (
                     <span className="font-medium text-brand-600">验证成立</span>
                   ) : (
-                    <span className="text-gray-400">未验证</span>
+                    <span className="text-gray-400">验证不成立</span>
                   )}
                 </span>
               </div>
