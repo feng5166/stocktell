@@ -33,12 +33,22 @@ const fromRow = (r: any): InsightDocRow => ({
 export const dailySlug = (chainId: string, date: string) => `daily-${chainId}-${date}`;
 
 // 热力方向指纹(同图谱检测用):环节按名排序后拼 方向,稳定可比。
+// 同图谱指纹(2026-07-14 负责人拍板细化:方向+强度)。此前只看环节方向,4 环节粗档链
+// 在趋势周里"连 3 天同向"频繁误触发暂停(07-14 首例实战:实为 AI 链连涨的真实行情)。
+// 强度用当日触发构成(事件总数档+大级别事件档)——存量 payload 就有,确定性重算,历史兼容;
+// 语义升级为「方向相同【且】触发构成相同」连续 3 天才算嫌疑,方向同但行情构成不同=真实市场。
 export function heatSignature(payload: DailyInsightPayload): string {
-  return payload.heat
+  const dirs = payload.heat
     .slice()
     .sort((a, b) => a.segment.localeCompare(b.segment))
     .map((h) => `${h.segment}:${h.direction}`)
     .join("|");
+  const events = payload.trigger?.events ?? [];
+  const total = events.length;
+  const big = events.filter((e) => e.magnitude === "大").length;
+  const up = events.filter((e) => e.direction === "up").length;
+  const bucket = (n: number) => (n === 0 ? 0 : n <= 2 ? 1 : n <= 4 ? 2 : 3);
+  return `${dirs}@${bucket(total)}-${bucket(big)}-${bucket(up)}`;
 }
 
 // 最近 n 天(不含 beforeDate 当天)该链 daily 的热力指纹,最新在前。
