@@ -421,7 +421,9 @@ function MineEmpty({ guest, onAdd }: { guest: boolean; onAdd: () => void }) {
 }
 
 // P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系三档/今日触发/验证点)。
-// 静态映射(chainMap)+ 今日事件叠加(items),模板化解释,不逐股打 LLM(拍板⑨)。
+// 静态映射(chainMap)+ 今日事件叠加(items),不逐股打 LLM(拍板⑨)。
+// 解释文案优先用 info.reason(chain-relations 一票一审的逐票说明,静态数据、非 LLM,不违拍板⑨);
+// 下面三句通用模板只做 reason 缺失时的兜底——同档同环节的票用模板会一字不差(负责人 07-13 截图反馈)。
 const REL_EXPLAIN: Record<string, string> = {
   直接映射: "「{seg}」是这条链传导最直接的环节之一,和海外事件关系紧,但仍要看订单落地。",
   间接映射: "「{seg}」受链条带动,但中间隔了几环,幅度看具体订单/客户/收入占比。",
@@ -616,9 +618,9 @@ function WatchRelationCard({ row, quiet }: { row: CoveredRow; quiet?: boolean })
           <span className="font-medium text-gray-600">今日触发</span>:{event}
         </p>
       )}
-      {/* 一句话解释(定稿④:去股票名,只留环节解释) */}
+      {/* 一句话解释:优先逐票核定 reason(与 /stocks、个股页同源),缺失才退通用模板(定稿④:去股票名) */}
       <p className="mt-1 text-xs leading-relaxed text-gray-600">
-        {REL_EXPLAIN[info.relation].replace("{seg}", info.segment)}
+        {info.reason ?? REL_EXPLAIN[info.relation].replace("{seg}", info.segment)}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-gray-500">
         <span className="font-medium text-gray-600">需要验证</span>:{info.verify.join(" · ")}

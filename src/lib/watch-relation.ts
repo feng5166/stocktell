@@ -12,6 +12,7 @@ export interface WatchChainInfo {
   segment: string;
   relation: "直接映射" | "间接映射" | "情绪映射"; // 前台三档(弱映射归并入情绪映射)
   verify: string[];
+  reason?: string; // 人工核定的逐票关系说明(chain-relations 一票一审),卡片优先用它,缺失才退通用模板
 }
 
 // 模型 relationType → 前台三档(弱→情绪;A 股核定关系只会是 direct/indirect/sentiment/weak)
@@ -37,6 +38,7 @@ export function buildWatchChainMap(): Record<string, WatchChainInfo> {
       segment: p.segmentName,
       relation: front,
       verify: p.verificationPoints.slice(0, 3),
+      ...(p.reason ? { reason: p.reason } : {}),
     };
   }
   return map;
