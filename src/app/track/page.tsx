@@ -88,7 +88,7 @@ export default async function TrackPage() {
             </li>
             <li>
               <Dot className="bg-gray-400" />
-              <b className="text-gray-600">验证不成立</b>:已复盘,但后续表现不支持当时判断(方向不对或幅度不够)——不是"还没验证",是"验证了、没成立"
+              <b className="text-gray-600">验证不成立</b>:已复盘,但后续表现不支持当时判断(方向不对或幅度不够)——不是「还没验证」,是「验证了、没成立」
             </li>
             <li>
               <Dot className="bg-gray-300" />
