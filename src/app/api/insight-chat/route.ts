@@ -75,9 +75,14 @@ export async function POST(req: NextRequest) {
   // 同一用户的判定-插入-计数被串行化,busy 闸与额度上限在多实例并发下也严格成立。
   let userMsgId = "";
   let used = 0;
+  // 锁键在 JS 侧算 int32(2026-07-17 实踩:pg_advisory_xact_lock 返回 PG void 类型,
+  // $queryRaw 反序列化 void 直接抛错 → 所有追问 503 unavailable。改 $executeRawUnsafe +
+  // 注入前 |0 强制整数,无注入面;同 userId 恒同键,串行语义不变)。
+  let lockKey = 0;
+  for (let i = 0; i < userId.length; i++) lockKey = (lockKey * 31 + userId.charCodeAt(i)) | 0;
   try {
     await db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
+      await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(${lockKey | 0})`);
       const last = await tx.chatMessage.findFirst({
         where: { userId },
         orderBy: { createdAt: "desc" },
