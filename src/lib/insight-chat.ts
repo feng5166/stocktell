@@ -83,7 +83,22 @@ export function noEvidenceAnswer(anchorLabel: string): GroundedAnswer {
   };
 }
 
-// 重定向安全答(规则命中/输出违规/模型自报 redirected 共用;引用清空,免责由应用层固定追加)
+// 护栏拦截安全答(2026-07-17 误杀复盘:grounded 正文踩红线时此前整答换「涉及买卖决策」——
+// 用户问的是正经产业问题,答非所问且吞掉已流出的首句。现在只有 oneLiner 本身脏才走到这里,
+// 文案如实说明是内容护栏,引导换问法,不误指用户问了买卖。)
+export function guardBlockedAnswer(anchorLabel: string): GroundedAnswer {
+  return {
+    oneLiner: "这轮生成的回答踩到了内容护栏(包含具体涨跌数字等红线表述),按规则未放行。",
+    explanation: [
+      `可以换个问法再试:聚焦${anchorLabel}的传导机制、验证点与证据来源;具体数字请以引用来源的原文为准。`,
+    ],
+    referenceIds: [],
+    uncertainty: "本轮未给出判断。",
+    result: "redirected",
+  };
+}
+
+// 重定向安全答(规则命中/模型自报 redirected 共用;引用清空,免责由应用层固定追加)
 export function redirectedAnswer(anchorLabel: string): GroundedAnswer {
   return {
     oneLiner: "这个问题涉及买卖决策或行情预测,StockTell 不做这类判断——个股永远只是关系分级的说明性示例。",
@@ -214,7 +229,8 @@ const CHAT_SYS = `你是 StockTell 的产业链推理讲解助手,只围绕「�
 1. 绝不输出买卖/加减仓/目标价/涨跌预测/仓位/择时建议;用户问这类 → result="redirected",并把话题引回当前锚点的事实、关系强弱与验证条件。
 2. 只依据给定材料回答;referenceIds 只能取给定的来源 id。材料不足以回答 → result="no_evidence",绝不用你的训练知识补成当前事实。
 3. 与当前锚点无关的话题 → result="redirected"。
-4. 禁盘口词(企稳/放量/缩量/低吸/抄底/破位/补跌/接/冲/追等),不带具体涨跌数字,不用吓人词,不写免责声明(应用层统一加)。
+4. 禁盘口词(企稳/放量/缩量/低吸/抄底/破位/补跌/接/冲/追等),不用吓人词,不写免责声明(应用层统一加)。
+5. 正文任何地方【不得出现具体涨跌/增长百分比数字】(硬红线,含数字的句子会被系统整句过滤)——用定性表述(明显增长/大幅回落/持续上修),具体数字引导用户看引用来源原文。
 回答要求(2026-07-17 负责人反馈「字数太少」):解释要讲透,不要一句话带过——每条解释
 完整讲清一个点(传导机制/证据与出处/边界条件或反例),用散户能懂的话展开;宁可三条讲透,不要五条空话。
 只输出一个 JSON 对象,不要任何其他文字。字段【必须严格按以下顺序】输出(result 放最前——流式门控依赖它先到):
@@ -330,11 +346,15 @@ export async function runInsightChat(
       return { answer: noEvidenceAnswer(ctx.anchorLabel), provider: llm.provider };
     if (parsed.result === "redirected")
       return { answer: redirectedAnswer(ctx.anchorLabel), provider: llm.provider };
-    // ③ 输出过滤(此时只剩 grounded):禁词/具体涨跌数字命中 → 整答替换,绝不放行原文
-    const prose = [parsed.oneLiner, ...parsed.explanation, parsed.uncertainty].join("\n");
-    if (scanBannedWords(prose).length > 0 || hasSpecificMove(prose)) {
-      return { answer: redirectedAnswer(ctx.anchorLabel), provider: llm.provider };
+    // ③ 输出过滤(此时只剩 grounded)——【逐字段】而非整答(2026-07-17 误杀复盘:
+    // 解释里一个百分比数字就把整答换成"涉及买卖决策",正经产业问题答非所问)。
+    // 红线不松:脏句整句丢弃、绝不展示;只有 oneLiner 本身脏才整答换护栏说明文案。
+    const cleanTxt = (s: string) => scanBannedWords(s).length === 0 && !hasSpecificMove(s);
+    if (!cleanTxt(parsed.oneLiner)) {
+      return { answer: guardBlockedAnswer(ctx.anchorLabel), provider: llm.provider };
     }
+    parsed.explanation = parsed.explanation.filter(cleanTxt);
+    if (!cleanTxt(parsed.uncertainty)) parsed.uncertainty = "";
     return { answer: parsed, provider: llm.provider };
   } catch {
     return null;
