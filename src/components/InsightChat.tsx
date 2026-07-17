@@ -127,6 +127,9 @@ export function InsightChatPanel({
           setNotice("上一个问题还在回答中,稍等一下。");
         } else if (r.status === 503 && j.retryable) {
           setTurns((t) => [...t.slice(0, -1), { q: question, error: "AI 暂时不可用,本次不计额度,请稍后重试。" }]);
+        } else if (r.status === 503 && j.error === "disabled") {
+          setTurns((t) => t.slice(0, -1));
+          setNotice("追问功能暂未开放。");
         } else {
           setTurns((t) => [...t.slice(0, -1), { q: question, error: "出错了,请稍后再试。" }]);
         }

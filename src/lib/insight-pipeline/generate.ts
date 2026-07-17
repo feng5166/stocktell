@@ -145,6 +145,11 @@ async function genJudgment(
       direction: (it.triggerChange ?? 0) >= 0 ? "隔夜涨" : "隔夜跌",
       beneficiaries: it.beneficiaries.map((b) => b.name).slice(0, 5),
     }));
+    // 合规预检(2026-07-17 断产复盘):判断段此前只查长度——大跌日 LLM 更容易吐
+    // "补跌/杀跌"类盘口禁词,过闸后被 runGuards 整篇 blocked 弃稿,07:05+07:40 连败即断产。
+    // 与 genRisk 同款纵深:这稿不合规 → 换一稿;两稿都脏 → 规则模板兜底(必干净),
+    // 把「整篇弃稿」降级为「换稿/降置信」,守住北极星=每天必产出。
+    const { scanBannedWords, hasSpecificMove } = await import("@/lib/content-guard");
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         meta.llmCalls++;
@@ -163,7 +168,9 @@ async function genJudgment(
           )
         );
         const txt = resp.choices[0]?.message?.content?.trim();
-        if (txt && txt.length >= 30 && txt.length <= 200) return { text: txt, degraded: false };
+        if (!txt || txt.length < 30 || txt.length > 200) continue;
+        if (scanBannedWords(txt).length > 0 || hasSpecificMove(txt)) continue;
+        return { text: txt, degraded: false };
       } catch {
         /* 重试/降级 */
       }
