@@ -98,13 +98,15 @@ export function guardBlockedAnswer(anchorLabel: string): GroundedAnswer {
   };
 }
 
-// 重定向安全答(规则命中/模型自报 redirected 共用;引用清空,免责由应用层固定追加)
+// 重定向安全答(规则命中/模型自报 redirected 共用;引用清空,免责由应用层固定追加)。
+// 文案兼容两种触发(2026-07-17 实测):①买卖/预测类问题 ②与当前锚点无关的离题问题
+// (逐轮重锚的预期行为)——此前只写「涉及买卖决策」,离题的正经问题被答非所问。
 export function redirectedAnswer(anchorLabel: string): GroundedAnswer {
   return {
-    oneLiner: "这个问题涉及买卖决策或行情预测,StockTell 不做这类判断——个股永远只是关系分级的说明性示例。",
+    oneLiner: "这个问题超出了当前锚点能回答的范围,或涉及买卖决策/行情预测——StockTell 只围绕锚点做产业链解释,不做交易判断。",
     explanation: [
-      `可以换个角度问:${anchorLabel}的依据是什么、哪个前提不成立时会失效、要用哪些公开信息验证。`,
-      "我们能帮你的是产业链解释、关系强弱和验证条件,买卖决策请依据自己的判断与风险承受能力。",
+      `围绕${anchorLabel}可以这样问:它的依据是什么、哪个前提不成立时会失效、要用哪些公开信息验证。`,
+      "想问链上其他环节或个股,关掉面板、在对应位置点它旁边的「追问」重新锚定即可;买卖决策请依据自己的判断与风险承受能力。",
     ],
     referenceIds: [],
     uncertainty: "本轮未作产业链判断。",
