@@ -215,8 +215,10 @@ const CHAT_SYS = `你是 StockTell 的产业链推理讲解助手,只围绕「�
 2. 只依据给定材料回答;referenceIds 只能取给定的来源 id。材料不足以回答 → result="no_evidence",绝不用你的训练知识补成当前事实。
 3. 与当前锚点无关的话题 → result="redirected"。
 4. 禁盘口词(企稳/放量/缩量/低吸/抄底/破位/补跌/接/冲/追等),不带具体涨跌数字,不用吓人词,不写免责声明(应用层统一加)。
+回答要求(2026-07-17 负责人反馈「字数太少」):解释要讲透,不要一句话带过——每条解释
+完整讲清一个点(传导机制/证据与出处/边界条件或反例),用散户能懂的话展开;宁可三条讲透,不要五条空话。
 只输出一个 JSON 对象,不要任何其他文字。字段【必须严格按以下顺序】输出(result 放最前——流式门控依赖它先到):
-{"result":"grounded|no_evidence|redirected","oneLiner":"一句话回答(≤80字)","explanation":["最多3条解释,每条≤120字"],"referenceIds":["引用的来源id"],"uncertainty":"这个回答的不确定性(≤100字)"}`;
+{"result":"grounded|no_evidence|redirected","oneLiner":"一句话回答(≤120字)","explanation":["3~4条解释,每条100~200字,讲透"],"referenceIds":["引用的来源id"],"uncertainty":"这个回答的不确定性(≤120字)"}`;
 
 function parseAnswer(raw: string | null | undefined): GroundedAnswer | null {
   if (!raw) return null;
@@ -227,16 +229,18 @@ function parseAnswer(raw: string | null | undefined): GroundedAnswer | null {
     const o = JSON.parse(m[0]) as Partial<GroundedAnswer>;
     if (typeof o.oneLiner !== "string" || !o.oneLiner.trim()) return null;
     if (!["grounded", "no_evidence", "redirected"].includes(o.result ?? "")) return null;
+    // 截断上限给足余量(prompt 已约束目标长度;这里只防极端超长,不做主要限长——
+    // 2026-07-17 负责人反馈答案太薄,勿再收紧)
     return {
-      oneLiner: o.oneLiner.trim().slice(0, 120),
+      oneLiner: o.oneLiner.trim().slice(0, 160),
       explanation: (Array.isArray(o.explanation) ? o.explanation : [])
         .filter((x): x is string => typeof x === "string" && !!x.trim())
-        .slice(0, 3)
-        .map((x) => x.trim().slice(0, 200)),
+        .slice(0, 4)
+        .map((x) => x.trim().slice(0, 300)),
       referenceIds: (Array.isArray(o.referenceIds) ? o.referenceIds : []).filter(
         (x): x is string => typeof x === "string"
       ),
-      uncertainty: typeof o.uncertainty === "string" ? o.uncertainty.trim().slice(0, 160) : "",
+      uncertainty: typeof o.uncertainty === "string" ? o.uncertainty.trim().slice(0, 200) : "",
       result: o.result as GroundedAnswer["result"],
     };
   } catch {
@@ -277,8 +281,10 @@ export async function runInsightChat(
   ];
   try {
     const raw = await chatTimed("insight-chat", llm.provider, async () => {
+      // max_tokens 1600:思维链型 fast 模型会先吃配额,800 时正文被压薄且易中途截断
+      // (截断 JSON=parse 失败=白耗一次可重试);流式下首字节仍快,总时长由下方 40s 硬上限兜底
       const stream = await llm.client.chat.completions.create(
-        { model: llm.model, max_tokens: 800, messages, stream: true },
+        { model: llm.model, max_tokens: 1600, messages, stream: true },
         { maxRetries: 1, timeout: 20000 }
       );
       let buf = "";
@@ -287,7 +293,7 @@ export async function runInsightChat(
       const t0 = Date.now();
       for await (const chunk of stream) {
         buf += chunk.choices[0]?.delta?.content ?? "";
-        if (Date.now() - t0 > 30_000) break; // 整体上限;残稿交终段 parse 判定(失败=可重试)
+        if (Date.now() - t0 > 40_000) break; // 整体上限(答案加长后放宽);残稿交终段 parse 判定(失败=可重试)
         if (!emit) continue; // 非流式调用方:只收集全文
         if (gate === "pending") {
           const m = buf.match(/"result"\s*:\s*"(grounded|no_evidence|redirected)"/);
