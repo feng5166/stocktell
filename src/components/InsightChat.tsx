@@ -16,7 +16,9 @@ type Answer = {
   result: "grounded" | "no_evidence" | "redirected";
 };
 type RefOut = { id: string; name: string; url?: string };
-type Turn = { q: string; a?: Answer; refs?: RefOut[]; error?: string };
+// partial=流式先到的一句话(服务端已过护栏);final 到达后被权威答案整体替换,
+// 流中断且无 final → 清掉 partial 显错(不留无状态裸答案,验收 §8)
+type Turn = { q: string; a?: Answer; refs?: RefOut[]; error?: string; partial?: string };
 
 const EVT = "stocktell:ask";
 
@@ -95,6 +97,68 @@ export function InsightChatPanel({
             question,
           }),
         });
+        // 流式路径(ndjson):meta → oneLiner(已过护栏)→ final 权威答案。只认 final;
+        // 中断无 final = 弃掉部分内容显错重试。
+        const ctype = r.headers.get("content-type") ?? "";
+        if (r.ok && ctype.includes("ndjson") && r.body) {
+          const reader = r.body.getReader();
+          const dec = new TextDecoder();
+          let lineBuf = "";
+          let settled = false;
+          const handle = (line: string) => {
+            let ev: { type?: string } & Record<string, unknown>;
+            try {
+              ev = JSON.parse(line);
+            } catch {
+              return;
+            }
+            if (ev.type === "meta") {
+              if (ev.quota) setQuota(ev.quota as { used: number; limit: number });
+            } else if (ev.type === "oneLiner") {
+              setTurns((t) => [...t.slice(0, -1), { q: question, partial: String(ev.text ?? "") }]);
+            } else if (ev.type === "final") {
+              settled = true;
+              const latency = Date.now() - t0;
+              const bucket = latency < 3000 ? "<3s" : latency < 8000 ? "3-8s" : latency < 15000 ? "8-15s" : ">15s";
+              const ans = ev.answer as Answer;
+              setQuota((ev.quota as { used: number; limit: number }) ?? null);
+              setTurns((t) => [...t.slice(0, -1), { q: question, a: ans, refs: (ev.references as RefOut[]) ?? [] }]);
+              track("chat_question_submit", {
+                insight_id: insightId,
+                anchor_type: anchor.type,
+                turn_no: turns.length + 1,
+                intent_class: String(ev.intent ?? "pass"),
+              });
+              track("chat_answer_result", {
+                result: ans.result,
+                reference_count: ((ev.references as RefOut[]) ?? []).length,
+                latency_bucket: bucket,
+                provider: String(ev.provider ?? ""),
+              });
+            } else if (ev.type === "error") {
+              settled = true;
+              setTurns((t) => [
+                ...t.slice(0, -1),
+                { q: question, error: ev.retryable ? "AI 暂时不可用,本次不计额度,请稍后重试。" : "出错了,请稍后再试。" },
+              ]);
+            }
+          };
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            lineBuf += dec.decode(value, { stream: true });
+            let nl;
+            while ((nl = lineBuf.indexOf("\n")) >= 0) {
+              const line = lineBuf.slice(0, nl).trim();
+              lineBuf = lineBuf.slice(nl + 1);
+              if (line) handle(line);
+            }
+          }
+          if (!settled) {
+            setTurns((t) => [...t.slice(0, -1), { q: question, error: "回答中断了,请重试。" }]);
+          }
+          return;
+        }
         const j = await r.json().catch(() => ({}));
         const latency = Date.now() - t0;
         const bucket = latency < 3000 ? "<3s" : latency < 8000 ? "3-8s" : latency < 15000 ? "8-15s" : ">15s";
@@ -223,6 +287,11 @@ export function InsightChatPanel({
                 </div>
               ) : t.error ? (
                 <p className="mr-4 rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs text-rose-600">{t.error}</p>
+              ) : t.partial ? (
+                <div className="mr-4 rounded-lg bg-gray-50 px-2.5 py-2 text-xs leading-relaxed">
+                  <p className="font-medium text-gray-800">{t.partial}</p>
+                  <p className="mt-1 text-[11px] text-gray-400">解释与引用生成中…</p>
+                </div>
               ) : (
                 <p className="mr-4 px-2.5 text-xs text-gray-400">思考中…</p>
               )}
