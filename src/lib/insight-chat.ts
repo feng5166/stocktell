@@ -234,7 +234,7 @@ const CHAT_SYS = `你是 StockTell 的产业链推理讲解助手,只围绕「�
 回答要求(2026-07-17 负责人反馈「字数太少」):解释要讲透,不要一句话带过——每条解释
 完整讲清一个点(传导机制/证据与出处/边界条件或反例),用散户能懂的话展开;宁可三条讲透,不要五条空话。
 只输出一个 JSON 对象,不要任何其他文字。字段【必须严格按以下顺序】输出(result 放最前——流式门控依赖它先到):
-{"result":"grounded|no_evidence|redirected","oneLiner":"一句话回答(≤120字)","explanation":["3~4条解释,每条100~200字,讲透"],"referenceIds":["引用的来源id"],"uncertainty":"这个回答的不确定性(≤120字)"}`;
+{"result":"grounded|no_evidence|redirected","oneLiner":"一句话回答(≤120字)","explanation":["3条解释(信息量大时最多4条),每条100~180字,讲透"],"referenceIds":["引用的来源id"],"uncertainty":"这个回答的不确定性(≤120字)"}`;
 
 function parseAnswer(raw: string | null | undefined): GroundedAnswer | null {
   if (!raw) return null;
@@ -297,10 +297,11 @@ export async function runInsightChat(
   ];
   try {
     const raw = await chatTimed("insight-chat", llm.provider, async () => {
-      // max_tokens 1600:思维链型 fast 模型会先吃配额,800 时正文被压薄且易中途截断
-      // (截断 JSON=parse 失败=白耗一次可重试);流式下首字节仍快,总时长由下方 40s 硬上限兜底
+      // max_tokens 2400(2026-07-17 二调):1600 在「3~4 条 100~200 字」目标下正文+JSON
+      // 语法会顶到上限,JSON 尾部被切=parse 失败=白耗重试(线上实测 16s 处截断)。
+      // 给足预算防截断;流式下首字节仍快,总时长由下方 40s 硬上限兜底
       const stream = await llm.client.chat.completions.create(
-        { model: llm.model, max_tokens: 1600, messages, stream: true },
+        { model: llm.model, max_tokens: 2400, messages, stream: true },
         { maxRetries: 1, timeout: 20000 }
       );
       let buf = "";
