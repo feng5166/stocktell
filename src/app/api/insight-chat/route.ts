@@ -188,11 +188,59 @@ export async function POST(req: NextRequest) {
         : r.content,
   }));
 
-  const res = await runInsightChat(ctx, question, history);
-  if (!res) {
-    // LLM 不可用/解析失败:退还额度 + 可重试,不回退无来源模板(PRD §5.6)
-    await db.chatMessage.delete({ where: { id: userMsgId } }).catch(() => {});
-    return NextResponse.json({ ok: false, error: "llm-unavailable", retryable: true }, { status: 503 });
-  }
-  return finish(res.answer, res.provider, "pass");
+  // 流式响应(2026-07-17):ndjson 事件流 meta →(已过护栏的 oneLiner)→ final 权威答案。
+  // 安全边界不变:emit 的字段都是服务端护栏放行后的完整字段(见 runInsightChat 门控);
+  // 客户端只认 final——没收到 final 的中断=弃掉部分内容显示重试,不留无状态裸答案(验收 §8)。
+  const enc = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (o: object) => controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+      try {
+        send({ type: "meta", quota: { used, limit: CHAT_DAILY_LIMIT }, intent: "pass" });
+        const res = await runInsightChat(ctx, question, history, (e) => send(e));
+        if (!res) {
+          // LLM 不可用/解析失败:退还额度 + 可重试,不回退无来源模板(PRD §5.6)
+          await db.chatMessage.delete({ where: { id: userMsgId } }).catch(() => {});
+          send({ type: "error", error: "llm-unavailable", retryable: true });
+        } else {
+          await db.chatMessage
+            .create({
+              data: {
+                userId,
+                threadKey,
+                insightSlug: slug,
+                date: date ?? null,
+                anchorType: anchor.type,
+                anchorId: anchor.id,
+                role: "assistant",
+                content: JSON.stringify(res.answer),
+                result: res.answer.result,
+              },
+            })
+            .catch(() => {});
+          send({
+            type: "final",
+            answer: res.answer,
+            references: res.answer.referenceIds
+              .map((id) => refsOut.get(id))
+              .filter((x): x is NonNullable<typeof x> => Boolean(x)),
+            provider: res.provider,
+            intent: "pass",
+            quota: { used, limit: CHAT_DAILY_LIMIT },
+          });
+        }
+      } catch {
+        try {
+          send({ type: "error", error: "stream-failed", retryable: true });
+        } catch {
+          /* 连接已断,无事可做 */
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
+  });
 }

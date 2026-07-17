@@ -215,8 +215,8 @@ const CHAT_SYS = `你是 StockTell 的产业链推理讲解助手,只围绕「�
 2. 只依据给定材料回答;referenceIds 只能取给定的来源 id。材料不足以回答 → result="no_evidence",绝不用你的训练知识补成当前事实。
 3. 与当前锚点无关的话题 → result="redirected"。
 4. 禁盘口词(企稳/放量/缩量/低吸/抄底/破位/补跌/接/冲/追等),不带具体涨跌数字,不用吓人词,不写免责声明(应用层统一加)。
-只输出一个 JSON 对象,不要任何其他文字:
-{"oneLiner":"一句话回答(≤80字)","explanation":["最多3条解释,每条≤120字"],"referenceIds":["引用的来源id"],"uncertainty":"这个回答的不确定性(≤100字)","result":"grounded|no_evidence|redirected"}`;
+只输出一个 JSON 对象,不要任何其他文字。字段【必须严格按以下顺序】输出(result 放最前——流式门控依赖它先到):
+{"result":"grounded|no_evidence|redirected","oneLiner":"一句话回答(≤80字)","explanation":["最多3条解释,每条≤120字"],"referenceIds":["引用的来源id"],"uncertainty":"这个回答的不确定性(≤100字)"}`;
 
 function parseAnswer(raw: string | null | undefined): GroundedAnswer | null {
   if (!raw) return null;
@@ -246,12 +246,22 @@ function parseAnswer(raw: string | null | undefined): GroundedAnswer | null {
 
 export type ChatHistoryTurn = { role: "user" | "assistant"; text: string };
 
+// 流式事件:只有「已过护栏的完整字段」才会被 emit——绝不把模型原始 token 直推前端
+// (验收硬线:流式中断不能留下无状态/未过滤的裸答案)。当前只早发 oneLiner(首响应最大头),
+// explanation 等随 final 权威答案一起到。
+export type ChatStreamEvent = { type: "oneLiner"; text: string };
+
 // 返回 null = 基础设施失败(LLM 不可用/超时/解析失败)→ 调用方退还额度并回「可重试」,
 // 绝不回退成无来源模板答案(PRD §5.6)。
+// 流式门控(2026-07-17 需求):模型被要求 result 字段最先输出——
+//   result 非 grounded → 立即停发部分字段(终段整答换固定文案,用户看不到任何模型正文);
+//   result=grounded → oneLiner 字段闭合后过禁词/数字护栏,干净才 emit;脏的不发,交终段整答过滤。
+// 终段仍走与非流式完全相同的完整校验(白名单/降级/固定文案/整答过滤),final 才是权威答案。
 export async function runInsightChat(
   ctx: ChatContext,
   question: string,
-  history: ChatHistoryTurn[]
+  history: ChatHistoryTurn[],
+  emit?: (e: ChatStreamEvent) => void
 ): Promise<{ answer: GroundedAnswer; provider: string } | null> {
   const llm = await getLLMFor("fast");
   if (!llm) return null;
@@ -266,13 +276,43 @@ export async function runInsightChat(
     { role: "user", content: `(仍然只围绕${ctx.anchorLabel})${question}` },
   ];
   try {
-    const resp = await chatTimed("insight-chat", llm.provider, () =>
-      llm.client.chat.completions.create(
-        { model: llm.model, max_tokens: 800, messages },
+    const raw = await chatTimed("insight-chat", llm.provider, async () => {
+      const stream = await llm.client.chat.completions.create(
+        { model: llm.model, max_tokens: 800, messages, stream: true },
         { maxRetries: 1, timeout: 20000 }
-      )
-    );
-    const parsed = parseAnswer(resp.choices[0]?.message?.content);
+      );
+      let buf = "";
+      let gate: "pending" | "grounded" | "blocked" = "pending";
+      let oneLinerDone = false;
+      const t0 = Date.now();
+      for await (const chunk of stream) {
+        buf += chunk.choices[0]?.delta?.content ?? "";
+        if (Date.now() - t0 > 30_000) break; // 整体上限;残稿交终段 parse 判定(失败=可重试)
+        if (!emit) continue; // 非流式调用方:只收集全文
+        if (gate === "pending") {
+          const m = buf.match(/"result"\s*:\s*"(grounded|no_evidence|redirected)"/);
+          if (m) gate = m[1] === "grounded" ? "grounded" : "blocked";
+        }
+        if (gate === "grounded" && !oneLinerDone) {
+          const m = buf.match(/"oneLiner"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+          if (m) {
+            oneLinerDone = true; // 无论干净与否只尝试一次;脏的不发,由终段整答过滤兜底
+            let text = m[1];
+            try {
+              text = JSON.parse(`"${m[1]}"`) as string;
+            } catch {
+              /* 反转义失败就用原文判定 */
+            }
+            text = text.trim().slice(0, 120);
+            if (text && scanBannedWords(text).length === 0 && !hasSpecificMove(text)) {
+              emit({ type: "oneLiner", text });
+            }
+          }
+        }
+      }
+      return buf;
+    });
+    const parsed = parseAnswer(raw);
     if (!parsed) return null;
     // 引用白名单:只留服务端注册 id;grounded 但无有效引用 → 降级 no_evidence(验收硬线)
     parsed.referenceIds = parsed.referenceIds.filter((id) => ctx.allowedRefs.has(id));
