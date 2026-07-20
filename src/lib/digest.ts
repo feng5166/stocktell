@@ -236,6 +236,11 @@ async function markDigestSent(
   }
 }
 
+// 邮件暂停开关(2026-07-20 负责人拍板「先维持」):stocktell.me 送备案停解析连带 Resend
+// 发件域验证失效,全量邮件被拒。恢复二选一(阿里云补回 3 条验证记录 / 换 maoadao 发件域)
+// 由负责人择机决策;期间置 EMAIL_DIGEST_PAUSED=1——发送早退、看门狗不再每天误报事故。
+export const emailDigestPaused = () => process.env.EMAIL_DIGEST_PAUSED === "1";
+
 export async function runPreOpenDigest(opts?: {
   force?: boolean; // true=忽略当日已发记录全量重发(默认只发没发过的)
 }): Promise<{
@@ -248,6 +253,8 @@ export async function runPreOpenDigest(opts?: {
   alreadySent?: number; // 当日已发过而跳过的用户数(补发幂等,2026-07-03 复盘产物)
   results?: DigestUserResult[]; // 逐用户结果(供后台记录失败)
 }> {
+  if (emailDigestPaused())
+    return { ok: true, skipped: "email-paused(发件域待恢复,负责人拍板暂停)", candidates: 0, sent: 0 };
   const db = getPrisma();
   if (!db) return { ok: true, skipped: "no-db", candidates: 0, sent: 0 };
 

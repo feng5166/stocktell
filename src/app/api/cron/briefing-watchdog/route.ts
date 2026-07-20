@@ -133,7 +133,10 @@ export async function GET(req: NextRequest) {
     const digestSent = db
       ? await db.digestSendLog.count({ where: { date } }).catch(() => -1)
       : -1;
-    if (digestSent === 0) {
+    const { emailDigestPaused } = await import("@/lib/digest");
+    if (digestSent === 0 && emailDigestPaused()) {
+      payload = { ok: true, date, count: items.length, digestPaused: true };
+    } else if (digestSent === 0) {
       const fs = await sendFeishu(
         `❌ StockTell 简报在但邮件疑似没发 · ${date} · 简报 ${items.length} 条,当日发送记录 0 条(推送段可能被截断)。请补推:POST /api/admin/push-digest(Bearer ADMIN_TOKEN,默认只补没发的)`
       );
