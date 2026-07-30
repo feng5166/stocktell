@@ -218,7 +218,7 @@ const STOCKS_BASE: StockBase[] = [
   { code: "002916", name: "深南电路", market: "A股", position: "上游", sector: "PCB/CCL", positioning: "PCB + 封装基板", observation: "高端载板国产替代", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
   { code: "300476", name: "胜宏科技", market: "A股", position: "上游", sector: "PCB/CCL", positioning: "高阶 HDI/PCB", observation: "AI 板卡订单弹性", status: "今日有新消息", relationTypes: ["产业链"], relations: ["NVDA"] },
   { code: "600183", name: "生益科技", market: "A股", position: "上游", sector: "PCB/CCL", positioning: "覆铜板龙头", observation: "受高频高速材料需求带动", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
-  { code: "688981", name: "中芯国际", market: "A股", position: "上游", sector: "封装测试/代工", positioning: "国产晶圆代工龙头", observation: "先进制程国产化核心", status: "行情覆盖", relationTypes: ["A股映射", "产业链"], relations: ["TSM"] },
+  { code: "688981", name: "中芯国际", market: "A股", position: "上游", sector: "封装测试/代工", positioning: "国产晶圆代工龙头", observation: "先进制程产能利用率与大客户结构", status: "行情覆盖", relationTypes: ["A股映射", "产业链"], relations: ["TSM"], chains: ["huawei-ecosystem"]},
   { code: "002371", name: "北方华创", market: "A股", position: "上游", sector: "半导体设备", positioning: "国产半导体设备龙头", observation: "刻蚀/薄膜平台,受扩产带动", status: "行情覆盖", relationTypes: ["A股映射", "产业链"], relations: ["AMAT", "ASML"] },
   { code: "688012", name: "中微公司", market: "A股", position: "上游", sector: "半导体设备", positioning: "刻蚀设备国产龙头", observation: "先进制程刻蚀突破", status: "行情覆盖", relationTypes: ["产业链"], relations: ["LRCX"] },
   { code: "603986", name: "兆易创新", market: "A股", position: "上游", sector: "存储/HBM", positioning: "存储+MCU 国产龙头", observation: "存储涨价周期弹性", status: "行情覆盖", relationTypes: ["产业链"], relations: ["MU"] },
@@ -246,7 +246,13 @@ const STOCKS_BASE: StockBase[] = [
   { code: "300124", name: "汇川技术", market: "A股", position: "下游", sector: "机器人/执行器", positioning: "工控+机器人平台", observation: "具身智能核心零部件", status: "行情覆盖", relationTypes: ["主题关联"], relations: ["TSLA"] },
   { code: "002049", name: "紫光国微", market: "A股", position: "上游", sector: "FPGA/特种芯片", positioning: "特种芯片+FPGA", observation: "受国产可编程逻辑带动", status: "长期观察", relationTypes: ["产业链"], relations: [] },
   { code: "300782", name: "卓胜微", market: "A股", position: "上游", sector: "消费电子/射频", positioning: "射频前端龙头", observation: "端侧通信配套", status: "长期观察", relationTypes: ["主题关联"], relations: [] },
-  { code: "002261", name: "拓维信息", market: "A股", position: "中游", sector: "服务器/算力", positioning: "华为昇腾生态算力", observation: "国产算力生态弹性", status: "今日有新消息", relationTypes: ["A股映射", "主题关联"], relations: ["NVDA"] },
+  { code: "002261", name: "拓维信息", market: "A股", position: "中游", sector: "服务器/算力", positioning: "华为昇腾生态算力", observation: "昇腾一体机订单与政企中标", status: "今日有新消息", relationTypes: ["A股映射", "主题关联"], relations: ["NVDA"], chains: ["huawei-ecosystem"] },
+  // 华为产业生态链(2026-07-30 扩链,一批):4 只新入池 + 拓维(自 ai-infra 移档)+ 中芯(池内原无关系档)。
+  // 关系一律 candidate 待负责人终审(同半导体链一批纪律);华为不上市、披露有限,positioning 只写可公开验证的事实。
+  { code: "601127", name: "赛力斯", market: "A股", position: "下游", sector: "智能车", positioning: "华为智选车(问界)整车厂", observation: "问界系列交付量与新车型节奏", status: "行情覆盖", relationTypes: ["A股映射", "产业链"], relations: [], chains: ["huawei-ecosystem"] },
+  { code: "301236", name: "软通动力", market: "A股", position: "中游", sector: "大模型/应用", positioning: "华为生态软件服务(鸿蒙/欧拉/昇腾)", observation: "华为生态项目签约与交付收入", status: "行情覆盖", relationTypes: ["A股映射", "主题关联"], relations: [], chains: ["huawei-ecosystem"] },
+  { code: "300339", name: "润和软件", market: "A股", position: "中游", sector: "大模型/应用", positioning: "OpenHarmony(开源鸿蒙)共建与发行版", observation: "鸿蒙相关业务收入占比", status: "行情覆盖", relationTypes: ["A股映射", "主题关联"], relations: [], chains: ["huawei-ecosystem"] },
+  { code: "000158", name: "常山北明", market: "A股", position: "中游", sector: "大模型/应用", positioning: "软件集成,华为合作生态(概念属性强)", observation: "华为相关业务的真实收入占比与披露", status: "行情覆盖", relationTypes: ["主题关联"], relations: [], chains: ["huawei-ecosystem"] },
   { code: "LITE", name: "Lumentum Holdings", market: "美股", position: "上游", sector: "光模块/CPO", positioning: "光器件与数据中心互联", observation: "数据中心互联订单", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
   { code: "FN", name: "Fabrinet", market: "美股", position: "上游", sector: "光模块/CPO", positioning: "光通信代工", observation: "大客户依赖度", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
   { code: "CIEN", name: "Ciena", market: "美股", position: "上游", sector: "光模块/CPO", positioning: "光网络系统", observation: "运营商资本开支周期", status: "行情覆盖", relationTypes: ["产业链"], relations: [] },
