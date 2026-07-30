@@ -310,15 +310,27 @@ const HUAWEI_SEG_VERIFY: Record<string, string[]> = {
   "先进制程代工": ["先进制程产能利用率", "大客户结构披露", "资本开支节奏"],
   "智选车/智能汽车": ["问界系列交付量", "新车型定点与上市节奏", "汽车业务毛利率"],
 };
-const HUAWEI_CANDIDATES: Array<{ code: string; segment: string; reason: string }> = [
-  { code: "002261", segment: "昇腾/鲲鹏算力", reason: "华为昇腾/鲲鹏生态算力整机与行业解决方案(湘江鲲鹏),生态绑定公开;订单与算力收入占比待验证,自 ai-infra sentiment 移档至本链(audit 原建议)" },
-  { code: "301236", segment: "鸿蒙与软件生态", reason: "华为多领域合作伙伴(鸿蒙/欧拉/昇腾生态软件服务),合作关系公开;华为相关收入占比与毛利结构待验证" },
-  { code: "300339", segment: "鸿蒙与软件生态", reason: "OpenHarmony(开源鸿蒙)共建单位与发行版厂商,生态参与公开;鸿蒙相关收入占比与兑现节奏待验证" },
-  { code: "000158", segment: "鸿蒙与软件生态", reason: "软件集成商,华为合作与主题情绪属性强;华为相关真实收入占比与披露有限,需警惕纯主题驱动,待逐项核验" },
-  { code: "688981", segment: "先进制程代工", reason: "国产先进制程主要量产平台,市场常将华为终端/算力芯片的国产制造需求映射至此;【双方无官方披露,属推理假设】,后续只看产能利用率与大客户结构披露" },
-  { code: "601127", segment: "智选车/智能汽车", reason: "华为智选车(问界)整车厂,联合设计/联合销售关系与交付量数据公开可验证;单一合作依赖度高、车型周期波动大,收入结构待核" },
+// 2026-07-30 当日终审(负责人授权自动化判定,判据=docs/relation-grading-standard.md 四字段;
+// 审计见 relation-changelog):
+//   赛力斯 → direct(智选车核心环节✓/问界收入主导暴露明确✓/华为合作→整车销售一跳✓/
+//     月度产销快报+年报可验证✓,四项全中;置信中——合作深度公开但收入结构细项待核);
+//   拓维/软通/润和 → indirect(合作公开、有法定披露入口,但华为相关收入占比不纯/待核,
+//     命中"暴露不纯或证据不足"降档条件;evidenceStatus=partially_verified);
+//   常山北明 → sentiment(主题属性强、无明确业务暴露入口);
+//   中芯国际 → sentiment(无官方披露=推理假设,【终审上限,出现官方披露前不得再升】)。
+const huaweiRef = (code: string, name: string): RelationReference =>
+  code.startsWith("6")
+    ? { title: `${name} · 上交所上市公司公告检索`, url: "http://www.sse.com.cn/disclosure/listedinfo/announcement/", sourceType: "exchange_disclosure", note: `按代码 ${code} 检索定期报告与合作/交付公告,以此核实验证点` }
+    : { title: `${name} · 巨潮资讯法定披露页`, url: `http://www.cninfo.com.cn/new/disclosure/stock?stockCode=${code}`, sourceType: "exchange_disclosure", note: "定期报告 / 中标签约公告原文,以此核实验证点" };
+const HUAWEI_GRADED: Array<{ code: string; segment: string; relationType: "direct" | "indirect" | "sentiment"; confidence: "high" | "medium" | "low"; withRef: boolean; reason: string }> = [
+  { code: "601127", segment: "智选车/智能汽车", relationType: "direct", confidence: "medium", withRef: true, reason: "华为智选车(问界)整车厂,联合设计/联合销售关系公开、月度交付快报高频可验证,传导一跳;单一合作依赖度高、车型周期波动大,收入结构细项待核" },
+  { code: "002261", segment: "昇腾/鲲鹏算力", relationType: "indirect", confidence: "medium", withRef: true, reason: "华为昇腾/鲲鹏生态算力整机与行业解决方案(湘江鲲鹏),生态绑定与中标公告公开;算力业务收入占比不纯、兑现待核,自 ai-infra sentiment 移档至本链(audit 原建议)" },
+  { code: "301236", segment: "鸿蒙与软件生态", relationType: "indirect", confidence: "low", withRef: true, reason: "华为多领域合作伙伴(鸿蒙/欧拉/昇腾生态软件服务),合作关系公开;华为相关收入占比与毛利结构待核,项目制兑现有时滞" },
+  { code: "300339", segment: "鸿蒙与软件生态", relationType: "indirect", confidence: "low", withRef: true, reason: "OpenHarmony(开源鸿蒙)共建单位与发行版厂商,生态参与公开;鸿蒙相关收入占比小、兑现节奏待核" },
+  { code: "000158", segment: "鸿蒙与软件生态", relationType: "sentiment", confidence: "low", withRef: false, reason: "软件集成商,华为合作与主题情绪属性强;华为相关真实收入占比与披露有限,无明确业务暴露入口,按情绪映射归档" },
+  { code: "688981", segment: "先进制程代工", relationType: "sentiment", confidence: "low", withRef: false, reason: "国产先进制程主要量产平台,市场常将华为终端/算力芯片的国产制造需求映射至此;【双方无官方披露,属推理假设】,只看产能利用率与大客户结构披露,出现官方披露前不升档" },
 ];
-for (const c of HUAWEI_CANDIDATES) {
+for (const c of HUAWEI_GRADED) {
   const key = `${c.code}|${HUAWEI_CHAIN_ID}`;
   if (seen.has(key)) continue;
   seen.add(key);
@@ -331,11 +343,11 @@ for (const c of HUAWEI_CANDIDATES) {
     chainName: HUAWEI_CHAIN_NAME,
     segmentId: segId(c.segment),
     segmentName: c.segment,
-    relationType: "candidate",
-    confidence: "low",
+    relationType: c.relationType,
+    confidence: c.confidence,
     reason: c.reason,
     verificationPoints: HUAWEI_SEG_VERIFY[c.segment] ?? GENERIC_VERIFY,
-    evidenceStatus: "needs_review",
+    ...(c.withRef ? { references: [huaweiRef(c.code, st?.name ?? c.code)], evidenceStatus: "partially_verified" as const } : { evidenceStatus: "manual_only" as const }),
     source: "manual",
     lastReviewedAt: "2026-07-30",
     updatedAt: "2026-07-30",

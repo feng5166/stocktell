@@ -48,14 +48,17 @@ eq("盛美上海 semi=direct(07-07 二次终审)", resolveInChain("688082", "sem
 eq("长川科技 semi=indirect(07-07 二次终审:测试设备隔一层)", resolveInChain("300604", "semiconductor-equipment")?.relationType, "indirect");
 eq("华大九天 semi=candidate(负责人保留)", resolveInChain("301269", "semiconductor-equipment")?.relationType, "candidate");
 
-// 2026-07-30 华为产业生态链(一批,全部 candidate 待终审):
-// 拓维自 ai-infra sentiment 移档(audit 原建议即"更偏华为生态");中芯为推理假设档,不得高于 candidate/sentiment。
+// 2026-07-30 华为产业生态链(一批入池 + 当日终审,负责人授权按四字段标准自动化判定):
+// 拓维自 ai-infra sentiment 移档(audit 原建议即"更偏华为生态");中芯为推理假设档,
+// 【sentiment 是终审上限】——出现官方披露前任何改动把它升档都应在此红出。
 const tw = resolvePrimary("002261");
 eq("拓维 chainId=huawei-ecosystem(自 ai-infra 移档)", tw?.chainId, "huawei-ecosystem");
 eq("拓维 ai-infra 应为 null(移档后不串链)", resolveInChain("002261", "ai-infra"), null);
-eq("赛力斯 huawei=candidate(待终审)", resolveInChain("601127", "huawei-ecosystem")?.relationType, "candidate");
-eq("中芯国际 huawei=candidate(推理假设,无官方披露)", resolveInChain("688981", "huawei-ecosystem")?.relationType, "candidate");
-eq("常山北明 huawei=candidate(待终审)", resolveInChain("000158", "huawei-ecosystem")?.relationType, "candidate");
+eq("拓维 huawei=indirect(07-30 终审)", resolveInChain("002261", "huawei-ecosystem")?.relationType, "indirect");
+eq("赛力斯 huawei=direct(07-30 终审:四字段全中,本链唯一 direct)", resolveInChain("601127", "huawei-ecosystem")?.relationType, "direct");
+eq("中芯国际 huawei=sentiment(推理假设=终审上限,无官方披露不得升)", resolveInChain("688981", "huawei-ecosystem")?.relationType, "sentiment");
+eq("常山北明 huawei=sentiment(07-30 终审:无业务暴露入口)", resolveInChain("000158", "huawei-ecosystem")?.relationType, "sentiment");
+eq("软通动力 huawei=indirect(07-30 终审)", resolveInChain("301236", "huawei-ecosystem")?.relationType, "indirect");
 // 交叉引用不串链:光迅/深南关系档仍归 ai-infra,不在华为链
 eq("光迅 huawei 应为 null(关系档归 ai-infra)", resolveInChain("002281", "huawei-ecosystem"), null);
 eq("深南 huawei 应为 null(关系档归 ai-infra)", resolveInChain("002916", "huawei-ecosystem"), null);

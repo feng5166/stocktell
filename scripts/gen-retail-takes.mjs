@@ -3,6 +3,8 @@
 // 并发池 8;输出 src/data/retail-takes.generated.ts(makeRetailTake 优先级:手写 > 生成 > 模板)。
 // 用法:node scripts/gen-retail-takes.mjs   (从 .env.local 读 LLM_API_KEY/LLM_BASE_URL)
 //   可选:GEN_MODEL=deepseek-v4-flash(默认)  CONCURRENCY=8  LIMIT=0(0=全量)
+//   增量:ONLY=601127,301236 只为指定 code 生成,并与既有 generated 文件【合并】写回——
+//   新股入池后补文案用它,别全量重生成翻搅已有 129 条文案(2026-07-30 华为链一批)。
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -44,9 +46,11 @@ if (gBlock) for (const mm of gBlock[0].matchAll(/"?([^"\n:]+)"?:\s*"([^"]+)"/g))
 let enrich = {};
 try { const e = read("src/data/enrichment.generated.ts"); const j = e.match(/ENRICH[^=]*=\s*(\{[\s\S]*\});/); if (j) enrich = JSON.parse(j[1]); } catch {}
 
+const ONLY = (process.env.ONLY || "").split(",").map((c) => c.trim()).filter(Boolean);
 let todo = stocks.filter((s) => !hand.has(s.code));
+if (ONLY.length) todo = todo.filter((s) => ONLY.includes(s.code));
 if (LIMIT) todo = todo.slice(0, LIMIT);
-console.log(`总 ${stocks.length} · 手写跳过 ${stocks.length - todo.length} · 待生成 ${todo.length} · 模型 ${MODEL} · 并发 ${CONC}`);
+console.log(`总 ${stocks.length} · 手写跳过 ${stocks.length - todo.length} · 待生成 ${todo.length}${ONLY.length ? `(ONLY 增量模式,与既有文件合并)` : ""} · 模型 ${MODEL} · 并发 ${CONC}`);
 
 const SYS = `你是 StockTell 的"盯盘搭子",面向看不懂产业链的 A 股散户。给你一只票的资料,用一两句大白话点出:它在 AI 产业链里干哪一环、当下是什么角色(龙头/二线弹性/题材股)、能不能安心拿(给风险提示)。
 要求:像懂行的朋友顺手提醒,口语、说人话;绝不喊买卖、不给操作建议(不出现买入/卖出/加仓/抄底);也不要"别急着追/别重仓/追高需谨慎/逢回调关注"这类软性操作暗示,改用"观察/验证/情绪映射还是订单兑现"口径;语气平稳不制造焦虑,不用"暴跌/崩盘/血洗"等吓人词;≤55 字,1-2 句;只输出结论本身,不要任何前缀、引号或解释。`;
@@ -97,6 +101,18 @@ const queue = [...todo];
 await Promise.all(Array.from({ length: CONC }, () => worker(queue)));
 
 console.log(`生成成功 ${Object.keys(out).length}/${todo.length}`);
+// ONLY 增量模式:读回既有 generated 文件合并(新生成覆盖同 code),不丢其余票的文案
+if (ONLY.length) {
+  try {
+    const prev = read("src/data/retail-takes.generated.ts");
+    const j = prev.match(/GEN_RETAIL_TAKES[^=]*=\s*(\{[\s\S]*\});/);
+    if (j) {
+      // 生成文件是 TS 字面量(末行带尾逗号),JSON.parse 前先剥掉
+      const old = JSON.parse(j[1].replace(/,(\s*\})/g, "$1"));
+      for (const [c, t] of Object.entries(old)) if (!(c in out)) out[c] = t;
+    }
+  } catch { /* 首次生成无旧文件 */ }
+}
 const sorted = Object.keys(out).sort();
 const body = sorted.map((c) => `  "${c}": ${JSON.stringify(out[c])},`).join("\n");
 const file =
