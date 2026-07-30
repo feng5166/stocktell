@@ -32,3 +32,13 @@ export function isAdminAuthorized(req: NextRequest): boolean {
   const token = bearer(req);
   return !!token && safeEqual(token, expected);
 }
+
+// 微信 iLink 桥鉴权(x-clawbot-secret):fail-closed —— 未配 CLAWBOT_SECRET 一律拒。
+// 此前三个桥端点各自手写 `if (secret && header !== secret)`,是 fail-open:secret 没配时
+// 校验整体跳过,任何人可代任意 openId 绑定/解绑。与 cron/admin 收敛成同一姿态(2026-07-30)。
+export function isClawbotAuthorized(req: NextRequest): boolean {
+  const secret = process.env.CLAWBOT_SECRET;
+  if (!secret) return false;
+  const token = req.headers.get("x-clawbot-secret");
+  return !!token && safeEqual(token, secret);
+}

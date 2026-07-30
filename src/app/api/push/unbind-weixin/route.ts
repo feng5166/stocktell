@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { unbindWeixin } from "@/lib/weixin-bind";
+import { isClawbotAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +17,9 @@ export async function DELETE() {
   return NextResponse.json({ ok: true });
 }
 
-// ClawBot 端:通过 openId 解绑
+// ClawBot 端:通过 openId 解绑(x-clawbot-secret 鉴权,fail-closed)
 export async function POST(req: NextRequest) {
-  const secret = process.env.CLAWBOT_SECRET;
-  if (secret && req.headers.get("x-clawbot-secret") !== secret) {
+  if (!isClawbotAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const { openId } = await req.json();
