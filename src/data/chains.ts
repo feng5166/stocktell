@@ -133,6 +133,28 @@ CHAINS["semiconductor-equipment"] = {
   ],
 };
 
+// 华为产业生态链(2026-07-30 扩链,一批)。成分档位见 chain-relations §2.6:一律 candidate 待终审。
+// 【刻意不配 segments】(= 不启用链级每日推理):①华为无美股上市主体,现行事件原子(隔夜美股
+// 异动)覆盖不到本链主事件(国内发布会/公告),接了只会天天产"情绪外溢"套话;②本链环节 sector
+// (智能车/大模型应用/服务器算力)与 AI 链高度重叠,sector→segment 映射会把 AI 事件受益股
+// 吸进本链每日文档(buildMappingsDelta 按 sector 归段)。事件源扩展到国内公告后再接 segments。
+// 池内光模块/PCB 等华为供应链标的(光迅/深南/沪电/华工)关系档归 AI 链(一票一链硬门禁),
+// 本链深读页只作产业位置交叉引用,不重复分档。
+const HUAWEI_CODES = ["002261", "301236", "300339", "000158", "688981", "601127"];
+
+CHAINS["huawei-ecosystem"] = {
+  id: "huawei-ecosystem",
+  name: "华为产业生态链",
+  short: "华为链",
+  tagline:
+    "华为新品与生态进展怎么传导到 A 股伙伴:昇腾/鲲鹏算力、鸿蒙软件生态、智选车各环节——看合作公告与订单验证,不是华为概念池。华为不上市、披露有限,本链验证入口天然弱于其它链,当前成分全部为待验证档。",
+  aMembers: STOCKS.filter((s) => s.market === "A股" && HUAWEI_CODES.includes(s.code)),
+  insightSlug: "huawei-ecosystem",
+  sentimentTitle: "这条链今日状态",
+  todayFraming:
+    "这条链的主事件源是华为发布会、伙伴公告与交付数据(国内事件),当前站内事件原子以隔夜美股异动为主,所以本链日常更多是情绪联动而非直接触发。真正要验证的是:昇腾一体机与政企订单是否落地、鸿蒙/欧拉项目是否形成收入、问界交付量是否兑现。当前成分全部为待验证档,关系分级以人工校准后的静态关系库为准;华为不上市,「华为概念」情绪权重高,涨跌未必对应真实业务变化。",
+};
+
 export function getChain(id: string): ChainConfig | null {
   return CHAINS[id] ?? null;
 }

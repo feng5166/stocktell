@@ -94,7 +94,9 @@ const chainNameOf = (chainId: string) =>
       ? "AI 应用链"
       : chainId === "semiconductor-equipment"
         ? "半导体设备与先进制程链"
-        : "AI 推理基础设施链";
+        : chainId === "huawei-ecosystem"
+          ? "华为产业生态链"
+          : "AI 推理基础设施链";
 
 // P1-3:电力股【不留在 ai-infra】(只归 data-center-power)。从 AI_INFRA insight 派生时排除这些 code。
 // AI 推理链→电力/温控/液冷的外溢由【链级外溢关系】表达,不塞进 ai-infra 的 stock relation。
@@ -188,8 +190,12 @@ for (const ins of Object.values(INSIGHT_CHAINS)) {
 // 2.2-B:审阅时标注"建议移入半导体设备/EDA链、若留仅 sentiment"的票,新链落地后按原建议移出
 // ai-infra(它们在 §2.5 以 candidate 归新链;一票一链=P1-3 口径,不留双链)。
 const MOVED_TO_SEMI = new Set(["301269"]); // 华大九天(audit 原文:EDA 属半导体设计工具)
+// 2026-07-30 华为链扩链:拓维信息自 ai-infra 移档(audit 原文即写明"华为昇腾生态映射更偏
+// 国产算力情绪/生态"——它在 ai-infra 只是 sentiment,归华为链才是准确建模;同华大九天先例)。
+const MOVED_TO_HUAWEI = new Set(["002261"]);
 for (const u of AI_INFRA_UPGRADES) {
   if (MOVED_TO_SEMI.has(u.code)) continue;
+  if (MOVED_TO_HUAWEI.has(u.code)) continue;
   const key = `${u.code}|ai-infra`;
   if (seen.has(key)) continue;
   seen.add(key);
@@ -278,6 +284,61 @@ for (const c of SEMI_CANDIDATES) {
     source: "manual",
     lastReviewedAt: "2026-07-07",
     updatedAt: "2026-07-07",
+  });
+}
+
+// 2.6) 华为产业生态链(2026-07-30 扩链,一批)。传导:华为新品/生态发布 → 终端与生态热度 →
+//    伙伴订单与项目(昇腾一体机/鸿蒙项目/智选车交付)→ 订单/收入验证。
+//    【第一版口径纪律】(同 2.5 半导体链一批):成分一律 candidate 档,待负责人经审阅台逐票
+//    终审后才升 direct/indirect 并补 references——不编造证据=铁律②。
+//    特别约束:①华为不上市、不披露财报,验证入口天然弱于其它链,reason 只写可公开核实的事实;
+//    ②中芯国际与华为的代工关系【无任何官方披露】,reason 必须明标推理假设(铁律②),
+//    终审也不得高于 sentiment,除非出现官方披露;③本链【无美股触发源】(华为无上市主体),
+//    事件原子=隔夜美股异动的现行管线覆盖不到本链主事件(国内发布会/公告),故一批不接
+//    chains.ts segments(不启用链级每日推理,避免天天产"情绪外溢"套话)——事件源扩展后再接。
+export const HUAWEI_CHAIN_ID = "huawei-ecosystem";
+export const HUAWEI_CHAIN_NAME = "华为产业生态链";
+export const HUAWEI_SEGMENTS = [
+  "昇腾/鲲鹏算力",
+  "鸿蒙与软件生态",
+  "先进制程代工",
+  "智选车/智能汽车",
+] as const;
+const HUAWEI_SEG_VERIFY: Record<string, string[]> = {
+  "昇腾/鲲鹏算力": ["昇腾一体机/服务器订单", "政企客户中标", "算力业务收入占比"],
+  "鸿蒙与软件生态": ["华为生态项目签约与交付", "鸿蒙/欧拉相关收入占比", "生态业务毛利率"],
+  "先进制程代工": ["先进制程产能利用率", "大客户结构披露", "资本开支节奏"],
+  "智选车/智能汽车": ["问界系列交付量", "新车型定点与上市节奏", "汽车业务毛利率"],
+};
+const HUAWEI_CANDIDATES: Array<{ code: string; segment: string; reason: string }> = [
+  { code: "002261", segment: "昇腾/鲲鹏算力", reason: "华为昇腾/鲲鹏生态算力整机与行业解决方案(湘江鲲鹏),生态绑定公开;订单与算力收入占比待验证,自 ai-infra sentiment 移档至本链(audit 原建议)" },
+  { code: "301236", segment: "鸿蒙与软件生态", reason: "华为多领域合作伙伴(鸿蒙/欧拉/昇腾生态软件服务),合作关系公开;华为相关收入占比与毛利结构待验证" },
+  { code: "300339", segment: "鸿蒙与软件生态", reason: "OpenHarmony(开源鸿蒙)共建单位与发行版厂商,生态参与公开;鸿蒙相关收入占比与兑现节奏待验证" },
+  { code: "000158", segment: "鸿蒙与软件生态", reason: "软件集成商,华为合作与主题情绪属性强;华为相关真实收入占比与披露有限,需警惕纯主题驱动,待逐项核验" },
+  { code: "688981", segment: "先进制程代工", reason: "国产先进制程主要量产平台,市场常将华为终端/算力芯片的国产制造需求映射至此;【双方无官方披露,属推理假设】,后续只看产能利用率与大客户结构披露" },
+  { code: "601127", segment: "智选车/智能汽车", reason: "华为智选车(问界)整车厂,联合设计/联合销售关系与交付量数据公开可验证;单一合作依赖度高、车型周期波动大,收入结构待核" },
+];
+for (const c of HUAWEI_CANDIDATES) {
+  const key = `${c.code}|${HUAWEI_CHAIN_ID}`;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  const st = STOCK_MAP[c.code];
+  relations.push({
+    code: c.code,
+    name: st?.name ?? c.code,
+    market: mktOf(st?.market),
+    chainId: HUAWEI_CHAIN_ID,
+    chainName: HUAWEI_CHAIN_NAME,
+    segmentId: segId(c.segment),
+    segmentName: c.segment,
+    relationType: "candidate",
+    confidence: "low",
+    reason: c.reason,
+    verificationPoints: HUAWEI_SEG_VERIFY[c.segment] ?? GENERIC_VERIFY,
+    evidenceStatus: "needs_review",
+    source: "manual",
+    lastReviewedAt: "2026-07-30",
+    updatedAt: "2026-07-30",
   });
 }
 
