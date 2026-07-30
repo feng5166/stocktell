@@ -73,6 +73,22 @@ async function sweepCaches() {
       },
     })
     .catch(() => {});
+  // quotes_cache 14 天 TTL:该表已被当通用 KV,其中「按 code×日」的行情衍生缓存
+  // (fin/risk/fund/sim/lk/fundflow/apct)只会以"今天"的 key 被读,旧日期行永不再命中,
+  // 此前无任何清理路径 ≈ 每交易日净增 600+ 行(2026-07-30 review)。
+  // 用【白名单前缀】而非"排除法":这张表还混着常量键(latest/etf/chain-sentiment-v1/
+  // llm-provider 开关/ashare-cal-window)和按日归档键(brief-status:/holiday-bridge:,
+  // /daily 归档页要读历史),排除法漏登记一个新键就是数据事故;白名单漏登记只是少清。
+  // 新增「按日可再生」key 家族时往这里加前缀。webpush-done: 只在当天读,一并清。
+  const SWEEP_PREFIXES = ["fin:", "risk:", "fund:", "sim:", "lk:", "fundflow:", "apct:", "webpush-done:"];
+  await db.quotesCache
+    .deleteMany({
+      where: {
+        updatedAt: { lt: new Date(Date.now() - 14 * day) },
+        OR: SWEEP_PREFIXES.map((p) => ({ id: { startsWith: p } })),
+      },
+    })
+    .catch(() => {});
 }
 
 // 简报状态日报 / 看门狗:08:30 北京(主 07:00 + 补位 07:40 都尘埃落定后),

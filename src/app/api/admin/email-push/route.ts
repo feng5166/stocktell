@@ -2,17 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
-import { sendMail } from "@/lib/mailer";
+import { sendMail, escapeHtml as esc } from "@/lib/mailer";
 import { unsubFooter } from "@/lib/unsub";
 
 export const dynamic = "force-dynamic";
-
-function esc(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 // 管理后台:手动给用户发邮件。body: { userIds?: string[], all?: boolean, subject, text }
 // all=true 时只发给"未退订每日邮件"的用户(尊重退订);显式选 userIds 则按管理员选择发。

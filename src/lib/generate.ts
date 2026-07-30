@@ -13,7 +13,7 @@ import { usCumulativeChange } from "@/lib/us-history";
 import { usLatestTradingDay } from "@/lib/yahoo";
 import { sendFeishu } from "@/lib/feishu";
 
-const MOVER_THRESHOLD = 2; // 美股 |涨跌| ≥ 2% 视为异动
+export const MOVER_THRESHOLD = 2; // 美股 |涨跌| ≥ 2% 视为异动(单一来源:backtest 同口径 import 它)
 const MAX_MOVERS = 8; // 异动条数封顶(控 LLM 时长,让 LLM 在 40s 内更可能跑完;深度解读走按需流式)
 
 interface Mover {

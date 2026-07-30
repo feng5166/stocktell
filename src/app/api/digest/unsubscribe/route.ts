@@ -22,11 +22,18 @@ ${body}
   });
 }
 
+// 一键退订 = 停掉【所有】邮件提醒(早报 digest + 雷区提醒)。
+// 此前只设 digestOptOut,用户在邮件客户端点"退订"后仍会收到雷区邮件 —— 违反用户预期,
+// 也违背 RFC 8058 语义(退订的是"这个发件人的邮件"),积投诉伤域名信誉(2026-07-30 review)。
+// 想只关某一类的用户走 /settings 单独开关;重订(resub)同样恢复两者。
 async function setOptOut(userId: string, optOut: boolean): Promise<boolean> {
   const db = getPrisma();
   if (!db) return false;
   try {
-    await db.user.update({ where: { id: userId }, data: { digestOptOut: optOut } });
+    await db.user.update({
+      where: { id: userId },
+      data: { digestOptOut: optOut, riskOptOut: optOut },
+    });
     return true;
   } catch {
     return false; // 用户不存在等
@@ -59,8 +66,8 @@ export async function GET(req: NextRequest) {
   return page(
     ok ? "已取消推送" : "操作失败",
     ok
-      ? `<h2 style="font-size:18px;margin:0 0 10px">已为你取消每日推送 🔕</h2>
-         <p style="color:#888;font-size:14px;margin:0 0 18px">之后不会再给你发盘前邮件。</p>
+      ? `<h2 style="font-size:18px;margin:0 0 10px">已为你取消邮件提醒 🔕</h2>
+         <p style="color:#888;font-size:14px;margin:0 0 18px">之后不会再给你发盘前早报和雷区提醒邮件。想只保留其中一类,可在<a href="${base}/settings" style="color:#2563eb">设置</a>里单独开启。</p>
          <a href="${resub}" style="display:inline-block;background:#111;color:#fff;font-size:14px;text-decoration:none;padding:10px 20px;border-radius:10px">手滑了?重新订阅</a>`
       : `<h2 style="font-size:18px;margin:0 0 8px">操作失败</h2><p style="color:#888;font-size:14px">请稍后再试。</p>`
   );

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // 60s 会被 Vercel 硬杀,硬杀绕过下面的 catch→alertCron = 当天雷区推送静默丢失。
 export const maxDuration = 300;
 
-// 雷区雷达推送:每日盘前(vercel.json cron 22:50 UTC = 北京 06:50 触发)。独立一条「雷区提醒」,不并入早报。
+// 雷区雷达推送:每日盘前(vercel.json cron 40 22 UTC = 北京 06:40 触发)。独立一条「雷区提醒」,不并入早报。
 export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

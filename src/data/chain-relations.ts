@@ -296,10 +296,17 @@ for (const st of STOCKS) {
   const cls = TRIGGER_CLASS[st.code];
   const extraSemi = !cls && SEMI_TRIGGER_EXTRA.has(st.code);
   if (!cls && !extraSemi) continue;
+  // P1-3 一致性(2026-07-30 review):audit TRIGGER_CLASS 生成于 07-04、早于 07-06「AI 应用
+  // 独立成链」拍板,PLTR/NOW/SNOW/RDDT 还带着旧 chainId=ai-infra;而 trigger-sources 的事件
+  // 路由已指向 /insight/ai-application。派生层按拍板统一改路由(同上方 semiconductor 先例,
+  // 不改 audit generated 文件),否则 ai-infra 链页会把应用类触发源当自家信号源展示。
+  // lint 已加 trigger-group-chain-mismatch 规则兜底,重审再漂移会在 CI 红出。
   const routedChainId = extraSemi
     ? SEMI_EQUIP_CHAIN_ID
-    : (cls!.chainId ??
-      (cls!.group === "semiconductor" && SEMI_TRIGGER_ALLOW.has(st.code) ? SEMI_EQUIP_CHAIN_ID : null));
+    : cls!.group === "ai-application"
+      ? "ai-application"
+      : (cls!.chainId ??
+        (cls!.group === "semiconductor" && SEMI_TRIGGER_ALLOW.has(st.code) ? SEMI_EQUIP_CHAIN_ID : null));
   if (!routedChainId) continue; // 未分类 / 仍是未来链 / 未过逐票评审 → 跳过
   const key = `${st.code}|${routedChainId}`;
   if (seen.has(key)) continue;

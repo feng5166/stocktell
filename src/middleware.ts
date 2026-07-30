@@ -4,12 +4,8 @@ import { getToken } from "next-auth/jwt";
 
 // /admin/* 统一鉴权:在渲染前拦截。非管理员一律 404(不暴露后台存在)。
 // 用 JWT 里的 email 判定(authorize/Google 登录都会带 email),边缘可读,无需查库。
-const ADMIN_EMAILS = (
-  process.env.ADMIN_EMAILS ?? "feng5166@gmail.com,feng.5166@163.com"
-)
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+// 名单收敛到 lib/admin-emails(零依赖,Edge 可 import),与 lib/admin.ts 共用。
+import { ADMIN_EMAILS } from "@/lib/admin-emails";
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });

@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 // 判断+热力两段 LLM + 检索 + URL 实测,给足;独立 cron 不挤 07:01 主流程预算(PRD §5)
 export const maxDuration = 300; // B2-3:两段LLM+检索+URL实测,单链最坏~113s;多链串行须覆盖 2×单链
 
-// 链级每日推理生成(07:05 北京;07:40 briefing-backup 兜底补跑同一入口)。
+// 链级每日推理生成(vercel.json cron 7 23 UTC = 北京 07:07;07:40 briefing-backup 兜底补跑同一入口)。
 // 流程:读当日已发布条目 → 五段生成 → 护栏 → draft 落库 → 飞书待审。
 // 阻断型护栏不过 = 弃+告警不进审;人审未完成时页面自动走地板内容(拍板 D5)。
 export async function GET(req: NextRequest) {
