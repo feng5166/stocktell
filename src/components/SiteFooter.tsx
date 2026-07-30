@@ -55,7 +55,7 @@ export function SiteFooter() {
       {/* 备案信息(2026-07-30,stocktell.me 切回主域后按规定悬挂):
           ICP 备案号按工信部要求链接 beian.miit.gov.cn;公安备案号链接公安部备案查询页
           (beian.mps.gov.cn 新版入口,带编号参数直达查询)。备案主体见 relation-changelog 同日记录。
-          公安备案的官方小盾牌图标素材需从公安备案平台下载,后补不影响合规主体(号+链接已达标)。
+          小盾牌为官方原图(beian.gov.cn/img/ghs.png,20×20)本地托管 public/beian-ghs.png。
           vercel.app / maoadao 域名下同样渲染此行:规定只要求备案域名悬挂,多挂无害,不做按域名条件渲染。 */}
       <p className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 text-meta text-gray-400">
         <a
@@ -70,8 +70,10 @@ export function SiteFooter() {
           href="https://beian.mps.gov.cn/#/query/webSearch?code=11010502061873"
           target="_blank"
           rel="noreferrer nofollow"
-          className="hover:text-gray-600"
+          className="inline-flex items-center gap-1 hover:text-gray-600"
         >
+          {/* eslint-disable-next-line @next/next/no-img-element -- 14px 静态小图标,不值得走 next/image */}
+          <img src="/beian-ghs.png" alt="" width={14} height={14} className="inline-block" />
           京公网安备11010502061873号
         </a>
       </p>
