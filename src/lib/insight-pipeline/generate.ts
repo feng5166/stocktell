@@ -524,10 +524,17 @@ async function buildReferences(
   // pipeline-replay 兜底路径置此开关 → compliance-block 作 PR 门禁零网络、回放结果确定性。
   // review F7:该开关【严禁】配置到 Vercel——误设会让每日 insight 全部 refs 永久 verified=false,
   // admin 显示"0/N 可达"与源站全挂不可区分。跳过时留日志,让排查者能从函数日志一眼看到开关在生效。
-  if (process.env.INSIGHT_SKIP_URL_VERIFY === "1") {
+  // 2026-07-30 加硬闸:生产环境(VERCEL_ENV=production)直接忽略该开关——"严禁配置"从注释纪律
+  // 升级为代码强制;回放/CI/本地(无 VERCEL_ENV 或 preview)不受影响。
+  const skipVerify =
+    process.env.INSIGHT_SKIP_URL_VERIFY === "1" && process.env.VERCEL_ENV !== "production";
+  if (process.env.INSIGHT_SKIP_URL_VERIFY === "1" && !skipVerify) {
+    console.warn("[insight] INSIGHT_SKIP_URL_VERIFY=1 在生产环境被忽略(误配保护,review F7 硬闸)");
+  }
+  if (skipVerify) {
     console.warn("[insight] INSIGHT_SKIP_URL_VERIFY=1:已跳过 references 可达性验证(回放/CI 专用,生产不应配置)");
   }
-  if (process.env.INSIGHT_SKIP_URL_VERIFY !== "1") {
+  if (!skipVerify) {
     await Promise.all(
       capped.map(async (r) => {
         if (!r.url) return; // v2 url 可选(人工录入无链接来源);无链接不探测、verified 保持 false

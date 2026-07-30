@@ -1,6 +1,6 @@
 // 产业链上下游真实关联边(供应链/对标/映射),由多源研究+联网核验汇总。
 // from = 更上游(供货/赋能方),to = 更下游(集成/采购方)。strength: 强=直接供货/深度绑定;中=对标/国产替代/合理配套;弱=主题映射。
-// 仅在 stocks.ts 池内 164 只之间连边;不编造,拿不准的低置信项已剔除。叠加在 relations 之上,不改那个大数组。
+// 仅在 stocks.ts 池内标的之间连边(data-check CI 硬校验两端在池内);不编造,拿不准的低置信项已剔除。叠加在 relations 之上,不改那个大数组。
 import { SIGNAL_RANK } from "@/lib/signal-rank";
 
 export type ChainStrength = "强" | "中" | "弱";

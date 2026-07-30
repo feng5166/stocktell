@@ -4,7 +4,7 @@
 import { getPrisma } from "@/lib/prisma";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
 import { todayISO } from "@/lib/date";
-import { sendMail } from "@/lib/mailer";
+import { sendMail, emailDigestPaused, escapeHtml as esc } from "@/lib/mailer";
 import { getMorningBrief } from "@/lib/morning-brief";
 import { fundFlowFor, type FundFlowItem } from "@/lib/fund-flow";
 import { riskEventsFor } from "@/lib/risk-radar";
@@ -92,7 +92,7 @@ async function sendAlertsDigest(
     <p style="font-size:14px;margin:0 0 12px">今天没有跟你的票相关的隔夜美股动态,但你的持仓有 <b>⚠️ 要注意</b>:</p>
     ${alertLines
       .map(
-        (l) => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px">${l}</div>`
+        (l) => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px">${esc(l)}</div>`
       )
       .join("")}
     <p><a href="${base}/#mine" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
@@ -160,7 +160,7 @@ async function sendDigest(
   const alertHtml = alerts.length
     ? `<div style="font-size:13px;color:#666;margin:0 0 8px">⚠️ 你的票要注意</div>${alerts
         .map(
-          (l) => `<div style="border:1px solid #f0d9b5;background:#fffaf0;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px">${l}</div>`
+          (l) => `<div style="border:1px solid #f0d9b5;background:#fffaf0;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px">${esc(l)}</div>`
         )
         .join("")}`
     : "";
@@ -178,16 +178,16 @@ async function sendDigest(
     unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
     <p style="color:#888;font-size:12px;margin:0 0 6px">${date} · StockTell 盘前早报</p>
-    <p style="font-size:14px;line-height:1.75;background:#fffef6;border:1px solid #f0e9c8;border-radius:10px;padding:12px 14px;margin:0 0 14px">${brief}</p>
+    <p style="font-size:14px;line-height:1.75;background:#fffef6;border:1px solid #f0e9c8;border-radius:10px;padding:12px 14px;margin:0 0 14px">${esc(brief)}</p>
     ${alertHtml}
     <div style="font-size:13px;color:#666;margin:0 0 8px">跟你票相关</div>
     ${rows
       .map(
         (r) => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px">
         <div style="font-size:12px;color:#888">${r.impact}影响</div>
-        <div style="font-weight:600">${r.title}</div>
-        ${r.benes ? `<div style="font-size:12px;color:#555;margin-top:4px">涉及你的:${r.benes}</div>` : ""}
-        ${r.take ? `<div style="font-size:13px;color:#1a1d24;margin-top:6px">怎么想:${r.take}</div>` : ""}
+        <div style="font-weight:600">${esc(r.title)}</div>
+        ${r.benes ? `<div style="font-size:12px;color:#555;margin-top:4px">涉及你的:${esc(r.benes)}</div>` : ""}
+        ${r.take ? `<div style="font-size:13px;color:#1a1d24;margin-top:6px">怎么想:${esc(r.take)}</div>` : ""}
       </div>`
       )
       .join("")}
@@ -239,7 +239,9 @@ async function markDigestSent(
 // 邮件暂停开关(2026-07-20 负责人拍板「先维持」):stocktell.me 送备案停解析连带 Resend
 // 发件域验证失效,全量邮件被拒。恢复二选一(阿里云补回 3 条验证记录 / 换 maoadao 发件域)
 // 由负责人择机决策;期间置 EMAIL_DIGEST_PAUSED=1——发送早退、看门狗不再每天误报事故。
-export const emailDigestPaused = () => process.env.EMAIL_DIGEST_PAUSED === "1";
+// 实现已挪到 mailer.ts(雷区邮件也要查它,而 risk-radar→digest 会构成循环依赖);
+// 这里 re-export 保持 watchdog 等既有 import 路径不变。
+export { emailDigestPaused } from "@/lib/mailer";
 
 export async function runPreOpenDigest(opts?: {
   force?: boolean; // true=忽略当日已发记录全量重发(默认只发没发过的)

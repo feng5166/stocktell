@@ -8,9 +8,10 @@
 import { STOCKS, aSharePeers } from "@/data/stocks";
 import { getPrisma } from "@/lib/prisma";
 import { emSecid, fetchDailyBars, type DailyBar } from "@/lib/history";
-
-const MOVER_THRESHOLD = 2; // 同 generate.ts:美股 |涨跌| ≥2% 视为异动
-const HIT_THRESHOLD = 1.0; // 同 outcomes.ts:同向涨跌 ≥1% 记"跟上"
+// 阈值 import 单一来源而非手抄(2026-07-30 review):此前是拷贝常量,改一处会静默让
+// 回测与实盘口径分叉——回测的意义就是"与实盘完全相同的口径",口径必须同源。
+import { MOVER_THRESHOLD } from "@/lib/generate";
+import { HIT_THRESHOLD } from "@/lib/outcomes";
 
 export interface BacktestRow {
   briefingId: string;

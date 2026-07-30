@@ -7,7 +7,7 @@ import { todayISO } from "@/lib/date";
 import { singleFlight } from "@/lib/single-flight";
 import { alertThrottled } from "@/lib/monitor";
 import { clawbot } from "@/lib/clawbot";
-import { sendMail } from "@/lib/mailer";
+import { sendMail, emailDigestPaused, escapeHtml as esc } from "@/lib/mailer";
 import { unsubFooter } from "@/lib/unsub";
 import {
   shareFloatRows,
@@ -232,8 +232,8 @@ async function sendRiskEmail(
   const blocks = Array.from(byStock.entries())
     .map(
       ([name, evs]) =>
-        `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-weight:600">${name}</div>${evs
-          .map((e) => `<div style="font-size:13px;color:#555;margin-top:4px">${e.text}</div>`)
+        `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-weight:600">${esc(name)}</div>${evs
+          .map((e) => `<div style="font-size:13px;color:#555;margin-top:4px">${esc(e.text)}</div>`)
           .join("")}</div>`
     )
     .join("");
@@ -322,10 +322,12 @@ export async function runRiskRadar(): Promise<{
     }
     if (fresh.length === 0) continue;
     candidates++;
-    // 渠道:有微信发微信(即时),否则邮件;成功才落去重(失败留到窗口内次日重试)
+    // 渠道:有微信发微信(即时),否则邮件;成功才落去重(失败留到窗口内次日重试)。
+    // 邮件分支同样受 EMAIL_DIGEST_PAUSED 约束:发件域失效期继续发只会积 Resend 硬退;
+    // 不落去重,恢复后窗口内自动补发(2026-07-30 review)。
     let ok = false;
     if (u.weixinOpenId) ok = await sendBridge(u.weixinOpenId, formatMessage(fresh));
-    if (!ok && u.email) ok = await sendRiskEmail(u.email, u.id, fresh);
+    if (!ok && u.email && !emailDigestPaused()) ok = await sendRiskEmail(u.email, u.id, fresh);
     if (ok) {
       pushed++;
       for (const f of fresh) {

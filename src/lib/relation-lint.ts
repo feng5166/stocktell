@@ -18,6 +18,14 @@ export type LintViolation = {
   detail?: string;
 };
 
+// trigger 组 → 期望 chainId(只登记「已有家」的组;未来链归 null 不设期望)
+const TRIGGER_GROUP_CHAIN: Record<string, string> = {
+  "ai-infra": "ai-infra",
+  "ai-application": "ai-application",
+  "data-center-power": "data-center-power",
+  "semiconductor": "semiconductor-equipment",
+};
+
 const CONCEPT = /受益|机会|龙头|弹性|空间|景气/;
 const VERIFY = /后续看|验证|订单|客户|收入|毛利|占比|交付|披露|财报|供货|营收/;
 const hasRefs = (r: StockChainRelation) => !!r.references && r.references.length > 0;
@@ -40,6 +48,13 @@ export function lintRelations(rels: StockChainRelation[] = allRelations()): Lint
     if (r.relationType === "indirect" && !hasRefs(r) && !hasEv(r)) push(r, "indirect-no-evidence");
     // trigger 分组
     if (r.relationType === "trigger" && !r.triggerGroup) push(r, "trigger-no-group");
+    // trigger 组与 chainId 自洽(2026-07-30 review):audit 里 ai-application 组曾带旧
+    // chainId=ai-infra(生成早于 P1-3 拍板)靠派生层纠偏——这条规则保证同类漂移下次在 CI 红出。
+    // 只校验「组已有对应链」的情况;null/未来链(crypto/auto-robot/aero-defense)不设期望。
+    if (r.relationType === "trigger" && r.triggerGroup) {
+      const expect = TRIGGER_GROUP_CHAIN[r.triggerGroup];
+      if (expect && r.chainId !== expect) push(r, "trigger-group-chain-mismatch", `${r.triggerGroup} → ${r.chainId}`);
+    }
     // reason 交易化喊单词(窄表)
     const trade = r.reason.match(TRADE_WORDS);
     if (trade) push(r, "reason-trade-word", trade[0]);

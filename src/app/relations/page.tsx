@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteHeader } from "@/components/SiteHeader";
 import { REL_CHIP_CLS, EVIDENCE_LABEL } from "@/lib/relation-rank";
 
 // B6 关系说明(glossary)。公开轻量说明页:关系档 6 种 + 证据状态 3 种 + 历史统计为何不是预测。
@@ -29,8 +30,12 @@ function Chip({ label }: { label: string }) {
 }
 
 export default function RelationsGlossaryPage() {
+  // 套全站导航壳(同 /methodology 模式,2026-07-30 review):此前无 SiteHeader,
+  // 该页在 sitemap priority 0.6、被 footer//methodology 多处链入,SEO 落地用户进来是死路。
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+    <div className="min-h-screen bg-canvas text-ink">
+      <SiteHeader />
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       <h1 className="text-h1 font-semibold tracking-tight text-gray-900">关系说明</h1>
       <p className="mt-2 text-sm leading-relaxed text-gray-500">
         StockTell 把「一件海外大事会不会影响国内某只票」翻译成一套关系档。这些是<b className="text-gray-700">研究框架的梳理</b>,不是荐股、不是买卖建议。
@@ -92,6 +97,7 @@ export default function RelationsGlossaryPage() {
         </Link>
         。
       </p>
+      </div>
     </div>
   );
 }
