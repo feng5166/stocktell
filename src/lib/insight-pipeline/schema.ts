@@ -45,6 +45,26 @@ export type DailyReference = ReferenceV1 | ReferenceV2;
 export const isRefV2 = (r: DailyReference): r is ReferenceV2 =>
   typeof (r as ReferenceV2).supportsText === "string";
 
+// ---- 当日传导路径 hops(2026-07-30)----
+// 多跳推理的【每日】结构化落地(PRODUCT-CORE §9 的最大缺口:此前 hops 只存在于静态
+// InsightChain,每日 doc 只有热力+映射,归档不含当日传导路径)。路线=规则优先、零幻觉:
+// 骨架(from/to/plain/logic/confidence)逐字来自人工核定的静态 mainHops/branchHops,
+// 当日状态由规则 join 注入——静态 heatmap.hopOrder → 环节名 → 当日 heat 行,todayNote
+// 逐字复用当日 heat.reason(已过 runGuards 扫描的文本),【不为 hops 新生成任何散文】。
+// 可选字段:历史 doc 无此字段照常有效,读端判空渲染;事件专篇的 LLM 生成 hops 属 M2,另立项。
+export type DailyHop = {
+  order: number;
+  from: string;
+  to: string;
+  plain: string; // 静态骨架人话(人工核定)
+  logic: string; // 静态专业逻辑(人工核定)
+  confidence: "高" | "中" | "低";
+  kind: "main" | "branch";
+  todaySegment?: string; // 命中的当日热力环节
+  todayDirection?: HeatDirection;
+  todayNote?: string; // = 当日 heat.reason 同文
+};
+
 export interface DailyInsightPayload {
   // v1=历史归档(references 为 ReferenceV1);v2=2026-07-12 起生成侧产出(ReferenceV2)
   version: 1 | 2;
@@ -73,6 +93,7 @@ export interface DailyInsightPayload {
   references: DailyReference[];
   // schema 三档全支持(增补#3);生成侧封顶「中」由护栏强制,「高」只能审核页给
   confidence: "高" | "中" | "低";
+  hops?: DailyHop[]; // 当日传导路径(见上,2026-07-30 起生成;历史 doc 无)
 }
 
 const DIRECTIONS: HeatDirection[] = ["升温", "降温", "分化", "观察"];
@@ -135,6 +156,30 @@ export function validateDailyPayload(
     }
 
   if (typeof d.risk !== "string" || !d.risk.trim()) errs.push("缺 risk");
+
+  // hops 可选(2026-07-30 起生成侧产出;历史 doc 无)。存在则逐项校验:
+  // 骨架字段必须齐(来自静态数据,缺=派生代码坏了);today* 三件套要么都缺要么自洽。
+  if (d.hops !== undefined) {
+    if (!Array.isArray(d.hops) || d.hops.length === 0) errs.push("hops 存在但为空/非数组");
+    else if (d.hops.length > 12) errs.push("hops 超长(>12 跳,疑似派生异常)");
+    else {
+      const orders = new Set<number>();
+      for (const h of d.hops) {
+        if (!h || typeof h !== "object") { errs.push("hops 含空元素"); continue; }
+        if (typeof h.order !== "number") errs.push("hops 缺 order");
+        else if (orders.has(h.order)) errs.push(`hops order 重复:${h.order}`);
+        else orders.add(h.order);
+        if (!h.from?.trim() || !h.to?.trim() || !h.plain?.trim() || !h.logic?.trim())
+          errs.push(`hops[${h.order}] 骨架字段缺失(from/to/plain/logic)`);
+        if (!["高", "中", "低"].includes(h.confidence)) errs.push(`hops[${h.order}] confidence 非法`);
+        if (h.kind !== "main" && h.kind !== "branch") errs.push(`hops[${h.order}] kind 非法`);
+        if (h.todayDirection !== undefined && !DIRECTIONS.includes(h.todayDirection))
+          errs.push(`hops[${h.order}] todayDirection 非法:${String(h.todayDirection)}`);
+        if (h.todaySegment !== undefined && !segNames.has(h.todaySegment))
+          errs.push(`hops[${h.order}] todaySegment 不在枚举:${h.todaySegment}`);
+      }
+    }
+  }
 
   if (!Array.isArray(d.references)) errs.push("缺 references");
   else {

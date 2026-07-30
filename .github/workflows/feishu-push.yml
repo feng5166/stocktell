@@ -36,7 +36,8 @@ jobs:
           elif [ "$code" -ge 400 ]; then
             echo "push-feishu 返回 HTTP $code(非缺简报的 5xx/4xx)"; exit 1
           fi
-      # Web Push 已关闭(改由邮件 + 微信承载);不再触发 /api/cron/push-web。
+      # Web Push 的 GH 侧触发已移除:广播主路径折进 briefing cron(maybeWebPush),
+      # 是否启用以 lib/push.ts pushEnabled() 为唯一判定(VAPID 配置 + WEB_PUSH_ENABLED≠0)。
       - name: Check bridge HTTPS cert expiry (alert if <14d)
         if: always() # 简报 step 红了也照测证书,别让两个哨互相遮蔽
         run: |
