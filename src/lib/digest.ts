@@ -10,10 +10,15 @@ import { fundFlowFor, type FundFlowItem } from "@/lib/fund-flow";
 import { riskEventsFor } from "@/lib/risk-radar";
 import { STOCK_MAP } from "@/data/stocks";
 import { unsubFooter } from "@/lib/unsub";
+import { alertThrottled } from "@/lib/monitor";
 
 // 全量发信节流 + 失败重试:Resend 有速率上限,无间隔紧循环会偶发 429 丢邮件
 // (已踩:2026-07-01 全量推送 peggiezhou 撞限流失败)。每封间隔 + 失败等一下重试一次。
 const DIGEST_THROTTLE_MS = Number(process.env.DIGEST_THROTTLE_MS ?? 500);
+// 发送循环默认时间预算(2026-07-30):逐用户串行、单用户最坏 ≈ LLM 22s + Tushare 冷路径,
+// maxDuration=300s 下冷缓存约 10~15 人即触顶——平台硬杀绕过 catch = 静默丢一批(07-03 同款)。
+// 预算耗尽时干净收尾:已发的都有 digestSendLog 幂等记录,07:40 briefing-backup 会从断点续发。
+const DEFAULT_SEND_BUDGET_MS = 240_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function trySend(fn: () => Promise<boolean>): Promise<boolean> {
   if (await fn()) return true;
@@ -245,6 +250,7 @@ export { emailDigestPaused } from "@/lib/mailer";
 
 export async function runPreOpenDigest(opts?: {
   force?: boolean; // true=忽略当日已发记录全量重发(默认只发没发过的)
+  deadlineAt?: number; // epoch ms,发送循环的硬截止(调用方按自身 maxDuration 预留;默认 now+240s)
 }): Promise<{
   ok: boolean;
   skipped?: string;
@@ -253,6 +259,7 @@ export async function runPreOpenDigest(opts?: {
   sent: number; // 实际发出数(Resend 没配时为 0)
   failed?: number; // 该发但发送失败的数量
   alreadySent?: number; // 当日已发过而跳过的用户数(补发幂等,2026-07-03 复盘产物)
+  truncated?: number; // 时间预算耗尽被截断、留给补位续发的用户数
   results?: DigestUserResult[]; // 逐用户结果(供后台记录失败)
 }> {
   if (emailDigestPaused())
@@ -298,15 +305,30 @@ export async function runPreOpenDigest(opts?: {
 
   let candidates = 0;
   let sent = 0;
+  let truncated = 0;
   const results: DigestUserResult[] = [];
+  // 先筛出本轮真正要处理的队列(有邮箱、有自选、今天没发过),循环里才能在预算耗尽时
+  // 准确报出"还剩几人没处理"——直接 break 原始 users 会把无自选者也算进截断数。
+  const queue: typeof users = [];
   for (const u of users) {
     if (!u.email) continue;
     const codes = codesByUser.get(u.id);
     if (!codes || codes.size === 0) continue;
     if (sentBefore.has(u.id)) {
-      alreadySent++;
-      continue; // 今天已发过:补发/重跑只补漏,不重复打扰
+      alreadySent++; // 今天已发过:补发/重跑只补漏,不重复打扰
+      continue;
     }
+    queue.push(u);
+  }
+  const deadlineAt = opts?.deadlineAt ?? Date.now() + DEFAULT_SEND_BUDGET_MS;
+  for (let qi = 0; qi < queue.length; qi++) {
+    // 预算检查放在每个用户【开始前】:宁可整人留给补位,不在半途被平台硬杀
+    if (Date.now() >= deadlineAt) {
+      truncated = queue.length - qi;
+      break;
+    }
+    const u = queue[qi];
+    const codes = codesByUser.get(u.id)!;
     const relevant = briefings.filter(
       (b) =>
         (b.triggerCode != null && codes.has(b.triggerCode)) ||
@@ -323,7 +345,7 @@ export async function runPreOpenDigest(opts?: {
       const ok = await trySend(() =>
         sendDigest(u.email!, u.id, date, relevant, brief, alerts)
       );
-      results.push({ userId: u.id, email: u.email, mode: "digest", sent: ok });
+      results.push({ userId: u.id, email: u.email!, mode: "digest", sent: ok });
       if (ok) {
         sent++;
         await markDigestSent(db, date, u.id, "digest");
@@ -336,7 +358,7 @@ export async function runPreOpenDigest(opts?: {
     if (alerts.length === 0) continue; // 既无简报又无要注意 → 不打扰
     candidates++;
     const ok = await trySend(() => sendAlertsDigest(u.email!, u.id, alerts));
-    results.push({ userId: u.id, email: u.email, mode: "alerts", sent: ok });
+    results.push({ userId: u.id, email: u.email!, mode: "alerts", sent: ok });
     if (ok) {
       sent++;
       await markDigestSent(db, date, u.id, "alerts");
@@ -351,7 +373,14 @@ export async function runPreOpenDigest(opts?: {
       results.filter((r) => !r.sent).map((r) => r.email).join(", ")
     );
   }
-  return { ok: true, date, candidates, sent, failed, alreadySent, results };
+  if (truncated > 0) {
+    console.error(`[digest] 时间预算耗尽截断:已发 ${sent},剩 ${truncated} 人待 07:40 补位续发`);
+    await alertThrottled(
+      "digest-truncated",
+      `⚠️ StockTell digest 发送因时间预算截断(${date}):已发 ${sent},剩 ${truncated} 人。已发部分有 digestSendLog 幂等记录,07:40 补位会自动续发;若补位后仍截断说明单轮预算已不够全量,需拆分发送批次。`
+    );
+  }
+  return { ok: true, date, candidates, sent, failed, alreadySent, truncated, results };
 }
 
 // 给单个用户发一封真·digest(复用与全量推送完全相同的 sendDigest/sendAlertsDigest 模板)。

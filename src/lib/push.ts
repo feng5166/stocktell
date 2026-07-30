@@ -5,7 +5,13 @@ const PRIV = process.env.VAPID_PRIVATE_KEY;
 const SUBJECT = process.env.VAPID_SUBJECT || "mailto:noreply@maoadao.com";
 
 let configured = false;
+// Web Push 是否启用的【唯一判定】(2026-07-30 收敛):此前三处口径互相矛盾——sw.js 注释说
+// "产品侧未启用"、feishu-push workflow 说"已关闭"、briefing cron 却在每日实际广播,
+// 真实行为一直是"配了 VAPID 就发"。现收敛为:配置了 VAPID 即启用;WEB_PUSH_ENABLED=0
+// 显式停用(kill-switch,默认不设=维持现状;要停广播改一个 env,不用摘 VAPID key)。
+// /settings 的浏览器通知卡与 subscribe API 也以此为准。
 export function pushEnabled(): boolean {
+  if (process.env.WEB_PUSH_ENABLED === "0") return false;
   return !!(PUB && PRIV);
 }
 function ensure() {

@@ -15,7 +15,8 @@ import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { fallbackChainTake } from "@/lib/chain-take";
 import { runGuards, type GuardResult } from "./guard";
 import { heatSignature, getRecentHeatSignatures } from "./docs";
-import type { DailyInsightPayload, HeatDirection } from "./schema";
+import type { DailyInsightPayload, DailyHop, HeatDirection } from "./schema";
+import { INSIGHT_CHAINS } from "@/data/insight-chains";
 
 export interface GenerateResult {
   ok: boolean; // false = 无可生成(非交易/无条目/链未配置)
@@ -547,6 +548,58 @@ async function buildReferences(
   return capped;
 }
 
+/* ---------- S3.5 当日传导路径(纯规则,零 LLM 零幻觉)---------- */
+// 多跳推理的每日结构化落地(schema.ts DailyHop 头注释有完整设计说明)。
+// 骨架逐字取静态 InsightChain 的 mainHops/branchHops(人工核定);当日状态 join 规则:
+// 静态 heatmap 行带 hopOrder(「怎么传到这的」与热力行的既有关联),据此把跳号映射到
+// 环节名,再按环节名找当日 heat 行,注入 direction 与 reason(同文,已过护栏扫描)。
+// 静态无该链(slug 缺)或某跳无关联环节 → 整体/该跳的 today* 缺席,不硬造。
+function buildDailyHops(
+  insightSlug: string | undefined,
+  heat: DailyInsightPayload["heat"]
+): DailyHop[] | undefined {
+  const chain = insightSlug ? INSIGHT_CHAINS[insightSlug] : undefined;
+  if (!chain) return undefined;
+  // 环节名归一化 join:静态 heatmap 写「光模块 / 高速互连」,链配置 segments 写「光模块/高速互连」
+  // (空格差异),还有「数据中心电力 / 供配电」vs「数据中心电力」(后缀差异)。规则:去空格精确
+  // 匹配优先,miss 再按「/」首段匹配(首段在两侧枚举里无碰撞,实测覆盖全部现有环节);
+  // 都 miss 则该跳 today* 缺席,不硬造。todaySegment 写回的是【当日 heat 行】的名字(在枚举内)。
+  const norm = (s: string) => s.replace(/\s+/g, "");
+  const heatByNorm = new Map(heat.map((h) => [norm(h.segment), h]));
+  const findToday = (staticSeg: string) => {
+    const n = norm(staticSeg);
+    const exact = heatByNorm.get(n);
+    if (exact) return exact;
+    const head = n.split("/")[0];
+    for (const [k, v] of Array.from(heatByNorm)) if (k === head || k.split("/")[0] === head) return v;
+    return undefined;
+  };
+  // 一跳可能关联多个热力行(如跳3同时挂 HBM 与封装),取静态 heatmap 里第一处(主关联)
+  const segByHop = new Map<number, string>();
+  for (const row of chain.heatmap)
+    if (row.hopOrder != null && !segByHop.has(row.hopOrder)) segByHop.set(row.hopOrder, row.segment);
+  const mk = (h: (typeof chain.mainHops)[number], kind: "main" | "branch"): DailyHop => {
+    const seg = segByHop.get(h.order);
+    const today = seg ? findToday(seg) : undefined;
+    return {
+      order: h.order,
+      from: h.from,
+      to: h.to,
+      plain: h.plain,
+      logic: h.logic,
+      // 静态 Confidence 含「假设」档,每日 payload 三档口径下归入「低」(不确定性只多不少)
+      confidence: h.confidence === "假设" ? "低" : h.confidence,
+      kind,
+      ...(today ? { todaySegment: today.segment, todayDirection: today.direction, todayNote: today.reason } : {}),
+    };
+  };
+  const hops = [
+    ...chain.mainHops.map((h) => mk(h, "main")),
+    ...chain.branchHops.map((h) => mk(h, "branch")),
+  ].sort((a, b) => a.order - b.order);
+  return hops.length > 0 ? hops : undefined;
+}
+
 /* ---------- 主入口 ---------- */
 export async function generateDailyInsight(
   chainId: string,
@@ -584,6 +637,7 @@ export async function generateDailyInsight(
   const risk =
     (await genRisk(chain.name, verifyWords, own, items, meta)) ?? chainRisk(chain.segments, own, items);
   const references = await buildReferences(trigger, meta);
+  const hops = buildDailyHops(chain.insightSlug, heat);
 
   const payload: DailyInsightPayload = {
     version: 2, // PR3:references 为 ReferenceV2(历史 v1 归档不迁移,读取端双读)
@@ -596,6 +650,7 @@ export async function generateDailyInsight(
     risk,
     references,
     confidence: judgment.degraded ? "低" : "中",
+    ...(hops ? { hops } : {}),
   };
 
   const guard = runGuards(payload, chain.segments, meta);

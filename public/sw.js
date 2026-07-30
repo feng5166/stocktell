@@ -12,7 +12,8 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// Web Push:收到推送显示通知(目前产品侧未启用 Web Push,保留处理器无害)
+// Web Push:收到推送显示通知。是否启用以服务端 lib/push.ts pushEnabled() 为唯一判定
+// (配了 VAPID 即启用,WEB_PUSH_ENABLED=0 可停);broadcast 主路径在 briefing cron。
 self.addEventListener("push", (event) => {
   let data = {};
   try {

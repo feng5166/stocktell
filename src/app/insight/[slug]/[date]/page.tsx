@@ -137,6 +137,36 @@ export default async function InsightArchivePage({
           </ul>
         </section>
 
+        {/* 当日传导路径(2026-07-30):每日 doc 自带的结构化多跳——骨架为人工核定的因果链,
+            「今日」注解来自当日热力(同文复用,零新生成)。历史 doc 无 hops 字段则整节不渲染。 */}
+        {p.hops && p.hops.length > 0 && (
+          <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="text-xs font-medium text-gray-500">当日传导路径(骨架为研究框架梳理,非当日新推)</h2>
+            <ol className="mt-2 space-y-2">
+              {p.hops.map((h) => (
+                <li key={h.order} className="text-xs leading-relaxed text-gray-600">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono text-[11px] text-gray-300">{h.order}</span>
+                    <span className="font-medium text-gray-700">
+                      {h.from} → {h.to}
+                    </span>
+                    <span className={`rounded px-1.5 py-0.5 text-[11px] ${CONF_CLS[h.confidence] ?? CONF_CLS["低"]}`}>
+                      置信 {h.confidence}
+                    </span>
+                    {h.todayDirection && (
+                      <span className="rounded bg-gray-50 px-1.5 py-0.5 text-[11px]">
+                        今日 {h.todaySegment} · {h.todayDirection}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5">{h.plain}</p>
+                  {h.todayNote && <p className="mt-0.5 text-gray-400">今日:{h.todayNote}</p>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
         {p.mappingsDelta.length > 0 && (
           <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
             <h2 className="text-xs font-medium text-gray-500">当日映射观察(关系分级,非推荐)</h2>

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { pushEnabled } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
-// 保存浏览器推送订阅(按 endpoint 去重)
+// 保存浏览器推送订阅(按 endpoint 去重)。pushEnabled 是唯一开关判定(见 lib/push.ts):
+// 停用态不再收新订阅,避免"订了却永远收不到"的静默错觉。
 export async function POST(req: NextRequest) {
+  if (!pushEnabled())
+    return NextResponse.json({ ok: false, error: "push-disabled" }, { status: 503 });
   const db = getPrisma();
   if (!db) return NextResponse.json({ ok: false, error: "no database" }, { status: 500 });
   try {

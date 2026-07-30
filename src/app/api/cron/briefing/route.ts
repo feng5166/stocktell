@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
+  // digest 发送循环的硬截止:距 maxDuration(300s)留 30s 收尾余量(webpush+响应)。
+  const digestDeadline = Date.now() + (maxDuration - 30) * 1000;
 
   // 只在 A 股交易日生成。fail-closed:Tushare 不可用无法确认交易日时不生成(假日误发不可撤回),
   // 但 unknown 必须告警——否则真交易日的 Tushare 抖动会被静默跳过。unknown 告警当天全局去重。
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
           return null;
         }
       );
-      const digest = await runDigest(date, "补位");
+      const digest = await runDigest(date, "补位", digestDeadline);
       const webpush = await maybeWebPush(date, "补位");
       return NextResponse.json({
         ok: true,
@@ -123,7 +125,7 @@ export async function GET(req: NextRequest) {
       );
       // 没有隔夜简报,但用户持仓的资金面/雷区提醒(digest 的 alerts-only 分支)不依赖美股,
       // 照常发——否则美股源抖动的早上,这批高信号提醒被连带静默跳过(评审确认)。
-      const digest = await runDigest(date, "");
+      const digest = await runDigest(date, "", digestDeadline);
       return NextResponse.json({
         ok: true,
         date,
@@ -169,7 +171,7 @@ export async function GET(req: NextRequest) {
     );
     // 盘前推送:digest 总是跑——它的 alerts-only 分支(雷区/资金面提醒)不依赖简报,
     // 0 条发布的交易日照样要给持仓有异动的用户发提醒(created>0 才跑会静默漏掉这批,评审确认)。
-    const digest = await runDigest(date, "");
+    const digest = await runDigest(date, "", digestDeadline);
     // Web Push 是"今日简报"通用广播,0 条发布无内容可播 → 不广播。
     const webpush = created.length > 0 ? await maybeWebPush(date, "") : null;
     return NextResponse.json({
@@ -197,7 +199,7 @@ export async function GET(req: NextRequest) {
 // 只回计数,绝不把 runPreOpenDigest 的 results(内含每个订户 email/userId)放进响应体——
 // cron 响应会进平台日志/任何抓到它的地方,等于泄露全体订户 PII。
 function digestSummary(
-  d: { candidates?: number; sent?: number; failed?: number; alreadySent?: number } | null
+  d: { candidates?: number; sent?: number; failed?: number; alreadySent?: number; truncated?: number } | null
 ) {
   if (!d) return null;
   return {
@@ -205,14 +207,18 @@ function digestSummary(
     sent: d.sent ?? 0,
     failed: d.failed ?? 0,
     alreadySent: d.alreadySent ?? 0,
+    truncated: d.truncated ?? 0,
   };
 }
 
 // 邮件 digest:按用户幂等(digest_send_log,已发的跳过),所以主跑/补位重复调用都安全。
 // 抛错/部分失败都告警(tag 区分主跑 vs 补位)。
-async function runDigest(date: string, tag: string) {
+// deadlineAt:发送循环的时间预算硬截止(2026-07-30)——digest 排在生成/发布/链级判断之后,
+// 剩多少预算取决于前面吃了多少;按"距函数被硬杀(300s)留 30s 收尾"给,截断的用户
+// 由 07:40 补位靠 digestSendLog 幂等续发,绝不再被平台硬杀静默丢批。
+async function runDigest(date: string, tag: string, deadlineAt?: number) {
   const label = `briefing(盘前邮件${tag ? "·" + tag : ""})`;
-  const digest = await runPreOpenDigest().catch(async (e) => {
+  const digest = await runPreOpenDigest({ deadlineAt }).catch(async (e) => {
     await alertCron(label, e);
     return null;
   });

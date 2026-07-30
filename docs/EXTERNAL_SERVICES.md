@@ -109,9 +109,9 @@
 - 邮件均带「取消推送」入口(`src/lib/unsub.ts` HMAC 签名)+ `List-Unsubscribe` 头。
 
 ### Web Push / VAPID(浏览器 & PWA 通知)
-- **用途**:浏览器/PWA 推送。
-- **关键文件**:`src/app/api/push/subscribe/route.ts`、`src/components/pwa/PwaActions.tsx`(`web-push` 库)。
-- **环境变量**:`VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT`。
+- **用途**:浏览器/PWA 推送。广播主路径折在 briefing cron(`maybeWebPush`);`/api/cron/push-web` 仅手动补推。
+- **关键文件**:`src/lib/push.ts`(`pushEnabled()` 是启用与否的**唯一判定**)、`src/app/api/push/subscribe/route.ts`、`src/components/pwa/PwaActions.tsx`(`web-push` 库)。
+- **环境变量**:`VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT`;`WEB_PUSH_ENABLED=0` 为显式停用 kill-switch(不设=配了 VAPID 即启用,2026-07-30 收敛三处口径矛盾)。
 
 ### 自建微信桥(ClawBot / iLink)— `https://bridge.stocktell.me`(VPS 47.84.8.167)
 - **用途**:微信 iLink 推送(扫码绑定 + 盘前/手动推送)。
