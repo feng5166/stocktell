@@ -52,6 +52,29 @@ export function SiteFooter() {
       <p className="mt-2 text-meta leading-relaxed text-gray-500">
         StockTell 的内容均为 AI 对公开信息的整理与解读,不构成投资建议。
       </p>
+      {/* 备案信息(2026-07-30,stocktell.me 切回主域后按规定悬挂):
+          ICP 备案号按工信部要求链接 beian.miit.gov.cn;公安备案号链接公安部备案查询页
+          (beian.mps.gov.cn 新版入口,带编号参数直达查询)。备案主体见 relation-changelog 同日记录。
+          公安备案的官方小盾牌图标素材需从公安备案平台下载,后补不影响合规主体(号+链接已达标)。
+          vercel.app / maoadao 域名下同样渲染此行:规定只要求备案域名悬挂,多挂无害,不做按域名条件渲染。 */}
+      <p className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 text-meta text-gray-400">
+        <a
+          href="https://beian.miit.gov.cn"
+          target="_blank"
+          rel="noreferrer nofollow"
+          className="hover:text-gray-600"
+        >
+          浙ICP备2026050677号-2
+        </a>
+        <a
+          href="https://beian.mps.gov.cn/#/query/webSearch?code=11010502061873"
+          target="_blank"
+          rel="noreferrer nofollow"
+          className="hover:text-gray-600"
+        >
+          京公网安备11010502061873号
+        </a>
+      </p>
     </footer>
   );
 }
