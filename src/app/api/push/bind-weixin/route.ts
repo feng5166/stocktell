@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { bindWeixinByToken } from "@/lib/weixin-bind";
+import { isClawbotAuthorized } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const secret = process.env.CLAWBOT_SECRET;
-  if (secret && req.headers.get("x-clawbot-secret") !== secret) {
+  if (!isClawbotAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 

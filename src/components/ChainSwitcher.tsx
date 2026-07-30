@@ -4,15 +4,7 @@
 // 点开发中的链 → 展开「🚧 开发中 + 👀 我想要」投票,收集需求/反哺开发优先级。
 import { useEffect, useState } from "react";
 import { track } from "@/lib/analytics";
-
-const CHAINS: { key: string; name: string; ready: boolean }[] = [
-  { key: "ai", name: "AI 产业链", ready: true },
-  { key: "newenergy", name: "新能源 · 光伏储能", ready: false },
-  { key: "pharma", name: "创新药 · 医药", ready: false },
-  { key: "semi", name: "半导体设备材料", ready: false },
-  { key: "robot", name: "机器人 · 具身", ready: false },
-  { key: "military", name: "军工", ready: false },
-];
+import { VOTE_CHAINS as CHAINS } from "@/data/vote-chains";
 
 // 游客也能投:用 localStorage 里的匿名 id 去重(轻量防刷,需求收集为主)
 function clientId(): string {
