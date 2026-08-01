@@ -65,6 +65,8 @@ const T_PUSH = `CREATE TABLE IF NOT EXISTS "push_subscriptions" (
   CONSTRAINT "push_subscriptions_pkey" PRIMARY KEY ("id")
 )`;
 const IDX_PUSH = `CREATE UNIQUE INDEX IF NOT EXISTS "push_subscriptions_endpoint_key" ON "push_subscriptions" ("endpoint")`;
+// 订阅快照自选(免登录 D1 个性化,新手路径 v2):匿名订阅只存 codes 不存身份
+const ALTER_PUSH_CODES = `ALTER TABLE "push_subscriptions" ADD COLUMN IF NOT EXISTS "codes" text[] NOT NULL DEFAULT '{}'`;
 
 // 微信:给 users 加 weixin_open_id 列 + 建微信绑定 token 表(幂等)。
 // 修复:schema 加了 weixinOpenId 但生产库缺该列,导致所有登录(查 users)报错。
@@ -289,6 +291,7 @@ export const DDL_STATEMENTS: string[] = [
   IDX_WATCHLIST_USER,
   T_PUSH,
   IDX_PUSH,
+  ALTER_PUSH_CODES,
   ALTER_USER_WEIXIN,
   IDX_USER_WEIXIN,
   ALTER_USER_WEIXIN_PENDING,

@@ -30,7 +30,10 @@ aha = **"我随手加的那只票,它当场用人话讲清了它在产业链里�
 - ✅(P1)`AhaPushNudge`:加自选 6 秒后(即时关系卡已兑现)弹一步式 webpush 开启——**完全免登录**(PushSubscription 只按 endpoint 存),游客即可收每日推送 = 免登录 D1 主钩子;与登录 nudge 会话级互斥,7 天冷却;埋 `push_nudge_view/fail`、`bind_push{source:aha_nudge}`
 - ✅(P1)登录 nudge 文案改损失规避(「明早盘前会生成你这 N 只票的解读」)
 - ✅(P2)/track 信任入口植入即时关系卡与安静卡;PWA 安装入口 aha 后置(游客无自选不展示,加票即解锁)
-- ❌ 暂缓:D1 推送文案 LLM 个性化(邮件 digest 本就按用户自选生成、且 EMAIL_DIGEST_PAUSED 暂停中;webpush 是全员广播,按用户拆分需重构发送循环——等漏斗数据证明 D1 是瓶颈再动 cron);新访客首屏完整重排(v1 评审否决布局分叉,维持引桥方案)
+- ✅(同日第三批,负责人拍板"都排上")新访客首屏重排 `FirstRunReorder`:无自选访客「因果链演示」前置、盘面卡后移,槽位翻转不复制标记(引桥行 FirstRunPromo 随之退役);老访客维持 07-09 拍板顺序
+- ✅(第三批)「第一份传导地图」LLM 版:explain 新增 `kind:"map"`——服务端装配 核定关系档/环节/验证点/上游锚点行情 上下文,逐跳人话+分寸感匹配关系档,票×日共享缓存;InstantTake 自动生成的就是这份地图(静态骨架仍然 0 秒先出)
+- ✅(第三批)webpush D1 个性化(结构化,零 LLM):`push_subscriptions` 加 `codes` 快照列(DDL/哨兵三处相邻改)、订阅时携带自选(白名单过滤封顶 30)、runWebPush 命中当日条目的订阅换「你的 XX 出现在今天的传导链」标题,未命中回落广播词。匿名订阅不存身份。
+- ❌ 仍暂缓:推送文案 LLM 化(结构化标题已个性化,LLM 增量价值待验证);邮件侧(本就按自选个性化,EMAIL_DIGEST_PAUSED 恢复后自然生效)
 
 ### 观测口径(两周看板)
 主漏斗:`landing_view → add_watchlist{source} → relation_hit{mode} → deep_read/chat_open → signup → bind_push → returning_visit`。

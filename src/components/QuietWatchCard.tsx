@@ -89,8 +89,8 @@ export function InstantTake({
           )}
         </div>
       )}
-      {/* key=code:换一只"刚加的票"时整块重挂,自动重新解读 */}
-      <DeepRead key={code} payload={{ code }} autoStart label="🔍 看 StockTell 现在怎么看 →" />
+      {/* key=code:换一只"刚加的票"时整块重挂,自动重新生成传导地图(LLM 版,票×日共享缓存) */}
+      <DeepRead key={code} payload={{ code, kind: "map" }} autoStart label="🗺 看它的传导地图 →" />
       <p className="mt-1.5 text-[10px] text-gray-400">
         关系为研究框架梳理·非确认;
         <Link href="/track" className="text-gray-500 underline hover:text-gray-700">
