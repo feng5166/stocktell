@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { pushEnabled } from "@/lib/push";
+import { STOCK_MAP } from "@/data/stocks";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,17 @@ export async function POST(req: NextRequest) {
     if (!endpoint || !p256dh || !auth) {
       return NextResponse.json({ ok: false, error: "invalid subscription" }, { status: 400 });
     }
+    // 自选快照(免登录 D1 个性化):白名单过滤到池内代码、封顶 30,匿名不存身份。
+    // 客户端不传/传垃圾 → 空数组 = 广播兜底,不拒绝订阅。
+    const codes = Array.isArray(sub?.codes)
+      ? (sub.codes as unknown[])
+          .filter((c): c is string => typeof c === "string" && Object.prototype.hasOwnProperty.call(STOCK_MAP, c))
+          .slice(0, 30)
+      : [];
     await db.pushSubscription.upsert({
       where: { endpoint },
-      update: { p256dh, auth },
-      create: { endpoint, p256dh, auth },
+      update: { p256dh, auth, codes },
+      create: { endpoint, p256dh, auth, codes },
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

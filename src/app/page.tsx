@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { HomeHero } from "@/components/home/HomeHero";
-import { FirstRunPromo } from "@/components/home/FirstRunPromo";
+import { FirstRunReorder } from "@/components/home/FirstRunReorder";
 import { ReasoningCards } from "@/components/home/ReasoningCards";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
@@ -92,26 +92,27 @@ export default async function Home() {
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
 
-        {/* 新访客引桥(无自选时显示):先看今天的因果链演示,再回来加票(新手路径 v2) */}
-        <div className="mt-2">
-          <FirstRunPromo insightHref={insightHref} />
-        </div>
-
-        {/* 1. 今日最重要的因果链(P0 一张真卡;chains.ts 加链自动进卡位) */}
-        {/* 1. 链情绪 + 隔夜事件雷达(负责人 2026-07-09:上移到因果链之前——先看盘面状态与触发源,再看推理) */}
-        <div className="mt-2">
-          <ChainSentiment
-            initial={snap?.data}
-            refresh={snap ? !snap.fresh : false}
-            action={<ChainHomeEntry />}
-          />
-        </div>
-        <OvernightRadar relMap={relLabelMap} />
-
-        {/* 2. 今日最重要的因果链 */}
-        <div className="mt-5">
-          <ReasoningCards cards={cards} />
-        </div>
+        {/* 链情绪+雷达 与 因果链 的顺序按访客态翻转(新手路径 v2):
+            老访客/有自选 = 盘面在前(负责人 2026-07-09 拍板);新访客 = 因果链演示在前 */}
+        <FirstRunReorder
+          market={
+            <>
+              <div className="mt-2">
+                <ChainSentiment
+                  initial={snap?.data}
+                  refresh={snap ? !snap.fresh : false}
+                  action={<ChainHomeEntry />}
+                />
+              </div>
+              <OvernightRadar relMap={relLabelMap} />
+            </>
+          }
+          demo={
+            <div className="mt-5">
+              <ReasoningCards cards={cards} />
+            </div>
+          }
+        />
 
         {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
         {items.length === 0 ? (

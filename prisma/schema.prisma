@@ -18,6 +18,9 @@ model PushSubscription {
   endpoint  String   @unique
   p256dh    String
   auth      String
+  // 订阅时快照的自选(免登录 D1 个性化用):runWebPush 据此把广播标题换成
+  // 「你的 XX 出现在今天的传导链」。匿名订阅,只存 codes 不存身份。
+  codes     String[] @default([]) @map("codes")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("push_subscriptions")

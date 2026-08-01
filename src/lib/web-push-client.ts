@@ -49,10 +49,25 @@ export async function enablePush(): Promise<{ ok: boolean; reason?: EnableReason
       applicationServerKey: urlBase64ToUint8Array(PUB) as BufferSource,
     });
   }
+  // 自选快照:优先本地(游客);登录用户本地已清空则从接口取——都失败传空数组(广播兜底)
+  let codes: string[] = [];
+  try {
+    const v = JSON.parse(localStorage.getItem("stocktell_watchlist") || "[]");
+    if (Array.isArray(v)) codes = v.filter((x): x is string => typeof x === "string");
+    if (codes.length === 0) {
+      const w = await fetch("/api/watchlist", { cache: "no-store" })
+        .then((x) => x.json())
+        .catch(() => null);
+      if (w?.ok && Array.isArray(w.codes)) codes = w.codes;
+    }
+  } catch {
+    /* ignore */
+  }
   const r = await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub), // PushSubscription.toJSON() → {endpoint, keys:{p256dh,auth}}
+    // PushSubscription.toJSON() → {endpoint, keys:{p256dh,auth}};附自选快照供 D1 个性化
+    body: JSON.stringify({ ...sub.toJSON(), codes: codes.slice(0, 30) }),
   });
   if (!r.ok) return { ok: false, reason: "save-failed" };
   return { ok: true };

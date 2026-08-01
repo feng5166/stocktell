@@ -23,13 +23,31 @@ export async function register() {
         hint: "chat_message 配额计数索引(PR4)缺失——情境追问的 DB 配额查询走全表扫或表根本没建,对话接口会 fail-closed 全拒",
       },
     ];
+    // 列形态哨兵(索引哨兵覆盖不到 ADD COLUMN 类 DDL)
+    const COLUMN_SENTINELS: Array<{ table: string; column: string; hint: string }> = [
+      {
+        table: "push_subscriptions",
+        column: "codes",
+        hint: "push_subscriptions.codes(免登录 D1 个性化)缺失——订阅写入会整行失败,新订阅静默丢",
+      },
+    ];
     const rows = (await db.$queryRawUnsafe(
       `SELECT indexname FROM pg_indexes WHERE indexname IN (${SENTINELS.map((s) => `'${s.index}'`).join(",")})`
     )) as Array<{ indexname: string }>;
     const present = new Set(rows.map((r) => r.indexname));
-    const missing = SENTINELS.filter((s) => !present.has(s.index));
+    const colRows = (await db.$queryRawUnsafe(
+      `SELECT table_name, column_name FROM information_schema.columns WHERE (table_name, column_name) IN (${COLUMN_SENTINELS.map((c) => `('${c.table}','${c.column}')`).join(",")})`
+    )) as Array<{ table_name: string; column_name: string }>;
+    const colPresent = new Set(colRows.map((r) => `${r.table_name}.${r.column_name}`));
+    const missing = [
+      ...SENTINELS.filter((s) => !present.has(s.index)).map((m) => ({ key: m.index, hint: m.hint })),
+      ...COLUMN_SENTINELS.filter((c) => !colPresent.has(`${c.table}.${c.column}`)).map((c) => ({
+        key: `${c.table}.${c.column}`,
+        hint: c.hint,
+      })),
+    ];
     if (missing.length > 0) {
-      const msg = missing.map((m) => `缺 ${m.index}:${m.hint}`).join("\n");
+      const msg = missing.map((m) => `缺 ${m.key}:${m.hint}`).join("\n");
       console.error("[schema-sentinel] 生产库形态与代码不一致!\n" + msg);
       const { alertThrottled } = await import("@/lib/monitor");
       await alertThrottled(
@@ -38,7 +56,9 @@ export async function register() {
         6 * 60 * 60 * 1000 // 6h 节流:每实例启动都查,别刷屏
       );
     } else {
-      console.log(`[schema-sentinel] ${SENTINELS.length} 项关键形态核对通过`);
+      console.log(
+        `[schema-sentinel] ${SENTINELS.length + COLUMN_SENTINELS.length} 项关键形态核对通过`
+      );
     }
   } catch (e) {
     console.warn("[schema-sentinel] 核对失败(不阻断启动):", e);

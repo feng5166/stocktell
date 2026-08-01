@@ -7,6 +7,7 @@ import { getLLMFor } from "@/lib/llm-provider";
 import { fetchQuotes } from "@/lib/quotes";
 import crypto from "crypto";
 import { STOCK_MAP, resolvePeer } from "@/data/stocks";
+import { buildWatchChainMap } from "@/lib/watch-relation";
 import { resolveMorningItems } from "@/lib/morning-brief";
 import { fundFlowFor } from "@/lib/fund-flow";
 import { todayISO } from "@/lib/date";
@@ -98,6 +99,35 @@ ${peerLines || "(无)"}
 一句话快读:${item.retailTake}
 
 请给这条出一份"散户角度的完整解读"。`;
+  } else if (code && kind === "map") {
+    // 「第一份传导地图」LLM 版(新手路径 v2 P1):对一只票输出 上游→环节→这只票 的
+    // 逐跳人话地图。上下文全部服务端装配(关系档/环节/验证点为人工核定静态数据),
+    // 缓存按 票×日 跨用户共享,游客可看。
+    if (!Object.prototype.hasOwnProperty.call(STOCK_MAP, code))
+      return new Response("not found", { status: 404 });
+    const s = STOCK_MAP[code];
+    cacheKey = `map:${code}:${todayISO()}`;
+    const chainInfo = buildWatchChainMap()[code];
+    const anchors = (s.relations || [])
+      .map((t) => resolvePeer(t))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p) && p!.market === "美股")
+      .slice(0, 3);
+    const { quotes } = await fetchQuotes([s.code, ...anchors.map((a) => a.code)]);
+    const anchorLines = anchors
+      .map((a) => `- ${a.name}(${a.code}):${pctStr(quotes[a.code]?.change)};定位:${a.positioning}`)
+      .join("\n");
+    userMsg = `给散户画一份「${s.name} 的传导地图」。已核定的静态关系(不许编造之外的关系):
+个股:${s.name}(${s.code})· 板块 ${s.sector} · 产业链位置 ${s.position}
+定位:${s.positioning}
+${chainInfo ? `所在链:${chainInfo.chainName} · 环节:${chainInfo.segment} · 关系档:${chainInfo.relation}${chainInfo.reason ? ` · 核定说明:${chainInfo.reason}` : ""}\n验证点:${chainInfo.verify.join("、") || "(无)"}` : "所在链:暂无核定链上关系(只讲它自己的定位与联动)"}
+上游美股锚点(及最新涨跌):
+${anchorLines || "(无)"}
+当前行情:${pctStr(quotes[s.code]?.change)}
+
+要求:按「上游发生什么 → 中间传导环节 → 传到这只票」的顺序,每一跳一小段人话讲清
+"为什么会传、传导强弱、这一跳最容易断在哪";最后给"本周盯什么信号"(用上面的验证点,
+具体可观察)。关系档是 ${chainInfo?.relation ?? "未核定"},分寸感要匹配——情绪映射就明说
+"更多是情绪带动"。不许下买卖结论。`;
   } else if (code) {
     // hasOwnProperty:挡 "constructor" 等原型链属性名混进缓存 key/LLM 输入
     if (!Object.prototype.hasOwnProperty.call(STOCK_MAP, code))
