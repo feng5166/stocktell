@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
@@ -21,7 +23,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 单轮一次 fast LLM 调用(20s 超时)+ DB,60s 足够
 
 // 情境式追问(PRD §5,PR4)。安全边界:
-// - 仅登录用户(MVP);功能总开关 INSIGHT_CHAT_ENABLED 可整体关闭入口;
+// - 登录用户按 userId 计;游客按 IP 哈希计(新手路径 v2 免登录口径)。
+//   功能总开关 INSIGHT_CHAT_ENABLED 可整体关闭入口;
 // - 配额走 Postgres 消息计数(事务内 插入→计数→超限回滚),多实例一致——
 //   【不用】进程内 rate-limit.ts(PRD 明令:多实例下不成立);
 // - 并发 1:最新 user 消息 90s 内未获回复 → 409(前端也禁用输入,双保险);
@@ -38,9 +41,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "disabled" }, { status: 503 });
   }
   const session = await getServerSession(authOptions).catch(() => null);
-  const userId = session?.user?.id;
+  let userId = session?.user?.id;
   if (!userId) {
-    return NextResponse.json({ ok: false, error: "login-required" }, { status: 401 });
+    // 免登录口径(新手路径 v2,2026-08-01):游客以 IP 哈希为身份复用整套
+    // DB 配额/并发闸/历史机制(ChatMessage.userId 是普通字符串,无外键)。
+    // 同 IP(NAT)共享每日额度是接受的取舍;另加进程内突发闸抬脚本成本。
+    const ip = clientIp(req.headers);
+    const burst = rateLimit(`chat-guest:${ip}`, 6, 10 * 60_000);
+    if (!burst.ok) {
+      return NextResponse.json(
+        { ok: false, error: "quota", limit: CHAT_DAILY_LIMIT },
+        { status: 429 }
+      );
+    }
+    userId = "guest:" + crypto.createHash("sha256").update(ip).digest("hex").slice(0, 24);
   }
   const db = getPrisma();
   // fail-closed:没库=没法记额度,拒绝而不是放行(缺表同理,由下面事务失败兜住)

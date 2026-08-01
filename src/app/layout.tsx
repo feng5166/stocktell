@@ -6,6 +6,7 @@ import { PWARegister } from "@/components/PWARegister";
 import { SiteFooter } from "@/components/SiteFooter";
 import { GuestWatchlistNudge } from "@/components/GuestWatchlistNudge";
 import { AuthTracker } from "@/components/AuthTracker";
+import { FunnelTracker } from "@/components/FunnelTracker";
 import { SITE_URL, safeJsonLd } from "@/lib/site";
 
 // Umami 网页分析(自托管 analytics.stocktell.me)。配了 WEBSITE_ID 才注入,
@@ -76,6 +77,7 @@ export default function RootLayout({
           {children}
           <GuestWatchlistNudge />
           <AuthTracker />
+          <FunnelTracker />
         </Providers>
         <SiteFooter />
         <PWARegister />

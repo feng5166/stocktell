@@ -10,6 +10,7 @@ import { AuthButton } from "@/components/auth/AuthButton";
 import { useAuthModal } from "@/components/Providers";
 import { useWatchlist } from "@/components/useWatchlist";
 import { QuickAddWatch } from "@/components/QuickAddWatch";
+import { InstantTake, QuietWatchCard } from "@/components/QuietWatchCard";
 import { RiskSummary } from "@/components/RiskSummary";
 import { WatchOverview } from "@/components/WatchOverview";
 import { DeepRead } from "@/components/DeepRead";
@@ -46,8 +47,6 @@ export function BriefingFeed({
   watchChainMap?: Record<string, WatchChainInfo>; // 全A股→链身份(服务端算,P1 和我相关结构化)
 }) {
   const wl = useWatchlist(initialCodes);
-  const { status: sessionStatus } = useSession();
-  const { open: openAuth } = useAuthModal();
   const isMine = (it: BriefingItem) =>
     (it.triggerCode != null && wl.has(it.triggerCode)) ||
     it.beneficiaries.some((b) => wl.has(b.code));
@@ -64,6 +63,30 @@ export function BriefingFeed({
     if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [wl.ready]);
 
+  // aha 命中/落空埋点(onboarding v2 漏斗唯一真盲区):有自选的会话记一次——
+  // relation_hit(mode=briefing 命中简报 / quiet 安静卡兜底)或 relation_miss(理论上不再出现,
+  // 留作 QuietWatchCard 覆盖不到时的告警信号)。每会话一次,sessionStorage 防重。
+  const relTracked = useRef(false);
+  useEffect(() => {
+    if (relTracked.current || !wl.ready || wl.codes.size === 0) return;
+    relTracked.current = true;
+    try {
+      if (sessionStorage.getItem("stocktell_rel_tracked")) return;
+      sessionStorage.setItem("stocktell_rel_tracked", "1");
+    } catch {
+      /* 隐私模式:退化为每页一次 */
+    }
+    const quietCovered = Array.from(wl.codes).some((c) => STOCK_MAP[c]);
+    if (mine.length > 0) {
+      track("relation_hit", { mode: "briefing", watch_count: wl.codes.size, has_morning_brief: true });
+    } else if (quietCovered) {
+      track("relation_hit", { mode: "quiet", watch_count: wl.codes.size, has_morning_brief: false });
+    } else {
+      track("relation_miss", { watch_count: wl.codes.size, has_morning_brief: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wl.ready, wl.codes.size, mine.length]);
+
   // 批量"为什么动":一次取回所有命中自选触发标的的解读(替代每卡各发一次)
   const mineTriggers = mine
     .filter((it) => it.triggerCode)
@@ -78,22 +101,16 @@ export function BriefingFeed({
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
         />
         {!wl.ready ? (
-          <MineEmpty
-            guest={false}
-            onAdd={() => {
-              if (sessionStatus === "unauthenticated") openAuth(AUTH_ADD_HINT);
-            }}
-          />
+          <MineEmpty guest={false} onAdd={() => {}} />
         ) : wl.codes.size === 0 ? (
-          sessionStatus === "authenticated" ? (
-            <QuickAddWatch wl={wl} />
-          ) : (
-            <MineEmpty guest onAdd={() => openAuth(AUTH_ADD_HINT)} />
-          )
+          /* 免登录口径(新手路径 v2):游客与登录用户一样直接内联加自选,不再弹登录框 */
+          <QuickAddWatch wl={wl} />
         ) : (
           <div className="space-y-3">
             <RiskSummary codes={wl.codes} />
             {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
+            {/* 即时关系卡:本会话刚加的票当场自动解读(aha 不等第二天,命中/安静日都渲染) */}
+            <InstantTake codes={wl.codes} chainMap={watchChainMap} />
             {/* P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系/验证点) */}
             {watchChainMap && (
               <MyWatchRelations
@@ -105,6 +122,7 @@ export function BriefingFeed({
             {mine.length === 0 ? (
               <>
                 <QuietMorningBrief issueDate={items[0]?.date} />
+                <QuietWatchCard codes={wl.codes} chainMap={watchChainMap} />
                 <WatchOverview codes={wl.codes} />
               </>
             ) : (
@@ -394,11 +412,8 @@ function CardFeed({
   );
 }
 
-const AUTH_ADD_HINT =
-  "登录后添加自选,StockTell 每天告诉你:哪些全球事件正在影响你的股票。";
-
-// 「和我相关」空态(评审定稿):未登录=登录引导,读取中=同壳(永不裸 loading)。
-// 已登录无自选走 QuickAddWatch(带添加搜索框)。
+// 「和我相关」空态壳:仅 wl.ready 之前的占位(永不裸 loading);
+// ready 后无论登录与否都走 QuickAddWatch 内联加自选(免登录口径,新手路径 v2)。
 function MineEmpty({ guest, onAdd }: { guest: boolean; onAdd: () => void }) {
   return (
     <div className="rounded-xl border border-brand-100 bg-white p-4 text-center sm:p-5">

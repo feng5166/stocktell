@@ -12,6 +12,7 @@ import { fundFlowFor } from "@/lib/fund-flow";
 import { todayISO } from "@/lib/date";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { isAdminSession } from "@/lib/admin";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -55,7 +56,7 @@ async function _POST(req: NextRequest) {
   }
 
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return new Response("登录后才能看「StockTell 解读」哦。", { status: 401 });
+  const userId = session?.user?.id;
 
   // JSON 字面量 null 也是合法 JSON(catch 不接管),直接取属性会 500
   const rawBody = await req.json().catch(() => ({}));
@@ -66,6 +67,12 @@ async function _POST(req: NextRequest) {
   const id = typeof body.id === "string" ? body.id : undefined;
   const code = typeof body.code === "string" ? body.code : undefined;
   const kind = typeof body.kind === "string" ? body.kind : undefined;
+
+  // 免登录口径(新手路径 v2,2026-08-01):id/code 解读对游客开放——内容全部服务端解析、
+  // 缓存按 条目/票×日 跨用户共享,游客无投毒面;kind=morning/fundflow 依赖库内自选,仍需登录。
+  if (!userId && !(id || code)) {
+    return new Response("登录后才能看「和我相关」的整体解读哦。", { status: 401 });
+  }
 
   const db = getPrisma();
   if (!db) return new Response("no database", { status: 500 });
@@ -119,8 +126,9 @@ ${relLines || "(无)"}
     // 缓存按 codes 组合跨用户共享,客户端可控的 items 会让编造内容进共享缓存;
     // 且缓存 key 用条目所属日期而非"今天"——凌晨回退展示昨日简报时,深读基于昨日条目,
     // 若按今天缓存,07:01 换新后同 codes 组合会全天命中昨日叙事(与早报 v4 修复同因)。
+    if (!userId) return new Response("登录后才能看整体解读哦。", { status: 401 });
     const ws = await db.watchlist.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       select: { code: true },
     });
     // date hint 同早报卡:让深读和用户正读的那期一致(校验+确有该期才生效)
@@ -177,8 +185,9 @@ ${lines}
     // 数据一律服务端取真(登录用户自选 → fundFlowFor),不信客户端传的 items:
     // 解读缓存按(日期+codes)跨用户共享,客户端可控的数字意味着任何登录用户都能让
     // "主力净流入+99亿"这类编造结论进共享缓存(与早报投毒同因);codes 也不再可自由组合刷 key。
+    if (!userId) return new Response("登录后才能看整体解读哦。", { status: 401 });
     const ws = await db.watchlist.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       select: { code: true },
     });
     const ff = await fundFlowFor(ws.map((w) => w.code));
@@ -234,6 +243,13 @@ ${lines}
       }),
       { headers: STREAM_HEADERS }
     );
+  }
+
+  // 游客生成闸(缓存命中不受限,只限真正触发 LLM 的 miss):per-IP 尽力而为,
+  // 键空间本身有界(条目 id / 池内票×日),这里只防单 IP 脚本扫池。
+  if (!userId) {
+    const rl = rateLimit(`explain-guest:${clientIp(req.headers)}`, 20, 3600_000);
+    if (!rl.ok) return new Response("解读今天有点忙,稍后再试。", { status: 503 });
   }
 
   // 深读走 fast/flash;按后台开关选主(modelverse)或兜底(DeepSeek 官方)。

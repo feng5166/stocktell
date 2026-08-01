@@ -33,8 +33,13 @@ export interface UseWatchlist {
   ready: boolean;
   loggedIn: boolean;
   has: (code: string) => boolean;
-  toggle: (code: string) => void;
+  toggle: (code: string, source?: "example" | "search" | "other") => void;
 }
+
+// 本会话「最近加的那只」:即时关系卡(InstantTake)靠它当场兑现 aha。
+// sessionStorage 保证换页仍在、关浏览器即忘;加自选时同步派事件给已挂载组件。
+export const LAST_ADDED_KEY = "stocktell_last_added";
+export const WATCH_ADDED_EVT = "stocktell:watch-added";
 
 // initialCodes:服务端为登录用户预取的自选。提供时首屏即用它渲染(ready=true),
 // 且在无本地待合并的情况下跳过 /api/watchlist 拉取,省掉 session→watchlist 一跳。
@@ -113,7 +118,7 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
   const has = useCallback((code: string) => codes.has(code), [codes]);
 
   const toggle = useCallback(
-    (code: string) => {
+    (code: string, source: "example" | "search" | "other" = "other") => {
       const adding = !codes.has(code);
       const next = new Set(codes);
       if (adding) next.add(code);
@@ -121,10 +126,22 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
       setCodes(next); // 乐观更新:先点亮/熄灭
 
       const kind = ETF_CODES.includes(code) ? "etf" : "stock";
-      if (adding) track("add_watchlist", { kind });
+      // source/count_after:验证一键加是否有用、用户加几只(onboarding v2 漏斗)
+      if (adding) track("add_watchlist", { kind, source, count_after: next.size });
       else track("remove_watchlist", { kind }); // 取消自选也记:看"加了又删"的比例(黏性信号)
 
-      const ADDED_MSG = "已加入自选 · 首页「和我相关」会给你看相关动态";
+      if (adding) {
+        // 记录"刚加的那只"并广播:首页 InstantTake 当场给这只票的解读(不等第二天)
+        try {
+          sessionStorage.setItem(LAST_ADDED_KEY, code);
+        } catch {
+          /* 隐私模式忽略 */
+        }
+        window.dispatchEvent(new CustomEvent(WATCH_ADDED_EVT, { detail: { code } }));
+      }
+
+      // toast 改兑现(onboarding P1-1):承诺当场兑现的内容,不开"将来某天"的期票
+      const ADDED_MSG = "已加 · 「和我相关」这就给你看它今天怎么看 👇";
       // 失败回滚 + 提示:不再静默吞掉(旧版 .catch(()=>{}) 会让用户以为加了、刷新却没了)
       const rollback = () => {
         setCodes((prev) => {

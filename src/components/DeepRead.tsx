@@ -3,7 +3,7 @@
 // 通用「让 StockTell 拆一下 →」(原深读):点按后向 /api/briefing/explain 流式拉一段解读。
 // payload 即请求体(如 {kind:"morning",items} / {kind:"fundflow",items,date} / {id} / {code})。
 // 与个股页 StockTellTake 的解读区一致;此处不绑定具体内容,任何模块都能复用。
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useAuthModal } from "@/components/Providers";
 import { track } from "@/lib/analytics";
@@ -57,9 +57,11 @@ function renderRich(text: string): JSX.Element[] {
 export function DeepRead({
   payload,
   label = "🔍 让 StockTell 拆一下 →",
+  autoStart = false,
 }: {
   payload: Record<string, unknown>;
   label?: string;
+  autoStart?: boolean; // 挂载即自动开始解读(即时关系卡用);默认仍是点按触发
 }) {
   const [deep, setDeep] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,8 +70,13 @@ export function DeepRead({
   const { status } = useSession();
   const { open: openAuth } = useAuthModal();
 
+  // 免登录口径(新手路径 v2):id/code 解读游客可看(服务端共享缓存、无投毒面);
+  // morning/fundflow 依赖库内自选,仍走登录。
+  const needsLogin =
+    payload.kind === "morning" || payload.kind === "fundflow";
+
   async function load() {
-    if (status !== "authenticated") {
+    if (needsLogin && status !== "authenticated") {
       openAuth("登录后,StockTell 用大白话帮你拆这条对你手里的票意味着什么 —— 免费,不喊单。");
       return;
     }
@@ -121,6 +128,16 @@ export function DeepRead({
       setLoading(false);
     }
   }
+
+  // autoStart:挂载后自动拉一次(严格模式双执行/重复渲染由 startedRef 防抖)
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!autoStart || startedRef.current || started) return;
+    if (needsLogin && status !== "authenticated") return; // 自动模式绝不弹登录框
+    startedRef.current = true;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, status]);
 
   return (
     <>

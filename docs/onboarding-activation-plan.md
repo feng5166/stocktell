@@ -2,6 +2,37 @@
 
 > 产出方式:多智能体工作流(小白实走核验 → 激活/漏斗/文案3视角 → 对抗评审 → 综合)。日期 2026-06-30。
 
+---
+
+## v2 定稿(2026-08-01,负责人拍板)—— 两个前提假设变了
+
+**假设 A:LLM 调用按免费设计**(不再把生成成本当约束,只保留防脚本滥用的限流)。
+**假设 B:流量起量前整条路径默认免登录**(登录只是"保住数据/跨设备"的自愿动作,重心放在行为观测)。
+
+### 路径定稿:「5 分钟信任曲线」
+aha = **"我随手加的那只票,它当场用人话讲清了它在产业链里的位置和今天怎么看"**。一切留资动作(登录/推送/PWA)排在 aha 之后。
+
+1. **进门 3 秒**:新访客先看演示(今日最重要因果链前置),不是先被要求做事(P1,未做)。
+2. **30 秒第一动作**:免登录加自选 + 示例票 chips(结构性选票,合规话术)。✅ 已上线
+3. **加票后 5 秒当场兑现**:`InstantTake` 即时关系卡——刚加的票自动流式给「现在怎么看」LLM 人话(走 explain({code}),票×日共享缓存);安静日 `QuietWatchCard` 逐票 positioning 人话兜底。**aha 不再依赖当天有命中简报。** ✅ 已上线
+4. **深度免登录**:深读(id/code)与追问全部对游客开放(追问按 IP 哈希复用 DB 配额 + 突发限流;morning/fundflow 整体解读因依赖库内自选仍需登录)。✅ 已上线
+5. **aha 后留资**:nudge 文案改损失规避(「明早 8:20 你这几只票的解读会准时生成」),登录成功后一步式选推送渠道(P1,未做)。
+6. **D1 钩子**:早报推送文案带用户自己的票 + `#mine` 锚(P2,未做);webpush 可探索免登录订阅。
+
+### v1 P0 落地情况(2026-08-01 实施)
+- ✅ P0-1 安静票人话卡 → 实现为 `QuietWatchCard.tsx`(positioning + 链身份 chip + 按需拆解)+ `InstantTake`(刚加的票自动解读,超出 v1 范围的 LLM 升级)
+- ✅ P0-2 示例票 chips → `QuickAddWatch.tsx`(中际旭创/工业富联/寒武纪/海光信息,含免责小字)
+- ✅ P1-1 toast 改兑现 → `useWatchlist.ts`
+- ✅ 埋点四件套:`landing_view` / `relation_hit{mode:briefing|quiet}` / `relation_miss` / `returning_visit`(`FunnelTracker.tsx` + `BriefingFeed.tsx`);`add_watchlist` 补 `source`/`count_after`
+- ✅(v2 新增)首页 #mine 空态游客直接内联加自选,撤掉登录墙;深读/追问免登录
+- ❌ 未做:P1-2 首屏承诺条、新访客首屏重排、登录后一步式推送选择、D1 个性化推送、「第一份传导地图」(LLM 生成刚加票的上下游两跳专属页,P1)
+
+### 观测口径(两周看板)
+主漏斗:`landing_view → add_watchlist{source} → relation_hit{mode} → deep_read/chat_open → signup → bind_push → returning_visit`。
+预期变化:深读/追问免登录后 `signup` 短期下降属预期(拿激活换留资,方向已拍板);盯 `relation_hit` 占比(应接近 100%,`relation_miss` 出现即为 QuietWatchCard 覆盖告警)与 hit(briefing) vs hit(quiet) 两组的 D1 差。
+
+---
+
 
 
 ## 1. TL;DR
