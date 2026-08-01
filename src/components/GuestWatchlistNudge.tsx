@@ -39,6 +39,11 @@ export function GuestWatchlistNudge() {
         setShow(false);
         return;
       }
+      // 与 AhaPushNudge 互斥:同会话推送条已出现过就让位(推送是免登录 D1 主钩子,优先)
+      if (sessionStorage.getItem("stocktell_bottom_nudge")) {
+        setShow(false);
+        return;
+      }
       setCount(n);
       setShow(true);
       if (!viewedRef.current) {
@@ -64,7 +69,7 @@ export function GuestWatchlistNudge() {
   const login = () => {
     track("login_nudge_click", { watchlist: count });
     openAuth(
-      `登录/注册,把你自选的 ${count} 只票绑到账号——每个交易日早盘前收到它们的相关动态,换设备也不丢。`
+      `登录/注册,把你这 ${count} 只票绑到账号——明早盘前的解读记录不丢,换设备也在。`
     );
   };
 
@@ -72,7 +77,7 @@ export function GuestWatchlistNudge() {
     <div className="fixed inset-x-0 z-40 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] px-3 sm:bottom-4">
       <div className="mx-auto flex max-w-3xl items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50/95 px-3.5 py-2.5 shadow-lg backdrop-blur">
         <span className="text-sm leading-snug text-amber-900">
-          ★ 已自选 {count} 只 · 登录后每个交易日早盘前帮你盯它们的动态,换设备也不丢
+          ★ 明早盘前会生成你这 {count} 只票的解读——登录后自选不丢、换设备也在
         </span>
         <button
           onClick={login}
