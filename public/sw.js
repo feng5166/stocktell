@@ -1,13 +1,14 @@
 // StockTell 极简 Service Worker。
 // 原则:不缓存 /api 和动态数据(行情/简报要实时);静态资源 stale-while-revalidate;
-// 页面导航 network-first,离线只回退到一个「首页外壳」,绝不缓存每个动态/登录态页面
-// (否则会回放过期、甚至别人登录态的 HTML)。改版务必 bump 版本号。
-const CACHE = "stocktell-v2";
-const SHELL = "/"; // 首页已是 ISR(无个性化 SSR),可作离线外壳
+// 页面导航 network-first,离线只回退到内容固定的 /offline.html,绝不缓存任何页面快照
+// (v2 曾缓存首页快照当离线壳,快照若是降级渲染会被反复回放——2026-08-01 微信 apex 实况)。
+// 改版务必 bump 版本号。
+const CACHE = "stocktell-v3";
+const OFFLINE = "/offline.html"; // 纯静态离线页,内容固定,无任何动态依赖
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((c) => c.add(SHELL).catch(() => {}))
+    caches.open(CACHE).then((c) => c.add(OFFLINE).catch(() => {}))
   );
   self.skipWaiting();
 });
@@ -68,7 +69,7 @@ self.addEventListener("fetch", (event) => {
   // 实时数据接口绝不缓存
   if (url.pathname.startsWith("/api/")) return;
 
-  // 页面导航:网络优先;离线统一回退到首页外壳(不缓存每个动态页)
+  // 页面导航:网络优先;离线统一回退到固定的 /offline.html(不缓存任何页面快照)
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
@@ -76,7 +77,7 @@ self.addEventListener("fetch", (event) => {
           return await fetch(request);
         } catch {
           const cache = await caches.open(CACHE);
-          return (await cache.match(SHELL)) || Response.error();
+          return (await cache.match(OFFLINE)) || Response.error();
         }
       })()
     );
