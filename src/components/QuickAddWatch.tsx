@@ -3,7 +3,6 @@
 // 首页「和我相关」冷启动:还没自选时,直接在这儿搜票加自选,不用跳去股票池。
 // 复用调用方传入的 useWatchlist 实例(同一份状态),加完即时反映到「和我相关」。
 import { useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { STOCKS } from "@/data/stocks";
 import type { UseWatchlist } from "@/components/useWatchlist";
@@ -11,18 +10,20 @@ import type { UseWatchlist } from "@/components/useWatchlist";
 // 覆盖口径:对 A股 散户只强调可交易的 A股 只数,美股是用来联动的"锚点"(单列说明,不混入只数)
 const A_SHARE_COUNT = STOCKS.filter((s) => s.market === "A股").length;
 
+// 一键加示例票(onboarding P0-2):结构性选票口径——链条核心节点/公认锚点,
+// 不按当日行情择时(合规红线:禁"推荐/精选/潜力"等词,只用客观曝光度描述)。
+// 按名称从池内解析,避免硬编码代码漂移;名称改动时静默缩短列表,不报错。
+const EXAMPLE_NAMES = ["中际旭创", "工业富联", "寒武纪", "海光信息"];
+const EXAMPLE_STOCKS = EXAMPLE_NAMES
+  .map((n) => STOCKS.find((s) => s.name === n && s.market === "A股"))
+  .filter((s): s is NonNullable<typeof s> => Boolean(s));
+
 export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
   const [q, setQ] = useState("");
-  // 三态文案(评审):未登录=价值说明;已登录无自选=引导先加几只
-  const { status } = useSession();
-  const title =
-    status === "authenticated"
-      ? "添加你的自选股 👇"
-      : "添加自选,查看今天哪些全球事件影响你的股票 👇";
+  // 免登录口径(新手路径 v2):游客与登录用户同一路径,文案不再按登录态分叉
+  const title = "添加自选,查看今天哪些全球事件影响你的股票 👇";
   const desc =
-    status === "authenticated"
-      ? "StockTell 会告诉你:今天哪些全球事件正在影响它们。搜代码或名称即可加入。"
-      : "搜代码或名称加自选,以后这儿只给你看跟你票相关的动态。";
+    "StockTell 会告诉你:今天哪些全球事件正在影响它们。搜代码或名称即可加入,随时能删。";
 
   const matches = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -37,6 +38,34 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
     <div className="rounded-xl border border-brand-100 bg-white p-3 sm:p-4">
       <div className="text-sm font-medium text-gray-800">{title}</div>
       <div className="mt-1 text-xs text-gray-500">{desc}</div>
+
+      {EXAMPLE_STOCKS.length > 0 && (
+        <div className="mt-3">
+          <div className="text-xs text-gray-500">不知道加哪只?点一下就行,随时能删 👇</div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {EXAMPLE_STOCKS.map((s) => {
+              const added = wl.has(s.code);
+              return (
+                <button
+                  key={s.code}
+                  onClick={() => wl.toggle(s.code, "example")}
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    added
+                      ? "border-brand-200 bg-brand-50 text-brand-600"
+                      : "border-gray-300 bg-white text-gray-700 hover:border-brand-300 hover:text-brand-700"
+                  }`}
+                >
+                  {added ? "✓ " : "+ "}
+                  {s.name}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-1 text-[10px] text-gray-400">
+            示例为 AI 链上大家常看的票,仅为方便体验,不构成任何建议
+          </div>
+        </div>
+      )}
 
       <input
         value={q}
@@ -83,7 +112,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
                     </span>
                   </Link>
                   <button
-                    onClick={() => wl.toggle(s.code)}
+                    onClick={() => wl.toggle(s.code, "search")}
                     className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium ${
                       added
                         ? "border border-gray-300 text-gray-500 hover:bg-gray-100"
