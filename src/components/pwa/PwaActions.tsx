@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { track } from "@/lib/analytics";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -21,7 +22,9 @@ export function PwaActions() {
   const [showIOSHint, setShowIOSHint] = useState(false);
   const [reprompt, setReprompt] = useState(false);
   const [hidden, setHidden] = useState(true); // 默认隐藏,挂载后按 localStorage 决定
+  const [guestNoWatch, setGuestNoWatch] = useState(true); // aha 后置:游客无自选先不推安装
   const [toast, setToast] = useState<Toast>(null);
+  const { status: sessionStatus } = useSession();
 
   const flash = useCallback((t: NonNullable<Toast>) => {
     setToast(t);
@@ -34,13 +37,19 @@ export function PwaActions() {
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
     setIsAndroid(/android/i.test(navigator.userAgent));
     try {
-      // 装过 或 点过"不再提示" → 永久不再骚扰
+      // 装过 或 点过"不再提示" → 永久不再骚扰;
+      // aha 后置(新手路径 v2):没加过自选的游客不展示安装入口——先兑现价值再谈安装。
+      // (登录用户自选在库里、本地为空,由 status 分支放行;加自选事件会实时解锁)
+      const wl = JSON.parse(localStorage.getItem("stocktell_watchlist") || "[]");
+      setGuestNoWatch(!(Array.isArray(wl) && wl.length > 0));
       setHidden(
         !!localStorage.getItem(TRIED_KEY) || !!localStorage.getItem(DISMISS_KEY)
       );
     } catch {
       setHidden(false);
     }
+    const onWatchAdded = () => setGuestNoWatch(false);
+    window.addEventListener("stocktell:watch-added", onWatchAdded);
 
     const onBIP = (e: any) => {
       e.preventDefault();
@@ -75,6 +84,7 @@ export function PwaActions() {
     return () => {
       window.removeEventListener("beforeinstallprompt", onBIP);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("stocktell:watch-added", onWatchAdded);
       mql.removeEventListener?.("change", onModeChange);
     };
   }, [flash]);
@@ -114,7 +124,8 @@ export function PwaActions() {
     setHidden(true);
   }
 
-  const showInstall = !standalone && !hidden && (deferred || isIOS);
+  const ahaReached = sessionStatus === "authenticated" || !guestNoWatch;
+  const showInstall = !standalone && !hidden && ahaReached && (deferred || isIOS);
   if (!showInstall && !toast) return null;
 
   return (

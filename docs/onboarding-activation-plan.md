@@ -25,7 +25,12 @@ aha = **"我随手加的那只票,它当场用人话讲清了它在产业链里�
 - ✅ P1-1 toast 改兑现 → `useWatchlist.ts`
 - ✅ 埋点四件套:`landing_view` / `relation_hit{mode:briefing|quiet}` / `relation_miss` / `returning_visit`(`FunnelTracker.tsx` + `BriefingFeed.tsx`);`add_watchlist` 补 `source`/`count_after`
 - ✅(v2 新增)首页 #mine 空态游客直接内联加自选,撤掉登录墙;深读/追问免登录
-- ❌ 未做:P1-2 首屏承诺条、新访客首屏重排、登录后一步式推送选择、D1 个性化推送、「第一份传导地图」(LLM 生成刚加票的上下游两跳专属页,P1)
+- ✅(P1,同日第二批)新访客引桥 `FirstRunPromo`(无自选时首个黑话卡前给"先看今天的因果链"一行,不重排布局)
+- ✅(P1)「第一份传导地图」骨架版:`InstantTake` 内嵌 上游美股锚点→环节→你的票 + 验证点 + 链页入口(全静态数据零幻觉;LLM 版视数据再议)
+- ✅(P1)`AhaPushNudge`:加自选 6 秒后(即时关系卡已兑现)弹一步式 webpush 开启——**完全免登录**(PushSubscription 只按 endpoint 存),游客即可收每日推送 = 免登录 D1 主钩子;与登录 nudge 会话级互斥,7 天冷却;埋 `push_nudge_view/fail`、`bind_push{source:aha_nudge}`
+- ✅(P1)登录 nudge 文案改损失规避(「明早盘前会生成你这 N 只票的解读」)
+- ✅(P2)/track 信任入口植入即时关系卡与安静卡;PWA 安装入口 aha 后置(游客无自选不展示,加票即解锁)
+- ❌ 暂缓:D1 推送文案 LLM 个性化(邮件 digest 本就按用户自选生成、且 EMAIL_DIGEST_PAUSED 暂停中;webpush 是全员广播,按用户拆分需重构发送循环——等漏斗数据证明 D1 是瓶颈再动 cron);新访客首屏完整重排(v1 评审否决布局分叉,维持引桥方案)
 
 ### 观测口径(两周看板)
 主漏斗:`landing_view → add_watchlist{source} → relation_hit{mode} → deep_read/chat_open → signup → bind_push → returning_visit`。
