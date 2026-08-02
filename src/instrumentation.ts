@@ -35,8 +35,15 @@ export async function register() {
       `SELECT indexname FROM pg_indexes WHERE indexname IN (${SENTINELS.map((s) => `'${s.index}'`).join(",")})`
     )) as Array<{ indexname: string }>;
     const present = new Set(rows.map((r) => r.indexname));
+    // information_schema.columns 的 table_name/column_name 是 name 域类型:
+    // 用行值元组 `(table_name, column_name) IN ((...))` 与文本字面量比较,name↔text
+    // 类型协调不可靠会匹配不到 → 误报缺列(2026-08-01 实踩)。改 ::text 显式转换 +
+    // OR 组标量比较(与索引哨兵同款可靠口径)。
+    const colWhere = COLUMN_SENTINELS.map(
+      (c) => `(table_name::text = '${c.table}' AND column_name::text = '${c.column}')`
+    ).join(" OR ");
     const colRows = (await db.$queryRawUnsafe(
-      `SELECT table_name, column_name FROM information_schema.columns WHERE (table_name, column_name) IN (${COLUMN_SENTINELS.map((c) => `('${c.table}','${c.column}')`).join(",")})`
+      `SELECT table_name::text AS table_name, column_name::text AS column_name FROM information_schema.columns WHERE ${colWhere}`
     )) as Array<{ table_name: string; column_name: string }>;
     const colPresent = new Set(colRows.map((r) => `${r.table_name}.${r.column_name}`));
     const missing = [
