@@ -7,6 +7,10 @@ import { ETF_CODES } from "@/data/etfs";
 const ETF_SET = new Set<string>(ETF_CODES);
 // 个股或板块 ETF 都算合法自选代码(ETF 不在 STOCK_MAP,需单独认)
 const isKnownCode = (code: string): boolean => !!STOCK_MAP[code] || ETF_SET.has(code);
+// 池外票降级档(2.3 P1-2):任意语法合法的 A 股 6 位代码也可加自选——
+// 池外票在 watchlist 板显示「暂未纳入图谱·已登记」,登记走 /api/pool-request(client 上报)。
+// 仍挡非 6 位数字的脏数据;美股池外不放开(触发源池是人工核定锚点,不接受任意 ticker)。
+const isValidCode = (code: string): boolean => isKnownCode(code) || /^\d{6}$/.test(code);
 
 export async function listWatchlist(userId: string): Promise<string[]> {
   const db = getPrisma();
@@ -16,11 +20,11 @@ export async function listWatchlist(userId: string): Promise<string[]> {
     orderBy: { createdAt: "asc" },
     select: { code: true },
   });
-  return rows.map((r) => r.code).filter(isKnownCode);
+  return rows.map((r) => r.code).filter(isValidCode);
 }
 
 export async function addWatch(userId: string, code: string): Promise<void> {
-  if (!isKnownCode(code)) return;
+  if (!isValidCode(code)) return;
   const db = getPrisma();
   if (!db) return;
   await db.watchlist.upsert({
@@ -41,7 +45,7 @@ export async function mergeWatchlist(
   userId: string,
   codes: string[]
 ): Promise<string[]> {
-  const valid = Array.from(new Set(codes.filter(isKnownCode)));
+  const valid = Array.from(new Set(codes.filter(isValidCode)));
   const db = getPrisma();
   if (!db) return [];
   if (valid.length) {

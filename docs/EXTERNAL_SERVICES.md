@@ -35,6 +35,8 @@
 | `ADMIN_EMAILS` | 后台 | 管理员邮箱白名单(逗号分隔) |
 | `UNSUB_SECRET` | 邮件退订 | 退订链接 HMAC 签名(未配则回退 NEXTAUTH_SECRET) |
 | `NEXT_PUBLIC_UMAMI_SRC` / `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami(分析) | 自托管网页分析:pageview + 自定义事件(漏斗/留存) |
+| `SHARE_BASE_URL` | 分享短链(2.3 P0-3) | 情绪卡二维码/短链 base。**必须配独立承接子域/独立域名**(与主站物理隔离,微信封链不连累主站——viral-growth-plan §8.2);未配回落 SITE_URL,仅供预览验证,正式发卡前必配 |
+| `EVT_TRIGGER_ABS` / `EVT_TRIGGER_RESONANCE` / `EVT_DAILY_CAP` | insight 事件专篇(M2) | D3 触发线配置:隔夜绝对涨跌%(默认 5)/ 同链共振触发数(默认 3)/ 每日专篇上限(默认 2) |
 
 ---
 
@@ -107,6 +109,7 @@
 - **关键文件**:`src/lib/mailer.ts`、`src/lib/digest.ts`、`src/app/api/admin/email-push/route.ts`。
 - **环境变量**:`RESEND_API_KEY` / `EMAIL_FROM`(没配则降级打印、返回 false,不报错)。
 - 邮件均带「取消推送」入口(`src/lib/unsub.ts` HMAC 签名)+ `List-Unsubscribe` 头。
+- **暂停态(2026-07 起)**:发件域失效 → `EMAIL_DIGEST_PAUSED=1`(`src/lib/mailer.ts`),早报早退、看门狗不误报。**恢复步骤**:① Resend 后台验证新发件域(DNS SPF/DKIM)② 更新 `EMAIL_FROM` ③ 删掉 `EMAIL_DIGEST_PAUSED` 环境变量并 redeploy ④ `/admin/metrics` 触达区确认「今日发送」恢复非零。恢复即按自选个性化生效,无需改代码。
 
 ### Web Push / VAPID(浏览器 & PWA 通知)
 - **用途**:浏览器/PWA 推送。广播主路径折在 briefing cron(`maybeWebPush`);`/api/cron/push-web` 仅手动补推。
@@ -119,6 +122,11 @@
 - **环境变量**:`CLAWBOT_BASE_URL=https://bridge.stocktell.me` / `CLAWBOT_SECRET`(请求头 `x-clawbot-secret`,= 桥 `BRIDGE_SECRET`)。
 - **访问链路**:Vercel → `https://bridge.stocktell.me`(443)→ **宝塔 nginx 反向代理** → `127.0.0.1:8787`。8787 不对公网开放。
 - **坑**:`sendmessage` 每条需全局唯一 client_id;context_token 要用户先发消息才拿得到;微信 24h 回复窗口;连续 3 次硬失败自动判失效。详见微信桥相关记忆。
+- **故障预案(2.3 P0-2,单机单点)**:
+  - **发现**:`/admin/metrics` 触达健康度区每次打开都探 `GET /health`(3s 超时,免鉴权);桥挂 = 该区显示「故障」。cron 侧 `clawbot()` 自带 10s 超时,失败静默返 null(用户侧表现=当天微信推送缺席,无报错)。
+  - **用户侧表现**:绑定二维码打不开、绑定码发了没反应、早 8 点推送没到。邮件/webpush 不受影响。
+  - **恢复步骤**:① SSH VPS `47.84.8.167` → `systemctl status ilink-bridge`,挂了 `systemctl restart ilink-bridge`;② 起不来看 `journalctl -u ilink-bridge -n 100`(常见:iLink 登录态失效 → 跑 `ilink-bridge/login.mjs` 重新扫码);③ nginx/证书问题(`/health` 通 8787 不通 443)→ 宝塔面板看反代与证书;④ 恢复后 `/admin/push` 手动补推当日。
+  - **不重构承诺**:多实例/迁移暂不做(2.3 拍板只做监控与预案);用户量起来后再评估。
 
 ### HTTPS 反向代理 + 证书(宝塔 nginx + Let's Encrypt)— VPS 47.84.8.167
 - **依赖性质**:外部基础设施。`bridge.stocktell.me` 的 TLS 终止在 VPS 上的**宝塔托管 nginx**,反代到桥 `127.0.0.1:8787`。

@@ -284,6 +284,51 @@ model InsightDoc {
   @@map("insight_docs")
 }
 
+// 分享短链(2.3 P0-3 裂变一张卡实验,viral-growth-plan §6):自建短链+归因。
+// target 只允许站内路径(创建侧强制,防开放跳转);落地写 st_ref cookie 30 天。
+// 每 (cardType, date) 一条(全量同款卡共用一链,不与 userId joinable——方案 §8.7 隐私红线)。
+model ShortLink {
+  id        String   @id @default(cuid())
+  code      String   @unique // 短码(crypto 随机 base36)
+  target    String // 站内路径(以 / 开头)
+  cardType  String   @map("card_type") // sentiment | stock(P1)
+  date      String // YYYY-MM-DD(北京)
+  hits      Int      @default(0) // 302 次数(粗归因;精确漏斗看 Umami share_link_visit)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([cardType, date])
+  @@map("short_links")
+}
+
+// 验证点跟踪·轻量版(2.3 P1-3):用户关注某只票的某个验证点(如「800G/1.6T 订单」)。
+// 进展=结构化匹配(该票当日被事件点名),零 LLM;无进展不打扰(反焦虑)。
+// 登录用户落库(游客走 localStorage,登录时合并,与 watchlist 同构)。
+model VerifyFollow {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String // 股票代码
+  point     String // 验证点原文(来自核定关系档 verificationPoints/环节模板,非用户自填)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, code, point])
+  @@index([userId])
+  @@index([code])
+  @@map("verify_follows")
+}
+
+// 池外票登记(2.3 P1-2):用户加了不在股池里的 A 股 → 登记为扩池需求信号。
+// miss 本身变成选题探测器:admin/metrics 按 count 排序看该先收录谁;
+// 纳入后 notifiedAt 记录兑现推送(「你之前加的 XX 已纳入」),登记过的期待必须兑现。
+model PoolRequest {
+  code       String    @id // A 股 6 位代码
+  count      Int       @default(1) // 被加自选次数(登录+游客,client 上报)
+  firstSeen  DateTime  @default(now()) @map("first_seen")
+  lastSeen   DateTime  @updatedAt @map("last_seen")
+  notifiedAt DateTime? @map("notified_at") // 纳入兑现推送完成时间
+
+  @@map("pool_requests")
+}
+
 // 层③ relationReviewQueue 持久化(2.1-W3,2026-07-07 拍板):多次命中/复盘高频未验证的
 // 关系进队列待人工沉淀。不变量#4:队列【绝不】自动改 staticRelations——confirmed 只是
 // 人工结论记录,改档仍走 chain-relations.ts 代码评审。

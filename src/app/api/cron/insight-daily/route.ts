@@ -6,7 +6,7 @@ import { todayISO } from "@/lib/date";
 import { sendFeishu } from "@/lib/feishu";
 import { alertCron } from "@/lib/monitor";
 import { generateDailyInsight } from "@/lib/insight-pipeline/generate";
-import { saveDraft, publishDoc, hasDaily, getPrevHeat, isPipelinePaused, pausePipeline } from "@/lib/insight-pipeline/docs";
+import { saveDraft, publishDoc, hasDaily, getPrevHeat, isPipelinePaused, pausePipeline, findUnseenMappingCodes } from "@/lib/insight-pipeline/docs";
 import { complianceBlockers } from "@/lib/insight-pipeline/guard";
 import { CHAINS } from "@/data/chains";
 
@@ -85,7 +85,22 @@ export async function GET(req: NextRequest) {
       // 自动发布(负责人拍板「自动化,事后审」)。安全轨:①HIGH 合规 blocked 根本不落库(前面已挡)
       // ②发布前合规复检做纵深 ③疑似退化(同图谱)不自动发、留审。干净→publishDoc 直接上首页/insight;
       // 否则留 draft 待人审。飞书通知已发/留审 + 一键撤下入口。
-      const holdReasons = degraded ? ["疑似退化(同图谱)"] : complianceBlockers(p);
+      // ④分级审核(2.3 P2-1):历史上从未发布过、也不在静态核定集的【新映射标的】留审——
+      // 合规风险集中在新面孔;老面孔/方向变化照常自动发。INSIGHT_HOLD_NEW_MAPPING=0 可关。
+      const unseen =
+        process.env.INSIGHT_HOLD_NEW_MAPPING !== "0"
+          ? await findUnseenMappingCodes(
+              chain.id,
+              chain.insightSlug,
+              p.mappingsDelta.map((m) => m.code)
+            ).catch(() => [])
+          : [];
+      const holdReasons = degraded
+        ? ["疑似退化(同图谱)"]
+        : [
+            ...complianceBlockers(p),
+            ...(unseen.length ? [`新增映射标的待人审:${unseen.join("、")}(分级审核)`] : []),
+          ];
       let published = false;
       if (holdReasons.length === 0) {
         const pub = await publishDoc(doc.id).catch(() => null);

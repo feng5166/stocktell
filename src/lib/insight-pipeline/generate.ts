@@ -128,7 +128,8 @@ async function genJudgment(
   segments: ChainSegment[],
   framing: string,
   items: BriefingItem[],
-  meta: { llmCalls: number; retries: number }
+  meta: { llmCalls: number; retries: number },
+  eventFocus?: { code: string; name: string } // 事件专篇(M2):判断段围绕单一触发事件写
 ): Promise<{ text: string; degraded: boolean }> {
   const segNames = segments
     .map((s) => s.name)
@@ -162,7 +163,14 @@ async function genJudgment(
               max_tokens: 400,
               messages: [
                 { role: "system", content: sys },
-                { role: "user", content: `今天的简报条目(JSON):\n${JSON.stringify(payload)}\n\n请写链级今日判断(落在本链环节)。` },
+                {
+                  role: "user",
+                  content:
+                    `今天的简报条目(JSON):\n${JSON.stringify(payload)}\n\n` +
+                    (eventFocus
+                      ? `请围绕触发事件「${eventFocus.name}」写事件级判断:这件事本身为什么重要、会沿本链哪些环节传导、哪些方向更多是情绪映射(仍落在本链环节)。`
+                      : `请写链级今日判断(落在本链环节)。`),
+                },
               ],
             },
             { maxRetries: 1, timeout: 12000 }
@@ -608,6 +616,8 @@ export async function generateDailyInsight(
     yesterdayHeat?: { segment: string; direction: string }[] | null;
     // 回放注入(pipeline-replay):内存条目直灌,不读 DB、不要求已发布——dry-run 全链路用
     itemsOverride?: BriefingItem[];
+    // 事件专篇(M2):判断段围绕单一触发事件调焦,其余五段口径不变
+    eventFocus?: { code: string; name: string };
   }
 ): Promise<GenerateResult> {
   const chain = getChain(chainId);
@@ -628,7 +638,7 @@ export async function generateDailyInsight(
   const trigger = own.length
     ? buildTrigger(own)
     : { ...buildTrigger(items), summary: `${buildTrigger(items).summary}(链外事件,本链属情绪外溢)` };
-  const judgment = await genJudgment(chain.name, chain.segments, chain.tagline, items, meta);
+  const judgment = await genJudgment(chain.name, chain.segments, chain.tagline, items, meta, opts?.eventFocus);
   const heat = await genHeat(chain.segments, items, toSegment, opts?.yesterdayHeat ?? null, meta);
   const mappingsDelta = buildMappingsDelta(items, chain.segments, toSegment, chain.insightSlug);
   const verifyWords =

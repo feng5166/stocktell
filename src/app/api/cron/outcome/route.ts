@@ -6,6 +6,7 @@ import { alertCron } from "@/lib/monitor";
 import { tradingDayGate } from "@/lib/trading-gate";
 import { getBriefStatusChecked, briefAlertSeverity } from "@/lib/brief-status";
 import { feedReviewQueueFromOutcomes } from "@/lib/relation-review";
+import { writeOutcomeAgg } from "@/lib/outcome-agg";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -84,7 +85,10 @@ export async function GET(req: NextRequest) {
     // fail-safe:队列坏了不连累记账;不飞书——队列刷屏=没人看,admin 页可见即可。
     // 不变量#4:这里【只入队】,绝不改 staticRelations。
     const review = await feedReviewQueueFromOutcomes(date).catch(() => null);
-    return NextResponse.json({ date, ...res, review, healed: healRes?.healed ?? [] });
+    // 复盘回写 M3(2.3 P1-1):记账后重算 链×环节×关系 / 按 code 的历史同向聚合快照,
+    // insight 页与股票页读快照挂角标。fail-safe:聚合失败不连累记账主流程。
+    const agg = await writeOutcomeAgg().catch(() => null);
+    return NextResponse.json({ date, ...res, review, agg, healed: healRes?.healed ?? [] });
   } catch (e) {
     await alertCron("outcome(记账)", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });

@@ -70,7 +70,10 @@ export async function POST(req: NextRequest) {
     type: anchorRaw.type as ChatAnchorType,
     id: String(anchorRaw.id ?? "").slice(0, 80),
   };
-  if (!INSIGHT_CHAINS[slug] || !ANCHOR_TYPES.has(anchor.type) || !anchor.id) {
+  // slug 白名单:静态因果链 slug,或事件专篇 slug(evt-*,是否真实存在由
+  // assembleChatContext 查库判定——不存在返回 null → 下方 404;不放行任意字符串正文)
+  const isEvtSlug = /^evt-\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/.test(slug);
+  if ((!INSIGHT_CHAINS[slug] && !isEvtSlug) || !ANCHOR_TYPES.has(anchor.type) || !anchor.id) {
     return NextResponse.json({ ok: false, error: "bad-request" }, { status: 400 });
   }
   if (question.length < 2 || question.length > CHAT_QUESTION_MAX) {

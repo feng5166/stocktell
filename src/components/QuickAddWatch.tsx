@@ -77,12 +77,31 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
       {q.trim() && (
         <div className="mt-2 divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-100">
           {matches.length === 0 ? (
-            <div className="px-3 py-3 text-center text-xs leading-relaxed text-gray-500">
-              {/^\d{6}$/.test(q.trim())
-                ? `「${q.trim()}」暂未纳入。`
-                : `没找到「${q.trim()}」。`}
-              StockTell 目前专盯 AI 产业链(覆盖 A 股约 {A_SHARE_COUNT} 只 + 美股锚点),其它板块还在路上——换 AI 链上的票试试。
-            </div>
+            /^\d{6}$/.test(q.trim()) ? (
+              /* 池外票降级档(2.3 P1-2):6 位代码搜不到也能加——诚实说明暂未纳入,
+                 登记为扩池信号,纳入后兑现提醒。不 LLM 现编关系(铁律②:宁缺勿编)。 */
+              <div className="px-3 py-3 text-xs leading-relaxed text-gray-500">
+                「{q.trim()}」暂未纳入产业链图谱(目前覆盖 A 股约 {A_SHARE_COUNT} 只 + 美股锚点)。
+                仍可加入自选:我们已登记你的关注,该股纳入图谱后你会第一时间看到它的链上位置。
+                <div className="mt-2">
+                  <button
+                    onClick={() => wl.toggle(q.trim(), "search")}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      wl.has(q.trim())
+                        ? "border-brand-200 bg-brand-50 text-brand-600"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-brand-300 hover:text-brand-700"
+                    }`}
+                  >
+                    {wl.has(q.trim()) ? "✓ 已加入(待纳入图谱)" : `+ 仍要加入 ${q.trim()}`}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 py-3 text-center text-xs leading-relaxed text-gray-500">
+                没找到「{q.trim()}」。 StockTell 目前专盯 AI 产业链(覆盖 A 股约 {A_SHARE_COUNT} 只 +
+                美股锚点),其它板块还在路上——换 AI 链上的票,或直接输 6 位代码登记关注。
+              </div>
+            )
           ) : (
             matches.map((s) => {
               const added = wl.has(s.code);

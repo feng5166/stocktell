@@ -7,6 +7,7 @@ import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
+import { ShareCardEntry } from "@/components/share/ShareCardEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
@@ -25,6 +26,7 @@ import {
   latestBriefing,
   type BriefingItem,
 } from "@/lib/briefings";
+import { listPublishedEvents } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
 
@@ -67,7 +69,16 @@ export default async function Home() {
   }
 
   // 因果链卡:结构读 insight,今日判断读 chain-take(纯 DB 读;失败降级为空数组,不炸页不显假0)
-  const cards = await buildReasoningCards(items, shownDate, stale).catch(() => []);
+  // 事件专篇入口(M2):当日已发布专篇 → 条目id→href;失败降级为空(事件卡回落链级口径)
+  const [cards, evtDocs] = await Promise.all([
+    buildReasoningCards(items, shownDate, stale).catch(() => []),
+    listPublishedEvents({ date: shownDate, limit: 10 }).catch(() => []),
+  ]);
+  const evtMap: Record<string, string> = {};
+  for (const d of evtDocs) {
+    for (const itemId of d.payload.eventMeta?.itemIds ?? [])
+      evtMap[itemId] = `/insight/evt/${d.slug}`;
+  }
   const aiChain = getChain("ai");
   const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
   // 事件卡关系标签(替代「高影响」):服务端按 insight 人工核过的关系分级推导
@@ -101,7 +112,12 @@ export default async function Home() {
                 <ChainSentiment
                   initial={snap?.data}
                   refresh={snap ? !snap.fresh : false}
-                  action={<ChainHomeEntry />}
+                  action={
+                    <span className="inline-flex items-center gap-3">
+                      <ShareCardEntry />
+                      <ChainHomeEntry />
+                    </span>
+                  }
                 />
               </div>
               <OvernightRadar relMap={relLabelMap} />
@@ -127,6 +143,7 @@ export default async function Home() {
               chainHref={aiChain ? `/chain/${aiChain.id}` : undefined}
               relations={relations}
               watchChainMap={watchChainMap}
+              evtMap={evtMap}
             />
           </div>
         )}

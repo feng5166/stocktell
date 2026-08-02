@@ -11,7 +11,7 @@ import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/s
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
 import { getChainTake, fallbackChainTake } from "@/lib/chain-take";
 import { TakeBody } from "@/components/RetailTake";
-import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
+import { getPublishedDaily, listPublishedEvents } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { getChain, rosterOf } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
@@ -49,9 +49,11 @@ export default async function ChainPage({
 
   const date = todayISO();
   // 情绪只读缓存快照(零 fetch,不在渲染里冷算堵 TTFB);过期由客户端组件后台刷新
-  const [snap, todayItems] = await Promise.all([
+  const [snap, todayItems, evtDocs] = await Promise.all([
     sentimentSnapshot().catch(() => null),
     listBriefing({ date, status: "published" }).catch(() => [] as BriefingItem[]),
+    // 事件专篇(M2):本链最近已发布专篇,「最近触发事件」的结构化沉淀
+    listPublishedEvents({ chainId: params.id, limit: 5 }).catch(() => []),
   ]);
   const sentiment: SentimentData = snap?.data ?? { date: null, a: null, us: null };
 
@@ -192,6 +194,33 @@ export default async function ChainPage({
             ))}
           </div>
         ) : null}
+
+        {/* 事件专篇(M2):本链最近的事件级完整传导拆解 */}
+        {evtDocs.length > 0 && (
+          <section className="mt-4">
+            <h2 className="text-h2 font-semibold text-gray-900">事件专篇</h2>
+            <p className="mt-1 text-xs text-gray-400">
+              触发本链的重要事件,逐跳拆到 A 股映射(研究框架梳理·非确认)
+            </p>
+            <div className="mt-3 space-y-2">
+              {evtDocs.map((d) => (
+                <Link
+                  key={d.slug}
+                  href={`/insight/evt/${d.slug}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-brand-200 hover:bg-brand-50/40"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-gray-800">
+                      {d.payload.eventMeta?.title ?? d.slug}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-gray-400">{d.date}</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-medium text-brand-600">看完整传导 →</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 隔夜美股 · A股联动 */}
         <div className="mt-4">

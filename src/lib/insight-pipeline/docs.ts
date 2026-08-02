@@ -152,15 +152,16 @@ export async function publishDoc(id: string): Promise<InsightDocRow | null> {
   if (!doc) return null;
   // #7:只有 draft / published(重新发布)可发;rejected / superseded 不能经发布复活。
   if (doc.status !== "draft" && doc.status !== "published") return null;
+  // 收敛口径按 kind 分:daily=同 (chainId,date) 至多一个 published(修订稿互斥);
+  // event=同 slug 至多一个(同链同日可并存多篇不同触发标的的专篇,不得互相 superseded)。
+  // slug unique 使 event 的 updateMany 恒空,但保留语义清晰的分支防未来 slug 规则变化。
+  const supersedeWhere =
+    doc.kind === "event"
+      ? { slug: doc.slug, status: "published", id: { not: id } }
+      : { chainId: doc.chainId, date: doc.date, kind: doc.kind, status: "published", id: { not: id } };
   const [, row] = await db.$transaction([
     db.insightDoc.updateMany({
-      where: {
-        chainId: doc.chainId,
-        date: doc.date,
-        kind: doc.kind,
-        status: "published",
-        id: { not: id },
-      },
+      where: supersedeWhere,
       data: { status: "superseded" },
     }),
     db.insightDoc.update({
@@ -207,6 +208,109 @@ export async function listPublishedDailyDates(chainId: string, limit = 120): Pro
     })
     .catch(() => [] as Array<{ date: string }>);
   return Array.from(new Set(rows.map((r) => r.date)));
+}
+
+/* ---------- 事件专篇(M2,PRD prd-2.3-iteration-review §2) ---------- */
+// slug 由 event.ts 规则生成(evt-{date}-{code} / evt-{date}-res-{chainId}),同 slug 幂等。
+// 全审轨:只存 draft,发布走 admin publishDoc(同 (chainId,date,kind) 至多一个 published
+// 的不变量对 kind=event 同样成立——publishDoc 按 doc.kind 收敛)。
+
+// 当日该 slug 是否已有稿(draft/published)——cron 幂等判断(rejected 不算:打回后次日不复活,
+// 但同日重跑也不该重建被打回的稿,故 rejected 也算「已处理过」)
+export async function hasEventDoc(slug: string): Promise<boolean> {
+  const db = getPrisma();
+  if (!db) return false;
+  const n = await db.insightDoc.count({
+    where: { slug, status: { in: ["draft", "published", "rejected"] } },
+  });
+  return n > 0;
+}
+
+export async function saveEventDraft(
+  slug: string,
+  payload: DailyInsightPayload,
+  guard: GuardResult
+): Promise<InsightDocRow | null> {
+  const db = getPrisma();
+  if (!db) return null;
+  const data = {
+    chainId: payload.chainId,
+    date: payload.date,
+    kind: "event",
+    status: "draft",
+    payload: payload as unknown as Prisma.InputJsonValue,
+    guard: guard as unknown as Prisma.InputJsonValue,
+  };
+  const row = await db.insightDoc.upsert({
+    where: { slug },
+    create: { slug, ...data },
+    update: { ...data, reviewNote: null, reviewedAt: null, publishedAt: null },
+  });
+  return fromRow(row);
+}
+
+// 页面消费:按 slug 取已发布事件专篇
+export async function getPublishedEventBySlug(slug: string): Promise<InsightDocRow | null> {
+  const db = getPrisma();
+  if (!db) return null;
+  const row = await db.insightDoc.findFirst({ where: { slug, kind: "event", status: "published" } });
+  return row ? fromRow(row) : null;
+}
+
+// 列表:已发布事件专篇(链页「事件专篇」区 / 首页入口 map / sitemap)。
+// date 精确取当日;chainId 取该链最近 N 篇。
+export async function listPublishedEvents(opts?: {
+  chainId?: string;
+  date?: string;
+  limit?: number;
+}): Promise<InsightDocRow[]> {
+  const db = getPrisma();
+  if (!db) return [];
+  const rows = await db.insightDoc
+    .findMany({
+      where: {
+        kind: "event",
+        status: "published",
+        ...(opts?.chainId ? { chainId: opts.chainId } : {}),
+        ...(opts?.date ? { date: opts.date } : {}),
+      },
+      orderBy: [{ date: "desc" }, { publishedAt: "desc" }],
+      take: opts?.limit ?? 20,
+    })
+    .catch(() => [] as unknown[]);
+  return (rows as unknown[]).map(fromRow);
+}
+
+// 分级审核(2.3 P2-1):找出 payload 里「历史上从未发布过、也不在静态核定集」的映射标的。
+// 基线 = 该链近 60 篇已发布 daily 的映射 code ∪ 静态 InsightChain.mappings 的 code。
+// 真正的新面孔才留审(合规风险集中在新映射);方向变化/老面孔照常走自动发布轨。
+export async function findUnseenMappingCodes(
+  chainId: string,
+  insightSlug: string | undefined,
+  codes: string[]
+): Promise<string[]> {
+  if (codes.length === 0) return [];
+  const db = getPrisma();
+  if (!db) return [];
+  const seen = new Set<string>();
+  // 静态核定集(人工审过的映射)
+  const { INSIGHT_CHAINS } = await import("@/data/insight-chains");
+  const chain = insightSlug ? INSIGHT_CHAINS[insightSlug] : undefined;
+  for (const m of chain?.mappings ?? []) if (m.code) seen.add(m.code);
+  // 历史已发布 daily 的映射(发布=当时已过审核轨)
+  const rows = await db.insightDoc
+    .findMany({
+      where: { chainId, kind: "daily", status: "published" },
+      select: { payload: true },
+      orderBy: { date: "desc" },
+      take: 60,
+    })
+    .catch(() => [] as Array<{ payload: unknown }>);
+  for (const r of rows) {
+    const p = r.payload as DailyInsightPayload;
+    for (const m of p.mappingsDelta ?? []) seen.add(m.code);
+  }
+  return codes.filter((c) => !seen.has(c));
 }
 
 // 昨日 heat(S2 diff 输入):最近一篇该链 daily(published 优先,其次 draft)

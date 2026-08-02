@@ -26,6 +26,7 @@ import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
 import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType, chainRouteId } from "@/lib/relation-rank";
+import { VerifyFollowChips } from "@/components/VerifyFollow";
 
 // relationType → 前台关系档标签(与 /stocks、relationResolver 同源,消双轨)
 const STOCK_REL_LABEL: Record<string, string> = {
@@ -139,6 +140,9 @@ export default async function StockDetail({
   const nodeReason = primaryRel?.reason || s.positioning;
   const nodeVerify = primaryRel?.verificationPoints ?? [];
   const nodeChainId = primaryRel?.chainId;
+  // M3 复盘回写(2.3 P1-1):这只票的历史同向统计角标(读聚合快照,缺失 → null 不渲染)
+  const { readOutcomeAgg, codeBadgeText } = await import("@/lib/outcome-agg");
+  const historyBadge = codeBadgeText(await readOutcomeAgg().catch(() => null), s.code);
   // 今日触发:今天简报提到了 → 事件标题;否则明说只是市场行为(避免把资金异动硬解释成产业变化)
   const todayTrigger =
     todayNews.length > 0
@@ -339,8 +343,21 @@ export default async function StockDetail({
             {todayTrigger}
           </p>
           {nodeVerify.length > 0 && (
+            <div className="mt-1">
+              <p className="text-xs text-gray-400">
+                后续应核验的公开披露项(不代表已确认受益):
+              </p>
+              {/* 验证点跟踪(2.3 P1-3):点关注 → 该票被事件点名时在自选页提示看这个验证点 */}
+              <VerifyFollowChips code={s.code} points={nodeVerify} />
+            </div>
+          )}
+          {/* M3 复盘回写:这只票的历史同向统计(计数口径,样本不足如实说;缺快照不渲染) */}
+          {historyBadge && (
             <p className="mt-1 text-xs text-gray-400">
-              后续应核验的公开披露项(不代表已确认受益):{nodeVerify.join(" / ")}
+              {historyBadge} ·{" "}
+              <Link href="/track" className="text-brand-600 hover:underline">
+                看全部复盘 →
+              </Link>
             </p>
           )}
         </Section>

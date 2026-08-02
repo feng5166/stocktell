@@ -3,7 +3,7 @@ import { CHAINS } from "@/data/chains";
 import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { STOCKS } from "@/data/stocks";
 import { listArchiveDates } from "@/lib/archive-dates";
-import { listPublishedDailyDates } from "@/lib/insight-pipeline/docs";
+import { listPublishedDailyDates, listPublishedEvents } from "@/lib/insight-pipeline/docs";
 
 // SEO 基建(2.1-W4)。内容资产四层:静态页 → 链页/insight 三链 → 股票页 → 每日归档。
 // DB 归档查询全部 fail-safe:库不可用时退化为纯静态条目,sitemap 本身绝不 500。
@@ -52,6 +52,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.4,
         });
       }
+    }
+    // 事件专篇(M2):事件长尾 query 的主力页,优先级高于每日归档
+    const events = await listPublishedEvents({ limit: 200 });
+    for (const e of events) {
+      out.push({
+        url: `${BASE}/insight/evt/${e.slug}`,
+        changeFrequency: "yearly",
+        priority: 0.7,
+      });
     }
   } catch {
     /* 归档条目缺席不影响 sitemap 主体 */

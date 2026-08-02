@@ -34,6 +34,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/relation-review", label: "关系模型" },
       { href: "/admin/resolver-health", label: "关系健康" },
+      { href: "/admin/calibration", label: "分级校准" },
     ],
   },
   {
@@ -42,6 +43,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/metrics", label: "接口监控" },
       { href: "/admin/llm", label: "模型切换" },
+      { href: "/admin/pro-review", label: "Pro 月度复盘" },
     ],
   },
 ];

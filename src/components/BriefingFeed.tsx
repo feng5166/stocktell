@@ -36,6 +36,7 @@ export function BriefingFeed({
   chainHref,
   relations,
   watchChainMap,
+  evtMap,
 }: {
   items: BriefingItem[];
   loggedIn: boolean;
@@ -45,6 +46,7 @@ export function BriefingFeed({
   chainHref?: string; // 影响链 chip 跳转 /chain/[id]
   relations?: Record<string, string>; // 条目id → 关系标签(直接相关/间接相关/情绪映射/产业链相关),替代「高影响」
   watchChainMap?: Record<string, WatchChainInfo>; // 全A股→链身份(服务端算,P1 和我相关结构化)
+  evtMap?: Record<string, string>; // 条目id → 事件专篇 href(M2:命中已发布专篇时主入口升级)
 }) {
   const wl = useWatchlist(initialCodes);
   const isMine = (it: BriefingItem) =>
@@ -77,12 +79,20 @@ export function BriefingFeed({
       /* 隐私模式:退化为每页一次 */
     }
     const quietCovered = Array.from(wl.codes).some((c) => STOCK_MAP[c]);
+    const outOfPoolCount = Array.from(wl.codes).filter((c) => !STOCK_MAP[c]).length;
     if (mine.length > 0) {
       track("relation_hit", { mode: "briefing", watch_count: wl.codes.size, has_morning_brief: true });
     } else if (quietCovered) {
       track("relation_hit", { mode: "quiet", watch_count: wl.codes.size, has_morning_brief: false });
     } else {
-      track("relation_miss", { watch_count: wl.codes.size, has_morning_brief: false });
+      // miss 语义拆分(2.3 P1-2):走到这里=自选全部池外(池内票必被 QuietWatchCard 兜住),
+      // reason 固定 out_of_pool + 池外数——miss 从告警变成扩池选题信号(配合 /api/pool-request)
+      track("relation_miss", {
+        reason: "out_of_pool",
+        watch_count: wl.codes.size,
+        out_of_pool_count: outOfPoolCount,
+        has_morning_brief: false,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wl.ready, wl.codes.size, mine.length]);
@@ -134,6 +144,7 @@ export function BriefingFeed({
                 chainName={chainName}
                 chainHref={chainHref}
                 relations={relations}
+                evtMap={evtMap}
                 mine
               />
             )}
@@ -157,6 +168,7 @@ export function BriefingFeed({
             chainName={chainName}
             chainHref={chainHref}
             relations={relations}
+            evtMap={evtMap}
             collapsed
           />
         </section>
@@ -323,6 +335,7 @@ function CardFeed({
   chainName,
   chainHref,
   relations,
+  evtMap,
   collapsed = false,
 }: {
   items: BriefingItem[];
@@ -334,6 +347,7 @@ function CardFeed({
   chainName?: string;
   chainHref?: string;
   relations?: Record<string, string>;
+  evtMap?: Record<string, string>;
   collapsed?: boolean; // 首页事件区:默认只放 5 条,其余手动「查看更多」——首页是分发台不是事件库(评审)
 }) {
   const STEP = 6;
@@ -375,6 +389,7 @@ function CardFeed({
             chainName={chainName}
             chainHref={chainHref}
             relation={relations?.[it.id]}
+            evtHref={evtMap?.[it.id]}
           />
         ) : (
           <LockedCard key={it.id} item={it} />
@@ -777,6 +792,7 @@ function BriefingCard({
   chainName,
   chainHref,
   relation,
+  evtHref,
 }: {
   item: BriefingItem;
   mine?: boolean;
@@ -785,6 +801,7 @@ function BriefingCard({
   chainName?: string;
   chainHref?: string;
   relation?: string; // 关系标签(评审:替代「高影响」,不用影响强弱暗示结果)
+  evtHref?: string; // 事件专篇入口(M2):命中已发布专篇时主按钮从链级升级为事件级
 }) {
   const meta = IMPACT_META[item.impact];
   // P1.1:海外 AI 应用事件(Palantir/ServiceNow 等 + AI 商业化内容)→ 引到「为什么不等于国内受益」
@@ -915,7 +932,22 @@ function BriefingCard({
         {/* 底部双入口(拍板⑤):主=链级因果框架(insight),次=实时拆解(原深读,能力保留换文案) */}
         {!deepStarted && (
           <div className="mt-2 flex items-center justify-between gap-2">
-            {insightHref ? (
+            {/* M2:命中已发布事件专篇 → 主入口升级为事件级完整传导;否则维持链级口径(拍板④) */}
+            {evtHref ? (
+              <Link
+                href={evtHref}
+                onClick={() =>
+                  track("home_event_card_click", {
+                    event_id: item.id,
+                    insight_id: evtHref.split("/").pop() ?? "",
+                    kind: "event",
+                  })
+                }
+                className="text-xs font-medium text-brand-600 hover:underline"
+              >
+                看这件事的完整传导 →
+              </Link>
+            ) : insightHref ? (
               <Link
                 href={insightHref}
                 onClick={() =>

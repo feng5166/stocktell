@@ -274,6 +274,43 @@ const IDX_CHAT_USER_CREATED = `CREATE INDEX IF NOT EXISTS "chat_message_user_id_
 const IDX_CHAT_THREAD_CREATED = `CREATE INDEX IF NOT EXISTS "chat_message_thread_key_created_at_idx" ON "chat_message" ("thread_key", "created_at")`;
 
 
+// 验证点跟踪表(2.3 P1-3 轻量版,幂等)
+const T_VERIFY_FOLLOW = `CREATE TABLE IF NOT EXISTS "verify_follows" (
+  "id" text NOT NULL,
+  "user_id" text NOT NULL,
+  "code" text NOT NULL,
+  "point" text NOT NULL,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "verify_follows_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_VERIFY_FOLLOW_UNIQUE = `CREATE UNIQUE INDEX IF NOT EXISTS "verify_follows_user_id_code_point_key" ON "verify_follows" ("user_id", "code", "point")`;
+const IDX_VERIFY_FOLLOW_USER = `CREATE INDEX IF NOT EXISTS "verify_follows_user_id_idx" ON "verify_follows" ("user_id")`;
+const IDX_VERIFY_FOLLOW_CODE = `CREATE INDEX IF NOT EXISTS "verify_follows_code_idx" ON "verify_follows" ("code")`;
+
+// 池外票登记表(2.3 P1-2 miss→选题信号,幂等)
+const T_POOL_REQUEST = `CREATE TABLE IF NOT EXISTS "pool_requests" (
+  "code" text NOT NULL,
+  "count" integer NOT NULL DEFAULT 1,
+  "first_seen" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "last_seen" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "notified_at" timestamp(3),
+  CONSTRAINT "pool_requests_pkey" PRIMARY KEY ("code")
+)`;
+
+// 分享短链表(2.3 P0-3 裂变一张卡实验,幂等)
+const T_SHORT_LINK = `CREATE TABLE IF NOT EXISTS "short_links" (
+  "id" text NOT NULL,
+  "code" text NOT NULL,
+  "target" text NOT NULL,
+  "card_type" text NOT NULL,
+  "date" text NOT NULL,
+  "hits" integer NOT NULL DEFAULT 0,
+  "created_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "short_links_pkey" PRIMARY KEY ("id")
+)`;
+const IDX_SHORT_LINK_CODE = `CREATE UNIQUE INDEX IF NOT EXISTS "short_links_code_key" ON "short_links" ("code")`;
+const IDX_SHORT_LINK_CARD_DATE = `CREATE UNIQUE INDEX IF NOT EXISTS "short_links_card_type_date_key" ON "short_links" ("card_type", "date")`;
+
 // 执行顺序 = 原 init-db 事务体顺序(表先于索引,ALTER 先于依赖它的索引)
 export const DDL_STATEMENTS: string[] = [
   T,
@@ -333,4 +370,12 @@ export const DDL_STATEMENTS: string[] = [
   T_CHAT_MESSAGE,
   IDX_CHAT_USER_CREATED,
   IDX_CHAT_THREAD_CREATED,
+  T_SHORT_LINK,
+  IDX_SHORT_LINK_CODE,
+  IDX_SHORT_LINK_CARD_DATE,
+  T_POOL_REQUEST,
+  T_VERIFY_FOLLOW,
+  IDX_VERIFY_FOLLOW_UNIQUE,
+  IDX_VERIFY_FOLLOW_USER,
+  IDX_VERIFY_FOLLOW_CODE,
 ];

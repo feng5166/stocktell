@@ -131,6 +131,33 @@ export async function runWeixinPush(): Promise<{
     // 你的持仓自身要注意的事(雷区 + 资金面),与邮件 buildWatchAlerts 共用
     const alerts = await buildWatchAlerts(Array.from(codes));
 
+    // 验证点进展信号(2.3 P1-3):关注的验证点所属票今天被事件点名 → 提示行(结构化零 LLM);
+    // 无进展不加行(反焦虑)。fail-safe:表未建/查询失败不影响早报主体。
+    try {
+      const mentioned = new Set<string>();
+      for (const b of relevant) {
+        if (b.triggerCode) mentioned.add(b.triggerCode);
+        for (const x of b.beneficiaries) mentioned.add(x.code);
+      }
+      if (mentioned.size > 0) {
+        const follows = await db.verifyFollow.findMany({
+          where: { userId: u.id, code: { in: Array.from(mentioned) } },
+          select: { code: true, point: true },
+          take: 5,
+        });
+        for (const f of follows) {
+          const name = briefings
+            .flatMap((b) => [
+              ...(b.triggerCode === f.code && b.triggerName ? [b.triggerName] : []),
+              ...b.beneficiaries.filter((x) => x.code === f.code).map((x) => x.name),
+            ])[0] ?? f.code;
+          alerts.push(`你关注的验证点:${name}「${f.point}」——它今天出现在传导链,留意相关披露是否兑现`);
+        }
+      }
+    } catch {
+      /* 验证点提示失败不影响早报 */
+    }
+
     let text: string | null = null;
     if (relevant.length > 0) {
       // 有相关简报:个性化早报 + 要注意 + 相关动态

@@ -128,6 +128,9 @@ export async function assembleChatContext(
   anchor: ChatAnchor,
   userId: string
 ): Promise<ChatContext | null> {
+  // 事件专篇(M2):evt-* slug 走专属装配——上下文来自已发布事件 doc(全审后内容)+
+  // 归属链静态骨架;不存在/未发布 → null(路由侧 400)。
+  if (slug.startsWith("evt-")) return assembleEventChatContext(slug, anchor, userId);
   const chain = INSIGHT_CHAINS[slug];
   if (!chain) return null;
   const chainPage = Object.values(CHAINS).find((c) => c.insightSlug === slug);
@@ -210,6 +213,94 @@ export async function assembleChatContext(
   }
 
   // 登录用户自选(只给 code/名称/本链关系;绝不传成本/仓位/交易记录——本来也没有)
+  try {
+    const codes = await listWatchlist(userId);
+    const rels = codes
+      .map((c) => ({ c, r: resolveInChain(c, relChainId) }))
+      .filter((x) => x.r)
+      .slice(0, 10)
+      .map((x) => `${STOCK_MAP[x.c]?.name ?? x.c}(${x.c}):${x.r!.relationType}`);
+    if (rels.length) ctx.push(`用户自选中与本链有核定关系的:${rels.join(";")}`);
+  } catch {
+    /* 自选读取失败不影响追问 */
+  }
+
+  return { chain, anchorLabel, contextText: ctx.join("\n"), allowedRefs };
+}
+
+// 事件专篇追问上下文(M2):材料 = 已发布事件 doc 的 payload(判断/风险/热力/映射,全部已过
+// 护栏与人审)+ 归属链静态骨架(hop 锚点)。引用白名单同样按锚点收窄,口径与 daily 一致。
+async function assembleEventChatContext(
+  slug: string,
+  anchor: ChatAnchor,
+  userId: string
+): Promise<ChatContext | null> {
+  const { getPublishedEventBySlug } = await import("@/lib/insight-pipeline/docs");
+  const doc = await getPublishedEventBySlug(slug).catch(() => null);
+  if (!doc?.payload.eventMeta) return null;
+  const p = doc.payload;
+  const em = p.eventMeta!;
+  const chainPage = Object.values(CHAINS).find((c) => c.id === doc.chainId);
+  const chain = chainPage?.insightSlug ? INSIGHT_CHAINS[chainPage.insightSlug] : undefined;
+  if (!chain) return null; // 归属链无静态骨架 = 不该发生(事件只挂已配置链),fail-closed
+  const relChainId = chainIdFromSlug(chainPage!.insightSlug);
+
+  const allowedRefs = new Map<string, ChatReferenceOut>();
+  const ctx: string[] = [
+    `事件专篇:${em.title}(${doc.date})`,
+    `触发概述:${p.trigger.summary}`,
+    `事件判断:${p.judgment}`,
+    `风险/证伪:${p.risk}`,
+  ];
+  // 引用白名单:当日材料(触发事件新闻 + 常设核实入口)——judgment/risk/heat 锚点共用;
+  // mapping 锚点另补关系档 references。
+  const anchorEv = dailyRefsFor("judgment", p.references);
+  anchorEv.forEach((e, i) => {
+    const id = `a${i + 1}`;
+    allowedRefs.set(id, { id, name: e.name, url: e.url });
+    ctx.push(
+      `[来源 ${id}] ${e.name}(${e.kind === "standing" ? "常设核实入口" : "具体来源"})支撑:${e.supports ?? "—"}`
+    );
+  });
+
+  let anchorLabel = `「${em.title}」`;
+  if (anchor.type === "hop") {
+    const hop = [...chain.mainHops, ...chain.branchHops].find((h) => String(h.order) === anchor.id);
+    if (!hop) return null;
+    anchorLabel = `这一跳(${hop.from} → ${hop.to})`;
+    ctx.push(
+      `当前锚点=因果链第 ${hop.order} 跳:${hop.plain}\n专业逻辑:${hop.logic}\n置信:${hop.confidence}${hop.caveat ? `\n证伪/反面:${hop.caveat}` : ""}`
+    );
+  } else if (anchor.type === "heat") {
+    const row = p.heat.find((h) => h.segment === anchor.id);
+    if (!row) return null;
+    anchorLabel = `「${row.segment}」环节`;
+    ctx.push(
+      `当前锚点=产业环节「${row.segment}」:当日方向 ${row.direction},关系 ${row.relation},原因:${row.reason}`
+    );
+  } else if (anchor.type === "mapping") {
+    const m = p.mappingsDelta.find((x) => x.code === anchor.id);
+    if (!m) return null;
+    anchorLabel = `${m.name} 为什么被映射`;
+    const rel = resolveInChain(m.code, relChainId);
+    ctx.push(
+      `当前锚点=个股映射 ${m.name}(${m.code}):环节 ${m.segment},关系 ${m.relation}(传导层级,非受益程度),当日:${m.todayWhy};验证点:${m.verify.join("、")}` +
+        (rel ? `\n核定关系档:${rel.relationType};验证点:${rel.verificationPoints.join("、")}` : "")
+    );
+    rel?.references?.forEach((r, i) => {
+      const id = `rel${i + 1}`;
+      allowedRefs.set(id, { id, name: r.title, url: r.url });
+      ctx.push(`[来源 ${id}] ${r.title}(关系档·${r.sourceType})${r.note ? ` ${r.note}` : ""}`);
+    });
+  } else if (anchor.type === "risk") {
+    anchorLabel = "风险/证伪条件";
+    ctx.push(`当前锚点=事件风险:${p.risk}`);
+  } else {
+    anchorLabel = "事件判断";
+    ctx.push(`当前锚点=事件判断:${p.judgment}`);
+  }
+
+  // 登录用户自选(与 daily 同口径:只给 code/名称/本链关系)
   try {
     const codes = await listWatchlist(userId);
     const rels = codes

@@ -27,6 +27,7 @@ export interface GuardResult {
 // 我们生成的散文(数字红线 + 禁词都扫这部分)
 function ourProse(p: DailyInsightPayload): string {
   return [
+    ...(p.eventMeta ? [p.eventMeta.title] : []), // 事件专篇标题也是我们写的(规则模板,仍全量扫)
     p.trigger.summary,
     p.judgment,
     ...p.heat.map((h) => h.reason),
