@@ -65,6 +65,18 @@ export type DailyHop = {
   todayNote?: string; // = 当日 heat.reason 同文
 };
 
+// ---- 事件专篇元信息(M2,2026-08-01,PRD prd-2.3-iteration-review §2)----
+// 事件专篇复用 DailyInsightPayload 全部结构与护栏(触发/判断/热力/映射/风险/references/hops),
+// 只多一块 eventMeta 标识「这是围绕单一事件的专篇」。kind 存在 InsightDoc.kind="event" 上,
+// payload 内的 eventMeta 负责:标题(规则生成,非 LLM 散文)、触发类型、关联简报条目回溯。
+export type EventMeta = {
+  kind: "big_move" | "resonance"; // D3 两类触发:|隔夜|≥阈值 / 同链多触发共振
+  triggerCode?: string; // big_move 的触发标的(resonance 无单一触发)
+  triggerName?: string;
+  title: string; // 事件专篇标题(规则模板生成;进 ourProse 禁词扫描)
+  itemIds: string[]; // 关联的简报条目 id(回溯用)
+};
+
 export interface DailyInsightPayload {
   // v1=历史归档(references 为 ReferenceV1);v2=2026-07-12 起生成侧产出(ReferenceV2)
   version: 1 | 2;
@@ -94,6 +106,7 @@ export interface DailyInsightPayload {
   // schema 三档全支持(增补#3);生成侧封顶「中」由护栏强制,「高」只能审核页给
   confidence: "高" | "中" | "低";
   hops?: DailyHop[]; // 当日传导路径(见上,2026-07-30 起生成;历史 doc 无)
+  eventMeta?: EventMeta; // 事件专篇专有(kind=event 的 doc 必有;daily 无)
 }
 
 const DIRECTIONS: HeatDirection[] = ["升温", "降温", "分化", "观察"];
@@ -224,6 +237,21 @@ export function validateDailyPayload(
   if (!d.confidence || !["高", "中", "低"].includes(d.confidence)) errs.push("confidence 非法");
   else if (opts?.fromGenerator && d.confidence === "高")
     errs.push("生成侧 confidence 不得为「高」(红线:高只能人审给)");
+
+  // eventMeta 可选(事件专篇 M2);存在则校验形状——标题是规则模板产物,仍设长度上限防异常
+  if (d.eventMeta !== undefined) {
+    const em = d.eventMeta;
+    if (!em || typeof em !== "object") errs.push("eventMeta 非对象");
+    else {
+      if (em.kind !== "big_move" && em.kind !== "resonance")
+        errs.push(`eventMeta.kind 非法:${String(em.kind)}`);
+      if (typeof em.title !== "string" || !em.title.trim() || em.title.length > 60)
+        errs.push("eventMeta.title 缺失/超长(>60字)");
+      if (em.kind === "big_move" && !em.triggerCode) errs.push("eventMeta big_move 缺 triggerCode");
+      if (!Array.isArray(em.itemIds) || em.itemIds.length === 0)
+        errs.push("eventMeta.itemIds 为空");
+    }
+  }
 
   return errs;
 }
