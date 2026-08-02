@@ -35,6 +35,8 @@
 | `ADMIN_EMAILS` | 后台 | 管理员邮箱白名单(逗号分隔) |
 | `UNSUB_SECRET` | 邮件退订 | 退订链接 HMAC 签名(未配则回退 NEXTAUTH_SECRET) |
 | `NEXT_PUBLIC_UMAMI_SRC` / `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami(分析) | 自托管网页分析:pageview + 自定义事件(漏斗/留存) |
+| `SHARE_BASE_URL` | 分享短链(2.3 P0-3) | 情绪卡二维码/短链 base。**必须配独立承接子域/独立域名**(与主站物理隔离,微信封链不连累主站——viral-growth-plan §8.2);未配回落 SITE_URL,仅供预览验证,正式发卡前必配 |
+| `EVT_TRIGGER_ABS` / `EVT_TRIGGER_RESONANCE` / `EVT_DAILY_CAP` | insight 事件专篇(M2) | D3 触发线配置:隔夜绝对涨跌%(默认 5)/ 同链共振触发数(默认 3)/ 每日专篇上限(默认 2) |
 
 ---
 

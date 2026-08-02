@@ -284,6 +284,22 @@ model InsightDoc {
   @@map("insight_docs")
 }
 
+// 分享短链(2.3 P0-3 裂变一张卡实验,viral-growth-plan §6):自建短链+归因。
+// target 只允许站内路径(创建侧强制,防开放跳转);落地写 st_ref cookie 30 天。
+// 每 (cardType, date) 一条(全量同款卡共用一链,不与 userId joinable——方案 §8.7 隐私红线)。
+model ShortLink {
+  id        String   @id @default(cuid())
+  code      String   @unique // 短码(crypto 随机 base36)
+  target    String // 站内路径(以 / 开头)
+  cardType  String   @map("card_type") // sentiment | stock(P1)
+  date      String // YYYY-MM-DD(北京)
+  hits      Int      @default(0) // 302 次数(粗归因;精确漏斗看 Umami share_link_visit)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([cardType, date])
+  @@map("short_links")
+}
+
 // 层③ relationReviewQueue 持久化(2.1-W3,2026-07-07 拍板):多次命中/复盘高频未验证的
 // 关系进队列待人工沉淀。不变量#4:队列【绝不】自动改 staticRelations——confirmed 只是
 // 人工结论记录,改档仍走 chain-relations.ts 代码评审。

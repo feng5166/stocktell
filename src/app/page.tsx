@@ -7,6 +7,7 @@ import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
+import { ShareCardEntry } from "@/components/share/ShareCardEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
@@ -111,7 +112,12 @@ export default async function Home() {
                 <ChainSentiment
                   initial={snap?.data}
                   refresh={snap ? !snap.fresh : false}
-                  action={<ChainHomeEntry />}
+                  action={
+                    <span className="inline-flex items-center gap-3">
+                      <ShareCardEntry />
+                      <ChainHomeEntry />
+                    </span>
+                  }
                 />
               </div>
               <OvernightRadar relMap={relLabelMap} />

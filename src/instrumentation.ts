@@ -22,6 +22,10 @@ export async function register() {
         index: "chat_message_user_id_created_at_idx",
         hint: "chat_message 配额计数索引(PR4)缺失——情境追问的 DB 配额查询走全表扫或表根本没建,对话接口会 fail-closed 全拒",
       },
+      {
+        index: "short_links_code_key",
+        hint: "short_links 短码唯一索引(2.3 P0-3 分享短链)缺失——短链创建/302 解析会失败,分享卡二维码扫码打不开",
+      },
     ];
     // 列形态哨兵(索引哨兵覆盖不到 ADD COLUMN 类 DDL)
     const COLUMN_SENTINELS: Array<{ table: string; column: string; hint: string }> = [
