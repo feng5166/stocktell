@@ -123,9 +123,8 @@ async function renderCard() {
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/", // QR 降级短链文本用
   ].join("");
   const font = await loadFont(allText);
-  if (!font) {
-    return NextResponse.json({ ok: false, error: "font-unavailable" }, { status: 503 });
-  }
+  // buffer 化改造后本函数只能返回 ImageResponse——字体取不到改为 throw,统一走 GET 的 503 JSON
+  if (!font) throw new Error("font-unavailable");
 
   const hotColor = temp.hot === true ? "#e0524d" : temp.hot === false ? "#3b82c4" : "#8b93a8";
   const hotBg = temp.hot === true ? "#fdf0ef" : temp.hot === false ? "#eef4fa" : "#f2f4f8";
@@ -175,7 +174,7 @@ async function renderCard() {
         {/* A 股数据 */}
         {a && (
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 22, color: "#9ca3af" }}>A 股 AI 链({a.covered} 只)</div>
+            <div style={{ fontSize: 22, color: "#9ca3af" }}>{`A 股 AI 链(${a.covered} 只)`}</div>
             <div style={{ marginTop: 14, display: "flex", gap: 14 }}>
               <Stat label="上涨" value={`${a.up} 家`} color="#e0524d" />
               <Stat label="下跌" value={`${a.down} 家`} color="#3b82c4" />
@@ -194,7 +193,7 @@ async function renderCard() {
         {/* 隔夜美股 */}
         {us && (
           <div style={{ marginTop: 26, display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 22, color: "#9ca3af" }}>隔夜美股 AI 链({us.covered} 只)</div>
+            <div style={{ fontSize: 22, color: "#9ca3af" }}>{`隔夜美股 AI 链(${us.covered} 只)`}</div>
             <div style={{ marginTop: 14, display: "flex", gap: 14 }}>
               <Stat label="上涨" value={`${us.up} 家`} color="#e0524d" />
               <Stat label="下跌" value={`${us.down} 家`} color="#3b82c4" />
