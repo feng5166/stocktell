@@ -1,8 +1,111 @@
 import { requireAdmin } from "@/lib/admin";
 import { getPrisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/date";
+import { emailDigestPaused } from "@/lib/mailer";
 
 export const dynamic = "force-dynamic";
+
+// ---- 触达健康度(2.3 P0-2):四通道 绑定/发送/状态 一屏 ----
+// 原则:只聚合已有数据(digest_send_log / push_subscriptions / users.weixinOpenId),不新增采集;
+// 回访贡献(点击→returning_visit)在 Umami 交叉看,DB 侧不重复建漏斗。
+type ReachChannel = {
+  name: string;
+  status: "ok" | "paused" | "down" | "unknown";
+  statusNote: string;
+  stats: Array<[string, string]>;
+};
+
+// 微信桥存活探测(免鉴权 GET /health;3s 超时——看板页不为半死桥挂住)
+async function probeBridge(): Promise<{ alive: boolean | null; note: string }> {
+  const base = process.env.CLAWBOT_BASE_URL;
+  if (!base) return { alive: null, note: "未配置 CLAWBOT_BASE_URL" };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch(`${base}/health`, { cache: "no-store", signal: ctrl.signal });
+    const j = (await r.json().catch(() => null)) as { ok?: boolean; users?: number } | null;
+    if (r.ok && j?.ok) return { alive: true, note: `桥在线(${j.users ?? "?"} 账号)` };
+    return { alive: false, note: `桥响应异常 HTTP ${r.status}` };
+  } catch {
+    return { alive: false, note: "桥不可达(3s 超时/连接失败)" };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function buildReachHealth(
+  db: NonNullable<ReturnType<typeof getPrisma>>
+): Promise<ReachChannel[]> {
+  const today = todayISO();
+  const since7d = new Date(Date.now() - 7 * 86400000);
+  const [
+    emailEligible,
+    emailOptOut,
+    digestSentToday,
+    digestSent7d,
+    webpushSubs,
+    webpushNew7d,
+    webpushWithCodes,
+    weixinBound,
+    weixinPending,
+    bridge,
+  ] = await Promise.all([
+    db.user.count({ where: { email: { not: null }, digestOptOut: false } }).catch(() => -1),
+    db.user.count({ where: { digestOptOut: true } }).catch(() => -1),
+    db.digestSendLog.count({ where: { date: today } }).catch(() => -1),
+    db.digestSendLog
+      .count({ where: { sentAt: { gte: since7d } } })
+      .catch(() => -1),
+    db.pushSubscription.count().catch(() => -1),
+    db.pushSubscription.count({ where: { createdAt: { gte: since7d } } }).catch(() => -1),
+    // 带自选快照的订阅 = D1 个性化标题的覆盖面(runWebPush 命中才换"你的 XX"口径)
+    db.pushSubscription.count({ where: { NOT: { codes: { isEmpty: true } } } }).catch(() => -1),
+    db.user.count({ where: { weixinOpenId: { not: null } } }).catch(() => -1),
+    db.user.count({ where: { weixinPendingScanAt: { not: null } } }).catch(() => -1),
+    probeBridge(),
+  ]);
+  return [
+    {
+      name: "📧 邮件早报",
+      status: emailDigestPaused() ? "paused" : "ok",
+      statusNote: emailDigestPaused()
+        ? "已暂停(EMAIL_DIGEST_PAUSED=1,发件域待修;恢复即按自选个性化生效)"
+        : "运行中(个性化按自选)",
+      stats: [
+        ["可发用户", String(emailEligible)],
+        ["已退订", String(emailOptOut)],
+        ["今日发送", String(digestSentToday)],
+        ["近7日发送", String(digestSent7d)],
+      ],
+    },
+    {
+      name: "🔔 Web 推送",
+      status: "ok",
+      statusNote: "匿名订阅(仅 endpoint+自选快照);无 per-send 日志,发送数看 cron 返回/飞书",
+      stats: [
+        ["订阅数", String(webpushSubs)],
+        ["7日新增", String(webpushNew7d)],
+        ["带自选快照", `${webpushWithCodes}(个性化标题覆盖面)`],
+      ],
+    },
+    {
+      name: "💬 微信(ClawBot 桥)",
+      status: bridge.alive === null ? "unknown" : bridge.alive ? "ok" : "down",
+      statusNote: `${bridge.note};单机单点(47.84.8.167),故障预案见 docs/EXTERNAL_SERVICES.md`,
+      stats: [
+        ["已绑定", String(weixinBound)],
+        ["扫码未激活", String(weixinPending)],
+        ["发送日志", "无 per-user 日志(截断告警走飞书)"],
+      ],
+    },
+    {
+      name: "🚀 飞书(运营告警)",
+      status: process.env.FEISHU_BOT_APP_ID ? "ok" : "unknown",
+      statusNote: process.env.FEISHU_BOT_APP_ID ? "已配置(cron 告警/待审通知)" : "未配置",
+      stats: [],
+    },
+  ];
+}
 
 interface Row {
   route: string;
@@ -48,6 +151,7 @@ export default async function AdminMetricsPage() {
   const db = getPrisma();
   const days = recentYmds(7);
   const today = days[0];
+  const reach = db ? await buildReachHealth(db).catch(() => null) : null;
 
   let rows: Row[] = [];
   if (db) {
@@ -151,6 +255,48 @@ export default async function AdminMetricsPage() {
         按路由聚合的调用次数 / 响应时间(Asia/Shanghai 日维度)。慢响应(≥
         阈值)与错误会触发飞书告警。
       </p>
+
+      {reach && (
+        <section className="mt-5 rounded-xl bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-700">触达健康度(2.3 P0-2)</h2>
+          <p className="mt-0.5 text-xs text-gray-400">
+            四通道绑定/发送/存活一屏。回访贡献(通道点击 → returning_visit)在 Umami 交叉看。
+          </p>
+          <div className="mt-3 space-y-2.5">
+            {reach.map((ch) => (
+              <div key={ch.name} className="rounded-lg bg-gray-50 px-3 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-gray-800">{ch.name}</span>
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                      ch.status === "ok"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : ch.status === "paused"
+                          ? "bg-amber-100 text-amber-800"
+                          : ch.status === "down"
+                            ? "bg-rose-100 text-rose-700"
+                            : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {ch.status === "ok" ? "正常" : ch.status === "paused" ? "暂停" : ch.status === "down" ? "故障" : "未知"}
+                  </span>
+                  <span className="text-xs text-gray-400">{ch.statusNote}</span>
+                </div>
+                {ch.stats.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
+                    {ch.stats.map(([label, val]) => (
+                      <span key={label} className="text-xs text-gray-600">
+                        <span className="text-gray-400">{label}</span>{" "}
+                        <b className="tabular-nums text-gray-800">{val}</b>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {biz && (
         <section className="mt-5 rounded-xl bg-white p-4 shadow-sm">
