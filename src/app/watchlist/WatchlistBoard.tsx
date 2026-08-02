@@ -10,6 +10,7 @@ import { useWatchlist } from "@/components/useWatchlist";
 import type { WatchChainInfo } from "@/lib/watch-relation";
 import { classifyWatchCodes } from "@/lib/watch-groups";
 import { postJson } from "@/lib/post-json";
+import { VerifyProgressBanner } from "@/components/VerifyFollow";
 
 const REL_CHIP: Record<string, string> = {
   直接映射: "bg-rose-50 text-rose-600",
@@ -95,6 +96,8 @@ export default function WatchlistBoard({
 
   return (
     <div className="space-y-4">
+      {/* 验证点进展条(2.3 P1-3):关注的验证点所属票今天被点名才出现,无进展不渲染 */}
+      <VerifyProgressBanner signalCodes={new Set(Object.keys(signalMap))} names={names} />
       {groups.chains.map(([chainId, g]) => {
         const triggered = g.rows.filter((r) => signalMap[r.code]).length;
         return (

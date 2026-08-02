@@ -26,6 +26,7 @@ import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
 import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType, chainRouteId } from "@/lib/relation-rank";
+import { VerifyFollowChips } from "@/components/VerifyFollow";
 
 // relationType → 前台关系档标签(与 /stocks、relationResolver 同源,消双轨)
 const STOCK_REL_LABEL: Record<string, string> = {
@@ -342,9 +343,13 @@ export default async function StockDetail({
             {todayTrigger}
           </p>
           {nodeVerify.length > 0 && (
-            <p className="mt-1 text-xs text-gray-400">
-              后续应核验的公开披露项(不代表已确认受益):{nodeVerify.join(" / ")}
-            </p>
+            <div className="mt-1">
+              <p className="text-xs text-gray-400">
+                后续应核验的公开披露项(不代表已确认受益):
+              </p>
+              {/* 验证点跟踪(2.3 P1-3):点关注 → 该票被事件点名时在自选页提示看这个验证点 */}
+              <VerifyFollowChips code={s.code} points={nodeVerify} />
+            </div>
           )}
           {/* M3 复盘回写:这只票的历史同向统计(计数口径,样本不足如实说;缺快照不渲染) */}
           {historyBadge && (
