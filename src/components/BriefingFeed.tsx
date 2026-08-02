@@ -79,12 +79,20 @@ export function BriefingFeed({
       /* 隐私模式:退化为每页一次 */
     }
     const quietCovered = Array.from(wl.codes).some((c) => STOCK_MAP[c]);
+    const outOfPoolCount = Array.from(wl.codes).filter((c) => !STOCK_MAP[c]).length;
     if (mine.length > 0) {
       track("relation_hit", { mode: "briefing", watch_count: wl.codes.size, has_morning_brief: true });
     } else if (quietCovered) {
       track("relation_hit", { mode: "quiet", watch_count: wl.codes.size, has_morning_brief: false });
     } else {
-      track("relation_miss", { watch_count: wl.codes.size, has_morning_brief: false });
+      // miss 语义拆分(2.3 P1-2):走到这里=自选全部池外(池内票必被 QuietWatchCard 兜住),
+      // reason 固定 out_of_pool + 池外数——miss 从告警变成扩池选题信号(配合 /api/pool-request)
+      track("relation_miss", {
+        reason: "out_of_pool",
+        watch_count: wl.codes.size,
+        out_of_pool_count: outOfPoolCount,
+        has_morning_brief: false,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wl.ready, wl.codes.size, mine.length]);

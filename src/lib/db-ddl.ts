@@ -274,6 +274,16 @@ const IDX_CHAT_USER_CREATED = `CREATE INDEX IF NOT EXISTS "chat_message_user_id_
 const IDX_CHAT_THREAD_CREATED = `CREATE INDEX IF NOT EXISTS "chat_message_thread_key_created_at_idx" ON "chat_message" ("thread_key", "created_at")`;
 
 
+// 池外票登记表(2.3 P1-2 miss→选题信号,幂等)
+const T_POOL_REQUEST = `CREATE TABLE IF NOT EXISTS "pool_requests" (
+  "code" text NOT NULL,
+  "count" integer NOT NULL DEFAULT 1,
+  "first_seen" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "last_seen" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "notified_at" timestamp(3),
+  CONSTRAINT "pool_requests_pkey" PRIMARY KEY ("code")
+)`;
+
 // 分享短链表(2.3 P0-3 裂变一张卡实验,幂等)
 const T_SHORT_LINK = `CREATE TABLE IF NOT EXISTS "short_links" (
   "id" text NOT NULL,
@@ -350,4 +360,5 @@ export const DDL_STATEMENTS: string[] = [
   T_SHORT_LINK,
   IDX_SHORT_LINK_CODE,
   IDX_SHORT_LINK_CARD_DATE,
+  T_POOL_REQUEST,
 ];

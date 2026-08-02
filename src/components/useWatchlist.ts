@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { track } from "@/lib/analytics";
 import { useToast } from "@/components/Toast";
 import { ETF_CODES } from "@/data/etfs";
+import { STOCK_MAP } from "@/data/stocks";
 
 const LS_KEY = "stocktell_watchlist";
 
@@ -125,10 +126,20 @@ export function useWatchlist(initialCodes?: string[]): UseWatchlist {
       else next.delete(code);
       setCodes(next); // 乐观更新:先点亮/熄灭
 
-      const kind = ETF_CODES.includes(code) ? "etf" : "stock";
+      // 池外票降级档(2.3 P1-2):池外 6 位码也能加,kind 单列 + 登记为扩池选题信号
+      const outOfPool = !STOCK_MAP[code] && !ETF_CODES.includes(code);
+      const kind = ETF_CODES.includes(code) ? "etf" : outOfPool ? "out_of_pool" : "stock";
       // source/count_after:验证一键加是否有用、用户加几只(onboarding v2 漏斗)
       if (adding) track("add_watchlist", { kind, source, count_after: next.size });
       else track("remove_watchlist", { kind }); // 取消自选也记:看"加了又删"的比例(黏性信号)
+      if (adding && outOfPool) {
+        // 登记池外需求(fire-and-forget;游客/登录同路径,只传 code 不传身份)
+        fetch("/api/pool-request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        }).catch(() => {});
+      }
 
       if (adding) {
         // 记录"刚加的那只"并广播:首页 InstantTake 当场给这只票的解读(不等第二天)

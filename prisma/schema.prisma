@@ -300,6 +300,19 @@ model ShortLink {
   @@map("short_links")
 }
 
+// 池外票登记(2.3 P1-2):用户加了不在股池里的 A 股 → 登记为扩池需求信号。
+// miss 本身变成选题探测器:admin/metrics 按 count 排序看该先收录谁;
+// 纳入后 notifiedAt 记录兑现推送(「你之前加的 XX 已纳入」),登记过的期待必须兑现。
+model PoolRequest {
+  code       String    @id // A 股 6 位代码
+  count      Int       @default(1) // 被加自选次数(登录+游客,client 上报)
+  firstSeen  DateTime  @default(now()) @map("first_seen")
+  lastSeen   DateTime  @updatedAt @map("last_seen")
+  notifiedAt DateTime? @map("notified_at") // 纳入兑现推送完成时间
+
+  @@map("pool_requests")
+}
+
 // 层③ relationReviewQueue 持久化(2.1-W3,2026-07-07 拍板):多次命中/复盘高频未验证的
 // 关系进队列待人工沉淀。不变量#4:队列【绝不】自动改 staticRelations——confirmed 只是
 // 人工结论记录,改档仍走 chain-relations.ts 代码评审。

@@ -26,6 +26,10 @@ export async function register() {
         index: "short_links_code_key",
         hint: "short_links 短码唯一索引(2.3 P0-3 分享短链)缺失——短链创建/302 解析会失败,分享卡二维码扫码打不开",
       },
+      {
+        index: "pool_requests_pkey",
+        hint: "pool_requests 表(2.3 P1-2 池外票登记)缺失——池外票加自选的登记会被静默吞掉,选题看板无数据",
+      },
     ];
     // 列形态哨兵(索引哨兵覆盖不到 ADD COLUMN 类 DDL)
     const COLUMN_SENTINELS: Array<{ table: string; column: string; hint: string }> = [

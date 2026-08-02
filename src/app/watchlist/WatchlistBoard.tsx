@@ -173,16 +173,28 @@ export default function WatchlistBoard({
 
       {groups.uncovered.length > 0 && (
         <Group title="待验证收录" subtitle={`${groups.uncovered.length} 只 · 暂无核定关系档,不代表与产业链无关`}>
-          {groups.uncovered.map((code) => (
+          {groups.uncovered.map((code) => {
+              // 池外票降级档(2.3 P1-2):names 无此 code = 完全池外——诚实展示「已登记」,
+              // 不给 /stock 死链(个股页只覆盖池内);池内但未覆盖的仍走原「待验证+提交复核」流程
+              const outOfPool = !names[code];
+              return (
               <li key={code} className="flex flex-wrap items-center gap-1.5 py-2.5">
-                <Link href={`/stock/${code}`} className="text-sm font-medium text-gray-900 hover:text-brand-600">
-                  {names[code]?.name ?? code}
-                </Link>
-                <span className="text-xs text-gray-400">{code}</span>
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">待验证</span>
+                {outOfPool ? (
+                  <span className="text-sm font-medium text-gray-900">{code}</span>
+                ) : (
+                  <Link href={`/stock/${code}`} className="text-sm font-medium text-gray-900 hover:text-brand-600">
+                    {names[code]?.name ?? code}
+                  </Link>
+                )}
+                {!outOfPool && <span className="text-xs text-gray-400">{code}</span>}
+                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
+                  {outOfPool ? "暂未纳入图谱 · 已登记" : "待验证"}
+                </span>
                 <SignalChip sig={signalMap[code]} />
                 <span className="ml-auto">
-                  {submitted[code] === "ok" ? (
+                  {outOfPool ? (
+                    <span className="text-[11px] text-gray-400">纳入后第一时间给你链上位置</span>
+                  ) : submitted[code] === "ok" ? (
                     <span className="text-[11px] text-emerald-600">已提交复核 ✓</span>
                   ) : submitted[code] === "fail" ? (
                     <span className="text-[11px] text-rose-500">提交失败,稍后再试</span>
@@ -197,7 +209,8 @@ export default function WatchlistBoard({
                   )}
                 </span>
               </li>
-            ))}
+              );
+            })}
         </Group>
       )}
 

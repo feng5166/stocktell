@@ -152,6 +152,12 @@ export default async function AdminMetricsPage() {
   const days = recentYmds(7);
   const today = days[0];
   const reach = db ? await buildReachHealth(db).catch(() => null) : null;
+  // 池外票选题看板(2.3 P1-2):被加得最多的池外票 = 扩池优先级信号
+  const poolReqs = db
+    ? await db.poolRequest
+        .findMany({ orderBy: [{ count: "desc" }, { lastSeen: "desc" }], take: 15 })
+        .catch(() => [])
+    : [];
 
   let rows: Row[] = [];
   if (db) {
@@ -293,6 +299,32 @@ export default async function AdminMetricsPage() {
                   </div>
                 )}
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {poolReqs.length > 0 && (
+        <section className="mt-5 rounded-xl bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-700">池外票登记 Top(2.3 P1-2 · 扩池选题信号)</h2>
+          <p className="mt-0.5 text-xs text-gray-400">
+            用户加了但不在股池的票,按被加次数排序——下一次扩池/扩链先看这张表。
+            纳入后 POST /api/admin/pool-requests 触发兑现提醒(微信已绑定用户)。
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {poolReqs.map((r) => (
+              <span
+                key={r.code}
+                className={`rounded-lg px-2.5 py-1 font-mono text-xs ${
+                  r.notifiedAt
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-gray-50 text-gray-700"
+                }`}
+                title={r.notifiedAt ? "已纳入并完成兑现提醒" : undefined}
+              >
+                {r.code} ×{r.count}
+                {r.notifiedAt ? " ✓" : ""}
+              </span>
             ))}
           </div>
         </section>
