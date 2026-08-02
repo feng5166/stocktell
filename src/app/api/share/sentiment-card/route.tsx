@@ -77,11 +77,22 @@ function temperature(avg: number | null): { label: string; note: string; hot: bo
 
 export async function GET() {
   try {
-    return await renderCard();
+    // 关键:在 handler 内把 ImageResponse 渲染成 buffer 再返回——
+    // ImageResponse 的 satori/resvg 在 body 流式消费时才执行,直接 return 它的话
+    // 渲染期异常发生在 handler 之后,try/catch 兜不住(线上 500 HTML 无日志实踩)。
+    const img = await renderCard();
+    const buf = await img.arrayBuffer();
+    return new NextResponse(buf, {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=300", // 同日卡内容稳定,5 分钟边缘缓存
+      },
+    });
   } catch (e) {
     // 渲染层任何异常(字体/wasm/数据形状)不裸抛 500 HTML——回 JSON 带线索,函数日志可查
     console.error("[sentiment-card] render failed:", e);
-    return NextResponse.json({ ok: false, error: "render-failed" }, { status: 503 });
+    const msg = e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200);
+    return NextResponse.json({ ok: false, error: "render-failed", detail: msg }, { status: 503 });
   }
 }
 
