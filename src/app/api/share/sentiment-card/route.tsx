@@ -29,7 +29,8 @@ async function loadFont(text: string): Promise<ArrayBuffer | null> {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0 Safari/537.36" },
       cache: "no-store",
     }).then((r) => (r.ok ? r.text() : ""));
-    const m = css.match(/src:\s*url\((.+?)\)\s*format\('(?:opentype|truetype)'\)/);
+    // 旧 UA 下 Google 返回 woff(satori 支持 ttf/otf/woff,不支持 woff2)——三种都收
+    const m = css.match(/src:\s*url\((.+?)\)\s*format\('(?:opentype|truetype|woff)'\)/);
     if (!m) return null;
     const buf = await fetch(m[1], { cache: "no-store" }).then((r) => (r.ok ? r.arrayBuffer() : null));
     if (buf) {
