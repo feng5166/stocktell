@@ -1,6 +1,6 @@
 # PRD · 2.3 迭代规划(全功能 Review 落地稿)
 
-> 状态:**草稿,待负责人评审拍板**
+> 状态:**已实施(2026-08-01 全量落地,见文末实施记录);待负责人验收**
 > 版本:v1(2026-08-01,基于当日代码库 `stocktell2.0` 分支全功能 review 产出)
 > 内核对照:所有条目已过 `docs/PRODUCT-CORE.md` 检查清单;三条铁律逐条标注。
 > 本期边界:不做付费墙、不做支付、不做邀请/权益体系(仍卡在主体+ICP+律师闸门后,见 `viral-growth-plan.md` §2)。
@@ -226,3 +226,25 @@ W4+       P1-1 复盘回写开工(数据越早攒越值钱)
 ```
 
 P1-2 / P1-3 视 P0 实际消耗顺延至 9 月初;若 P0-1 审核负担超预期,P1-2 优先(不依赖管线)。
+
+---
+
+## 11. 实施记录(2026-08-01,单日全量落地)
+
+| 项 | Commit | 关键落点 | 与 PRD 的偏差(如实) |
+|---|---|---|---|
+| P0-1 事件专篇 | 4efb4b3 | `lib/insight-pipeline/event.ts`、`/api/cron/insight-event`(07:20+08:00 幂等重试)、`/insight/evt/[slug]`、首页/链页入口、evt 追问、sitemap | payload=DailyInsightPayload+eventMeta(复用五段管线与护栏,未新做 InsightChain 级 LLM 长文生成——工程取舍,零新散文通道) |
+| P0-2 触达看板 | 0ff859b | `/admin/metrics` 触达健康度区(四通道+桥 /health 探活);EXTERNAL_SERVICES 补邮件恢复四步与桥故障预案 | **发件域验证需人工在 Resend 操作**(代码侧就绪,恢复即生效) |
+| P0-3 情绪卡 | 54d6ce6 | ShortLink 表+`/s/[code]`+`/api/share/sentiment-card`(Noto Sans SC 子集)+`/share/sentiment`+`/land/sentiment`+首页入口+薄漏斗埋点 | **SHARE_BASE_URL 独立承接域需人工配 DNS**(未配回落主域,仅供预览;正式发卡前必配) |
+| P1-1 复盘回写 | bc6bc00 | `lib/outcome-agg.ts`(quotes_cache KV 快照)、outcome cron/backfill 回写、insight 三处+股票页角标 | 「backtest_badge_expand」埋点改为角标直渲(无展开交互),点击回访走 /track pageview |
+| P1-2 池外票 | 68f70ff | 6 位码可加自选、QuickAddWatch 降级档、watchlist 板池外行、PoolRequest 表+登记端点、admin Top15、纳入兑现(微信定向) | 池外票不显行情(watchlist 板本就不显行情,保持一致);webpush 快照按池白名单过滤,兑现通道 v1=微信定向 |
+| P1-3 验证点 | d9fbc4b | VerifyFollow 表+API(point 白名单=核定 verificationPoints)、股票页 chips、watchlist 进展条、微信早报提示行 | 进展信号=该票当日被事件点名(结构化),非披露级匹配(那是付费深度版候选) |
+| P2-1 分级审核 | 本次 | insight-daily:历史未发布过∪静态核定集之外的**新映射标的**留审(`INSIGHT_HOLD_NEW_MAPPING=0` 可关) | 「方向翻转留审」未做——方向变化是每日常态,留审会拆掉已拍板的自动发布轨;只对新面孔收口 |
+| P2-2 校准页 | 本次 | `/admin/calibration`:关系档区分度主检+环节明细+置信度分布(纯读 M3 快照) | 先只进 admin(对外开放由负责人拍板,防被读成胜率);hop 级校准待逐跳 outcome 数据,未做 |
+| P2-3 pro 复盘 | 本次 | `/admin/pro-review`:按月分组+意向用户画像(自选规模/30 天活跃) | 页面级行为仍在 Umami 交叉,本页只做 DB 侧事实 |
+| P2-4 SEO | 随 P0-1 | 事件页标题模板/JSON-LD/canonical/sitemap(priority 0.7) | 收录追踪 = Search Console 人工看,无代码项 |
+
+**上线前人工清单(代码管不了的三件)**:
+1. `POST /api/admin/init-db`(Bearer ADMIN_TOKEN)——建 short_links / pool_requests / verify_follows 三张新表(哨兵会催)
+2. Resend 发件域验证 → 更新 `EMAIL_FROM` → 删 `EMAIL_DIGEST_PAUSED` → redeploy
+3. 承接域 DNS(独立子域/独立域名)→ Vercel 加域名 → 配 `SHARE_BASE_URL`

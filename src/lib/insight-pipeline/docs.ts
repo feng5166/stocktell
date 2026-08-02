@@ -281,6 +281,38 @@ export async function listPublishedEvents(opts?: {
   return (rows as unknown[]).map(fromRow);
 }
 
+// 分级审核(2.3 P2-1):找出 payload 里「历史上从未发布过、也不在静态核定集」的映射标的。
+// 基线 = 该链近 60 篇已发布 daily 的映射 code ∪ 静态 InsightChain.mappings 的 code。
+// 真正的新面孔才留审(合规风险集中在新映射);方向变化/老面孔照常走自动发布轨。
+export async function findUnseenMappingCodes(
+  chainId: string,
+  insightSlug: string | undefined,
+  codes: string[]
+): Promise<string[]> {
+  if (codes.length === 0) return [];
+  const db = getPrisma();
+  if (!db) return [];
+  const seen = new Set<string>();
+  // 静态核定集(人工审过的映射)
+  const { INSIGHT_CHAINS } = await import("@/data/insight-chains");
+  const chain = insightSlug ? INSIGHT_CHAINS[insightSlug] : undefined;
+  for (const m of chain?.mappings ?? []) if (m.code) seen.add(m.code);
+  // 历史已发布 daily 的映射(发布=当时已过审核轨)
+  const rows = await db.insightDoc
+    .findMany({
+      where: { chainId, kind: "daily", status: "published" },
+      select: { payload: true },
+      orderBy: { date: "desc" },
+      take: 60,
+    })
+    .catch(() => [] as Array<{ payload: unknown }>);
+  for (const r of rows) {
+    const p = r.payload as DailyInsightPayload;
+    for (const m of p.mappingsDelta ?? []) seen.add(m.code);
+  }
+  return codes.filter((c) => !seen.has(c));
+}
+
 // 昨日 heat(S2 diff 输入):最近一篇该链 daily(published 优先,其次 draft)
 export async function getPrevHeat(
   chainId: string,
