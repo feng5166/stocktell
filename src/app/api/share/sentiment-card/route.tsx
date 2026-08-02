@@ -43,6 +43,25 @@ async function loadFont(text: string): Promise<ArrayBuffer | null> {
   }
 }
 
+// 二维码:服务端自取转 data URI(satori 内联外链 fetch 无超时控制,qrserver 抖动会把
+// 整次渲染拖成 500)。取不到 → null,卡面降级为短链文本,不炸卡。
+async function fetchQrDataUri(data: string): Promise<string | null> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const r = await fetch(
+      `https://api.qrserver.com/v1/create-qr-code/?size=132x132&margin=6&data=${encodeURIComponent(data)}`,
+      { cache: "no-store", signal: ctrl.signal }
+    );
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    return `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 const pct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
 const pct1 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 
@@ -57,6 +76,16 @@ function temperature(avg: number | null): { label: string; note: string; hot: bo
 }
 
 export async function GET() {
+  try {
+    return await renderCard();
+  } catch (e) {
+    // 渲染层任何异常(字体/wasm/数据形状)不裸抛 500 HTML——回 JSON 带线索,函数日志可查
+    console.error("[sentiment-card] render failed:", e);
+    return NextResponse.json({ ok: false, error: "render-failed" }, { status: 503 });
+  }
+}
+
+async function renderCard() {
   const snap = await sentimentSnapshot().catch(() => null);
   const s = snap?.data;
   const date = s?.date ?? todayISO();
@@ -67,7 +96,7 @@ export async function GET() {
   // 短链(每卡型每日一条,全量同款);承接页 = 情绪只读页
   const link = await getOrCreateShareLink("sentiment", date, "/land/sentiment").catch(() => null);
   const qrData = link?.url ?? "https://stocktell.me";
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=132x132&margin=6&data=${encodeURIComponent(qrData)}`;
+  const qrSrc = await fetchQrDataUri(qrData);
 
   const DISCLAIMER_WATERMARK = "信息参考,不构成投资建议。市场有风险。StockTell · stocktell.me";
   const SLOGAN = "我不懂产业链,你告诉我怎么想";
@@ -80,6 +109,7 @@ export async function GET() {
     ...indices.map((i) => i.name),
     SLOGAN, DISCLAIMER_WATERMARK,
     "0123456789.%+-·—:,。()",
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/", // QR 降级短链文本用
   ].join("");
   const font = await loadFont(allText);
   if (!font) {
@@ -185,16 +215,20 @@ export async function GET() {
           </div>
         )}
 
-        {/* 底部:二维码 + 免责水印(模板固定层) */}
+        {/* 底部:二维码 + 免责水印(模板固定层);QR 取不到时降级为短链文本,不炸卡 */}
         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 24, color: "#374151", fontWeight: 700 }}>扫码看今天的完整传导</div>
+            <div style={{ fontSize: 24, color: "#374151", fontWeight: 700 }}>
+              {qrSrc ? "扫码看今天的完整传导" : qrData.replace(/^https?:\/\//, "")}
+            </div>
             <div style={{ fontSize: 18, color: "#9ca3af", maxWidth: 460, lineHeight: 1.5 }}>
               {DISCLAIMER_WATERMARK}
             </div>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrSrc} width={132} height={132} alt="" style={{ borderRadius: 8 }} />
+          {qrSrc && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={qrSrc} width={132} height={132} alt="" style={{ borderRadius: 8 }} />
+          )}
         </div>
       </div>
     ),
