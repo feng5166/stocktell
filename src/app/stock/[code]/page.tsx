@@ -139,6 +139,9 @@ export default async function StockDetail({
   const nodeReason = primaryRel?.reason || s.positioning;
   const nodeVerify = primaryRel?.verificationPoints ?? [];
   const nodeChainId = primaryRel?.chainId;
+  // M3 复盘回写(2.3 P1-1):这只票的历史同向统计角标(读聚合快照,缺失 → null 不渲染)
+  const { readOutcomeAgg, codeBadgeText } = await import("@/lib/outcome-agg");
+  const historyBadge = codeBadgeText(await readOutcomeAgg().catch(() => null), s.code);
   // 今日触发:今天简报提到了 → 事件标题;否则明说只是市场行为(避免把资金异动硬解释成产业变化)
   const todayTrigger =
     todayNews.length > 0
@@ -341,6 +344,15 @@ export default async function StockDetail({
           {nodeVerify.length > 0 && (
             <p className="mt-1 text-xs text-gray-400">
               后续应核验的公开披露项(不代表已确认受益):{nodeVerify.join(" / ")}
+            </p>
+          )}
+          {/* M3 复盘回写:这只票的历史同向统计(计数口径,样本不足如实说;缺快照不渲染) */}
+          {historyBadge && (
+            <p className="mt-1 text-xs text-gray-400">
+              {historyBadge} ·{" "}
+              <Link href="/track" className="text-brand-600 hover:underline">
+                看全部复盘 →
+              </Link>
             </p>
           )}
         </Section>

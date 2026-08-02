@@ -10,6 +10,8 @@ import { EvidencePanel } from "@/components/EvidencePanel";
 import { AskButton, InsightChatPanel } from "@/components/InsightChat";
 import { ProIntentNudge } from "@/components/ProIntentNudge";
 import { dailyRefsFor } from "@/lib/evidence";
+import { readOutcomeAgg, segBadgeText, codeBadgeText } from "@/lib/outcome-agg";
+import { chainIdFromSlug } from "@/lib/relation-rank";
 
 // 事件专篇页(M2,PRD prd-2.3-iteration-review §2):事件级 ReasoningChain 的主展示页。
 // 只渲染 published(全审轨:人审发布前本页 404,不硬造);发布后内容不可变 → 长 revalidate。
@@ -51,6 +53,9 @@ export default async function EventInsightPage({ params }: { params: { slug: str
   const chain = getChain(doc.chainId);
   const chainName = chain?.name ?? doc.chainId;
   const askOn = process.env.INSIGHT_CHAT_ENABLED === "1";
+  // 历史同向统计角标(M3):读聚合快照,缺失不渲染
+  const agg = await readOutcomeAgg().catch(() => null);
+  const relChainId = chainIdFromSlug(chain?.insightSlug);
   // 同链其它事件专篇(归档互链,SEO 抓取路径)
   const siblings = (await listPublishedEvents({ chainId: doc.chainId, limit: 6 }).catch(() => []))
     .filter((d) => d.slug !== doc.slug)
@@ -142,13 +147,17 @@ export default async function EventInsightPage({ params }: { params: { slug: str
         <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-xs font-medium text-gray-500">产业链热力(当日)</h2>
           <ul className="mt-2 space-y-1.5">
-            {p.heat.map((h) => (
-              <li key={h.segment} className="text-xs leading-relaxed text-gray-600">
-                <span className="font-medium text-gray-700">{h.segment}</span>
-                <span className="mx-1 rounded bg-gray-50 px-1.5 py-0.5 text-[11px]">{h.direction}</span>
-                {h.reason}
-              </li>
-            ))}
+            {p.heat.map((h) => {
+              const badge = segBadgeText(agg, relChainId, h.segment);
+              return (
+                <li key={h.segment} className="text-xs leading-relaxed text-gray-600">
+                  <span className="font-medium text-gray-700">{h.segment}</span>
+                  <span className="mx-1 rounded bg-gray-50 px-1.5 py-0.5 text-[11px]">{h.direction}</span>
+                  {h.reason}
+                  {badge && <span className="ml-1 text-[11px] text-gray-400">{badge}</span>}
+                </li>
+              );
+            })}
           </ul>
         </section>
 
@@ -169,6 +178,9 @@ export default async function EventInsightPage({ params }: { params: { slug: str
                   <p className="mt-0.5">{m.todayWhy}</p>
                   {m.verify.length > 0 && (
                     <p className="mt-0.5 text-gray-400">验证点:{m.verify.join(" / ")}</p>
+                  )}
+                  {codeBadgeText(agg, m.code) && (
+                    <p className="mt-0.5 text-[11px] text-gray-400">{codeBadgeText(agg, m.code)}</p>
                   )}
                 </li>
               ))}

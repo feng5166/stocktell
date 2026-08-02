@@ -193,6 +193,10 @@ export default async function InsightPage({ params }: { params: { slug: string }
   const daily = chainPage
     ? await getPublishedDaily(chainPage.id, todayISO()).catch(() => null)
     : null;
+  // 历史同向统计角标(M3 复盘回写):读聚合快照,缺失不渲染(不显假 0)
+  const { readOutcomeAgg, segBadgeText } = await import("@/lib/outcome-agg");
+  const agg = await readOutcomeAgg().catch(() => null);
+  const relChainIdForAgg = chainIdFromSlug(params.slug);
 
   // ---- References 就近可见(PR1):静态 references 经迁移期规则匹配绑到 hop/heat/mapping ----
   const staticEv = c.references.map(fromInsightRef);
@@ -362,6 +366,12 @@ export default async function InsightPage({ params }: { params: { slug: string }
                     {r.confidence && <Pill text={`置信 ${r.confidence}`} cls={CONF[r.confidence]} />}
                   </div>
                   <p className="mt-0.5 text-xs leading-relaxed text-gray-700">{r.plain}</p>
+                  {/* M3 复盘回写:该环节的历史同向统计(只出计数不出百分比,样本不足如实说) */}
+                  {segBadgeText(agg, relChainIdForAgg, r.segment) && (
+                    <p className="mt-0.5 text-[11px] text-gray-400">
+                      {segBadgeText(agg, relChainIdForAgg, r.segment)}
+                    </p>
+                  )}
                   <details className="mt-0.5">
                     <summary className="cursor-pointer text-[11px] text-gray-500/80">
                       怎么传到这的 · 专业依据

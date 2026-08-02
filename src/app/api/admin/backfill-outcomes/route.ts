@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
   }
   try {
     const res = await recordOutcomes(date, { historical: true });
-    return NextResponse.json({ date, ...res });
+    // M3(2.3 P1-1):补录后同步重算历史同向聚合快照(与 outcome cron 同款;失败不连累补录)
+    const { writeOutcomeAgg } = await import("@/lib/outcome-agg");
+    const agg = await writeOutcomeAgg().catch(() => null);
+    return NextResponse.json({ date, ...res, agg });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

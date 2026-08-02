@@ -11,6 +11,8 @@ import { EvidencePanel } from "@/components/EvidencePanel";
 import { AskButton, InsightChatPanel } from "@/components/InsightChat";
 import { ProIntentNudge } from "@/components/ProIntentNudge";
 import { dailyRefsFor } from "@/lib/evidence";
+import { readOutcomeAgg, segBadgeText, codeBadgeText } from "@/lib/outcome-agg";
+import { chainIdFromSlug } from "@/lib/relation-rank";
 
 // 每日 insight 归档页(2.1-W4):把每天的链级推理沉淀成可被搜索引擎抓取的内容资产。
 // 只渲染 published(fallback 引擎产出的 doc 也是人审后 published,不伪装口径由置信度徽章表达);
@@ -66,6 +68,9 @@ export default async function InsightArchivePage({
   const chainName = c.title.replace(" · 因果链", "");
   // 情境追问总开关(PR4):env 关 = 不渲染任何入口与面板(PRD §5.6)
   const askOn = process.env.INSIGHT_CHAT_ENABLED === "1";
+  // 历史同向统计角标(M3 复盘回写):读聚合快照,缺失不渲染(不显假 0)
+  const agg = await readOutcomeAgg().catch(() => null);
+  const relChainId = chainIdFromSlug(params.slug);
   // 前后日导航(归档互链,SEO 抓取路径)
   const dates = await listPublishedDailyDates(chainId, 120).catch(() => [] as string[]);
   const idx = dates.indexOf(params.date);
@@ -127,13 +132,17 @@ export default async function InsightArchivePage({
         <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="text-xs font-medium text-gray-500">当日产业链热力</h2>
           <ul className="mt-2 space-y-1.5">
-            {p.heat.map((h) => (
-              <li key={h.segment} className="text-xs leading-relaxed text-gray-600">
-                <span className="font-medium text-gray-700">{h.segment}</span>
-                <span className="mx-1 rounded bg-gray-50 px-1.5 py-0.5 text-[11px]">{h.direction}</span>
-                {h.reason}
-              </li>
-            ))}
+            {p.heat.map((h) => {
+              const badge = segBadgeText(agg, relChainId, h.segment);
+              return (
+                <li key={h.segment} className="text-xs leading-relaxed text-gray-600">
+                  <span className="font-medium text-gray-700">{h.segment}</span>
+                  <span className="mx-1 rounded bg-gray-50 px-1.5 py-0.5 text-[11px]">{h.direction}</span>
+                  {h.reason}
+                  {badge && <span className="ml-1 text-[11px] text-gray-400">{badge}</span>}
+                </li>
+              );
+            })}
           </ul>
         </section>
 
@@ -184,6 +193,9 @@ export default async function InsightArchivePage({
                   <p className="mt-0.5">{m.todayWhy}</p>
                   {m.verify.length > 0 && (
                     <p className="mt-0.5 text-gray-400">验证点:{m.verify.join(" / ")}</p>
+                  )}
+                  {codeBadgeText(agg, m.code) && (
+                    <p className="mt-0.5 text-[11px] text-gray-400">{codeBadgeText(agg, m.code)}</p>
                   )}
                 </li>
               ))}
