@@ -12,17 +12,18 @@
     "db:push": "prisma db push",
     "data-check": "node scripts/data-check.mjs",
     "enrich": "node scripts/enrich-tushare.mjs",
-    "gen-takes": "node scripts/gen-retail-takes.mjs",
+    "gen-takes": "npx tsx scripts/gen-retail-takes.mjs",
     "enrich-concepts": "node scripts/enrich-concepts.mjs",
     "concept-coverage": "node scripts/concept-coverage.mjs",
     "gen-etf-holdings": "node scripts/gen-etf-holdings.mjs",
     "smoke": "bash scripts/smoke.sh",
+    "check:copy": "npx tsx scripts/copy-lint.ts",
     "check:relation-lint": "npx tsx scripts/relation-lint.ts",
     "check:resolver-samples": "npx tsx scripts/resolver-samples.ts",
     "check:resolver-health": "npx tsx scripts/resolver-health.ts",
     "check:source-leakage": "npx tsx scripts/source-leakage.ts",
     "pipeline:replay": "npx tsx scripts/pipeline-replay.ts",
-    "check:relations": "npm run check:relation-lint && npm run check:resolver-samples && npm run check:resolver-health && npm run check:source-leakage -- --blocking"
+    "check:relations": "npm run check:relation-lint && npm run check:resolver-samples && npm run check:resolver-health && npm run check:source-leakage -- --blocking && npm run check:copy"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
