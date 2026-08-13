@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 import { todayISO } from "@/lib/date";
-import { latestFundYmd, prevAshareTradingDay } from "@/lib/tushare";
+import { latestFundYmd, ashareTradingDaysWindow } from "@/lib/tushare";
 import { buildSegmentDayMetrics } from "@/lib/market-intent/metrics";
 import { classifyIntent } from "@/lib/market-intent/rules";
 import { saveSnapshots, storedYmdSet, loadHistory } from "@/lib/market-intent/store";
@@ -17,8 +17,6 @@ export const maxDuration = 60;
 
 const LOOKBACK_DAYS = 20; // 交易日窗口:20 日分位/位置字段的最大需求
 const BACKFILL_CAP = 5; // 单次最多补几天(hnd1→Tushare 路径偶发劣化,保守防超时)
-
-const ymdToISO = (ymd: string) => `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
 
 export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -31,15 +29,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "no_fund_ymd" }, { status: 200 });
   }
 
-  // 窗口内交易日序列(升序):从就绪日往回走 LOOKBACK_DAYS 个交易日。
-  const days: string[] = [headYmd];
-  let cur = ymdToISO(headYmd);
-  for (let i = 0; i < LOOKBACK_DAYS - 1; i++) {
-    const prev = await prevAshareTradingDay(cur).catch(() => null);
-    if (!prev) break;
-    days.unshift(prev.replace(/-/g, ""));
-    cur = prev;
-  }
+  // 窗口内交易日序列(升序):一次 trade_cal 取整窗(逐日 prev 串行组窗会超时,2026-08-13 实测)。
+  const days = await ashareTradingDaysWindow(headYmd, LOOKBACK_DAYS);
 
   const stored = await storedYmdSet(days[0]).catch(() => new Set<string>());
   const missing = days.filter((d) => !stored.has(d));

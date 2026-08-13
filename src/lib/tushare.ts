@@ -276,6 +276,33 @@ export async function prevAshareTradingDay(
   return null;
 }
 
+// 截至 endYmd(含)的最近 count 个 A 股交易日,升序返回(YYYYMMDD)。一次 trade_cal 调用
+// 取整窗——Market Intent cron 曾用 19 次串行 prevAshareTradingDay 组窗直接超时(2026-08-13 实测)。
+// 日历不可用返回仅 [endYmd](调用方按单日处理,不硬造历史)。
+export async function ashareTradingDaysWindow(endYmd: string, count: number): Promise<string[]> {
+  const endISO = `${endYmd.slice(0, 4)}-${endYmd.slice(4, 6)}-${endYmd.slice(6, 8)}`;
+  const base = new Date(`${endISO}T12:00:00+08:00`);
+  base.setUTCDate(base.getUTCDate() - Math.ceil(count * 1.7) - 7); // 交易日→自然日冗余
+  const start = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(base)
+    .replace(/-/g, "");
+  const d = await tsCall(
+    "trade_cal",
+    { exchange: "SSE", start_date: start, end_date: endYmd },
+    "cal_date,is_open"
+  ).catch(() => null);
+  if (!d || !d.items.length) return [endYmd];
+  const ci = d.fields.indexOf("cal_date");
+  const oi = d.fields.indexOf("is_open");
+  const open = d.items
+    .filter((r) => String(r[oi]) === "1")
+    .map((r) => String(r[ci]))
+    .filter((x) => x <= endYmd)
+    .sort();
+  const win = open.slice(-count);
+  return win.length ? win : [endYmd];
+}
+
 function ymdDaysAgo(days: number): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai",
