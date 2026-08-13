@@ -30,6 +30,10 @@ on:
       - "scripts/watchlist-smoke.ts"
       - "src/lib/watch-*.ts"
       - "src/lib/daily-signals.ts"
+      - "src/lib/market-intent/**"
+      - "scripts/market-intent-check.ts"
+      - "scripts/copy-lint.ts"
+      - "fixtures/market-intent/**"
       - "fixtures/replay/**"
   pull_request:
     paths:
@@ -53,6 +57,10 @@ on:
       - "scripts/watchlist-smoke.ts"
       - "src/lib/watch-*.ts"
       - "src/lib/daily-signals.ts"
+      - "src/lib/market-intent/**"
+      - "scripts/market-intent-check.ts"
+      - "scripts/copy-lint.ts"
+      - "fixtures/market-intent/**"
       - "fixtures/replay/**"
 
 jobs:
@@ -94,3 +102,9 @@ jobs:
       # 未覆盖三类"模块各自正确、拼起来断"的缺陷单测测不出,这里按数据装配→分组→展示不变量全链断言。
       - name: watchlist smoke (blocking)
         run: npx tsx scripts/watchlist-smoke.ts
+      # blocking:静态文案禁词(2.2.1a)——content-guard 词表与静态 UI/数据文案双护栏同源
+      - name: copy lint (blocking)
+        run: npm run check:copy
+      # blocking:Market Intent 规则防漂移(2.2.2)——fixture 回放 8 档意图,规则改动判定漂移显式红
+      - name: market intent rules (blocking)
+        run: npm run check:market-intent

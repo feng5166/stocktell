@@ -308,6 +308,84 @@ export interface LonghuHit {
   reason: string;
 }
 
+// ---- Market Intent 层数据(2.2.2):板块级意图判断的两张明细表 ----
+// 主力+散户净额明细(亿元)。散户口径 = 小单+中单净额(东财/Tushare 通行口径:
+// elg 特大+lg 大单=主力,md 中单+sm 小单=散户)。与 moneyflowByDate 分开缓存:
+// 那张只取 net_mf_amount 供资金面卡,字段面不同,合并会让两边都拉宽表。
+export interface MoneyflowDetail {
+  mainYi: number; // 主力净额(亿)= net_mf_amount
+  retailYi: number; // 散户净额(亿)= (buy_sm+buy_md-sell_sm-sell_md)
+}
+const mfDetailCache = new Map<string, Map<string, MoneyflowDetail>>();
+export async function moneyflowDetailByDate(ymd: string): Promise<Map<string, MoneyflowDetail>> {
+  const hit = mfDetailCache.get(ymd);
+  if (hit) return hit;
+  return singleFlight(`mf-detail:${ymd}`, async () => {
+    const cached = mfDetailCache.get(ymd);
+    if (cached) return cached;
+    const out = new Map<string, MoneyflowDetail>();
+    const d = await tsCallStrict(
+      "moneyflow",
+      { trade_date: ymd },
+      "ts_code,net_mf_amount,buy_sm_amount,sell_sm_amount,buy_md_amount,sell_md_amount"
+    );
+    if (d) {
+      const idx = (f: string) => d.fields.indexOf(f);
+      const [ci, ni, bs, ss, bm, sm] = [
+        idx("ts_code"), idx("net_mf_amount"), idx("buy_sm_amount"),
+        idx("sell_sm_amount"), idx("buy_md_amount"), idx("sell_md_amount"),
+      ];
+      for (const r of d.items) {
+        const code = String(r[ci]).split(".")[0];
+        const main = n(r[ni]);
+        const retail =
+          (n(r[bs]) ?? 0) + (n(r[bm]) ?? 0) - (n(r[ss]) ?? 0) - (n(r[sm]) ?? 0);
+        if (main !== null)
+          out.set(code, {
+            mainYi: Math.round((main / 1e4) * 100) / 100,
+            retailYi: Math.round((retail / 1e4) * 100) / 100,
+          });
+      }
+      mfDetailCache.set(ymd, out);
+      capDates(mfDetailCache);
+    }
+    return out;
+  });
+}
+
+// 全市场日线(涨跌% + 成交额亿元)。amount 单位千元 → /1e5 = 亿元。
+// 与 dailyByDate(仅 pct,供看门狗)分开缓存,理由同上。
+export interface DailyQuote {
+  pct: number;
+  amountYi: number;
+}
+const dqCache = new Map<string, Map<string, DailyQuote>>();
+export async function dailyQuotesByDate(ymd: string): Promise<Map<string, DailyQuote>> {
+  const hit = dqCache.get(ymd);
+  if (hit) return hit;
+  return singleFlight(`daily-quotes:${ymd}`, async () => {
+    const cached = dqCache.get(ymd);
+    if (cached) return cached;
+    const out = new Map<string, DailyQuote>();
+    const d = await tsCallStrict("daily", { trade_date: ymd }, "ts_code,pct_chg,amount");
+    if (d) {
+      const ci = d.fields.indexOf("ts_code");
+      const pi = d.fields.indexOf("pct_chg");
+      const ai = d.fields.indexOf("amount");
+      for (const r of d.items) {
+        const code = String(r[ci]).split(".")[0];
+        const pct = n(r[pi]);
+        const amt = n(r[ai]);
+        if (pct !== null)
+          out.set(code, { pct, amountYi: Math.round(((amt ?? 0) / 1e5) * 100) / 100 });
+      }
+      dqCache.set(ymd, out);
+      capDates(dqCache);
+    }
+    return out;
+  });
+}
+
 // 某交易日全市场主力净流入(亿元)。net_mf_amount 单位万元 → /1e4 = 亿元。
 export async function moneyflowByDate(ymd: string): Promise<Map<string, number>> {
   const hit = mfCache.get(ymd);

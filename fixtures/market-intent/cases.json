@@ -1,0 +1,83 @@
+{
+  "_note": "Market Intent 规则引擎回放样本(2.2.2)。每例 = 原始指标(SegmentDayMetrics)+ 预期判定。规则/阈值改动跑 npm run check:market-intent,分类漂移 CI 显式红;有意改判定必须同 commit 更新本文件随评审。v1 为按规则规格构造的样本(负责人规格直译校验);产线跑批后应把真实历史日快照逐步替换/追加进来(store 里有完整 metrics,可直接摘)。",
+  "cases": [
+    {
+      "name": "accumulation-medium",
+      "note": "连续3日净流入+价格未拉开+成交温和+散户流出 → 吸筹·中(streak<4 不给高)",
+      "metrics": { "ymd": "20260701", "segment": "cpo-optics", "memberCount": 14, "avgPct": 0.4, "upCount": 8, "downCount": 5, "breadth": 0.55, "amountYi": 95, "amountPctl20": 0.6, "amountChgPct": 8, "mainNetYi": 2.1, "mainStrength": 0.022, "retailNetYi": -1.2, "mainNet3dYi": 5.8, "mainNet5dYi": 7.2, "mainNetStreak": 3, "leaderCode": "300308", "leaderPct": 0.6, "leaderRelPct": 0.2, "hasChainEvent": false, "pos5dPct": 2.1, "pos10dPct": 4.0, "pos20dPct": 6.0 },
+      "expected": { "intent": "accumulation", "confidence": "medium", "evidenceIncludes": ["连续 3 日净流入", "散户资金净流出"] }
+    },
+    {
+      "name": "accumulation-high",
+      "note": "连续4日净流入+散户明确流出 → 吸筹·高",
+      "metrics": { "ymd": "20260702", "segment": "ai-server", "memberCount": 12, "upCount": 6, "downCount": 5, "avgPct": 0.3, "breadth": 0.5, "amountYi": 110, "amountPctl20": 0.55, "amountChgPct": 5, "mainNetYi": 3.0, "mainStrength": 0.027, "retailNetYi": -2.0, "mainNet3dYi": 7.5, "mainNet5dYi": 10.1, "mainNetStreak": 4, "leaderCode": "601138", "leaderPct": 0.5, "leaderRelPct": 0.2, "hasChainEvent": false, "pos5dPct": 3.0, "pos10dPct": 4.5, "pos20dPct": 5.0 },
+      "expected": { "intent": "accumulation", "confidence": "high", "evidenceIncludes": ["连续 4 日净流入"] }
+    },
+    {
+      "name": "rush-high",
+      "note": "强净流入+巨量+快涨+广度扩张+龙头同步+链事件 → 抢筹·高",
+      "metrics": { "ymd": "20260703", "segment": "pcb", "memberCount": 13, "upCount": 11, "downCount": 1, "avgPct": 3.2, "breadth": 0.8, "amountYi": 160, "amountPctl20": 0.93, "amountChgPct": 40, "mainNetYi": 4.8, "mainStrength": 0.03, "retailNetYi": -1.0, "mainNet3dYi": 6.0, "mainNet5dYi": 8.0, "mainNetStreak": 2, "leaderCode": "002463", "leaderPct": 3.5, "leaderRelPct": 0.3, "hasChainEvent": true, "pos5dPct": 5.5, "pos10dPct": 8.0, "pos20dPct": 10.0 },
+      "expected": { "intent": "rush", "confidence": "high", "evidenceIncludes": ["链级事件", "龙头与板块同步上行"] }
+    },
+    {
+      "name": "rush-medium-leader-lag",
+      "note": "资金价格同加速但龙头明显落后 → 抢筹·中(追逐集中在低位补涨)",
+      "metrics": { "ymd": "20260706", "segment": "storage-hbm", "memberCount": 11, "upCount": 8, "downCount": 2, "avgPct": 2.8, "breadth": 0.7, "amountYi": 120, "amountPctl20": 0.85, "amountChgPct": 25, "mainNetYi": 3.0, "mainStrength": 0.025, "retailNetYi": -0.5, "mainNet3dYi": 4.0, "mainNet5dYi": 5.0, "mainNetStreak": 2, "leaderCode": "603986", "leaderPct": 0.5, "leaderRelPct": -2.3, "hasChainEvent": false, "pos5dPct": 4.0, "pos10dPct": 6.0, "pos20dPct": 8.0 },
+      "expected": { "intent": "rush", "confidence": "medium", "counterEvidenceIncludes": ["龙头明显落后板块"] }
+    },
+    {
+      "name": "wash-medium",
+      "note": "价格承压+前期5日持续净流入+今日主力未大幅流出+散户先离场 → 洗盘特征·中",
+      "metrics": { "ymd": "20260707", "segment": "liquid-cooling", "memberCount": 9, "upCount": 2, "downCount": 6, "avgPct": -1.8, "breadth": 0.22, "amountYi": 70, "amountPctl20": 0.5, "amountChgPct": -5, "mainNetYi": -0.4, "mainStrength": -0.005, "retailNetYi": -1.5, "mainNet3dYi": 2.0, "mainNet5dYi": 6.0, "mainNetStreak": -1, "leaderCode": "002837", "leaderPct": -1.5, "leaderRelPct": 0.3, "hasChainEvent": false, "pos5dPct": 1.0, "pos10dPct": 5.0, "pos20dPct": 9.0 },
+      "expected": { "intent": "wash", "confidence": "medium", "evidenceIncludes": ["近 5 日主力净额仍为正"] }
+    },
+    {
+      "name": "distribution-high",
+      "note": "近20日高位+主力转流出+散户接+成交高位+价格韧性 → 派发特征·高",
+      "metrics": { "ymd": "20260708", "segment": "cpo-optics", "memberCount": 14, "upCount": 6, "downCount": 7, "avgPct": -0.5, "breadth": 0.43, "amountYi": 120, "amountPctl20": 0.7, "amountChgPct": 3, "mainNetYi": -3.0, "mainStrength": -0.025, "retailNetYi": 2.5, "mainNet3dYi": -5.0, "mainNet5dYi": -4.0, "mainNetStreak": -2, "leaderCode": "300308", "leaderPct": -0.3, "leaderRelPct": 0.2, "hasChainEvent": false, "pos5dPct": 1.5, "pos10dPct": 8.0, "pos20dPct": 18.0 },
+      "expected": { "intent": "distribution", "confidence": "high", "evidenceIncludes": ["散户资金净流入", "阶段高位"] }
+    },
+    {
+      "name": "distribution-medium-no-retail",
+      "note": "高位主力流出但散户未见流入 → 派发特征·中(结构不完整如实入反证)",
+      "metrics": { "ymd": "20260709", "segment": "semi-equipment", "memberCount": 15, "upCount": 7, "downCount": 7, "avgPct": -0.8, "breadth": 0.47, "amountYi": 120, "amountPctl20": 0.65, "amountChgPct": 2, "mainNetYi": -1.8, "mainStrength": -0.015, "retailNetYi": 0, "mainNet3dYi": -2.5, "mainNet5dYi": -1.0, "mainNetStreak": -1, "leaderCode": "002371", "leaderPct": -0.5, "leaderRelPct": 0.3, "hasChainEvent": false, "pos5dPct": 2.0, "pos10dPct": 9.0, "pos20dPct": 15.0 },
+      "expected": { "intent": "distribution", "confidence": "medium", "counterEvidenceIncludes": ["散户未见明显净流入"] }
+    },
+    {
+      "name": "exit-high",
+      "note": "连续3日大幅流出+巨量+明显转弱+散户承接+龙头同弱 → 出货特征·高",
+      "metrics": { "ymd": "20260710", "segment": "dc-power", "memberCount": 10, "upCount": 1, "downCount": 9, "avgPct": -2.8, "breadth": 0.1, "amountYi": 100, "amountPctl20": 0.75, "amountChgPct": 15, "mainNetYi": -3.5, "mainStrength": -0.035, "retailNetYi": 1.8, "mainNet3dYi": -8.0, "mainNet5dYi": -9.0, "mainNetStreak": -3, "leaderCode": "002851", "leaderPct": -3.1, "leaderRelPct": -0.3, "hasChainEvent": false, "pos5dPct": -4.0, "pos10dPct": 2.0, "pos20dPct": 10.0 },
+      "expected": { "intent": "exit", "confidence": "high", "evidenceIncludes": ["连续 3 日净流出", "承接方以散户为主"] }
+    },
+    {
+      "name": "exit-medium-no-retail",
+      "note": "连续流出+转弱但散户数据缺失 → 出货特征·中",
+      "metrics": { "ymd": "20260713", "segment": "ai-application", "memberCount": 10, "upCount": 2, "downCount": 8, "avgPct": -2.2, "breadth": 0.2, "amountYi": 90, "amountPctl20": 0.65, "amountChgPct": 10, "mainNetYi": -2.7, "mainStrength": -0.03, "retailNetYi": null, "mainNet3dYi": -5.0, "mainNet5dYi": -6.0, "mainNetStreak": -2, "leaderCode": "002230", "leaderPct": -1.0, "leaderRelPct": 1.2, "hasChainEvent": false, "pos5dPct": -3.0, "pos10dPct": 0.0, "pos20dPct": 6.0 },
+      "expected": { "intent": "exit", "confidence": "medium", "counterEvidenceIncludes": ["散户未见明显净流入"] }
+    },
+    {
+      "name": "divergence-main-retail-leader",
+      "note": "主散反向+龙头与板块背离(两征命中)→ 分歧·中",
+      "metrics": { "ymd": "20260714", "segment": "pcb", "memberCount": 13, "upCount": 8, "downCount": 4, "avgPct": 1.2, "breadth": 0.6, "amountYi": 90, "amountPctl20": 0.5, "amountChgPct": 0, "mainNetYi": 2.5, "mainStrength": 0.028, "retailNetYi": -1.8, "mainNet3dYi": 6.0, "mainNet5dYi": 7.0, "mainNetStreak": 2, "leaderCode": "002463", "leaderPct": -1.8, "leaderRelPct": -3.0, "hasChainEvent": false, "pos5dPct": 2.0, "pos10dPct": 3.0, "pos20dPct": 5.0 },
+      "expected": { "intent": "divergence", "confidence": "medium", "evidenceIncludes": ["方向相反", "明显不一致"] }
+    },
+    {
+      "name": "exhaustion-medium",
+      "note": "价格还在涨但主力退坡+成交收缩+广度收缩 → 衰竭·中",
+      "metrics": { "ymd": "20260715", "segment": "storage-hbm", "memberCount": 11, "upCount": 4, "downCount": 6, "avgPct": 1.1, "breadth": 0.42, "amountYi": 80, "amountPctl20": 0.55, "amountChgPct": -15, "mainNetYi": -0.5, "mainStrength": -0.006, "retailNetYi": 0.8, "mainNet3dYi": 4.0, "mainNet5dYi": 6.0, "mainNetStreak": -1, "leaderCode": "603986", "leaderPct": 1.5, "leaderRelPct": 0.4, "hasChainEvent": false, "pos5dPct": 4.0, "pos10dPct": 6.0, "pos20dPct": 8.0 },
+      "expected": { "intent": "exhaustion", "confidence": "medium", "evidenceIncludes": ["主力净额退坡", "上涨广度收缩"] }
+    },
+    {
+      "name": "neutral-quiet-day",
+      "note": "清淡日无足够特征 → 中性·低(不强行判断)",
+      "metrics": { "ymd": "20260716", "segment": "liquid-cooling", "memberCount": 9, "upCount": 5, "downCount": 4, "avgPct": 0.1, "breadth": 0.5, "amountYi": 45, "amountPctl20": 0.3, "amountChgPct": -2, "mainNetYi": 0.3, "mainStrength": 0.007, "retailNetYi": 0.1, "mainNet3dYi": 1.0, "mainNet5dYi": 1.0, "mainNetStreak": 1, "leaderCode": "002837", "leaderPct": 0.3, "leaderRelPct": 0.2, "hasChainEvent": false, "pos5dPct": 0.5, "pos10dPct": 1.0, "pos20dPct": 2.0 },
+      "expected": { "intent": "neutral", "confidence": "low" }
+    },
+    {
+      "name": "neutral-no-history",
+      "note": "历史积累不足(趋势字段 null)→ 中性·低,并明示数据不足",
+      "metrics": { "ymd": "20260717", "segment": "ai-server", "memberCount": 12, "upCount": 7, "downCount": 4, "avgPct": 0.8, "breadth": 0.58, "amountYi": 100, "amountPctl20": null, "amountChgPct": null, "mainNetYi": 1.2, "mainStrength": 0.012, "retailNetYi": -0.3, "mainNet3dYi": null, "mainNet5dYi": null, "mainNetStreak": 1, "leaderCode": "601138", "leaderPct": 1.0, "leaderRelPct": 0.2, "hasChainEvent": false, "pos5dPct": null, "pos10dPct": null, "pos20dPct": null },
+      "expected": { "intent": "neutral", "confidence": "low", "counterEvidenceIncludes": ["历史数据积累不足"] }
+    }
+  ]
+}

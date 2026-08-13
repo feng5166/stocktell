@@ -180,6 +180,18 @@ model DeepAnalysisCache {
 
 // 资金面按日缓存:某交易日全市场 主力净流入/龙虎榜/融资余额 的整包(data),
 // 每天首个请求拉一次 Tushare 大表落库,之后跨实例秒回(原 unstable_cache 不跨实例持久)。
+// Market Intent 每日快照(2.2.2):板块指标 + 意图判定按日留痕,Track 回看与 Chain Timeline 的地基。
+model MarketIntentDaily {
+  ymd       String // 交易日 YYYYMMDD
+  segment   String // segments.ts 的 segment key
+  data      Json // { metrics: SegmentDayMetrics, intent: MarketIntent }
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([ymd, segment])
+  @@index([segment, ymd])
+  @@map("market_intent_daily")
+}
+
 model FundDayCache {
   ymd       String   @id // 交易日 YYYYMMDD
   data      Json // { mf: {code:净流入亿}, lh: {code:{net,reason}}, mg: {code:融资余额亿} }

@@ -36,6 +36,8 @@
       "path": "/api/cron/insight-event",
       "schedule": "20 23 * * *"
     },
-    { "path": "/api/cron/insight-event", "schedule": "0 0 * * *" }
+    { "path": "/api/cron/insight-event", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/market-intent", "schedule": "10 9 * * 1-5" },
+    { "path": "/api/cron/market-intent", "schedule": "0 13 * * 1-5" }
   ]
 }
