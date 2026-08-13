@@ -22,6 +22,8 @@ import MarketIntentCard from "@/components/MarketIntentCard";
 import { latestSnapshots } from "@/lib/market-intent/store";
 import { SEGMENT_BY_KEY } from "@/lib/market-intent/segments";
 import { INTENT_DISCLAIMER, fmtYmd } from "@/lib/market-intent/ui";
+import { buildChainTimeline } from "@/lib/chain-timeline";
+import { ChainTimeline } from "@/components/ChainTimeline";
 
 export const revalidate = 60;
 
@@ -144,6 +146,17 @@ export default async function ChainPage({
     .filter((s) => SEGMENT_BY_KEY[s.segment]?.chainSlugs.some((sl) => intentSlugs.has(sl)))
     .sort((a, b) => a.segment.localeCompare(b.segment));
 
+  // 逻辑时间轴(2.2.4):事件→资金意图→专篇→复盘,纯聚合现成数据
+  const timeline = await buildChainTimeline({
+    chainId: chainIdFromRoute(chain.id),
+    insightSlugs: Array.from(intentSlugs).filter((s): s is string => !!s),
+    evtDocs: evtDocs.map((d) => ({
+      date: d.date,
+      slug: d.slug,
+      title: d.payload.eventMeta?.title ?? d.slug,
+    })),
+  }).catch(() => []);
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
@@ -256,6 +269,17 @@ export default async function ChainPage({
               ))}
             </div>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">{INTENT_DISCLAIMER}</p>
+          </section>
+        )}
+
+        {/* 逻辑时间轴(2.2.4):这条链的逻辑生命周期——事件、资金、复盘怎么一步步走过来 */}
+        {timeline.length > 0 && (
+          <section className="mt-6">
+            <h2 className="text-h2 font-semibold text-gray-900">逻辑时间轴</h2>
+            <p className="mt-1 text-xs text-gray-400">
+              事件触发 → 资金意图变化 → 传导拆解 → 复盘判定,一条逻辑的生命周期(近 20 交易日)
+            </p>
+            <ChainTimeline entries={timeline} />
           </section>
         )}
 
