@@ -18,6 +18,10 @@ import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { REL_CHIP_CLS, chainIdFromRoute } from "@/lib/relation-rank";
 import { routeInsightForItem } from "@/data/trigger-sources";
 import { DISCLAIMER } from "@/lib/constants";
+import MarketIntentCard from "@/components/MarketIntentCard";
+import { latestSnapshots } from "@/lib/market-intent/store";
+import { SEGMENT_BY_KEY } from "@/lib/market-intent/segments";
+import { INTENT_DISCLAIMER, fmtYmd } from "@/lib/market-intent/ui";
 
 export const revalidate = 60;
 
@@ -130,6 +134,16 @@ export default async function ChainPage({
     take: reasonByCode.get(r.code) ?? r.take,
   }));
 
+  // 资金意图(2.2.3 主阵地):本链关联板块的最新意图快照。AI 主链页同时挂 AI 应用段
+  // (ai-application 无独立 /chain 路由,chainRouteId 归并到 /chain/ai)。
+  const intentData = await latestSnapshots().catch(() => null);
+  const intentSlugs = new Set(
+    chain.id === "ai" ? [chain.insightSlug, "ai-application"] : [chain.insightSlug]
+  );
+  const intentSnaps = (intentData?.snaps ?? [])
+    .filter((s) => SEGMENT_BY_KEY[s.segment]?.chainSlugs.some((sl) => intentSlugs.has(sl)))
+    .sort((a, b) => a.segment.localeCompare(b.segment));
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
@@ -219,6 +233,29 @@ export default async function ChainPage({
                 </Link>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* 资金意图(2.2.3 主阵地):市场资金正在怎么交易这条链——结论→证据→反证→失效条件 */}
+        {intentSnaps.length > 0 && intentData && (
+          <section id="market-intent" className="mt-6">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-h2 font-semibold text-gray-900">资金意图</h2>
+              <span className="text-xs text-gray-400">{fmtYmd(intentData.ymd)} 盘后</span>
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              市场资金正在怎么交易这条链——与产业链逻辑同向、背离,还是只是情绪交易
+            </p>
+            <div className="mt-3 space-y-2">
+              {intentSnaps.map((s) => (
+                <MarketIntentCard
+                  key={s.segment}
+                  snap={s}
+                  segmentName={SEGMENT_BY_KEY[s.segment]?.name ?? s.segment}
+                />
+              ))}
+            </div>
+            <p className="mt-2 text-meta leading-relaxed text-gray-400">{INTENT_DISCLAIMER}</p>
           </section>
         )}
 

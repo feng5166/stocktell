@@ -69,6 +69,32 @@ export async function snapshotsByYmd(ymd: string): Promise<SegmentIntentSnapshot
     .filter((x): x is SegmentIntentSnapshot => x !== null);
 }
 
+// 最近 n 个交易日的全部快照(ymd 升序)——Track 意图历史条用。
+export async function recentSnapshots(nDays: number): Promise<SegmentIntentSnapshot[]> {
+  const db = getPrisma();
+  if (!db) return [];
+  const ymds = await db.marketIntentDaily.findMany({
+    select: { ymd: true },
+    distinct: ["ymd"],
+    orderBy: { ymd: "desc" },
+    take: nDays,
+  });
+  if (ymds.length === 0) return [];
+  const since = ymds[ymds.length - 1].ymd;
+  const rows = await db.marketIntentDaily.findMany({
+    where: { ymd: { gte: since } },
+    orderBy: { ymd: "asc" },
+  });
+  return rows
+    .map((r) => {
+      const data = r.data as unknown as Omit<SegmentIntentSnapshot, "ymd" | "segment">;
+      return data?.metrics && data?.intent
+        ? { ymd: r.ymd, segment: r.segment, metrics: data.metrics, intent: data.intent }
+        : null;
+    })
+    .filter((x): x is SegmentIntentSnapshot => x !== null);
+}
+
 // 最近一个有快照的交易日 + 其全部板块快照。
 export async function latestSnapshots(): Promise<{ ymd: string; snaps: SegmentIntentSnapshot[] } | null> {
   const db = getPrisma();

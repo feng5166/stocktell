@@ -29,6 +29,10 @@ import {
 import { listPublishedEvents } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
+import { HomeIntentStrip, type HomeIntentRow } from "@/components/HomeIntentStrip";
+import { latestSnapshots } from "@/lib/market-intent/store";
+import { SEGMENT_BY_KEY } from "@/lib/market-intent/segments";
+import { INTENT_SEVERITY } from "@/lib/market-intent/ui";
 
 // 首页 = 今日产业链推理台(首页改版 PRD):先看因果链,再看触发源,再看和我相关。
 // 全局内容走 ISR(大陆 TTFB 约定,零 fetch 零 LLM);个性化(和我相关/自选)全部客户端按需取。
@@ -87,6 +91,33 @@ export default async function Home() {
   );
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();
+  // 今日资金意图(2.2.3):3 条链的链级摘要——每链取信息量最高的板块判定,完整数据在链页
+  const intentLatest = await latestSnapshots().catch(() => null);
+  const INTENT_HOME_CHAINS: { slug: string; name: string; href: string }[] = [
+    { slug: "ai-infra", name: "AI 推理基础设施", href: "/chain/ai#market-intent" },
+    { slug: "datacenter-power", name: "数据中心电力", href: "/chain/data-center-power#market-intent" },
+    { slug: "ai-application", name: "AI 应用", href: "/chain/ai#market-intent" },
+  ];
+  const intentRows: HomeIntentRow[] = [];
+  if (intentLatest) {
+    for (const c of INTENT_HOME_CHAINS) {
+      const segs = intentLatest.snaps.filter((s) =>
+        SEGMENT_BY_KEY[s.segment]?.chainSlugs.includes(c.slug)
+      );
+      if (segs.length === 0) continue;
+      const top = segs
+        .slice()
+        .sort((a, b) => INTENT_SEVERITY[a.intent.intent] - INTENT_SEVERITY[b.intent.intent])[0];
+      intentRows.push({
+        chainName: c.name,
+        href: c.href,
+        intent: top.intent.intent,
+        label: top.intent.label,
+        confidence: top.intent.confidence,
+        segmentName: segs.length > 1 ? SEGMENT_BY_KEY[top.segment]?.name ?? null : null,
+      });
+    }
+  }
   const relLabelMap = buildRelLabelMap(); // Phase 3-D:OvernightRadar peer 关系档(服务端算好传客户端)
   // 节后首日观察(2.1-C):桥文档只在 subType 命中时渲染(多读一次 KV 在 ISR 下可忽略);
   // 回顾条目不在 bridge 区块重复——下方 stale feed 展示的就是最近一期简报,区块只补「口径+验证点」。
@@ -129,6 +160,9 @@ export default async function Home() {
             </div>
           }
         />
+
+        {/* 今日资金意图(2.2.3):3 条链摘要,主阵地在链页 */}
+        {intentLatest && <HomeIntentStrip rows={intentRows} ymd={intentLatest.ymd} />}
 
         {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
         {items.length === 0 ? (
