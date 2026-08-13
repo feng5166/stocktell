@@ -70,6 +70,7 @@ export const REL_CHIP_CLS: Record<string, string> = {
   情绪映射: TIER_CLS.sentiment,
   弱映射: TIER_CLS.weak,
   触发源: TIER_CLS.trigger,
+  链级触发: TIER_CLS.trigger, // 事件卡门面标签(事件→链),与个股「触发源」同色系
   待验证: TIER_CLS.generic,
   产业链相关: TIER_CLS.generic,
 };

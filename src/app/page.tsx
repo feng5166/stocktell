@@ -12,7 +12,7 @@ import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
 import { buildReasoningCards } from "@/lib/home-feed";
 import { buildWatchChainMap } from "@/lib/watch-relation";
-import { buildRelLabelMap, resolveRelationLabelForItem } from "@/lib/relation-resolver";
+import { buildRelLabelMap, resolveEventFaceLabel } from "@/lib/relation-resolver";
 import {
   getBriefStatus,
   BRIEF_STATUS_UI,
@@ -81,9 +81,9 @@ export default async function Home() {
   }
   const aiChain = getChain("ai");
   const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
-  // 事件卡关系标签(替代「高影响」):服务端按 insight 人工核过的关系分级推导
+  // 事件卡门面标签(2.2.1b):有触发源=「链级触发」(事件→链),映射档留给卡内逐票 chip
   const relations = Object.fromEntries(
-    items.map((it) => [it.id, resolveRelationLabelForItem(it)])
+    items.map((it) => [it.id, resolveEventFaceLabel(it)])
   );
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();

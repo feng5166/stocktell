@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
-import { buildRelLabelMap, resolveInChainLabel, resolveRelationLabelForItem } from "@/lib/relation-resolver";
+import { buildRelLabelMap, resolveInChainLabel, resolveEventFaceLabel } from "@/lib/relation-resolver";
 import { ChainRoster } from "@/components/chain/ChainRoster";
 import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert";
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
@@ -251,10 +251,10 @@ export default async function ChainPage({
                   <div className="flex items-center gap-2">
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                        REL_CHIP_CLS[resolveRelationLabelForItem(it)] ?? "bg-gray-100 text-gray-600"
+                        REL_CHIP_CLS[resolveEventFaceLabel(it)] ?? "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {resolveRelationLabelForItem(it)}
+                      {resolveEventFaceLabel(it)}
                     </span>
                     <span className="font-medium text-gray-900">{it.title}</span>
                   </div>
