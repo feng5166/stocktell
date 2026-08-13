@@ -74,6 +74,18 @@
       "expected": { "intent": "neutral", "confidence": "low" }
     },
     {
+      "name": "distribution-real-20260813-pcb",
+      "note": "【真实样本】2026-08-13 PCB:近10日+31.9% 快速拉升后,主力-30.8亿/散户+29.4亿 大额换手、成交20日分位0.85、价格仍有韧性 → 派发特征·中。首版规则只看 pos20d(+0.85%)漏判成中性,据此加 pos10 窗口",
+      "metrics": { "ymd": "20260813", "segment": "pcb", "memberCount": 10, "avgPct": -1.47, "breadth": 0.1, "upCount": 1, "downCount": 9, "amountYi": 640.45, "amountPctl20": 0.85, "amountChgPct": 19.8, "mainNetYi": -30.82, "mainStrength": -0.0481, "retailNetYi": 29.39, "mainNet3dYi": -16.49, "mainNet5dYi": -49.63, "mainNetStreak": -1, "leaderCode": "002463", "leaderPct": -1.91, "leaderRelPct": -0.44, "hasChainEvent": false, "pos5dPct": 9.52, "pos10dPct": 31.89, "pos20dPct": 0.85 },
+      "expected": { "intent": "distribution", "confidence": "medium", "evidenceIncludes": ["近 10 日板块累计上行", "散户资金净流入"] }
+    },
+    {
+      "name": "exit-real-20260813-ai-application",
+      "note": "【真实样本】2026-08-13 AI应用:连续4日净流出(强度-9%)、价格-1.75%、散户+8.3亿承接、较昨放量35%但20日分位仅0.5 → 出货特征·中。首版规则把20日分位当硬门槛漏判成中性,据此改软信号",
+      "metrics": { "ymd": "20260813", "segment": "ai-application", "memberCount": 8, "avgPct": -1.75, "breadth": 0, "upCount": 0, "downCount": 8, "amountYi": 149.61, "amountPctl20": 0.5, "amountChgPct": 35.11, "mainNetYi": -13.47, "mainStrength": -0.09, "retailNetYi": 8.28, "mainNet3dYi": -20.97, "mainNet5dYi": -21.96, "mainNetStreak": -4, "leaderCode": "002230", "leaderPct": -1.48, "leaderRelPct": 0.27, "hasChainEvent": false, "pos5dPct": -4.47, "pos10dPct": 7.29, "pos20dPct": 1.71 },
+      "expected": { "intent": "exit", "confidence": "medium", "evidenceIncludes": ["承接方以散户为主", "成交较上日放大"], "counterEvidenceIncludes": ["20 日分位不高"] }
+    },
+    {
       "name": "neutral-no-history",
       "note": "历史积累不足(趋势字段 null)→ 中性·低,并明示数据不足",
       "metrics": { "ymd": "20260717", "segment": "ai-server", "memberCount": 12, "upCount": 7, "downCount": 4, "avgPct": 0.8, "breadth": 0.58, "amountYi": 100, "amountPctl20": null, "amountChgPct": null, "mainNetYi": 1.2, "mainStrength": 0.012, "retailNetYi": -0.3, "mainNet3dYi": null, "mainNet5dYi": null, "mainNetStreak": 1, "leaderCode": "601138", "leaderPct": 1.0, "leaderRelPct": 0.2, "hasChainEvent": false, "pos5dPct": null, "pos10dPct": null, "pos20dPct": null },

@@ -25,9 +25,9 @@ const TH = {
   // wash.pctHi=-0.5:「回落」必须是真回落——平盘/微涨日一律不判洗盘(fixture neutral-quiet-day 实证误判); // copylint-allow: 意图规则注释(结构化语境)
   // wash.prior5Min=1:前期流入要有量级(近5日合计≥1亿),零点几亿的噪声不构成「持续流入」前提。
   wash: { pctLo: -3.5, pctHi: -0.5, strengthFloor: -0.02, streakFloor: -2, prior5Min: 1 },
-  dist: { pos20: 12, amtPctl: 0.55, pctFloor: -2 },
+  dist: { pos10: 10, pos20: 12, amtPctl: 0.55, pctFloor: -2 },
   exit: { strength: -0.02, streak: -2, amtPctl: 0.6, pct: -1.5 },
-  div: { minYi: 0.5, leaderGap: 2.5 },
+  div: { minYi: 0.5, strongYi: 5, leaderGap: 2.5 },
   exh: { pct: 0.3, amtChg: -10, breadth: 0.5 },
 };
 
@@ -39,20 +39,30 @@ type Verdict = { intent: IntentType; confidence: IntentConfidence; evidence: str
 // ---- 各意图匹配器(每个都如实产出 证据/反证;反证=同方向上仍缺失或相悖的信号)----
 
 function matchExit(m: SegmentDayMetrics): Verdict {
-  // 出货:比派发更强的撤离——连续大幅流出 + 成交放大 + 价格明显转弱 + 散户在承接。 // copylint-allow: 意图规则注释(结构化语境)
+  // 出货:比派发更强的撤离——连续大幅流出 + 价格明显转弱 + 散户在承接;成交放大是 // copylint-allow: 意图规则注释(结构化语境)
+  // 【软信号】不是硬门槛(20260813 真实样本:AI 应用 streak=-4/强度-9% 但 20 日分位仅 0.5,
+  // 较昨日放大 35%——硬门槛会把典型撤离拦成中性)。分位高 → 可升 high;两者皆无 → 压 low。
   if (m.mainStrength > TH.exit.strength || m.mainNetStreak > TH.exit.streak) return null;
-  if (m.amountPctl20 !== null && m.amountPctl20 < TH.exit.amtPctl) return null;
   if (m.avgPct > TH.exit.pct && (m.pos5dPct === null || m.pos5dPct > -5)) return null;
+  const amtStrong = m.amountPctl20 !== null && m.amountPctl20 >= TH.exit.amtPctl;
+  const amtExpanding = m.amountChgPct !== null && m.amountChgPct >= 15;
   const ev = [
     `主力资金连续 ${-m.mainNetStreak} 日净流出,当日净流出 ${r1(-m.mainNetYi)} 亿(占成交额 ${r2(-m.mainStrength * 100)}%)`,
     `板块价格明显转弱(当日 ${r1(m.avgPct)}%)`,
   ];
-  if (m.amountPctl20 !== null) ev.push(`成交处于 20 日高位(分位 ${r2(m.amountPctl20)})`);
   const counter: string[] = [];
   let conf: IntentConfidence = "medium";
+  if (amtStrong) ev.push(`成交处于 20 日高位(分位 ${r2(m.amountPctl20 as number)})`);
+  else if (amtExpanding) {
+    ev.push(`成交较上日放大 ${r1(m.amountChgPct as number)}%`);
+    counter.push(`成交仅较昨日放大,20 日分位不高(${m.amountPctl20 ?? "无数据"})`);
+  } else {
+    counter.push("成交未见放大,撤离的量能特征不完整");
+    conf = "low";
+  }
   if (m.retailNetYi !== null && m.retailNetYi > 0) {
     ev.push(`散户资金净流入 ${r1(m.retailNetYi)} 亿,承接方以散户为主`);
-    if (m.mainNetStreak <= -3) conf = "high";
+    if (m.mainNetStreak <= -3 && amtStrong) conf = "high";
   } else counter.push("散户未见明显净流入,承接结构不典型");
   if (m.leaderPct !== null && m.leaderPct < 0) ev.push("龙头与板块同步走弱");
   else if (m.leaderPct !== null) counter.push(`龙头逆势(当日 ${r1(m.leaderPct)}%),与整体撤离不一致`);
@@ -64,12 +74,18 @@ function matchExit(m: SegmentDayMetrics): Verdict {
 
 function matchDistribution(m: SegmentDayMetrics): Verdict {
   // 派发:前期已大涨 + 主力转流出 + 散户流入 + 成交高位 + 价格仍有韧性(筹码开始外转)。
-  if (m.pos20dPct === null || m.pos20dPct < TH.dist.pos20) return null;
+  // 「前期大涨」看 10 日或 20 日任一窗口(20260813 真实样本:PCB 近 10 日 +31.9% 但
+  // 20 日仅 +0.85%——只看 20 日会漏掉快速拉升后的高位换手)。
+  const runup10 = m.pos10dPct !== null && m.pos10dPct >= TH.dist.pos10;
+  const runup20 = m.pos20dPct !== null && m.pos20dPct >= TH.dist.pos20;
+  if (!runup10 && !runup20) return null;
   if (m.mainNetYi >= 0 || (m.mainNet3dYi !== null && m.mainNet3dYi >= 0)) return null;
   if (m.amountPctl20 !== null && m.amountPctl20 < TH.dist.amtPctl) return null;
   if (m.avgPct < TH.dist.pctFloor) return null; // 已明显转弱的走 exit,不叫派发
   const ev = [
-    `近 20 日板块累计上行 ${r1(m.pos20dPct)}%,处于阶段高位`,
+    runup10
+      ? `近 10 日板块累计上行 ${r1(m.pos10dPct as number)}%,处于阶段高位`
+      : `近 20 日板块累计上行 ${r1(m.pos20dPct as number)}%,处于阶段高位`,
     `主力资金转为净流出(当日 ${r1(-m.mainNetYi)} 亿${m.mainNet3dYi !== null ? `,近 3 日合计 ${r1(-m.mainNet3dYi)} 亿` : ""})`,
     `价格仍有韧性(当日 ${r1(m.avgPct)}%),筹码在高位换手`,
   ];
@@ -201,7 +217,13 @@ function matchDivergence(m: SegmentDayMetrics): Verdict {
     (m.avgPct > 0.3 && m.breadth < 0.45) || (m.avgPct < -0.3 && m.breadth > 0.55);
   if (breadthSplit)
     signals.push(`板块涨跌(${r1(m.avgPct)}%)与上涨家数占比(${r2(m.breadth)})背离`);
-  if (signals.length < 2) return null;
+  // 主散双向都是大额(各≥strongYi)的对撞,单征即够格——20260813 PCB 主力 -30.8 亿/
+  // 散户 +29.4 亿被「三征取二」拦成中性,是规则过严不是市场没分歧。
+  const strongOpposite =
+    mainRetailOpposite &&
+    Math.abs(m.mainNetYi) >= TH.div.strongYi &&
+    Math.abs(m.retailNetYi as number) >= TH.div.strongYi;
+  if (signals.length < 2 && !strongOpposite) return null;
   if (!mainRetailOpposite) counter.push("主力与散户方向尚一致");
   if (!leaderSplit) counter.push("龙头与板块方向尚一致");
   if (!breadthSplit) counter.push("广度与指数表现尚一致");

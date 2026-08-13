@@ -33,6 +33,8 @@ export async function GET(req: NextRequest) {
   const days = await ashareTradingDaysWindow(headYmd, LOOKBACK_DAYS);
 
   const stored = await storedYmdSet(days[0]).catch(() => new Set<string>());
+  // force=1:只重算最新一天(规则调优后刷新当日判定用;不重写更早历史——Track 要看「当时判断了什么」)
+  if (req.nextUrl.searchParams.get("force") === "1") stored.delete(headYmd);
   const missing = days.filter((d) => !stored.has(d));
   if (missing.length === 0) {
     return NextResponse.json({ ok: true, upToDate: true, head: headYmd });
