@@ -103,7 +103,7 @@ function takeOf(logic: IndustryLogic, intent: IntentType, verification: Verifica
   if (intent === "divergence")
     return "主力与散户在对立交易,方向未定——分歧期更适合等验证,而不是追方向。";
   if (intent === "exhaustion")
-    return "上行动能在退坡,若没有新事件或新验证,留意情绪自然降温。";
+    return `上行动能在退坡,若没有新事件或新验证,留意情绪自然降温——下一个方向信号,盯${verifyHint}。`; // 带链专属验证口径:多链同判衰竭时首屏不再出现两句一模一样的话(2026-08-14 走查)
   return `今天没有值得单独说的资金行为,关注点回到${verifyHint}的验证节奏。`;
 }
 

@@ -32,15 +32,20 @@ export interface HomeReasoningCard {
   risk: string; // 一句话风险(今日侧:按当日触发方向生成,不再用 insight 演示事件的静态风险)
 }
 
-// 首页兜底路径的按链分账(与生成器同规则;正常日走 daily payload,不经这里)
+// 首页兜底路径的按链分账(与生成器同规则;正常日走 daily payload,不经这里)。
+// 2026-08-14 视觉走查修复:去掉「全无归属退回全量」——退回全量会让电力/半导体/华为卡
+// 显示 AI 链事件与错链环节,四卡同文(07-09「三条链说的都一样」同病复发,只是换了个出口)。
+// 无归属就如实空:trigger 行不渲染,take 用中性说明,风险句走通用口径,绝不错链。
 function ownItems(items: BriefingItem[], chainId: string): BriefingItem[] {
-  const own = items.filter(
+  return items.filter(
     (it) =>
       (it.triggerCode && resolvePrimary(it.triggerCode)?.chainId === chainId) ||
       it.beneficiaries.some((b) => !!resolveInChain(b.code, chainId))
   );
-  return own.length ? own : items; // 全无归属时退回全量(别让卡片空白)
 }
+
+// 本链今日无触发时的中性 take(不硬造判断,引导去结构深读)
+const NO_TRIGGER_TAKE = "今日暂无直接命中本链的触发事件——链的结构、验证点与个股关系看完整因果链。";
 
 // 今日一句话风险(评审:不再用 insight 的演示事件静态风险——"AI 变便宜"前提和
 // 当日集体下跌语境错位)。按当日触发方向给验证口径,下跌日文案=负责人定稿原句。
@@ -95,10 +100,12 @@ export async function buildReasoningCards(
     }));
     const tiers = (daily && topHeatTiers(daily.payload.heat)) || staticTiers;
 
+    const own = ownItems(items, chainIdFromSlug(chain.insightSlug) ?? chain.id);
     const take =
       daily?.payload.judgment ||
       (await getChainTake(chain.id, shownDate).catch(() => null)) ||
-      fallbackChainTake(items);
+      fallbackChainTake(own) ||
+      NO_TRIGGER_TAKE;
 
     cards.push({
       chainId: chain.id,
@@ -106,10 +113,10 @@ export async function buildReasoningCards(
       insightSlug: chain.insightSlug,
       date: shownDate,
       stale,
-      trigger: daily?.payload.trigger.summary ?? triggerSummary(ownItems(items, chainIdFromSlug(chain.insightSlug) ?? chain.id)),
+      trigger: daily?.payload.trigger.summary ?? triggerSummary(own),
       humanSummary: take,
       tiers,
-      risk: daily?.payload.risk ?? dailyRisk(ownItems(items, chainIdFromSlug(chain.insightSlug) ?? chain.id)),
+      risk: daily?.payload.risk ?? dailyRisk(own),
     });
   }
   return cards;
