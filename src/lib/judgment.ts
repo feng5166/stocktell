@@ -214,6 +214,7 @@ export interface JudgmentReviewEntry {
   tone: "confirm" | "warn";
   date: string; // 原判断日 M/D
   text: string;
+  segKey: string; // 板块 key(2.2.7:客户端按「我的自选在不在这个板块」排优先级)
 }
 
 export async function buildJudgmentReview(): Promise<JudgmentReviewEntry[]> {
@@ -238,6 +239,7 @@ export async function buildJudgmentReview(): Promise<JudgmentReviewEntry[]> {
           out.push({
             tone: "warn",
             date: fmtD(arr[i + 1].ymd),
+            segKey: seg.key,
             text: `${seg.name}:${fmtD(arr[i + 1].ymd)} 还是${arr[i + 1].intent.label},今天已转为${today.intent.label},期间没有新增基本面证据——这段判断需要重新看。`,
           });
           break;
@@ -251,6 +253,7 @@ export async function buildJudgmentReview(): Promise<JudgmentReviewEntry[]> {
           out.push({
             tone: "confirm",
             date: fmtD(arr[i].ymd),
+            segKey: seg.key,
             text: `${seg.name}:${fmtD(arr[i].ymd)} 的${arr[i].intent.label}判断正在被验证——资金已重新回流(今天${today.intent.label})。`,
           });
           break;

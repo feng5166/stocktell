@@ -1,9 +1,17 @@
-// 首屏块①「今天最值得你知道的 3 件事」+ 块③「旧判断被验证/推翻」(2.2.5,server component)。
+"use client";
+
+// 首屏块①「今天最值得你知道的 3 件事」+ 块③「旧判断复核」(2.2.5→2.2.7)。
 // 不是今日新闻,是系统排完优先级后的压缩判断:headline 人话 → 一段解释 → 「我怎么看」。
+// 2.2.6:「与昨日相比」变化行,变了的链 rank+3/项。
+// 2.2.7:优先级由自选决定——SSR 全局排序,水合后自选所在链再 +boost 重排并标「自选 N 只」;
+// 无自选用户前后一致零闪动(负责人拍板:首页由自选/持仓决定,不是全市场平均展示)。
 import Link from "next/link";
 import type { ChainJudgment, JudgmentReviewEntry } from "@/lib/judgment";
 import type { JudgmentChange } from "@/lib/judgment-diff";
 import { INTENT_CHIP_CLS, fmtYmd } from "@/lib/market-intent/ui";
+import { useWatchAffinity } from "@/components/home/useWatchAffinity";
+
+type Judged = ChainJudgment & { changes?: JudgmentChange[] };
 
 export function JudgmentBoard({
   ymd,
@@ -11,11 +19,16 @@ export function JudgmentBoard({
   hadPrev = false,
 }: {
   ymd: string;
-  judgments: (ChainJudgment & { changes?: JudgmentChange[] })[];
+  judgments: Judged[];
   hadPrev?: boolean;
 }) {
-  const top = judgments.slice(0, 3);
-  if (top.length === 0) return null;
+  const aff = useWatchAffinity();
+  if (judgments.length === 0) return null;
+  const myCount = (j: Judged) => aff.chainCount.get(j.chainSlug) ?? 0;
+  const score = (j: Judged) =>
+    j.rank + (j.changes?.length ?? 0) * 3 + Math.min(myCount(j), 3) * 2;
+  const ordered = judgments.slice().sort((a, b) => score(b) - score(a));
+  const top = ordered.slice(0, 3);
   const anyChange = judgments.some((j) => (j.changes?.length ?? 0) > 0);
   return (
     <section className="mt-5">
@@ -38,6 +51,11 @@ export function JudgmentBoard({
                   <span className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-meta font-medium ${INTENT_CHIP_CLS[j.intent]}`}>
                     {j.intentLabel}
                   </span>
+                  {myCount(j) > 0 && (
+                    <span className="inline-flex shrink-0 rounded bg-brand-50 px-1.5 py-0.5 text-meta font-medium text-brand-700">
+                      自选 {myCount(j)} 只
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1 text-sm leading-relaxed text-gray-600">
                   {j.body}
@@ -68,7 +86,10 @@ export function JudgmentBoard({
 }
 
 export function JudgmentReview({ entries }: { entries: JudgmentReviewEntry[] }) {
+  const aff = useWatchAffinity();
   if (entries.length === 0) return null; // 没有就不硬生成(负责人:不要为了有内容天天造一大段)
+  const mine = (e: JudgmentReviewEntry) => (aff.segCount.get(e.segKey) ?? 0) > 0;
+  const ordered = entries.slice().sort((a, b) => Number(mine(b)) - Number(mine(a)));
   return (
     <section className="mt-5">
       <h2 className="text-h2 font-semibold text-gray-900">旧判断复核</h2>
@@ -76,7 +97,7 @@ export function JudgmentReview({ entries }: { entries: JudgmentReviewEntry[] }) 
         之前的判断今天有没有被验证或需要重新看(资金行为层面;披露级验证在个股页验证点)
       </p>
       <div className="mt-3 space-y-2">
-        {entries.map((e, i) => (
+        {ordered.map((e, i) => (
           <div
             key={i}
             className={`rounded-xl border px-4 py-3 text-sm leading-relaxed ${
@@ -86,6 +107,11 @@ export function JudgmentReview({ entries }: { entries: JudgmentReviewEntry[] }) 
             }`}
           >
             {e.tone === "confirm" ? "✅ " : "⚠️ "}
+            {mine(e) && (
+              <span className="mr-1 inline-flex rounded bg-white/70 px-1.5 py-0.5 text-meta font-medium">
+                含自选
+              </span>
+            )}
             {e.text}
           </div>
         ))}
