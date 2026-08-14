@@ -31,6 +31,7 @@ import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
 import { JudgmentBoard, JudgmentReview } from "@/components/home/JudgmentBoard";
 import { HomeMyStocks, type SegIntentPair } from "@/components/home/HomeMyStocks";
+import { IntentDistribution } from "@/components/home/IntentDistribution";
 import { buildDailyJudgments, buildJudgmentReview } from "@/lib/judgment";
 import { attachChanges } from "@/lib/judgment-diff";
 import { recentSnapshots } from "@/lib/market-intent/store";
@@ -140,26 +141,33 @@ export default async function Home() {
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日推理" />
 
-      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <HomeHero shownDate={shownDate} insightHref={insightHref} />
+      {/* 视觉优化(2026-08-14):四层分区——①核心判断 ②市场与资金 ③我的关注 ④事件/验证/深度。
+          桌面 max-w-6xl(≈1200);模块间距远(mt-8+)、模块内间距近,信息重要度=视觉重要度 */}
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <HomeHero
+          shownDate={shownDate}
+          insightHref={insightHref}
+          dataNote={judgmentRes ? `${Number(judgmentRes.ymd.slice(4, 6))}/${Number(judgmentRes.ymd.slice(6, 8))} 盘后` : undefined}
+        />
 
         <BriefStatusBanner status={briefStatus} stale={stale} shownDate={shownDate} />
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
 
-        {/* Daily Judgment 首屏三块(2.2.5 + 2.2.6 变化检测):替用户做最后一次合成 */}
+        {/* 层① 今日核心判断(第一视觉中心,桌面三列,主线强化) */}
         {judgmentRes && judged && (
           <JudgmentBoard ymd={judgmentRes.ymd} judgments={judged.judgments} hadPrev={judged.hadPrev} />
         )}
-        <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
-        <JudgmentReview entries={reviewEntries} />
 
-        {/* 链情绪+雷达 与 因果链 的顺序按访客态翻转(新手路径 v2):
-            老访客/有自选 = 盘面在前(负责人 2026-07-09 拍板);新访客 = 因果链演示在前 */}
+        {/* 层② 市场与资金状态(压缩:行情是背景不占领首页;新手路径的因果链演示序保留) */}
         <FirstRunReorder
           market={
-            <>
-              <div className="mt-2">
+            <section className="mt-8">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-h2 font-semibold text-gray-900">市场概览</h2>
+                <span className="text-meta text-gray-400">行情只是触发源,不代表产业链关系强弱</span>
+              </div>
+              <div className="mt-3 grid gap-3 lg:grid-cols-2">
                 <ChainSentiment
                   initial={snap?.data}
                   refresh={snap ? !snap.fresh : false}
@@ -170,22 +178,28 @@ export default async function Home() {
                     </span>
                   }
                 />
+                <OvernightRadar relMap={relLabelMap} />
               </div>
-              <OvernightRadar relMap={relLabelMap} />
-            </>
+            </section>
           }
           demo={
-            <div className="mt-5">
+            <div className="mt-8">
               <ReasoningCards cards={cards} />
             </div>
           }
         />
 
-        {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
+        {/* 层③ 我的关注(优先级高于事件流)+ 资金意图分布(数字优先) */}
+        <div className="lg:grid lg:grid-cols-[1.6fr_1fr] lg:gap-6">
+          <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
+          <IntentDistribution segIntent={segIntent} />
+        </div>
+
+        {/* 层④ 事件(降噪:默认 4 条,更多手动展开)+ 验证进展 */}
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
-          <div className="mt-5">
+          <div className="mt-8 lg:grid lg:grid-cols-[1.6fr_1fr] lg:items-start lg:gap-6">
             <BriefingFeed
               items={items}
               loggedIn={false}
@@ -196,6 +210,7 @@ export default async function Home() {
               watchChainMap={watchChainMap}
               evtMap={evtMap}
             />
+            <JudgmentReview entries={reviewEntries} />
           </div>
         )}
 

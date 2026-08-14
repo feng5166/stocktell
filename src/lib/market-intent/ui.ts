@@ -8,15 +8,16 @@ export const CONFIDENCE_LABEL: Record<IntentConfidence, string> = {
   low: "低置信度",
 };
 
-// 意图 chip 配色(与关系档 chip 同风格;出货/派发暖色示警,吸筹冷色,中性灰)。
+// 意图 chip 配色(首页视觉规范 2026-08-14:颜色只承担语义——绿=资金进场,红=资金撤出,
+// 橙族=洗盘/派发/衰竭(警惕观察),靛=分歧,灰=中性。一卡一主色,不做装饰色)。
 export const INTENT_CHIP_CLS: Record<IntentType, string> = {
   accumulation: "bg-emerald-100 text-emerald-700",
-  rush: "bg-rose-100 text-rose-700",
-  wash: "bg-sky-100 text-sky-700",
-  distribution: "bg-amber-100 text-amber-700",
+  rush: "bg-emerald-100 text-emerald-800",
+  wash: "bg-amber-100 text-amber-800",
+  distribution: "bg-orange-100 text-orange-700",
   exit: "bg-red-100 text-red-700",
   divergence: "bg-indigo-100 text-indigo-700",
-  exhaustion: "bg-orange-100 text-orange-700",
+  exhaustion: "bg-amber-50 text-amber-700",
   neutral: "bg-gray-100 text-gray-500",
 };
 

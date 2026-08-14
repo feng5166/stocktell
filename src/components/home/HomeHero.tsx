@@ -15,9 +15,11 @@ import { track } from "@/lib/analytics";
 export function HomeHero({
   shownDate,
   insightHref,
+  dataNote,
 }: {
   shownDate: string;
   insightHref: string | null;
+  dataNote?: string; // 数据更新说明(如「8/13 盘后」)
 }) {
   const { status } = useSession();
   const wl = useWatchlist();
@@ -50,18 +52,25 @@ export function HomeHero({
   };
 
   return (
-    <div className="mb-5">
-      <div className="flex items-center gap-2.5">
-        <h1 className="text-h1 font-semibold tracking-tight">今日产业链推理</h1>
-        <FeedbackLink />
+    <div className="mb-4">
+      {/* 视觉优化(2026-08-14):Hero 压高——标题+一行副标,日期/更新时间/全部产业链收进同一条 meta 行 */}
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-h1 font-semibold tracking-tight">今日产业链推理</h1>
+          <FeedbackLink />
+        </div>
+        <span className="flex items-center gap-2 text-xs text-gray-400">
+          <span>{shownDate}</span>
+          {dataNote && <span>· 数据更新 {dataNote}</span>}
+          <Link href="/chains" className="font-medium text-brand-600 hover:underline">
+            全部产业链 →
+          </Link>
+        </span>
       </div>
-      <p className="mt-1.5 text-sm leading-relaxed text-gray-600">
-        昨晚海外发生了什么,今天会传到 A 股哪些链?StockTell 帮你拆开看。
-      </p>
       <p className="mt-1 text-xs leading-relaxed text-gray-400">
-        从一个全球事件出发,拆出它影响的产业链、A 股映射和最容易看错的地方 · {shownDate}
+        全球事件如何传导到 A 股产业链——核心逻辑与资金动向
       </p>
-      <div className="mt-3.5 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           onClick={goMine}
           className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 ring-1 ring-brand-200 transition-colors hover:bg-brand-100"

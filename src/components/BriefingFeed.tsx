@@ -351,7 +351,7 @@ function CardFeed({
   collapsed?: boolean; // 首页事件区:默认只放 5 条,其余手动「查看更多」——首页是分发台不是事件库(评审)
 }) {
   const STEP = 6;
-  const INITIAL = collapsed ? 5 : STEP;
+  const INITIAL = collapsed ? 4 : STEP; // 首页事件降噪(视觉优化 2026-08-14):5→4,首页是分发台不是事件库
   const [visible, setVisible] = useState(INITIAL);
   const sentinelRef = useRef<HTMLDivElement>(null);
 

@@ -7,6 +7,7 @@
 import { Prisma } from "@prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { listBriefing, type BriefingItem } from "@/lib/briefings";
+import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { recentSnapshots } from "@/lib/market-intent/store";
 import { INTENT_SEGMENTS, SEGMENT_BY_KEY } from "@/lib/market-intent/segments";
 import { INTENT_SEVERITY, CONFIDENCE_LABEL } from "@/lib/market-intent/ui";
@@ -30,6 +31,11 @@ export interface ChainJudgment {
   segmentName: string | null; // 主导板块名(链下多板块时)
   verification: VerificationState;
   hasEvent?: boolean; // 当日是否有链级触发事件(2.2.6「出现新 trigger」检测;旧存档无此字段)
+  // —— 首页视觉优化(2026-08-14)展示字段:纯派生自现有静态数据,非新数据模型 ——
+  logicLabel?: string; // 逻辑 chip 人话(逻辑增强/逻辑延续/逻辑承压/情绪偏热)
+  coreSegments?: string[]; // 核心环节(链内意图板块名,信息量序 ≤3)
+  repStocks?: string[]; // 代表映射(insight 核定 direct 优先 ≤3)
+  verifyHint?: string; // 关键验证点(链级人话短语)
   headline: string;
   body: string;
   take: string; // 「我怎么看」
@@ -50,6 +56,14 @@ const LOGIC_PHRASE: Record<IndustryLogic, string> = {
   unchanged: "逻辑没坏",
   weaken: "逻辑承压",
   sentiment: "仍以情绪映射为主",
+};
+
+// 逻辑 chip 短词(首页卡片用;句式版留给 headline)
+const LOGIC_CHIP: Record<IndustryLogic, string> = {
+  strengthen: "逻辑增强",
+  unchanged: "逻辑延续",
+  weaken: "逻辑承压",
+  sentiment: "情绪偏热",
 };
 
 const INTENT_PHRASE: Record<IntentType, string> = {
@@ -159,6 +173,20 @@ function buildOne(
     (verification !== "none" ? 1 : 0) +
     (dominant.intent.confidence === "high" ? 1 : 0);
 
+  // 展示字段(首页卡片四行轻量信息):环节=链内板块按信息量序;映射=insight 核定 direct 优先
+  const coreSegments = segs
+    .slice()
+    .sort((a, b) => INTENT_SEVERITY[a.intent.intent] - INTENT_SEVERITY[b.intent.intent])
+    .map(segName)
+    .slice(0, 3);
+  const mappings = INSIGHT_CHAINS[def.slug]?.mappings ?? [];
+  const repStocks = [
+    ...mappings.filter((m) => m.relation === "直接"),
+    ...mappings.filter((m) => m.relation !== "直接"),
+  ]
+    .map((m) => m.name)
+    .slice(0, 3);
+
   return {
     ymd,
     chainSlug: def.slug,
@@ -172,6 +200,10 @@ function buildOne(
     segmentName: segs.length > 1 ? segName(dominant) : null,
     verification,
     hasEvent: evts.length > 0,
+    logicLabel: LOGIC_CHIP[logic],
+    coreSegments,
+    repStocks,
+    verifyHint: def.verifyHint,
     headline,
     body,
     take: takeOf(logic, intent, verification, def.verifyHint),
