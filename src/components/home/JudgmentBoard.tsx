@@ -2,11 +2,21 @@
 // 不是今日新闻,是系统排完优先级后的压缩判断:headline 人话 → 一段解释 → 「我怎么看」。
 import Link from "next/link";
 import type { ChainJudgment, JudgmentReviewEntry } from "@/lib/judgment";
+import type { JudgmentChange } from "@/lib/judgment-diff";
 import { INTENT_CHIP_CLS, fmtYmd } from "@/lib/market-intent/ui";
 
-export function JudgmentBoard({ ymd, judgments }: { ymd: string; judgments: ChainJudgment[] }) {
+export function JudgmentBoard({
+  ymd,
+  judgments,
+  hadPrev = false,
+}: {
+  ymd: string;
+  judgments: (ChainJudgment & { changes?: JudgmentChange[] })[];
+  hadPrev?: boolean;
+}) {
   const top = judgments.slice(0, 3);
   if (top.length === 0) return null;
+  const anyChange = judgments.some((j) => (j.changes?.length ?? 0) > 0);
   return (
     <section className="mt-5">
       <div className="flex items-baseline justify-between">
@@ -33,6 +43,11 @@ export function JudgmentBoard({ ymd, judgments }: { ymd: string; judgments: Chai
                   {j.body}
                   {j.splitNote && <span className="text-gray-800"> {j.splitNote}</span>}
                 </p>
+                {(j.changes?.length ?? 0) > 0 && (
+                  <p className="mt-1 text-xs font-medium leading-relaxed text-indigo-700">
+                    与昨日相比:{j.changes!.map((c) => c.text).join(" · ")}
+                  </p>
+                )}
                 <p className="mt-1.5 text-sm leading-relaxed text-gray-800">
                   <span className="font-medium text-brand-700">我怎么看:</span>
                   {j.take}
@@ -42,6 +57,9 @@ export function JudgmentBoard({ ymd, judgments }: { ymd: string; judgments: Chai
           </Link>
         ))}
       </div>
+      {hadPrev && !anyChange && (
+        <p className="mt-2 text-xs text-gray-500">与昨日相比,各链判断没有方向性变化。</p>
+      )}
       <p className="mt-2 text-meta text-gray-400">
         由 事件×关系×资金意图×验证线索 规则合成,不构成投资建议 · 点卡片进链页看证据与反证
       </p>

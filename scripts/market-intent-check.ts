@@ -7,6 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { classifyIntent, INTENT_LABEL } from "../src/lib/market-intent/rules";
+import { computeJudgmentChanges } from "../src/lib/judgment-diff";
+import type { ChainJudgment } from "../src/lib/judgment";
 import type { IntentType, SegmentDayMetrics } from "../src/lib/market-intent/types";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,6 +51,30 @@ for (const c of cases) {
 
 const ALL: IntentType[] = ["accumulation", "rush", "wash", "distribution", "exit", "divergence", "exhaustion", "neutral"];
 for (const t of ALL) if (!covered.has(t)) errors.push(`覆盖面:意图档 ${t} 没有任何 fixture 命中`);
+
+// ---- 2.2.6 Change Detection 纯函数断言(computeJudgmentChanges 防漂移)----
+{
+  const base = {
+    ymd: "20260813", chainSlug: "ai-infra", chainName: "AI 算力", href: "#",
+    logic: "unchanged", intent: "divergence", intentLabel: "分歧",
+    confidence: "中等置信度", confidenceRaw: "medium", segmentName: null,
+    verification: "none", hasEvent: false, headline: "", body: "", take: "", splitNote: null, rank: 5,
+  } as unknown as ChainJudgment;
+  const today = {
+    ...base, ymd: "20260814", intent: "distribution", intentLabel: "派发特征",
+    verification: "partial", hasEvent: true, confidenceRaw: "high", confidence: "较高置信度",
+  } as typeof base;
+  const c1 = computeJudgmentChanges(base, today);
+  if (c1.length !== 3) errors.push(`diff:意图+验证+trigger 三变应报 3 项,实际 ${c1.length}(${c1.map((c) => c.field).join(",")})`);
+  if (!c1.some((c) => c.field === "intent" && c.text.includes("分歧") && c.text.includes("派发特征")))
+    errors.push("diff:intent 变化文案缺 from→to");
+  if (c1.some((c) => c.field === "confidence")) errors.push("diff:medium→high 不是明显变化,不应报 confidence");
+  if (computeJudgmentChanges(base, { ...base, ymd: "20260814" } as typeof base).length !== 0)
+    errors.push("diff:无变化应报 0 项");
+  if (computeJudgmentChanges(null, today).length !== 0) errors.push("diff:无历史应报 0 项(不误报首日)");
+  const c2 = computeJudgmentChanges({ ...base, confidenceRaw: "low" } as typeof base, { ...base, ymd: "20260814", confidenceRaw: "high", hasEvent: false } as typeof base);
+  if (!(c2.length === 1 && c2[0].field === "confidence")) errors.push(`diff:low→high 应只报 confidence 明显上升,实际 ${JSON.stringify(c2.map((c) => c.field))}`);
+}
 
 if (errors.length) {
   console.error(`✗ Market Intent 规则检查 ${errors.length} 处失败:`);

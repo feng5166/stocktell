@@ -26,8 +26,10 @@ export interface ChainJudgment {
   intent: IntentType; // 主导板块意图(信息量最高)
   intentLabel: string;
   confidence: string; // 展示文案
+  confidenceRaw?: "high" | "medium" | "low"; // 2.2.6 diff 用原始档(旧存档无此字段,diff 侧兼容)
   segmentName: string | null; // 主导板块名(链下多板块时)
   verification: VerificationState;
+  hasEvent?: boolean; // 当日是否有链级触发事件(2.2.6「出现新 trigger」检测;旧存档无此字段)
   headline: string;
   body: string;
   take: string; // 「我怎么看」
@@ -166,8 +168,10 @@ function buildOne(
     intent,
     intentLabel: dominant.intent.label,
     confidence: CONFIDENCE_LABEL[dominant.intent.confidence],
+    confidenceRaw: dominant.intent.confidence,
     segmentName: segs.length > 1 ? segName(dominant) : null,
     verification,
+    hasEvent: evts.length > 0,
     headline,
     body,
     take: takeOf(logic, intent, verification, def.verifyHint),

@@ -32,6 +32,7 @@ import { DISCLAIMER } from "@/lib/constants";
 import { JudgmentBoard, JudgmentReview } from "@/components/home/JudgmentBoard";
 import { HomeMyStocks, type SegIntentPair } from "@/components/home/HomeMyStocks";
 import { buildDailyJudgments, buildJudgmentReview } from "@/lib/judgment";
+import { attachChanges } from "@/lib/judgment-diff";
 import { recentSnapshots } from "@/lib/market-intent/store";
 
 // 首页 = 今日产业链推理台(首页改版 PRD):先看因果链,再看触发源,再看和我相关。
@@ -97,6 +98,13 @@ export default async function Home() {
     buildJudgmentReview().catch(() => []),
     recentSnapshots(2).catch(() => []),
   ]);
+  // 2.2.6 Change Detection:附加 昨日→今日 变化并按「变了的优先」重排 top3
+  const judged = judgmentRes
+    ? await attachChanges(judgmentRes.ymd, judgmentRes.judgments).catch(() => ({
+        judgments: judgmentRes.judgments.map((j) => ({ ...j, changes: [] })),
+        hadPrev: false,
+      }))
+    : null;
   // 板块意图 今/昨 对照(块② client 用;板块仅 8 个,payload 极小)
   const segIntent: Record<string, SegIntentPair> = {};
   {
@@ -134,8 +142,10 @@ export default async function Home() {
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
 
-        {/* Daily Judgment 首屏三块(2.2.5):替用户做最后一次合成——今天到底该看什么 */}
-        {judgmentRes && <JudgmentBoard ymd={judgmentRes.ymd} judgments={judgmentRes.judgments} />}
+        {/* Daily Judgment 首屏三块(2.2.5 + 2.2.6 变化检测):替用户做最后一次合成 */}
+        {judgmentRes && judged && (
+          <JudgmentBoard ymd={judgmentRes.ymd} judgments={judged.judgments} hadPrev={judged.hadPrev} />
+        )}
         <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
         <JudgmentReview entries={reviewEntries} />
 
