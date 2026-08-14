@@ -85,7 +85,7 @@ async function sendAlertsDigest(
   userId: string,
   alertLines: string[]
 ): Promise<boolean> {
-  const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
+  const base = process.env.NEXTAUTH_URL || "https://www.stocktell.me";
   const unsub = unsubFooter(base, userId);
   const text =
     `今天没有跟你的票相关的隔夜美股动态,但你的持仓有以下要注意:\n\n` +
@@ -153,7 +153,7 @@ async function sendDigest(
   brief: string,
   alerts: string[]
 ): Promise<boolean> {
-  const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
+  const base = process.env.NEXTAUTH_URL || "https://www.stocktell.me";
   const unsub = unsubFooter(base, userId);
   const rows = items.map((it) => {
     const benes = it.beneficiaries.map((b) => b.name).join("、");

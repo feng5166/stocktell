@@ -212,7 +212,7 @@ function formatMessage(items: { name: string; ev: RiskEvent }[]): string {
     lines.push(`【${name}】`);
     for (const e of evs) lines.push(`  ${e.text}`);
   }
-  lines.push("", "以上为公开信息整理,提示风险,不构成投资建议。", "stocktell.vercel.app/#mine");
+  lines.push("", "以上为公开信息整理,提示风险,不构成投资建议。", "www.stocktell.me/#mine");
   return lines.join("\n");
 }
 
@@ -221,7 +221,7 @@ async function sendRiskEmail(
   userId: string,
   items: { name: string; ev: RiskEvent }[]
 ): Promise<boolean> {
-  const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
+  const base = process.env.NEXTAUTH_URL || "https://www.stocktell.me";
   const unsub = unsubFooter(base, userId);
   const byStock = new Map<string, RiskEvent[]>();
   for (const it of items) {

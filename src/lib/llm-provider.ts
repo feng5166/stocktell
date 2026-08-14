@@ -88,7 +88,7 @@ let consecFail = 0;
 let lastAlertAt = 0;
 
 function switchUrl(): string {
-  const base = process.env.NEXTAUTH_URL || "https://stocktell.vercel.app";
+  const base = process.env.NEXTAUTH_URL || "https://www.stocktell.me";
   const token = process.env.ADMIN_TOKEN || "";
   return `${base}/api/admin/llm-provider?to=fallback&token=${encodeURIComponent(token)}`;
 }

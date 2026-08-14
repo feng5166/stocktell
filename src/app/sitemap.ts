@@ -13,12 +13,15 @@ const BASE = SITE_URL;
 export const revalidate = 3600; // 归档每天最多多一天,1h 再生成足够
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // lastModified(SEO 旧索引修复,2026-08-14):索引停在 7 月旧快照的一半原因是主域宣告错,
+  // 另一半是没给任何「内容更新了」的信号——每日更新面统一带当日 lastmod,促重抓。
+  const now = new Date();
   const out: MetadataRoute.Sitemap = [
-    { url: `${BASE}/`, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE}/track`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/`, changeFrequency: "daily", priority: 1, lastModified: now },
+    { url: `${BASE}/track`, changeFrequency: "daily", priority: 0.8, lastModified: now },
     { url: `${BASE}/stocks`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/relations`, changeFrequency: "weekly", priority: 0.6 },
-    { url: `${BASE}/daily`, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/daily`, changeFrequency: "daily", priority: 0.7, lastModified: now },
     { url: `${BASE}/chains`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/about`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${BASE}/disclaimer`, changeFrequency: "yearly", priority: 0.2 },
@@ -28,10 +31,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   // 产业链页 + 三条核心链 insight(PRODUCT-CORE:链页承担 分享落地+SEO+转化)
   for (const c of Object.values(CHAINS)) {
-    out.push({ url: `${BASE}/chain/${c.id}`, changeFrequency: "daily", priority: 0.9 });
+    out.push({ url: `${BASE}/chain/${c.id}`, changeFrequency: "daily", priority: 0.9, lastModified: now });
   }
   for (const slug of Object.keys(INSIGHT_CHAINS)) {
-    out.push({ url: `${BASE}/insight/${slug}`, changeFrequency: "daily", priority: 0.9 });
+    out.push({ url: `${BASE}/insight/${slug}`, changeFrequency: "daily", priority: 0.9, lastModified: now });
   }
   // 股票页(~200 只,回答"XX 在哪条产业链/什么映射"的长尾问题)
   for (const s of STOCKS) {
