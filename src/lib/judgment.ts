@@ -59,14 +59,14 @@ const LOGIC_PHRASE: Record<IndustryLogic, string> = {
 };
 
 // 逻辑 chip 短词(首页卡片用;句式版留给 headline)
-const LOGIC_CHIP: Record<IndustryLogic, string> = {
+export const LOGIC_CHIP: Record<IndustryLogic, string> = {
   strengthen: "逻辑增强",
   unchanged: "逻辑延续",
   weaken: "逻辑承压",
   sentiment: "情绪偏热",
 };
 
-const INTENT_PHRASE: Record<IntentType, string> = {
+export const INTENT_PHRASE: Record<IntentType, string> = {
   accumulation: "资金在提前进入",
   rush: "资金开始追",
   wash: "今天更像洗盘", // copylint-allow: Judgment 模板句,意图词结构化语境豁免(2026-08-13 拍板)

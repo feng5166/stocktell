@@ -34,31 +34,29 @@ function CardBody({ j, full }: { j: Judged; full: boolean }) {
           与昨日相比:{j.changes!.map((c) => c.text).join(" · ")}
         </p>
       )}
-      {full && (
-        <div className="mt-2.5 space-y-1 border-t border-gray-100 pt-2.5">
-          <InfoRow
-            k="资金"
-            v={
-              <>
-                <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${INTENT_CHIP_CLS[j.intent]}`}>
-                  {j.intentLabel}
-                </span>
-                <span className="ml-1.5 text-meta text-gray-400">{confShort(j.confidence)}</span>
-              </>
-            }
-          />
-          {j.coreSegments && j.coreSegments.length > 0 && (
-            <InfoRow k="环节" v={j.coreSegments.join(" · ")} />
-          )}
-          {j.repStocks && j.repStocks.length > 0 && (
-            <InfoRow k="映射" v={j.repStocks.join(" · ")} />
-          )}
-          {j.verifyHint && <InfoRow k="验证" v={j.verifyHint} />}
-          {j.splitNote && (
-            <p className="pt-0.5 text-xs leading-relaxed text-amber-700">{j.splitNote}</p>
-          )}
-        </div>
-      )}
+      <div className="mt-2.5 space-y-1 border-t border-gray-100 pt-2.5">
+        <InfoRow
+          k="资金"
+          v={
+            <>
+              <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${INTENT_CHIP_CLS[j.intent]}`}>
+                {j.intentLabel}
+              </span>
+              <span className="ml-1.5 text-meta text-gray-400">{confShort(j.confidence)}</span>
+            </>
+          }
+        />
+        {full && j.coreSegments && j.coreSegments.length > 0 && (
+          <InfoRow k="环节" v={j.coreSegments.join(" · ")} />
+        )}
+        {full && j.repStocks && j.repStocks.length > 0 && (
+          <InfoRow k="映射" v={j.repStocks.join(" · ")} />
+        )}
+        {full && j.verifyHint && <InfoRow k="验证" v={j.verifyHint} />}
+        {full && j.splitNote && (
+          <p className="pt-0.5 text-xs leading-relaxed text-amber-700">{j.splitNote}</p>
+        )}
+      </div>
       <div className="mt-2.5 text-right text-xs font-medium text-brand-600">查看详情 →</div>
     </>
   );
@@ -113,43 +111,50 @@ export function JudgmentBoard({
     </div>
   );
 
+  // 布局(阅读路径改版 2026-08-14):主线 1 条(左 2/3 大卡)+ 次线 2 条(右 1/3 上下),
+  // 不再三张等宽——第一眼就知道今天哪条最重要。移动端:主线展开,次线折叠。
+  const [main, ...rest] = top;
   return (
-    <section className="mt-6">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-h2 font-semibold text-gray-900">今日核心判断</h2>
-        <span className="text-meta text-gray-400">{fmtYmd(ymd)} 盘后合成</span>
-      </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
-        {top.map((j, idx) => (
-          <div key={j.chainSlug} className={idx === 0 ? "" : "hidden sm:block"}>
-            <Link
-              href={j.href}
-              className={`block h-full rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow ${
-                idx === 0 ? "ring-1 ring-brand-200" : ""
-              }`}
-            >
-              <Head j={j} idx={idx} />
-              <CardBody j={j} full />
-            </Link>
-          </div>
-        ))}
-        {/* 移动端:2/3 折叠(主线默认展开在上方) */}
-        {top.slice(1).map((j, i) => (
-          <details key={`m-${j.chainSlug}`} className="rounded-2xl bg-white p-4 shadow-sm sm:hidden">
-            <summary className="cursor-pointer list-none">
-              <Head j={j} idx={i + 1} />
-            </summary>
-            <Link href={j.href} className="block">
-              <CardBody j={j} full />
-            </Link>
-          </details>
-        ))}
+    <section className="mt-4">
+      <div className="mt-0 sm:flex sm:items-stretch sm:gap-3">
+        <div className="sm:w-2/3">
+          <Link
+            href={main.href}
+            className="block h-full rounded-2xl bg-white p-5 shadow-sm ring-1 ring-brand-200 transition-shadow hover:shadow sm:p-6"
+          >
+            <Head j={main} idx={0} />
+            <CardBody j={main} full />
+          </Link>
+        </div>
+        <div className="mt-3 space-y-3 sm:mt-0 sm:flex sm:w-1/3 sm:flex-col sm:gap-3 sm:space-y-0">
+          {rest.map((j, i) => (
+            <div key={j.chainSlug} className="sm:flex-1">
+              {/* 桌面:完整次卡 */}
+              <Link
+                href={j.href}
+                className="hidden h-full rounded-2xl bg-white p-4 shadow-sm transition-shadow hover:shadow sm:block"
+              >
+                <Head j={j} idx={i + 1} />
+                <CardBody j={j} full={false} />
+              </Link>
+              {/* 移动端:折叠 */}
+              <details className="rounded-2xl bg-white p-4 shadow-sm sm:hidden">
+                <summary className="cursor-pointer list-none">
+                  <Head j={j} idx={i + 1} />
+                </summary>
+                <Link href={j.href} className="block">
+                  <CardBody j={j} full />
+                </Link>
+              </details>
+            </div>
+          ))}
+        </div>
       </div>
       {hadPrev && !anyChange && (
         <p className="mt-2 text-xs text-gray-500">与昨日相比,各链判断没有方向性变化。</p>
       )}
       <p className="mt-2 text-meta text-gray-400">
-        由 事件×关系×资金意图×验证线索 规则合成,不构成投资建议 · 依据与反证在链页
+        由 事件×关系×资金意图×验证线索 规则合成,不构成投资建议 · 依据与反证在链页 · {fmtYmd(ymd)} 盘后
       </p>
     </section>
   );

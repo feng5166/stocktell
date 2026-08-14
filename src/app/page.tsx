@@ -1,16 +1,9 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { HomeHero } from "@/components/home/HomeHero";
-import { FirstRunReorder } from "@/components/home/FirstRunReorder";
-import { ReasoningCards } from "@/components/home/ReasoningCards";
 import { BriefingFeed } from "@/components/BriefingFeed";
-import { ChainSentiment } from "@/components/ChainSentiment";
-import { OvernightRadar } from "@/components/OvernightRadar";
-import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
-import { ShareCardEntry } from "@/components/share/ShareCardEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
-import { buildReasoningCards } from "@/lib/home-feed";
 import { buildWatchChainMap } from "@/lib/watch-relation";
 import { buildRelLabelMap, resolveEventFaceLabel } from "@/lib/relation-resolver";
 import {
@@ -32,8 +25,12 @@ import { DISCLAIMER } from "@/lib/constants";
 import { JudgmentBoard, JudgmentReview } from "@/components/home/JudgmentBoard";
 import { HomeMyStocks, type SegIntentPair } from "@/components/home/HomeMyStocks";
 import { IntentDistribution } from "@/components/home/IntentDistribution";
+import { DailyTell } from "@/components/home/DailyTell";
+import { MarketBar } from "@/components/home/MarketBar";
+import { EventTop3 } from "@/components/home/EventTop3";
+import { RecapRail } from "@/components/home/RecapRail";
 import { buildDailyJudgments, buildJudgmentReview } from "@/lib/judgment";
-import { attachChanges } from "@/lib/judgment-diff";
+import { attachChanges, composeDailyTell } from "@/lib/judgment-diff";
 import { recentSnapshots } from "@/lib/market-intent/store";
 
 // 首页 = 今日产业链推理台(首页改版 PRD):先看因果链,再看触发源,再看和我相关。
@@ -79,17 +76,22 @@ export default async function Home() {
     }
   }
 
-  // 因果链卡:结构读 insight,今日判断读 chain-take(纯 DB 读;失败降级为空数组,不炸页不显假0)
-  // 事件专篇入口(M2):当日已发布专篇 → 条目id→href;失败降级为空(事件卡回落链级口径)
-  const [cards, evtDocs] = await Promise.all([
-    buildReasoningCards(items, shownDate, stale).catch(() => []),
+  // 事件专篇入口(M2):当日已发布专篇 → 条目id→href;失败降级为空(事件卡回落链级口径)。
+  // recentEvtDocs:近期专篇(跨日),底部「值得复看」右栏用。因果链卡已撤出首页(阅读路径改版)。
+  const [evtDocs, recentEvtDocs] = await Promise.all([
     listPublishedEvents({ date: shownDate, limit: 10 }).catch(() => []),
+    listPublishedEvents({ limit: 3 }).catch(() => []),
   ]);
   const evtMap: Record<string, string> = {};
   for (const d of evtDocs) {
     for (const itemId of d.payload.eventMeta?.itemIds ?? [])
       evtMap[itemId] = `/insight/evt/${d.slug}`;
   }
+  const recapDocs = recentEvtDocs.map((d) => ({
+    slug: d.slug,
+    date: d.date,
+    title: d.payload.eventMeta?.title ?? d.slug,
+  }));
   const aiChain = getChain("ai");
   const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
   // 事件卡门面标签(2.2.1b):有触发源=「链级触发」(事件→链),映射档留给卡内逐票 chip
@@ -111,6 +113,8 @@ export default async function Home() {
         hadPrev: false,
       }))
     : null;
+  // 「StockTell 今天怎么看」总判断(一句话 + 最值得看/最大变化/最大风险)
+  const tell = judged ? composeDailyTell(judged.judgments) : null;
   // 板块意图 今/昨 对照(块② client 用;板块仅 8 个,payload 极小)
   const segIntent: Record<string, SegIntentPair> = {};
   {
@@ -141,8 +145,12 @@ export default async function Home() {
     <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日推理" />
 
-      {/* 视觉优化(2026-08-14):四层分区——①核心判断 ②市场与资金 ③我的关注 ④事件/验证/深度。
-          桌面 max-w-6xl(≈1200);模块间距远(mt-8+)、模块内间距近,信息重要度=视觉重要度 */}
+      {/* 阅读路径改版(2026-08-14 负责人二轮走查):从「模块排列」到「阅读路径」——
+          一屏半内拿到:今天怎么看 → 我的关注变了什么 → 什么值得点。
+          屏1:总判断 + 主线大卡(2/3)+次卡×2(1/3) + 我的关注;屏2:市场状态条 + 今日事件×3;
+          屏3:验证进展｜资金意图分布;屏4:和我相关/深度(双栏,右栏复看,不留大空白)。
+          注:因果链四大卡撤出首页(与核心判断信息重叠,完整版在链页/深读);
+          FirstRunReorder 新手前置序随之退役——本次拍板覆盖 07-09 旧拍板。 */}
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         <HomeHero
           shownDate={shownDate}
@@ -154,48 +162,28 @@ export default async function Home() {
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
 
-        {/* 层① 今日核心判断(第一视觉中心,桌面三列,主线强化) */}
+        {/* 屏1a:StockTell 今天怎么看(总判断——这才是 Tell) */}
+        {judgmentRes && tell && <DailyTell ymd={judgmentRes.ymd} tell={tell} />}
+
+        {/* 屏1b:主线 1 大 + 次线 2 小 */}
         {judgmentRes && judged && (
           <JudgmentBoard ymd={judgmentRes.ymd} judgments={judged.judgments} hadPrev={judged.hadPrev} />
         )}
 
-        {/* 层② 市场与资金状态(压缩:行情是背景不占领首页;新手路径的因果链演示序保留) */}
-        <FirstRunReorder
-          market={
-            <section className="mt-8">
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-h2 font-semibold text-gray-900">市场概览</h2>
-                <span className="text-meta text-gray-400">行情只是触发源,不代表产业链关系强弱</span>
-              </div>
-              <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                <ChainSentiment
-                  initial={snap?.data}
-                  refresh={snap ? !snap.fresh : false}
-                  action={
-                    <span className="inline-flex items-center gap-3">
-                      <ShareCardEntry />
-                      <ChainHomeEntry />
-                    </span>
-                  }
-                />
-                <OvernightRadar relMap={relLabelMap} />
-              </div>
-            </section>
-          }
-          demo={
-            <div className="mt-8">
-              <ReasoningCards cards={cards} />
-            </div>
-          }
-        />
+        {/* 屏1c:我的关注(上移——早上最想看的是「我关心的东西今天有什么变化」) */}
+        <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
 
-        {/* 层③ 我的关注(优先级高于事件流)+ 资金意图分布(数字优先) */}
-        <div className="lg:grid lg:grid-cols-[1.6fr_1fr] lg:gap-6">
-          <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
+        {/* 屏2:市场状态一条 + 今日值得看的 3 个事件 */}
+        <MarketBar data={snap?.data} relMap={relLabelMap} />
+        <EventTop3 items={items} evtMap={evtMap} chainName={aiChain?.name} insightHref={insightHref} />
+
+        {/* 屏3:验证进展 ｜ 资金意图分布 */}
+        <div className="lg:grid lg:grid-cols-[1.6fr_1fr] lg:items-start lg:gap-6">
+          <JudgmentReview entries={reviewEntries} />
           <IntentDistribution segIntent={segIntent} />
         </div>
 
-        {/* 层④ 事件(降噪:默认 4 条,更多手动展开)+ 验证进展 */}
+        {/* 屏4:和我相关/深度内容 ｜ 值得复看(双栏,消灭右侧空白) */}
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
@@ -210,7 +198,7 @@ export default async function Home() {
               watchChainMap={watchChainMap}
               evtMap={evtMap}
             />
-            <JudgmentReview entries={reviewEntries} />
+            <RecapRail docs={recapDocs} />
           </div>
         )}
 

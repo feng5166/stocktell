@@ -68,6 +68,48 @@ export async function loadPrevJudgments(beforeYmd: string): Promise<Map<string, 
   return out;
 }
 
+// ---- 「StockTell 今天怎么看」总判断(首页阅读路径改版 2026-08-14):把全部链级判断
+// 压成 一句总判断 + 最值得看/最大变化/最大风险 三行——用户进来不再自己拼。纯模板合成。
+import { INTENT_PHRASE, LOGIC_CHIP } from "@/lib/judgment";
+import { INTENT_SEVERITY } from "@/lib/market-intent/ui";
+import type { IntentType } from "@/lib/market-intent/types";
+
+export interface DailyTell {
+  sentence: string; // 一句总判断
+  best: string; // 最值得看
+  biggestChange: string | null; // 最大变化(无=与昨日无方向性变化)
+  biggestRisk: string | null; // 最大风险(无资金风险信号时为 null)
+}
+
+const RISK_SET: IntentType[] = ["exit", "distribution", "exhaustion"];
+
+export function composeDailyTell(
+  judgments: (ChainJudgment & { changes?: JudgmentChange[] })[]
+): DailyTell | null {
+  if (judgments.length === 0) return null;
+  const top = judgments.slice(0, 3);
+  const part = (j: ChainJudgment) => `${j.chainName}${LOGIC_CHIP[j.logic]},${INTENT_PHRASE[j.intent]}`;
+  let sentence = `今天${part(top[0])}`;
+  if (top[0].splitNote) sentence += `(${top[0].splitNote.replace(/^链内分化:/, "").replace(/。$/, "")})`;
+  for (const j of top.slice(1)) sentence += `;${part(j)}`;
+  sentence += "。";
+
+  const changed = judgments
+    .filter((j) => (j.changes ?? []).some((c) => c.field === "intent"))
+    .sort((a, b) => INTENT_SEVERITY[a.intent] - INTENT_SEVERITY[b.intent])[0];
+  const intentChange = changed?.changes?.find((c) => c.field === "intent");
+  const risky = judgments
+    .filter((j) => RISK_SET.includes(j.intent))
+    .sort((a, b) => INTENT_SEVERITY[a.intent] - INTENT_SEVERITY[b.intent])[0];
+
+  return {
+    sentence,
+    best: top[0].chainName,
+    biggestChange: changed && intentChange ? `${changed.chainName} ${intentChange.text.replace(/^资金意图 /, "")}` : null,
+    biggestRisk: risky ? `${risky.chainName}资金${risky.intentLabel}` : null,
+  };
+}
+
 // 今日 Judgment 附加变化 + 按变化重排(有变化的链信息量更高,rank 每项 +3 后重排;
 // 首屏 top3 因此自动把「变了的」顶上去——这正是 Change Detection 的产品意义)
 export async function attachChanges(
