@@ -37,10 +37,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   // 资金数据就绪日:今天收盘后 moneyflow 已出 → 今天;否则上一交易日。
-  const headYmd = await latestFundYmd(todayISO()).catch(() => null);
+  // Tushare 探测限时 20s:hnd1→Tushare 中国白天时段劣化(2026-08-14 盘中实测连续
+  // FUNCTION_INVOCATION_TIMEOUT,夜间同路径秒过)——探测超时不值得吃掉整个函数预算,
+  // 退化为纯 DB 模式:以最新已存快照日为 head,跳过回补只刷 Judgment,快速返回。
+  const headProbe = await Promise.race([
+    latestFundYmd(todayISO()).catch(() => null),
+    new Promise<null>((r) => setTimeout(() => r(null), 20000)),
+  ]);
+  let headYmd = headProbe;
+  let degraded = false;
   if (!headYmd) {
-    await alertCron("market-intent", "⚠️ Market Intent:无法确定资金数据就绪日(Tushare 日历/资金表均不可用),本班跳过").catch(() => null);
-    return NextResponse.json({ ok: false, error: "no_fund_ymd" }, { status: 200 });
+    const latest = await (await import("@/lib/market-intent/store")).latestSnapshots().catch(() => null);
+    if (!latest) {
+      await alertCron("market-intent", "⚠️ Market Intent:Tushare 不可达且库内无历史快照,本班跳过").catch(() => null);
+      return NextResponse.json({ ok: false, error: "no_fund_ymd" }, { status: 200 });
+    }
+    headYmd = latest.ymd;
+    degraded = true;
+  }
+  if (degraded) {
+    await persistJudgments();
+    return NextResponse.json({ ok: true, degraded: true, head: headYmd, note: "tushare 慢路径,已退化纯 DB 刷 Judgment;快照回补交给下一班" });
   }
 
   // 窗口内交易日序列(升序):一次 trade_cal 取整窗(逐日 prev 串行组窗会超时,2026-08-13 实测)。
