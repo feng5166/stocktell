@@ -17,8 +17,12 @@ export function EventTop3({
 }) {
   const top = items.slice(0, 3);
   if (top.length === 0) return null;
+  // retailTake 是「**这次变了啥**:…」结构化 markdown——索引卡只要第一段人话,
+  // 剥掉星号与段落标签(三轮走查:原始 ** 直接露出=事故级观感)
   const firstClause = (s: string) => {
-    const cut = s.split(/[。;;]/)[0] ?? s;
+    const plain = s.replace(/\*\*/g, "");
+    const m = plain.match(/这次变了啥[::]\s*([^。\n]+)/);
+    const cut = (m ? m[1] : plain.split(/[。\n;;]/)[0] ?? plain).trim();
     return cut.length > 42 ? cut.slice(0, 42) + "…" : cut;
   };
   return (

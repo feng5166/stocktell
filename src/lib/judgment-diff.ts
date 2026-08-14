@@ -88,10 +88,24 @@ export function composeDailyTell(
 ): DailyTell | null {
   if (judgments.length === 0) return null;
   const top = judgments.slice(0, 3);
-  const part = (j: ChainJudgment) => `${j.chainName}${LOGIC_CHIP[j.logic]},${INTENT_PHRASE[j.intent]}`;
-  let sentence = `今天${part(top[0])}`;
-  if (top[0].splitNote) sentence += `(${top[0].splitNote.replace(/^链内分化:/, "").replace(/。$/, "")})`;
-  for (const j of top.slice(1)) sentence += `;${part(j)}`;
+  // 同意图的链合并成一个从句(2026-08-14 三轮走查:三条链两条衰竭,逐链罗列=同一句话
+  // 念三遍,总判断读起来像机器;合并后「AI 应用、AI 算力资金动能在衰竭」一遍说完)
+  const groups: { intent: IntentType; js: ChainJudgment[] }[] = [];
+  for (const j of judgments.slice(0, 4)) {
+    const g = groups.find((x) => x.intent === j.intent);
+    if (g) g.js.push(j);
+    else groups.push({ intent: j.intent, js: [j] });
+  }
+  const clause = (g: (typeof groups)[number]) => {
+    const names = g.js.map((j) => j.chainName).join("、");
+    if (g.js.length === 1 && g.js[0].logic !== "unchanged") {
+      return `${names}${LOGIC_CHIP[g.js[0].logic]},${INTENT_PHRASE[g.js[0].intent]}`;
+    }
+    return `${names}${INTENT_PHRASE[g.intent]}`;
+  };
+  let sentence = `今天,${groups.slice(0, 3).map(clause).join(";")}`;
+  if (top[0].splitNote)
+    sentence += `(${top[0].splitNote.replace(/^链内分化:/, "").replace(/。$/, "")})`;
   sentence += "。";
 
   const changed = judgments
@@ -105,8 +119,12 @@ export function composeDailyTell(
   return {
     sentence,
     best: top[0].chainName,
-    biggestChange: changed && intentChange ? `${changed.chainName} ${intentChange.text.replace(/^资金意图 /, "")}` : null,
-    biggestRisk: risky ? `${risky.chainName}资金${risky.intentLabel}` : null,
+    // 短标签态(DailyTell 底部 3 chip):去空格紧凑箭头;完整表述在卡片与链页
+    biggestChange:
+      changed && intentChange
+        ? `${changed.chainName} ${intentChange.text.replace(/^资金意图 /, "").replace(/ → /g, "→")}`
+        : null,
+    biggestRisk: risky ? `${risky.chainName}·${risky.intentLabel}` : null,
   };
 }
 

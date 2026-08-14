@@ -54,7 +54,6 @@ export function BriefingFeed({
     it.beneficiaries.some((b) => wl.has(b.code));
 
   const mine = items.filter(isMine);
-  const others = items.filter((it) => !isMine(it));
 
   // 从推送(微信/邮件/Web 通知,链接带 #mine)点进来时,自动滚到「和我相关」,直达"你的票今天"。
   // 内容是客户端水合的,等 wl.ready 后再滚才滚得准。
@@ -118,7 +117,15 @@ export function BriefingFeed({
         ) : (
           <div className="space-y-3">
             <RiskSummary codes={wl.codes} />
-            {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
+            {/* 三轮走查:黄色早报卡折叠——首页收口,内容保留点开即看 */}
+            {mine.length > 0 && (
+              <details className="rounded-xl bg-amber-50/60 px-3 py-2">
+                <summary className="cursor-pointer list-none text-xs font-medium text-amber-800">
+                  ☀️ 你的今日早报 ▾
+                </summary>
+                <MorningBrief codes={wl.codes} items={mine} />
+              </details>
+            )}
             {/* 即时关系卡:本会话刚加的票当场自动解读(aha 不等第二天,命中/安静日都渲染) */}
             <InstantTake codes={wl.codes} chainMap={watchChainMap} />
             {/* P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系/验证点) */}
@@ -136,8 +143,9 @@ export function BriefingFeed({
                 <WatchOverview codes={wl.codes} />
               </>
             ) : (
+              /* 三轮走查:首页只保留 3 条,完整列表进 /daily 归档——首页是分发台不是内容站 */
               <CardFeed
-                items={mine}
+                items={mine.slice(0, 3)}
                 loggedIn={loggedIn}
                 watchedCodes={wl.codes}
                 insightHref={insightHref}
@@ -148,31 +156,21 @@ export function BriefingFeed({
                 mine
               />
             )}
+            <div className="flex flex-wrap gap-4 pt-1">
+              <Link href="/watchlist" className="text-xs font-medium text-brand-600 hover:underline">
+                查看全部与我相关 →
+              </Link>
+              {items[0]?.date && (
+                <Link href={`/daily/${items[0].date}`} className="text-xs font-medium text-brand-600 hover:underline">
+                  查看全部深度分析 →
+                </Link>
+              )}
+            </div>
           </div>
         )}
       </section>
-
-      {others.length > 0 && (
-        <section className="rounded-2xl bg-gray-100/50 p-3 sm:p-4">
-          <SectionHead
-            title="今天这些事件,正在影响 A 股产业链"
-            hint="只看能传导到 A 股产业链的事件"
-          />
-          {/* 付费分层暂未开启:所有用户简报功能一致,不再上免费墙(gated 默认 false)。
-              仅自选保存、推送订阅需登录;LockedCard/FREE_LIMIT 基础设施保留,日后分层再开。 */}
-          <CardFeed
-            items={others}
-            loggedIn={loggedIn}
-            watchedCodes={wl.codes}
-            insightHref={insightHref}
-            chainName={chainName}
-            chainHref={chainHref}
-            relations={relations}
-            evtMap={evtMap}
-            collapsed
-          />
-        </section>
-      )}
+      {/* 「今天这些事件」完整事件流撤出首页(三轮走查:下半页必须收口,首页长度 -30%+)。
+          事件索引由上方 EventTop3 承担,完整深读在 /daily/[date] 归档与事件专篇。 */}
     </div>
     </WhyProvider>
   );

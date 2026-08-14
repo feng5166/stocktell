@@ -24,7 +24,6 @@ import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
 import { JudgmentBoard, JudgmentReview } from "@/components/home/JudgmentBoard";
 import { HomeMyStocks, type SegIntentPair } from "@/components/home/HomeMyStocks";
-import { IntentDistribution } from "@/components/home/IntentDistribution";
 import { DailyTell } from "@/components/home/DailyTell";
 import { MarketBar } from "@/components/home/MarketBar";
 import { EventTop3 } from "@/components/home/EventTop3";
@@ -80,7 +79,7 @@ export default async function Home() {
   // recentEvtDocs:近期专篇(跨日),底部「值得复看」右栏用。因果链卡已撤出首页(阅读路径改版)。
   const [evtDocs, recentEvtDocs] = await Promise.all([
     listPublishedEvents({ date: shownDate, limit: 10 }).catch(() => []),
-    listPublishedEvents({ limit: 3 }).catch(() => []),
+    listPublishedEvents({ limit: 2 }).catch(() => []),
   ]);
   const evtMap: Record<string, string> = {};
   for (const d of evtDocs) {
@@ -142,7 +141,8 @@ export default async function Home() {
   const bridge = briefStatus?.subType === "holiday_bridge" ? bridgeDoc : null;
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    // 三轮走查:主背景更接近白(bg-canvas 灰底显「后台」),模块间只靠留白与阴影分区
+    <div className="min-h-screen bg-[#fcfcfd] text-ink">
       <SiteHeader active="今日推理" />
 
       {/* 阅读路径改版(2026-08-14 负责人二轮走查):从「模块排列」到「阅读路径」——
@@ -151,7 +151,7 @@ export default async function Home() {
           屏3:验证进展｜资金意图分布;屏4:和我相关/深度(双栏,右栏复看,不留大空白)。
           注:因果链四大卡撤出首页(与核心判断信息重叠,完整版在链页/深读);
           FirstRunReorder 新手前置序随之退役——本次拍板覆盖 07-09 旧拍板。 */}
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-[1220px] px-4 py-6 sm:px-6">
         <HomeHero
           shownDate={shownDate}
           insightHref={insightHref}
@@ -173,17 +173,14 @@ export default async function Home() {
         {/* 屏1c:我的关注(上移——早上最想看的是「我关心的东西今天有什么变化」) */}
         <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
 
-        {/* 屏2:市场状态一条 + 今日值得看的 3 个事件 */}
-        <MarketBar data={snap?.data} relMap={relLabelMap} />
+        {/* 层4:市场状态一条(含板块意图分布,方案 A 并入)+ 层5:今日发生了什么 3 条 */}
+        <MarketBar data={snap?.data} relMap={relLabelMap} segIntent={segIntent} />
         <EventTop3 items={items} evtMap={evtMap} chainName={aiChain?.name} insightHref={insightHref} />
 
-        {/* 屏3:验证进展 ｜ 资金意图分布 */}
-        <div className="lg:grid lg:grid-cols-[1.6fr_1fr] lg:items-start lg:gap-6">
-          <JudgmentReview entries={reviewEntries} />
-          <IntentDistribution segIntent={segIntent} />
-        </div>
+        {/* 层6:今天有哪些判断被验证/推翻(空则整层消失) */}
+        <JudgmentReview entries={reviewEntries} />
 
-        {/* 屏4:和我相关/深度内容 ｜ 值得复看(双栏,消灭右侧空白) */}
+        {/* 层7(最后一层,到此结束):和我相关 3 条 ｜ 值得复看 2 条 */}
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (

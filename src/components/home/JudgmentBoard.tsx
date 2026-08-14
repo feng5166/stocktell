@@ -26,7 +26,21 @@ function InfoRow({ k, v }: { k: string; v: ReactNode }) {
   );
 }
 
+// 层级拉开(三轮走查):大卡=解释(变化行+事件/证据正文+四行信息),小卡=判断
+// (意图 badge 已并入标题行,正文只留一句 take)——小卡不再是缩小版完整卡。
 function CardBody({ j, full }: { j: Judged; full: boolean }) {
+  if (!full) {
+    return (
+      <>
+        {(j.changes?.length ?? 0) > 0 && (
+          <p className="mt-1.5 text-xs font-medium leading-relaxed text-indigo-700">
+            与昨日:{j.changes!.map((c) => c.text).join(" · ")}
+          </p>
+        )}
+        <div className="mt-2 text-right text-xs font-medium text-brand-600">查看详情 →</div>
+      </>
+    );
+  }
   return (
     <>
       {(j.changes?.length ?? 0) > 0 && (
@@ -34,6 +48,7 @@ function CardBody({ j, full }: { j: Judged; full: boolean }) {
           与昨日相比:{j.changes!.map((c) => c.text).join(" · ")}
         </p>
       )}
+      {j.body && <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">{j.body}</p>}
       <div className="mt-2.5 space-y-1 border-t border-gray-100 pt-2.5">
         <InfoRow
           k="资金"
@@ -46,14 +61,14 @@ function CardBody({ j, full }: { j: Judged; full: boolean }) {
             </>
           }
         />
-        {full && j.coreSegments && j.coreSegments.length > 0 && (
+        {j.coreSegments && j.coreSegments.length > 0 && (
           <InfoRow k="环节" v={j.coreSegments.join(" · ")} />
         )}
-        {full && j.repStocks && j.repStocks.length > 0 && (
+        {j.repStocks && j.repStocks.length > 0 && (
           <InfoRow k="映射" v={j.repStocks.join(" · ")} />
         )}
-        {full && j.verifyHint && <InfoRow k="验证" v={j.verifyHint} />}
-        {full && j.splitNote && (
+        {j.verifyHint && <InfoRow k="验证" v={j.verifyHint} />}
+        {j.splitNote && (
           <p className="pt-0.5 text-xs leading-relaxed text-amber-700">{j.splitNote}</p>
         )}
       </div>
@@ -80,7 +95,7 @@ export function JudgmentBoard({
   const top = ordered.slice(0, 3);
   const anyChange = judgments.some((j) => (j.changes?.length ?? 0) > 0);
 
-  const Head = ({ j, idx }: { j: Judged; idx: number }) => (
+  const Head = ({ j, idx, showIntent = false }: { j: Judged; idx: number; showIntent?: boolean }) => (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-1.5">
         <span
@@ -90,10 +105,15 @@ export function JudgmentBoard({
         >
           {idx + 1}
         </span>
-        <span className="text-[15px] font-semibold text-gray-900">{j.chainName}</span>
+        <span className={`font-semibold text-gray-900 ${idx === 0 ? "text-base" : "text-[15px]"}`}>{j.chainName}</span>
         {j.logicLabel && (
           <span className="inline-flex rounded bg-brand-50 px-1.5 py-0.5 text-meta font-medium text-brand-700">
             {j.logicLabel}
+          </span>
+        )}
+        {showIntent && (
+          <span className={`inline-flex rounded px-1.5 py-0.5 text-meta font-medium ${INTENT_CHIP_CLS[j.intent]}`}>
+            {j.intentLabel}
           </span>
         )}
         {idx === 0 && (
@@ -107,7 +127,7 @@ export function JudgmentBoard({
           </span>
         )}
       </div>
-      <p className="mt-1.5 text-sm font-medium leading-relaxed text-gray-800">{j.take}</p>
+      <p className={`mt-1.5 font-medium leading-relaxed text-gray-800 ${idx === 0 ? "text-[15px]" : "text-sm"}`}>{j.take}</p>
     </div>
   );
 
@@ -134,16 +154,16 @@ export function JudgmentBoard({
                 href={j.href}
                 className="hidden h-full rounded-2xl bg-white p-4 shadow-sm transition-shadow hover:shadow sm:block"
               >
-                <Head j={j} idx={i + 1} />
+                <Head j={j} idx={i + 1} showIntent />
                 <CardBody j={j} full={false} />
               </Link>
               {/* 移动端:折叠 */}
               <details className="rounded-2xl bg-white p-4 shadow-sm sm:hidden">
                 <summary className="cursor-pointer list-none">
-                  <Head j={j} idx={i + 1} />
+                  <Head j={j} idx={i + 1} showIntent />
                 </summary>
                 <Link href={j.href} className="block">
-                  <CardBody j={j} full />
+                  <CardBody j={j} full={false} />
                 </Link>
               </details>
             </div>
