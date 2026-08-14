@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/api-guard";
 import { latestSnapshots, snapshotsByYmd } from "@/lib/market-intent/store";
+import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -15,5 +16,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, ymd, snaps: await snapshotsByYmd(ymd) });
   }
   const latest = await latestSnapshots();
-  return NextResponse.json({ ok: true, ...latest });
+  // 顺带带出最近两日的 Judgment 存档(2.2.5;2.2.6 diff 调试用)
+  const judgments = await getPrisma()
+    ?.dailyJudgment.findMany({ orderBy: { ymd: "desc" }, take: 8 })
+    .catch(() => []);
+  return NextResponse.json({ ok: true, ...latest, judgments: judgments ?? [] });
 }

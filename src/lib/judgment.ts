@@ -72,7 +72,9 @@ function takeOf(logic: IndustryLogic, intent: IntentType, verification: Verifica
     return "事件、资金、基本面开始形成同向验证。";
   if (logic === "strengthen" && bull)
     return `产业逻辑和资金开始同向,但基本面还没跟上——现在等的是${verifyHint}的证据。`;
-  if ((logic === "strengthen" || logic === "unchanged") && bear)
+  if (logic === "strengthen" && bear)
+    return "需求侧还在增强,但资金已在高位换手——涨了一段后的分歧期,盯紧筹码去向和新验证,别只看事件热度。";
+  if (logic === "unchanged" && bear)
     return "产业逻辑没有新的破坏,但资金明显撤离——短期市场行为和长期逻辑正在背离。";
   if (logic === "sentiment" && bull)
     return "资金很热,但目前更像题材交易,还不能认为产业受益已经成立。";
