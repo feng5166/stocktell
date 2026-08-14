@@ -37,6 +37,11 @@ import { recentSnapshots } from "@/lib/market-intent/store";
 
 // 首页 = 今日产业链推理台(首页改版 PRD):先看因果链,再看触发源,再看和我相关。
 // 全局内容走 ISR(大陆 TTFB 约定,零 fetch 零 LLM);个性化(和我相关/自选)全部客户端按需取。
+
+// 首页 canonical(SEO 旧索引修复,2026-08-14):双主机历史(vercel.app 曾与主域并行收录)
+// 下必须显式声明正主。只在首页自己的 metadata 声明——放 layout 会让无 canonical 的子页
+// 全部继承「canonical=/」自伤。
+export const metadata = { alternates: { canonical: "/" } };
 export const revalidate = 60;
 
 export default async function Home() {
