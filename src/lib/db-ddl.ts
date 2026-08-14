@@ -181,6 +181,16 @@ const T_MARKET_INTENT = `CREATE TABLE IF NOT EXISTS "market_intent_daily" (
 )`;
 const IDX_MARKET_INTENT_SEG = `CREATE INDEX IF NOT EXISTS "market_intent_daily_segment_ymd_idx" ON "market_intent_daily" ("segment", "ymd")`;
 
+// Daily Judgment 按日存档表(2.2.5,幂等)。改这里必须同步改 instrumentation.ts 哨兵(相邻改约定)。
+const T_DAILY_JUDGMENT = `CREATE TABLE IF NOT EXISTS "daily_judgments" (
+  "ymd" text NOT NULL,
+  "subject" text NOT NULL,
+  "data" jsonb NOT NULL,
+  "updated_at" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "daily_judgments_pkey" PRIMARY KEY ("ymd", "subject")
+)`;
+const IDX_DAILY_JUDGMENT_SUBJ = `CREATE INDEX IF NOT EXISTS "daily_judgments_subject_ymd_idx" ON "daily_judgments" ("subject", "ymd")`;
+
 // 接口监控聚合表(幂等)
 const T_API_METRIC = `CREATE TABLE IF NOT EXISTS "api_metric" (
   "route" text NOT NULL,
@@ -365,6 +375,8 @@ export const DDL_STATEMENTS: string[] = [
   T_FUND_DAY,
   T_MARKET_INTENT,
   IDX_MARKET_INTENT_SEG,
+  T_DAILY_JUDGMENT,
+  IDX_DAILY_JUDGMENT_SUBJ,
   T_API_METRIC,
   T_FEEDBACK,
   IDX_FEEDBACK_CREATED,

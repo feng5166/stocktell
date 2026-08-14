@@ -192,6 +192,18 @@ model MarketIntentDaily {
   @@map("market_intent_daily")
 }
 
+// Daily Judgment 按日存档(2.2.5):链级三输入合成判断,yesterday→today diff(2.2.6)的数据底。
+model DailyJudgment {
+  ymd       String // 交易日 YYYYMMDD
+  subject   String // 链 slug(后续可扩 stock code)
+  data      Json // ChainJudgment
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([ymd, subject])
+  @@index([subject, ymd])
+  @@map("daily_judgments")
+}
+
 model FundDayCache {
   ymd       String   @id // 交易日 YYYYMMDD
   data      Json // { mf: {code:净流入亿}, lh: {code:{net,reason}}, mg: {code:融资余额亿} }

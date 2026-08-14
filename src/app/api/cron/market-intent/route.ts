@@ -10,6 +10,7 @@ import { latestFundYmd, ashareTradingDaysWindow } from "@/lib/tushare";
 import { buildSegmentDayMetrics } from "@/lib/market-intent/metrics";
 import { classifyIntent } from "@/lib/market-intent/rules";
 import { saveSnapshots, storedYmdSet, loadHistory } from "@/lib/market-intent/store";
+import { buildDailyJudgments, saveDailyJudgments } from "@/lib/judgment";
 import type { SegmentIntentSnapshot } from "@/lib/market-intent/types";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,19 @@ export const maxDuration = 60;
 
 const LOOKBACK_DAYS = 20; // 交易日窗口:20 日分位/位置字段的最大需求
 const BACKFILL_CAP = 5; // 单次最多补几天(hnd1→Tushare 路径偶发劣化,保守防超时)
+
+// Daily Judgment 存档(2.2.5):合成失败不影响快照主流程,只发告警
+async function persistJudgments(): Promise<void> {
+  try {
+    const res = await buildDailyJudgments();
+    if (res) await saveDailyJudgments(res.ymd, res.judgments);
+  } catch (e) {
+    await alertCron(
+      "market-intent",
+      `⚠️ Daily Judgment 存档失败(快照不受影响)\n${e instanceof Error ? e.message : String(e)}`
+    ).catch(() => null);
+  }
+}
 
 export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -37,6 +51,7 @@ export async function GET(req: NextRequest) {
   if (req.nextUrl.searchParams.get("force") === "1") stored.delete(headYmd);
   const missing = days.filter((d) => !stored.has(d));
   if (missing.length === 0) {
+    await persistJudgments(); // 快照已齐也刷 Judgment(规则更新后重跑即生效,4 行 upsert 幂等)
     return NextResponse.json({ ok: true, upToDate: true, head: headYmd });
   }
   // 首次冷启动:窗口全缺 → 只从能补的头部开始(升序前 BACKFILL_CAP 天),
@@ -73,6 +88,8 @@ export async function GET(req: NextRequest) {
       break;
     }
   }
+
+  if (done.includes(headYmd)) await persistJudgments(); // 最新日快照落定后合成并存档链级 Judgment
 
   const remaining = missing.length - done.length - failed.length;
   if (done.length > 0 && (remaining > 0 || done.length > 1)) {

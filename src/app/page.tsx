@@ -29,10 +29,10 @@ import {
 import { listPublishedEvents } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
-import { HomeIntentStrip, type HomeIntentRow } from "@/components/HomeIntentStrip";
-import { latestSnapshots } from "@/lib/market-intent/store";
-import { SEGMENT_BY_KEY } from "@/lib/market-intent/segments";
-import { INTENT_SEVERITY } from "@/lib/market-intent/ui";
+import { JudgmentBoard, JudgmentReview } from "@/components/home/JudgmentBoard";
+import { HomeMyStocks, type SegIntentPair } from "@/components/home/HomeMyStocks";
+import { buildDailyJudgments, buildJudgmentReview } from "@/lib/judgment";
+import { recentSnapshots } from "@/lib/market-intent/store";
 
 // 首页 = 今日产业链推理台(首页改版 PRD):先看因果链,再看触发源,再看和我相关。
 // 全局内容走 ISR(大陆 TTFB 约定,零 fetch 零 LLM);个性化(和我相关/自选)全部客户端按需取。
@@ -91,33 +91,33 @@ export default async function Home() {
   );
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();
-  // 今日资金意图(2.2.3):3 条链的链级摘要——每链取信息量最高的板块判定,完整数据在链页
-  const intentLatest = await latestSnapshots().catch(() => null);
-  const INTENT_HOME_CHAINS: { slug: string; name: string; href: string }[] = [
-    { slug: "ai-infra", name: "AI 推理基础设施", href: "/chain/ai#market-intent" },
-    { slug: "datacenter-power", name: "数据中心电力", href: "/chain/data-center-power#market-intent" },
-    { slug: "ai-application", name: "AI 应用", href: "/chain/ai#market-intent" },
-  ];
-  const intentRows: HomeIntentRow[] = [];
-  if (intentLatest) {
-    for (const c of INTENT_HOME_CHAINS) {
-      const segs = intentLatest.snaps.filter((s) =>
-        SEGMENT_BY_KEY[s.segment]?.chainSlugs.includes(c.slug)
-      );
-      if (segs.length === 0) continue;
-      const top = segs
-        .slice()
-        .sort((a, b) => INTENT_SEVERITY[a.intent.intent] - INTENT_SEVERITY[b.intent.intent])[0];
-      intentRows.push({
-        chainName: c.name,
-        href: c.href,
-        intent: top.intent.intent,
-        label: top.intent.label,
-        confidence: top.intent.confidence,
-        segmentName: segs.length > 1 ? SEGMENT_BY_KEY[top.segment]?.name ?? null : null,
-      });
+  // Daily Judgment 首屏三块(2.2.5):①三件事 ③旧判断复核(server)+ ②我的股票(client 数据底)
+  const [judgmentRes, reviewEntries, intentPairSnaps] = await Promise.all([
+    buildDailyJudgments().catch(() => null),
+    buildJudgmentReview().catch(() => []),
+    recentSnapshots(2).catch(() => []),
+  ]);
+  // 板块意图 今/昨 对照(块② client 用;板块仅 8 个,payload 极小)
+  const segIntent: Record<string, SegIntentPair> = {};
+  {
+    const ymds = Array.from(new Set(intentPairSnaps.map((s) => s.ymd))).sort();
+    const tYmd = ymds[ymds.length - 1];
+    const yYmd = ymds.length > 1 ? ymds[ymds.length - 2] : null;
+    for (const s of intentPairSnaps) {
+      if (s.ymd !== tYmd) continue;
+      const y = yYmd
+        ? intentPairSnaps.find((p) => p.ymd === yYmd && p.segment === s.segment) ?? null
+        : null;
+      segIntent[s.segment] = {
+        t: { intent: s.intent.intent, label: s.intent.label },
+        y: y ? { intent: y.intent.intent, label: y.intent.label } : null,
+      };
     }
   }
+  // 今日被事件点名的 A 股(块② 置顶依据)
+  const namedToday = Array.from(
+    new Set(items.flatMap((it) => it.beneficiaries.map((b) => b.code)))
+  );
   const relLabelMap = buildRelLabelMap(); // Phase 3-D:OvernightRadar peer 关系档(服务端算好传客户端)
   // 节后首日观察(2.1-C):桥文档只在 subType 命中时渲染(多读一次 KV 在 ISR 下可忽略);
   // 回顾条目不在 bridge 区块重复——下方 stale feed 展示的就是最近一期简报,区块只补「口径+验证点」。
@@ -133,6 +133,11 @@ export default async function Home() {
         <BriefStatusBanner status={briefStatus} stale={stale} shownDate={shownDate} />
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
+
+        {/* Daily Judgment 首屏三块(2.2.5):替用户做最后一次合成——今天到底该看什么 */}
+        {judgmentRes && <JudgmentBoard ymd={judgmentRes.ymd} judgments={judgmentRes.judgments} />}
+        <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
+        <JudgmentReview entries={reviewEntries} />
 
         {/* 链情绪+雷达 与 因果链 的顺序按访客态翻转(新手路径 v2):
             老访客/有自选 = 盘面在前(负责人 2026-07-09 拍板);新访客 = 因果链演示在前 */}
@@ -160,9 +165,6 @@ export default async function Home() {
             </div>
           }
         />
-
-        {/* 今日资金意图(2.2.3):3 条链摘要,主阵地在链页 */}
-        {intentLatest && <HomeIntentStrip rows={intentRows} ymd={intentLatest.ymd} />}
 
         {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
         {items.length === 0 ? (
