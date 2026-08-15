@@ -1,908 +1,908 @@
-// 自动生成,勿手改。来源 Tushare daily_basic @ 20260807(换手=近5日均值)。
+// 自动生成,勿手改。来源 Tushare daily_basic @ 20260814(换手=近5日均值)。
 // 重新生成:node scripts/enrich-tushare.mjs
 export interface Enrich { circMvYi: number | null; turnover: number | null; pe: number | null; capTier: string | null; heat: string | null; }
-export const ENRICH_AS_OF = "20260807";
+export const ENRICH_AS_OF = "20260814";
 export const ENRICH: Record<string, Enrich> = {
   "300033": {
-    "circMvYi": 1051.4,
-    "turnover": 3.28,
-    "pe": 56.3,
+    "circMvYi": 1009.5,
+    "turnover": 2.74,
+    "pe": 54.1,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "300054": {
-    "circMvYi": 578.6,
-    "turnover": 6.06,
-    "pe": 103,
+    "circMvYi": 566.7,
+    "turnover": 3.72,
+    "pe": 100.9,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300068": {
-    "circMvYi": 36.3,
-    "turnover": 4.95,
+    "circMvYi": 36.5,
+    "turnover": 4.8,
     "pe": null,
     "capTier": "小盘",
     "heat": "正常"
   },
   "300124": {
-    "circMvYi": 1557.1,
-    "turnover": 1.11,
-    "pe": 34.6,
+    "circMvYi": 1475.1,
+    "turnover": 0.92,
+    "pe": 32.8,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "300236": {
-    "circMvYi": 258.8,
-    "turnover": 4.2,
-    "pe": 96.8,
+    "circMvYi": 261.7,
+    "turnover": 2.73,
+    "pe": 97.9,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "300249": {
-    "circMvYi": 48.3,
-    "turnover": 4.03,
-    "pe": 193.3,
+    "circMvYi": 48.6,
+    "turnover": 7.31,
+    "pe": 194.8,
     "capTier": "小盘",
     "heat": "正常"
   },
   "300285": {
-    "circMvYi": 604.7,
-    "turnover": 19.09,
-    "pe": 115.8,
+    "circMvYi": 605.3,
+    "turnover": 17.44,
+    "pe": 115.9,
     "capTier": "中盘",
     "heat": "极热"
   },
   "300308": {
-    "circMvYi": 10210,
-    "turnover": 4.59,
-    "pe": 99.7,
+    "circMvYi": 10466.7,
+    "turnover": 3.01,
+    "pe": 102.2,
     "capTier": "大盘",
     "heat": "正常"
   },
   "300339": {
-    "circMvYi": 300.5,
-    "turnover": 3.88,
-    "pe": 317.3,
+    "circMvYi": 285.6,
+    "turnover": 2.31,
+    "pe": 301.6,
+    "capTier": "中盘",
+    "heat": "清淡"
+  },
+  "300346": {
+    "circMvYi": 385.1,
+    "turnover": 7.21,
+    "pe": 126.9,
     "capTier": "中盘",
     "heat": "正常"
   },
-  "300346": {
-    "circMvYi": 382.6,
-    "turnover": 9.56,
-    "pe": 126.1,
-    "capTier": "中盘",
-    "heat": "活跃"
-  },
   "300394": {
-    "circMvYi": 2510.7,
-    "turnover": 6.41,
-    "pe": 124.7,
+    "circMvYi": 2913.7,
+    "turnover": 4.58,
+    "pe": 144.8,
     "capTier": "大盘",
     "heat": "正常"
   },
   "300408": {
-    "circMvYi": 2381.9,
-    "turnover": 4.18,
-    "pe": 96.7,
+    "circMvYi": 2413.7,
+    "turnover": 3.81,
+    "pe": 98.4,
     "capTier": "大盘",
     "heat": "正常"
   },
   "300418": {
-    "circMvYi": 527.5,
-    "turnover": 7.97,
+    "circMvYi": 512.7,
+    "turnover": 5.18,
     "pe": null,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300442": {
-    "circMvYi": 1141.3,
-    "turnover": 2.47,
-    "pe": 22.7,
+    "circMvYi": 1160.1,
+    "turnover": 2.36,
+    "pe": 23,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "300474": {
-    "circMvYi": 216.2,
-    "turnover": 2.08,
+    "circMvYi": 211.4,
+    "turnover": 2.11,
     "pe": null,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "300475": {
-    "circMvYi": 714.2,
-    "turnover": 7.29,
-    "pe": 136.8,
+    "circMvYi": 724.7,
+    "turnover": 6.97,
+    "pe": 138.8,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300476": {
-    "circMvYi": 2424.3,
-    "turnover": 6.62,
-    "pe": 63.9,
+    "circMvYi": 2330.2,
+    "turnover": 5.31,
+    "pe": 61.4,
     "capTier": "大盘",
     "heat": "正常"
   },
   "300496": {
-    "circMvYi": 231,
-    "turnover": 4.84,
-    "pe": 64.1,
+    "circMvYi": 221,
+    "turnover": 3.14,
+    "pe": 61.3,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300499": {
-    "circMvYi": 79,
-    "turnover": 7.28,
-    "pe": 313,
+    "circMvYi": 80.7,
+    "turnover": 6.82,
+    "pe": 319.9,
     "capTier": "小盘",
     "heat": "正常"
   },
   "300502": {
-    "circMvYi": 5279.7,
-    "turnover": 4.91,
-    "pe": 61.6,
+    "circMvYi": 5620,
+    "turnover": 3.85,
+    "pe": 65.5,
     "capTier": "大盘",
     "heat": "正常"
   },
   "300563": {
-    "circMvYi": 30.6,
-    "turnover": 2.77,
-    "pe": 59.5,
+    "circMvYi": 30.1,
+    "turnover": 1.85,
+    "pe": 58.5,
     "capTier": "小盘",
     "heat": "清淡"
   },
   "300567": {
-    "circMvYi": 508.4,
-    "turnover": 5.12,
-    "pe": 763.7,
+    "circMvYi": 507.3,
+    "turnover": 3.74,
+    "pe": 762.1,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300570": {
-    "circMvYi": 275.7,
-    "turnover": 14.93,
-    "pe": 109,
+    "circMvYi": 310.4,
+    "turnover": 10.05,
+    "pe": 122.7,
     "capTier": "中盘",
     "heat": "活跃"
   },
   "300602": {
-    "circMvYi": 149.6,
-    "turnover": 4.82,
-    "pe": 60,
+    "circMvYi": 155.3,
+    "turnover": 4.45,
+    "pe": 62.3,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300604": {
-    "circMvYi": 1386.3,
-    "turnover": 5.93,
-    "pe": 137.3,
+    "circMvYi": 1385.5,
+    "turnover": 3.76,
+    "pe": 137.2,
     "capTier": "大盘",
     "heat": "正常"
   },
   "300620": {
-    "circMvYi": 711.9,
-    "turnover": 7.5,
-    "pe": 406.3,
+    "circMvYi": 795.4,
+    "turnover": 5.07,
+    "pe": 454,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300661": {
-    "circMvYi": 672.1,
-    "turnover": 2.56,
-    "pe": 140,
+    "circMvYi": 740.2,
+    "turnover": 2.71,
+    "pe": 154.1,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "300666": {
-    "circMvYi": 558.4,
-    "turnover": 9.39,
-    "pe": 139.5,
+    "circMvYi": 565.8,
+    "turnover": 7.57,
+    "pe": 141.4,
     "capTier": "中盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "300679": {
-    "circMvYi": 151.6,
-    "turnover": 4.64,
-    "pe": 66.5,
+    "circMvYi": 153.3,
+    "turnover": 4.58,
+    "pe": 67.2,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300693": {
-    "circMvYi": 102.7,
-    "turnover": 4.54,
-    "pe": 25.1,
+    "circMvYi": 122.2,
+    "turnover": 10.19,
+    "pe": 29.8,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "活跃"
   },
   "300782": {
-    "circMvYi": 349.7,
-    "turnover": 3.58,
+    "circMvYi": 353.5,
+    "turnover": 3.13,
     "pe": null,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300870": {
-    "circMvYi": 324.7,
-    "turnover": 5.31,
-    "pe": 133.1,
+    "circMvYi": 348.5,
+    "turnover": 5.69,
+    "pe": 142.8,
     "capTier": "中盘",
     "heat": "正常"
   },
   "300990": {
-    "circMvYi": 57.4,
-    "turnover": 9.53,
-    "pe": 50,
+    "circMvYi": 58.3,
+    "turnover": 7.56,
+    "pe": 50.8,
     "capTier": "小盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "301018": {
-    "circMvYi": 245.2,
-    "turnover": 5.46,
-    "pe": 149.7,
+    "circMvYi": 261.9,
+    "turnover": 6.98,
+    "pe": 159.9,
     "capTier": "中盘",
     "heat": "正常"
   },
   "301217": {
-    "circMvYi": 960.1,
-    "turnover": 5.7,
-    "pe": 1532.5,
-    "capTier": "中盘",
+    "circMvYi": 1020.1,
+    "turnover": 6.72,
+    "pe": 1628.3,
+    "capTier": "大盘",
     "heat": "正常"
   },
   "301236": {
-    "circMvYi": 327.7,
-    "turnover": 5.2,
-    "pe": 209.5,
+    "circMvYi": 306.6,
+    "turnover": 3.29,
+    "pe": 196,
     "capTier": "中盘",
     "heat": "正常"
   },
   "301269": {
-    "circMvYi": 518.8,
-    "turnover": 1.56,
-    "pe": 850.7,
+    "circMvYi": 525.4,
+    "turnover": 1.44,
+    "pe": 861.6,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "301308": {
-    "circMvYi": 1089.6,
-    "turnover": 7.45,
-    "pe": 114.9,
+    "circMvYi": 1145.6,
+    "turnover": 8.25,
+    "pe": 120.8,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "活跃"
   },
   "301511": {
-    "circMvYi": 340.5,
-    "turnover": 10.61,
-    "pe": 509.2,
+    "circMvYi": 356,
+    "turnover": 11.39,
+    "pe": 532.3,
     "capTier": "中盘",
     "heat": "活跃"
   },
   "600050": {
-    "circMvYi": 1332.6,
-    "turnover": 0.61,
-    "pe": 14.7,
+    "circMvYi": 1345,
+    "turnover": 0.39,
+    "pe": 14.9,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "600111": {
-    "circMvYi": 1592.8,
-    "turnover": 2.39,
-    "pe": 70.8,
+    "circMvYi": 1542.2,
+    "turnover": 2.17,
+    "pe": 68.5,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "600183": {
-    "circMvYi": 3376,
-    "turnover": 2.97,
-    "pe": 102,
+    "circMvYi": 3453.9,
+    "turnover": 3.14,
+    "pe": 104.3,
     "capTier": "大盘",
-    "heat": "清淡"
+    "heat": "正常"
   },
   "600206": {
-    "circMvYi": 407.8,
-    "turnover": 10.95,
-    "pe": 154,
+    "circMvYi": 429.9,
+    "turnover": 14.38,
+    "pe": 162.3,
     "capTier": "中盘",
     "heat": "活跃"
   },
   "600584": {
-    "circMvYi": 1391.3,
-    "turnover": 10.27,
-    "pe": 88.9,
+    "circMvYi": 1408.4,
+    "turnover": 7.18,
+    "pe": 90,
     "capTier": "大盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "600667": {
-    "circMvYi": 408.5,
-    "turnover": 19.52,
-    "pe": 91.2,
+    "circMvYi": 480,
+    "turnover": 19.07,
+    "pe": 107.1,
     "capTier": "中盘",
     "heat": "极热"
   },
   "600875": {
-    "circMvYi": 619.9,
-    "turnover": 3.48,
-    "pe": 24.7,
+    "circMvYi": 609.1,
+    "turnover": 1.81,
+    "pe": 24.3,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "601127": {
-    "circMvYi": 884.8,
-    "turnover": 2.24,
-    "pe": 16.6,
+    "circMvYi": 828.4,
+    "turnover": 1.43,
+    "pe": 15.6,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "601138": {
-    "circMvYi": 13529.7,
-    "turnover": 0.97,
-    "pe": 38.3,
+    "circMvYi": 13134.8,
+    "turnover": 0.69,
+    "pe": 37.2,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "601360": {
-    "circMvYi": 674.8,
-    "turnover": 2.22,
-    "pe": 256.5,
+    "circMvYi": 662.9,
+    "turnover": 1.27,
+    "pe": 252,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "601689": {
-    "circMvYi": 875.5,
-    "turnover": 1.85,
-    "pe": 31.5,
+    "circMvYi": 860.4,
+    "turnover": 1.32,
+    "pe": 31,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "601728": {
-    "circMvYi": 4797.5,
-    "turnover": 0.21,
-    "pe": 17,
+    "circMvYi": 5100.3,
+    "turnover": 0.15,
+    "pe": 18.1,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "601985": {
-    "circMvYi": 1661.7,
-    "turnover": 0.76,
-    "pe": 19.5,
+    "circMvYi": 1658,
+    "turnover": 0.37,
+    "pe": 19.4,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "603019": {
-    "circMvYi": 1298.8,
-    "turnover": 3.37,
-    "pe": 59.7,
+    "circMvYi": 1307.4,
+    "turnover": 3.28,
+    "pe": 60.1,
     "capTier": "大盘",
     "heat": "正常"
   },
   "603083": {
-    "circMvYi": 426.6,
-    "turnover": 10.17,
-    "pe": 216.3,
+    "circMvYi": 512.3,
+    "turnover": 10.2,
+    "pe": 259.8,
     "capTier": "中盘",
     "heat": "活跃"
   },
   "603228": {
-    "circMvYi": 932.3,
-    "turnover": 4.74,
-    "pe": 77.2,
+    "circMvYi": 962.4,
+    "turnover": 7.44,
+    "pe": 79.7,
     "capTier": "中盘",
     "heat": "正常"
   },
   "603256": {
-    "circMvYi": 1397,
-    "turnover": 3.29,
-    "pe": 711.4,
+    "circMvYi": 1356.4,
+    "turnover": 2.68,
+    "pe": 690.7,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "603501": {
-    "circMvYi": 1083.4,
-    "turnover": 1.82,
-    "pe": 27.9,
+    "circMvYi": 1099.3,
+    "turnover": 1.81,
+    "pe": 28.3,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "603667": {
-    "circMvYi": 203.7,
-    "turnover": 4.63,
-    "pe": 233.2,
+    "circMvYi": 202.1,
+    "turnover": 5.06,
+    "pe": 231.4,
     "capTier": "中盘",
     "heat": "正常"
   },
   "603728": {
-    "circMvYi": 221.8,
-    "turnover": 1.77,
-    "pe": 362.8,
+    "circMvYi": 218.5,
+    "turnover": 1.32,
+    "pe": 357.5,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "603893": {
-    "circMvYi": 868.3,
-    "turnover": 4.57,
-    "pe": 83.5,
+    "circMvYi": 863.1,
+    "turnover": 3.09,
+    "pe": 83,
     "capTier": "中盘",
     "heat": "正常"
   },
   "603912": {
-    "circMvYi": 42.1,
-    "turnover": 4.58,
+    "circMvYi": 46.6,
+    "turnover": 7.44,
     "pe": null,
     "capTier": "小盘",
     "heat": "正常"
   },
   "603986": {
-    "circMvYi": 2787.9,
-    "turnover": 10.02,
-    "pe": 177.6,
+    "circMvYi": 2790.8,
+    "turnover": 7.62,
+    "pe": 177.8,
     "capTier": "大盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "605090": {
-    "circMvYi": 243,
-    "turnover": 1.82,
-    "pe": 16.4,
+    "circMvYi": 256.3,
+    "turnover": 2.39,
+    "pe": 17.3,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "605589": {
-    "circMvYi": 358.5,
-    "turnover": 5.17,
-    "pe": 35.6,
+    "circMvYi": 359.3,
+    "turnover": 3.81,
+    "pe": 35.7,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688008": {
-    "circMvYi": 2467.2,
-    "turnover": 4.45,
-    "pe": 117.7,
+    "circMvYi": 2425.9,
+    "turnover": 3.55,
+    "pe": 115.7,
     "capTier": "大盘",
     "heat": "正常"
   },
   "688012": {
-    "circMvYi": 3464,
-    "turnover": 3.33,
-    "pe": 166.8,
+    "circMvYi": 3531.8,
+    "turnover": 2.64,
+    "pe": 170,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "688017": {
-    "circMvYi": 637.5,
-    "turnover": 7.15,
-    "pe": 512.6,
+    "circMvYi": 641.5,
+    "turnover": 5.79,
+    "pe": 515.8,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688019": {
-    "circMvYi": 572.6,
-    "turnover": 3.95,
-    "pe": 73.1,
+    "circMvYi": 566.8,
+    "turnover": 2.63,
+    "pe": 72.3,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "688037": {
-    "circMvYi": 627.2,
-    "turnover": 3.92,
-    "pe": 874.7,
+    "circMvYi": 679.5,
+    "turnover": 2.66,
+    "pe": 947.7,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "688041": {
-    "circMvYi": 6874.2,
-    "turnover": 0.93,
-    "pe": 270.1,
+    "circMvYi": 6531.2,
+    "turnover": 0.69,
+    "pe": 256.6,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "688072": {
-    "circMvYi": 1952.4,
-    "turnover": 3.23,
-    "pe": 216.6,
+    "circMvYi": 1945.5,
+    "turnover": 2.23,
+    "pe": 215.9,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "688082": {
-    "circMvYi": 1374.9,
-    "turnover": 1.68,
-    "pe": 99.6,
+    "circMvYi": 1458,
+    "turnover": 1.71,
+    "pe": 105.6,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "688106": {
-    "circMvYi": 162.7,
-    "turnover": 5.34,
-    "pe": 123.3,
+    "circMvYi": 157.5,
+    "turnover": 4.02,
+    "pe": 120.7,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688111": {
-    "circMvYi": 1232.7,
-    "turnover": 3.89,
-    "pe": 67.1,
+    "circMvYi": 1190,
+    "turnover": 2.16,
+    "pe": 64.8,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "688120": {
-    "circMvYi": 1286.9,
-    "turnover": 3.55,
-    "pe": 118.7,
+    "circMvYi": 1307.3,
+    "turnover": 2.39,
+    "pe": 120.6,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "688206": {
-    "circMvYi": 157.8,
-    "turnover": 1.76,
-    "pe": 460.8,
+    "circMvYi": 155.9,
+    "turnover": 1.69,
+    "pe": 455.4,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "688256": {
-    "circMvYi": 7539.1,
-    "turnover": 2.49,
-    "pe": 366.1,
+    "circMvYi": 6867.2,
+    "turnover": 2.15,
+    "pe": 333.5,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "688268": {
-    "circMvYi": 198.7,
-    "turnover": 7.65,
-    "pe": 146.8,
+    "circMvYi": 197.9,
+    "turnover": 5.97,
+    "pe": 146.2,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688297": {
-    "circMvYi": 275.9,
-    "turnover": 1.11,
-    "pe": 311.5,
+    "circMvYi": 275.2,
+    "turnover": 0.9,
+    "pe": 310.7,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "688300": {
-    "circMvYi": 366.3,
-    "turnover": 5.65,
-    "pe": 125.2,
+    "circMvYi": 397.6,
+    "turnover": 6.21,
+    "pe": 135.9,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688313": {
-    "circMvYi": 577.2,
-    "turnover": 8.17,
-    "pe": 155.1,
+    "circMvYi": 636.2,
+    "turnover": 5.8,
+    "pe": 170.9,
     "capTier": "中盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "688322": {
-    "circMvYi": 358.3,
-    "turnover": 4.97,
-    "pe": 361.1,
+    "circMvYi": 352.2,
+    "turnover": 3.57,
+    "pe": 355,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688362": {
-    "circMvYi": 312.5,
-    "turnover": 8.03,
-    "pe": 382.4,
+    "circMvYi": 308.1,
+    "turnover": 6.41,
+    "pe": 377,
     "capTier": "中盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "688498": {
-    "circMvYi": 1665.8,
-    "turnover": 5.27,
-    "pe": 883.9,
+    "circMvYi": 1866.7,
+    "turnover": 4.08,
+    "pe": 990.5,
     "capTier": "大盘",
     "heat": "正常"
   },
   "688521": {
-    "circMvYi": 1212.2,
-    "turnover": 3.66,
+    "circMvYi": 1090.1,
+    "turnover": 2.99,
     "pe": null,
+    "capTier": "大盘",
+    "heat": "清淡"
+  },
+  "688525": {
+    "circMvYi": 1141.2,
+    "turnover": 6.3,
+    "pe": 133.8,
     "capTier": "大盘",
     "heat": "正常"
   },
-  "688525": {
-    "circMvYi": 1154.8,
-    "turnover": 8.01,
-    "pe": 135.4,
-    "capTier": "大盘",
-    "heat": "活跃"
-  },
   "688535": {
-    "circMvYi": 138.3,
-    "turnover": 7.44,
-    "pe": 612,
+    "circMvYi": 140.8,
+    "turnover": 5.7,
+    "pe": 622.8,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688676": {
-    "circMvYi": 318.8,
-    "turnover": 2.39,
-    "pe": 48.3,
+    "circMvYi": 322.9,
+    "turnover": 3.24,
+    "pe": 49,
     "capTier": "中盘",
-    "heat": "清淡"
+    "heat": "正常"
   },
   "688702": {
-    "circMvYi": 816,
-    "turnover": 5.74,
+    "circMvYi": 809.1,
+    "turnover": 4.27,
     "pe": null,
     "capTier": "中盘",
     "heat": "正常"
   },
   "688981": {
-    "circMvYi": 2569.4,
-    "turnover": 3.08,
-    "pe": 218.2,
+    "circMvYi": 2656.8,
+    "turnover": 2.68,
+    "pe": 225.7,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "920808": {
-    "circMvYi": 121.8,
-    "turnover": 0.96,
-    "pe": 338.9,
+    "circMvYi": 121.3,
+    "turnover": 0.91,
+    "pe": 337.5,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "000977": {
-    "circMvYi": 1144,
-    "turnover": 6.24,
-    "pe": 47.5,
+    "circMvYi": 1155.9,
+    "turnover": 5.62,
+    "pe": 48,
     "capTier": "大盘",
     "heat": "正常"
   },
   "002281": {
-    "circMvYi": 1517.9,
-    "turnover": 6.53,
-    "pe": 168.9,
+    "circMvYi": 1506,
+    "turnover": 6.87,
+    "pe": 167.5,
     "capTier": "大盘",
     "heat": "正常"
   },
   "002463": {
-    "circMvYi": 2420.2,
-    "turnover": 3.43,
-    "pe": 63.4,
+    "circMvYi": 2331.8,
+    "turnover": 2.34,
+    "pe": 61.1,
     "capTier": "大盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "002916": {
-    "circMvYi": 2543.8,
-    "turnover": 1.77,
-    "pe": 79.6,
+    "circMvYi": 2513,
+    "turnover": 1.44,
+    "pe": 78.6,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "002371": {
-    "circMvYi": 5452.8,
-    "turnover": 1.67,
-    "pe": 98.8,
+    "circMvYi": 5356.1,
+    "turnover": 1.02,
+    "pe": 97.1,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "000063": {
-    "circMvYi": 1397.6,
-    "turnover": 3.35,
-    "pe": 29.5,
+    "circMvYi": 1411.7,
+    "turnover": 3.75,
+    "pe": 29.8,
     "capTier": "大盘",
     "heat": "正常"
   },
   "000938": {
-    "circMvYi": 1086.8,
-    "turnover": 11.56,
-    "pe": 64.5,
+    "circMvYi": 1142.6,
+    "turnover": 9.48,
+    "pe": 67.8,
     "capTier": "大盘",
     "heat": "活跃"
   },
   "002475": {
-    "circMvYi": 4174.6,
-    "turnover": 2.39,
-    "pe": 26.5,
+    "circMvYi": 4144.5,
+    "turnover": 1.36,
+    "pe": 26.4,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "002837": {
-    "circMvYi": 631.9,
-    "turnover": 4.1,
-    "pe": 136.5,
+    "circMvYi": 645.4,
+    "turnover": 3.2,
+    "pe": 139.4,
     "capTier": "中盘",
     "heat": "正常"
   },
   "002335": {
-    "circMvYi": 206.2,
-    "turnover": 3.71,
-    "pe": 56.4,
+    "circMvYi": 215.7,
+    "turnover": 4.79,
+    "pe": 59,
     "capTier": "中盘",
     "heat": "正常"
   },
   "002851": {
-    "circMvYi": 611.7,
-    "turnover": 7.27,
-    "pe": 499.3,
+    "circMvYi": 646.1,
+    "turnover": 6.19,
+    "pe": 527.4,
     "capTier": "中盘",
     "heat": "正常"
   },
   "002230": {
-    "circMvYi": 953.3,
-    "turnover": 3,
-    "pe": 124.6,
+    "circMvYi": 915,
+    "turnover": 1.58,
+    "pe": 119.6,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "002747": {
-    "circMvYi": 274.9,
-    "turnover": 11.21,
-    "pe": 756,
+    "circMvYi": 271.9,
+    "turnover": 9.15,
+    "pe": 747.8,
     "capTier": "中盘",
     "heat": "活跃"
   },
   "002049": {
-    "circMvYi": 566.7,
-    "turnover": 2.95,
-    "pe": 39.4,
+    "circMvYi": 572.4,
+    "turnover": 2.51,
+    "pe": 39.8,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "002261": {
-    "circMvYi": 311.6,
-    "turnover": 4.77,
-    "pe": 537.4,
+    "circMvYi": 303,
+    "turnover": 4.98,
+    "pe": 522.6,
     "capTier": "中盘",
     "heat": "正常"
   },
   "000158": {
-    "circMvYi": 215.3,
-    "turnover": 3.09,
-    "pe": 648.1,
-    "capTier": "中盘",
-    "heat": "正常"
-  },
-  "002028": {
-    "circMvYi": 985.8,
-    "turnover": 1.5,
-    "pe": 40.1,
+    "circMvYi": 212.5,
+    "turnover": 1.72,
+    "pe": 639.5,
     "capTier": "中盘",
     "heat": "清淡"
   },
+  "002028": {
+    "circMvYi": 1017,
+    "turnover": 1.44,
+    "pe": 41.4,
+    "capTier": "大盘",
+    "heat": "清淡"
+  },
   "000988": {
-    "circMvYi": 1071.3,
-    "turnover": 7.35,
-    "pe": 72.9,
+    "circMvYi": 1103.4,
+    "turnover": 5.53,
+    "pe": 75.1,
     "capTier": "大盘",
     "heat": "正常"
   },
   "001309": {
-    "circMvYi": 667,
-    "turnover": 15.41,
-    "pe": 133.2,
-    "capTier": "中盘",
-    "heat": "极热"
-  },
-  "000021": {
-    "circMvYi": 643,
-    "turnover": 9.42,
-    "pe": 56.6,
+    "circMvYi": 670.3,
+    "turnover": 10.62,
+    "pe": 133.9,
     "capTier": "中盘",
     "heat": "活跃"
   },
+  "000021": {
+    "circMvYi": 633.3,
+    "turnover": 6.92,
+    "pe": 55.8,
+    "capTier": "中盘",
+    "heat": "正常"
+  },
   "002050": {
-    "circMvYi": 1443.9,
-    "turnover": 1.93,
-    "pe": 40.5,
+    "circMvYi": 1413.7,
+    "turnover": 1.59,
+    "pe": 39.7,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "003816": {
-    "circMvYi": 1530.1,
-    "turnover": 0.34,
-    "pe": 20.1,
+    "circMvYi": 1514.4,
+    "turnover": 0.2,
+    "pe": 19.9,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "002179": {
-    "circMvYi": 743.4,
-    "turnover": 1.4,
-    "pe": 34.5,
+    "circMvYi": 756.4,
+    "turnover": 1.02,
+    "pe": 35.1,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "002389": {
-    "circMvYi": 181.9,
-    "turnover": 2.6,
-    "pe": 675.4,
+    "circMvYi": 183.4,
+    "turnover": 2.39,
+    "pe": 680.9,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "000657": {
-    "circMvYi": 974,
-    "turnover": 7.39,
-    "pe": 119.2,
+    "circMvYi": 992.6,
+    "turnover": 8.19,
+    "pe": 121.5,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "活跃"
   },
   "000962": {
-    "circMvYi": 277.7,
-    "turnover": 6.72,
-    "pe": 112.7,
+    "circMvYi": 278.5,
+    "turnover": 7.43,
+    "pe": 113.1,
     "capTier": "中盘",
     "heat": "正常"
   },
   "002428": {
-    "circMvYi": 653.6,
-    "turnover": 10.52,
-    "pe": 3244.5,
+    "circMvYi": 663.4,
+    "turnover": 15.79,
+    "pe": 3293.5,
     "capTier": "中盘",
-    "heat": "活跃"
+    "heat": "极热"
   },
   "002156": {
-    "circMvYi": 982.1,
-    "turnover": 10.43,
-    "pe": 80.6,
+    "circMvYi": 955.4,
+    "turnover": 5.59,
+    "pe": 78.4,
     "capTier": "中盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "002409": {
-    "circMvYi": 473.9,
-    "turnover": 12.04,
-    "pe": 70.8,
+    "circMvYi": 481.7,
+    "turnover": 9.27,
+    "pe": 71.9,
     "capTier": "中盘",
     "heat": "活跃"
   },
   "002436": {
-    "circMvYi": 513.1,
-    "turnover": 8.27,
-    "pe": 425.7,
+    "circMvYi": 528.5,
+    "turnover": 7.75,
+    "pe": 438.6,
     "capTier": "中盘",
-    "heat": "活跃"
+    "heat": "正常"
   },
   "002185": {
     "circMvYi": 597.4,
-    "turnover": 11.77,
+    "turnover": 8.62,
     "pe": 84.1,
     "capTier": "中盘",
     "heat": "活跃"
   },
   "002130": {
-    "circMvYi": 197.6,
-    "turnover": 3.66,
-    "pe": 21.1,
+    "circMvYi": 194.4,
+    "turnover": 1.98,
+    "pe": 20.7,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "002518": {
-    "circMvYi": 193.4,
-    "turnover": 2.04,
-    "pe": 32.6,
+    "circMvYi": 199.9,
+    "turnover": 2.85,
+    "pe": 33.7,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "002472": {
-    "circMvYi": 294,
-    "turnover": 3.52,
-    "pe": 26.5,
+    "circMvYi": 283.6,
+    "turnover": 2.88,
+    "pe": 25.5,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "清淡"
   },
   "003021": {
-    "circMvYi": 168.3,
-    "turnover": 1.62,
-    "pe": 85.4,
+    "circMvYi": 170,
+    "turnover": 1.59,
+    "pe": 86.3,
     "capTier": "中盘",
     "heat": "清淡"
   },
   "002415": {
-    "circMvYi": 3368.8,
-    "turnover": 1.24,
-    "pe": 24,
+    "circMvYi": 3155.3,
+    "turnover": 1.03,
+    "pe": 22.5,
     "capTier": "大盘",
     "heat": "清淡"
   },
   "002364": {
-    "circMvYi": 223.7,
-    "turnover": 5.9,
-    "pe": 178.7,
+    "circMvYi": 251.1,
+    "turnover": 10.13,
+    "pe": 200.7,
     "capTier": "中盘",
-    "heat": "正常"
+    "heat": "活跃"
   },
   "002922": {
-    "circMvYi": 98.1,
-    "turnover": 4.28,
-    "pe": 54.9,
+    "circMvYi": 99.7,
+    "turnover": 5.67,
+    "pe": 55.8,
     "capTier": "小盘",
     "heat": "正常"
   }
