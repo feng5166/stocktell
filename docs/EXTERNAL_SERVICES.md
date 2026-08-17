@@ -115,6 +115,10 @@
 - **用途**:浏览器/PWA 推送。广播主路径折在 briefing cron(`maybeWebPush`);`/api/cron/push-web` 仅手动补推。
 - **关键文件**:`src/lib/push.ts`(`pushEnabled()` 是启用与否的**唯一判定**)、`src/app/api/push/subscribe/route.ts`、`src/components/pwa/PwaActions.tsx`(`web-push` 库)。
 - **环境变量**:`VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT`;`WEB_PUSH_ENABLED=0` 为显式停用 kill-switch(不设=配了 VAPID 即启用,2026-07-30 收敛三处口径矛盾)。
+- **正向代理 `WEB_PUSH_PROXY`(2026-08-17,自建杭州后必需)**:`fcm.googleapis.com` 在中国大陆不可达,Chrome/Edge 订阅端点全在 FCM,境内直发必超时。现经新加坡 VPS(47.84.8.167)的 tinyproxy 转发,值为 `http://47.84.8.167:3128`。
+  - **必须是正向代理,不能用反代**:VAPID JWT 的 `aud` 由 endpoint 源计算,改写 host 会被 FCM 判签名无效;CONNECT 隧道下 TLS 仍端到端直连 Google,`aud` 不变。
+  - 代理侧配置 `/etc/tinyproxy/tinyproxy.conf`:`Allow 120.26.226.230`(仅杭州 ECS)+ `ConnectPort 443`(禁止被当通用跳板);新加坡安全组与 firewalld 均只放行 120.26.226.230/32 到 3128。
+  - 海外部署无需此项,不设即直连。
 
 ### 自建微信桥(ClawBot / iLink)— `https://bridge.stocktell.me`(VPS 47.84.8.167)
 - **用途**:微信 iLink 推送(扫码绑定 + 盘前/手动推送)。
