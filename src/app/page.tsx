@@ -28,7 +28,7 @@ import { DailyTell } from "@/components/home/DailyTell";
 import { MarketBar } from "@/components/home/MarketBar";
 import { EventTop3 } from "@/components/home/EventTop3";
 import { RecapRail } from "@/components/home/RecapRail";
-import { buildDailyJudgments, buildJudgmentReview } from "@/lib/judgment";
+import { buildDailyJudgments, buildJudgmentReview, buildChainFundTrends } from "@/lib/judgment";
 import { attachChanges, composeDailyTell } from "@/lib/judgment-diff";
 import { recentSnapshots } from "@/lib/market-intent/store";
 
@@ -100,11 +100,13 @@ export default async function Home() {
   // 全 A 股→链身份(P1 和我相关结构化):服务端算好精简 map,客户端拿自选本地查
   const watchChainMap = buildWatchChainMap();
   // Daily Judgment 首屏三块(2.2.5):①三件事 ③旧判断复核(server)+ ②我的股票(client 数据底)
+  // 快照取近 10 交易日一次拿全:今/昨对照(segIntent)与主线卡资金微趋势共用,不多打一跳
   const [judgmentRes, reviewEntries, intentPairSnaps] = await Promise.all([
     buildDailyJudgments().catch(() => null),
     buildJudgmentReview().catch(() => []),
-    recentSnapshots(2).catch(() => []),
+    recentSnapshots(10).catch(() => []),
   ]);
+  const chainTrends = buildChainFundTrends(intentPairSnaps);
   // 2.2.6 Change Detection:附加 昨日→今日 变化并按「变了的优先」重排 top3
   const judged = judgmentRes
     ? await attachChanges(judgmentRes.ymd, judgmentRes.judgments).catch(() => ({
@@ -168,7 +170,7 @@ export default async function Home() {
 
         {/* 屏1b:主线 1 大 + 次线 2 小 */}
         {judgmentRes && judged && (
-          <JudgmentBoard ymd={judgmentRes.ymd} judgments={judged.judgments} hadPrev={judged.hadPrev} />
+          <JudgmentBoard ymd={judgmentRes.ymd} judgments={judged.judgments} hadPrev={judged.hadPrev} trends={chainTrends} />
         )}
 
         {/* 屏1c:我的关注(上移——早上最想看的是「我关心的东西今天有什么变化」) */}

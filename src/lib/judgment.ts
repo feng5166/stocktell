@@ -215,6 +215,35 @@ function buildOne(
   };
 }
 
+// ---- 链级资金微趋势(首页视觉优化 2026-08-17:主线大卡「一条微型趋势图」)----
+// 口径:链下各板块当日主力净额(mainNetYi)合计,近 n 个交易日——与卡内「资金」行同源,
+// 只呈现资金动能节奏,不是行情图,不预示涨跌。纯派生,零新数据。
+export interface ChainTrendPoint {
+  ymd: string;
+  v: number; // 链内板块主力净额合计(亿)
+}
+
+export function buildChainFundTrends(
+  snaps: SegmentIntentSnapshot[]
+): Record<string, ChainTrendPoint[]> {
+  const byChain: Record<string, Map<string, number>> = {};
+  for (const s of snaps) {
+    const seg = SEGMENT_BY_KEY[s.segment];
+    if (!seg) continue;
+    for (const slug of seg.chainSlugs) {
+      const m = (byChain[slug] ??= new Map());
+      m.set(s.ymd, (m.get(s.ymd) ?? 0) + s.metrics.mainNetYi);
+    }
+  }
+  const out: Record<string, ChainTrendPoint[]> = {};
+  for (const [slug, m] of Object.entries(byChain)) {
+    out[slug] = Array.from(m.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([ymd, v]) => ({ ymd, v: Math.round(v * 10) / 10 }));
+  }
+  return out;
+}
+
 const ymdToISO = (ymd: string) => `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
 
 // 构建全部链 Judgment(rank 降序;首页取前 3,存档存全部)

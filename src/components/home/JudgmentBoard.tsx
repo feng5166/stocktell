@@ -7,12 +7,50 @@
 // 2.2.6 变化行保留;2.2.7 自选重排保留。
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { ChainJudgment, JudgmentReviewEntry } from "@/lib/judgment";
+import type { ChainJudgment, ChainTrendPoint, JudgmentReviewEntry } from "@/lib/judgment";
 import type { JudgmentChange } from "@/lib/judgment-diff";
 import { INTENT_CHIP_CLS, fmtYmd } from "@/lib/market-intent/ui";
 import { useWatchAffinity } from "@/components/home/useWatchAffinity";
 
 type Judged = ChainJudgment & { changes?: JudgmentChange[] };
+
+// 微型资金趋势(主线大卡专属):链内板块主力净额合计,近 10 交易日的迷你柱。
+// A 股口径:红=净流入,绿=净流出(与市场状态条「主力」同色系);只表达节奏,不做行情图。
+function FundSpark({ points }: { points: ChainTrendPoint[] }) {
+  if (points.length < 4) return null;
+  const W = 156;
+  const H = 30;
+  const gap = 3;
+  const bw = (W - gap * (points.length - 1)) / points.length;
+  const max = Math.max(...points.map((p) => Math.abs(p.v)), 0.1);
+  const mid = H / 2;
+  const last = points[points.length - 1];
+  return (
+    <span className="inline-flex items-center gap-2">
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden className="shrink-0">
+        <line x1={0} y1={mid} x2={W} y2={mid} className="stroke-gray-200" strokeWidth={1} />
+        {points.map((p, i) => {
+          const h = Math.max((Math.abs(p.v) / max) * (mid - 2), 1.5);
+          return (
+            <rect
+              key={p.ymd}
+              x={i * (bw + gap)}
+              y={p.v >= 0 ? mid - h : mid}
+              width={bw}
+              height={h}
+              rx={1}
+              className={p.v >= 0 ? "fill-rose-300" : "fill-emerald-300"}
+            />
+          );
+        })}
+      </svg>
+      <span className="text-meta text-gray-400">
+        近{points.length}日主力净额 · 最新 {last.v > 0 ? "+" : ""}
+        {last.v}亿
+      </span>
+    </span>
+  );
+}
 
 // 短置信度(badge 第二层小字):较高/中等/低
 const confShort = (c: string) => c.replace("置信度", "");
@@ -26,9 +64,9 @@ function InfoRow({ k, v }: { k: string; v: ReactNode }) {
   );
 }
 
-// 层级拉开(三轮走查):大卡=解释(变化行+事件/证据正文+四行信息),小卡=判断
+// 层级拉开(三轮走查):大卡=解释(变化行+事件/证据正文+四行信息+资金微趋势),小卡=判断
 // (意图 badge 已并入标题行,正文只留一句 take)——小卡不再是缩小版完整卡。
-function CardBody({ j, full }: { j: Judged; full: boolean }) {
+function CardBody({ j, full, trend }: { j: Judged; full: boolean; trend?: ChainTrendPoint[] }) {
   if (!full) {
     return (
       <>
@@ -68,6 +106,7 @@ function CardBody({ j, full }: { j: Judged; full: boolean }) {
           <InfoRow k="映射" v={j.repStocks.join(" · ")} />
         )}
         {j.verifyHint && <InfoRow k="验证" v={j.verifyHint} />}
+        {trend && trend.length >= 4 && <InfoRow k="趋势" v={<FundSpark points={trend} />} />}
         {j.splitNote && (
           <p className="pt-0.5 text-xs leading-relaxed text-amber-700">{j.splitNote}</p>
         )}
@@ -81,10 +120,12 @@ export function JudgmentBoard({
   ymd,
   judgments,
   hadPrev = false,
+  trends,
 }: {
   ymd: string;
   judgments: Judged[];
   hadPrev?: boolean;
+  trends?: Record<string, ChainTrendPoint[]>; // 链级资金微趋势(仅主线大卡渲染)
 }) {
   const aff = useWatchAffinity();
   if (judgments.length === 0) return null;
@@ -139,7 +180,7 @@ export function JudgmentBoard({
             className="block h-full rounded-xl border border-brand-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow sm:p-6"
           >
             <Head j={main} idx={0} />
-            <CardBody j={main} full />
+            <CardBody j={main} full trend={trends?.[main.chainSlug]} />
           </Link>
         </div>
         <div className="mt-3 space-y-3 sm:mt-0 sm:flex sm:w-1/3 sm:flex-col sm:gap-3 sm:space-y-0">
