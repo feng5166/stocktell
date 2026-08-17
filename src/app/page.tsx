@@ -141,9 +141,10 @@ export default async function Home() {
   const bridge = briefStatus?.subType === "holiday_bridge" ? bridgeDoc : null;
 
   return (
-    // 三轮走查:主背景更接近白(bg-canvas 灰底显「后台」),模块间只靠留白与阴影分区
-    <div className="min-h-screen bg-[#fcfcfd] text-ink">
-      <SiteHeader active="今日推理" />
+    // 视觉优化(2026-08-16 定稿):页面浅灰(#F8F9FC)、卡片白色——分区靠底色对比+留白,
+    // 不再依赖阴影;顶部导航与正文同一个 1220px 栅格
+    <div className="min-h-screen bg-canvas text-ink">
+      <SiteHeader active="今日推理" maxWidthClass="max-w-[1220px]" />
 
       {/* 阅读路径改版(2026-08-14 负责人二轮走查):从「模块排列」到「阅读路径」——
           一屏半内拿到:今天怎么看 → 我的关注变了什么 → 什么值得点。
@@ -180,11 +181,12 @@ export default async function Home() {
         {/* 层6:今天有哪些判断被验证/推翻(空则整层消失) */}
         <JudgmentReview entries={reviewEntries} />
 
-        {/* 层7(最后一层,到此结束):和我相关 3 条 ｜ 值得复看 2 条 */}
+        {/* 层7(最后一层,到此结束):和我相关 3 条 ｜ 值得复看 2 条
+            固定双栏 65/35:左=和我相关,右=值得复看(右栏不留空白) */}
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
-          <div className="mt-8 lg:grid lg:grid-cols-[1.6fr_1fr] lg:items-start lg:gap-6">
+          <div className="mt-8 lg:grid lg:grid-cols-[1.85fr_1fr] lg:items-start lg:gap-6">
             <BriefingFeed
               items={items}
               loggedIn={false}
@@ -254,7 +256,7 @@ function BriefStatusBanner({
 // (原生 details,零客户端 JS,与 track 页复盘规则同款交互)。
 function HolidayBridgeSection({ bridge }: { bridge: HolidayBridgeDoc }) {
   return (
-    <section className="mb-4 rounded-xl bg-white p-4 shadow-sm sm:p-5">
+    <section className="mb-4 rounded-xl border border-gray-200/70 bg-white p-4 shadow-sm sm:p-5">
       <h2 className="text-sm font-semibold text-gray-800">{bridge.title}</h2>
       <p className="mt-1 text-xs leading-relaxed text-gray-500">{bridge.note}</p>
       <div className="mt-3 space-y-2">

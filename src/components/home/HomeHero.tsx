@@ -56,7 +56,8 @@ export function HomeHero({
       {/* 视觉优化(2026-08-14):Hero 压高——标题+一行副标,日期/更新时间/全部产业链收进同一条 meta 行 */}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <h1 className="text-h1 font-semibold tracking-tight">今日产业链推理</h1>
+          {/* H1 = 24px Semibold(视觉规范五级排版的顶层) */}
+          <h1 className="text-2xl font-semibold tracking-tight text-[#202431]">今日产业链推理</h1>
           <FeedbackLink />
         </div>
         <span className="flex items-center gap-2 text-xs text-gray-400">
@@ -71,11 +72,12 @@ export function HomeHero({
         全球事件如何传导到 A 股产业链——核心逻辑与资金动向
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
+        {/* 主按钮=品牌色唯一实色位(视觉规范:品牌色只做强调,主按钮/链接/active) */}
         <button
           onClick={goMine}
-          className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 ring-1 ring-brand-200 transition-colors hover:bg-brand-100"
+          className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
         >
-          ⭐ 添加自选,查看和我相关
+          添加自选,查看和我相关
         </button>
         {insightHref && (
           <Link
@@ -87,7 +89,7 @@ export function HomeHero({
                 has_watchlist: hasWatchlist,
               })
             }
-            className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            className="inline-flex min-h-[40px] items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
             查看今日完整因果链 →
           </Link>

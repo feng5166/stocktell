@@ -18,16 +18,18 @@ const NAV = [
 export function SiteHeader({
   active,
   wide,
+  maxWidthClass,
 }: {
   active?: string;
   wide?: boolean;
+  maxWidthClass?: string; // 与正文同栅格(首页视觉优化:导航和内容用同一个 max-width)
 }) {
   return (
     <>
       <header className="border-b border-gray-200 bg-white">
         <div
           className={`mx-auto flex ${
-            wide ? "max-w-7xl" : "max-w-3xl"
+            maxWidthClass ?? (wide ? "max-w-7xl" : "max-w-3xl")
           } items-center justify-between px-4 py-3 sm:px-6`}
         >
           <div className="flex flex-col gap-0.5">

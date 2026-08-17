@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-import colors from "tailwindcss/colors";
 
 const config: Config = {
   content: [
@@ -13,9 +12,22 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        brand: colors.indigo, // 唯一品牌强调色:链接/专区/导航当前项/focus
+        // 唯一品牌强调色(2026-08-16 首页视觉优化定稿):#5B5CE2 蓝紫,只做强调
+        // (主按钮/链接/active/关键 chip),页面占比 ≤5–8%,禁止大面积色块。
+        brand: {
+          50: "#EEF0FF",
+          100: "#E2E5FD",
+          200: "#C9CDFA",
+          300: "#A9ADF4",
+          400: "#8487EC",
+          500: "#6D6EE7",
+          600: "#5B5CE2",
+          700: "#4A4BCB",
+          800: "#3F40B5",
+          900: "#35368F",
+        },
         ink: "#1a1d24", // 主文字/主按钮(墨色)
-        canvas: "#f7f8fa", // 页面底
+        canvas: "#F8F9FC", // 页面底(极浅冷灰:页面浅灰,卡片白色)
         surface: "#ffffff", // 白卡
       },
       fontSize: {

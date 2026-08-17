@@ -104,7 +104,9 @@ export function BriefingFeed({
   return (
     <WhyProvider triggers={mineTriggers}>
     <div className="space-y-7">
-      <section id="mine" className="scroll-mt-20 rounded-2xl bg-brand-50/40 p-3 sm:p-4">
+      {/* 视觉优化(2026-08-16):撤掉浅紫底的「卡片套卡片」外壳——区块靠标题+留白分区,
+          内部卡片直接落在页面浅灰底上 */}
+      <section id="mine" className="scroll-mt-20">
         <SectionHead
           title="和我相关"
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
@@ -537,7 +539,7 @@ function MyWatchRelations({
     .sort((a, b) => (REL_ORDER[a.info.relation] ?? 3) - (REL_ORDER[b.info.relation] ?? 3));
 
   return (
-    <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+    <div className="rounded-xl border border-gray-200/70 bg-white p-3 shadow-sm sm:p-4">
       <div className="mb-2 text-sm font-semibold text-gray-900">
         {affected.length > 0
           ? `你的自选里,今天有 ${affected.length} 只被产业链事件点名`
@@ -660,7 +662,7 @@ function WatchRelationCard({ row, quiet }: { row: CoveredRow; quiet?: boolean })
 function SectionHead({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <h2 className="text-base font-semibold tracking-tight text-gray-900">
+      <h2 className="text-lg font-semibold tracking-tight text-gray-900">
         {title}
       </h2>
       {hint && <span className="text-xs text-gray-400">{hint}</span>}
@@ -852,7 +854,7 @@ function BriefingCard({
 
   return (
     <article
-      className={`rounded-xl bg-white p-4 shadow-sm`}
+      className={`rounded-xl border border-gray-200/70 bg-white p-4 shadow-sm`}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="flex flex-wrap items-center gap-1.5">
@@ -1122,7 +1124,7 @@ function WhyLine({ code }: { code: string }) {
 function LockedCard({ item }: { item: BriefingItem }) {
   const meta = IMPACT_META[item.impact];
   return (
-    <article className="relative overflow-hidden rounded-xl bg-white shadow-sm p-4">
+    <article className="relative overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-sm p-4">
       <div className="pointer-events-none select-none blur-[5px]">
         <div className="mb-1 flex items-center gap-2 text-xs font-medium">
           <span>{meta.emoji}</span>

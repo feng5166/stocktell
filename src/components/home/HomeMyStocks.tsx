@@ -67,12 +67,12 @@ export function HomeMyStocks({
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-h2 font-semibold text-gray-900">我的关注</h2>
+        <h2 className="text-lg font-semibold text-gray-900">我的关注</h2>
         <Link href="/watchlist" className="text-xs font-medium text-brand-600 hover:underline">
           管理关注 →
         </Link>
       </div>
-      <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-sm">
+      <div className="mt-3 overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-sm">
         <div className="hidden gap-3 border-b border-gray-100 px-4 py-2 text-meta text-gray-400 sm:grid sm:grid-cols-[1.3fr_6rem_1.1fr_1.2fr]">
           <span>股票</span>
           <span>今日判断</span>

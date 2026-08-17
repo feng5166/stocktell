@@ -51,10 +51,12 @@ export function MarketBar({
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-h2 font-semibold text-gray-900">市场状态</h2>
+        <h2 className="text-lg font-semibold text-gray-900">市场状态</h2>
         <span className="text-meta text-gray-400">行情只是触发源,不代表产业链关系强弱</span>
       </div>
-      <div className="mt-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
+      {/* 紧凑 Dashboard(视觉优化 2026-08-16):一张横向白卡三行——指标 / 意图分布 / 入口,
+          入口全部收进底行右侧,控制模块高度 */}
+      <div className="mt-3 rounded-xl border border-gray-200/70 bg-white px-4 py-3 shadow-sm">
         <div className="flex items-center gap-4 overflow-x-auto pb-0.5 sm:gap-5">
           {a && (
             <>
@@ -69,10 +71,6 @@ export function MarketBar({
           {us?.indices?.map((i) => (
             <Cell key={i.name} k={i.name} v={pct(i.change)} tone={i.change >= 0 ? "up" : "down"} />
           ))}
-          <span className="ml-auto hidden shrink-0 items-center gap-3 sm:inline-flex">
-            <ShareCardEntry />
-            <ChainHomeEntry />
-          </span>
         </div>
         {counts.size > 0 && (
           <div className="mt-2 flex items-center gap-2 overflow-x-auto border-t border-gray-100 pt-2">
@@ -85,20 +83,28 @@ export function MarketBar({
                 </span>
               );
             })}
-            <Link href="/track" className="ml-auto shrink-0 text-meta font-medium text-brand-600 hover:underline">
-              意图历史 →
-            </Link>
           </div>
         )}
-        {/* 隔夜事件雷达:并入明细折叠,不单独占模块 */}
-        <details className="mt-2 border-t border-gray-100 pt-2">
-          <summary className="cursor-pointer list-none text-xs font-medium text-brand-600 hover:underline">
-            隔夜美股 × A 股联动明细 ▾
-          </summary>
-          <div className="mt-2">
-            <OvernightRadar relMap={relMap} />
-          </div>
-        </details>
+        {/* 底行:隔夜明细折叠(左)+ 全部入口(右)。隔夜雷达不单独占模块 */}
+        <div className="mt-2 flex items-start justify-between gap-4 border-t border-gray-100 pt-2">
+          <details className="min-w-0 flex-1">
+            <summary className="inline-flex cursor-pointer list-none text-xs font-medium text-brand-600 hover:underline">
+              隔夜美股 × A 股联动明细 ▾
+            </summary>
+            <div className="mt-2">
+              <OvernightRadar relMap={relMap} />
+            </div>
+          </details>
+          <span className="flex shrink-0 items-center gap-3">
+            <Link href="/track" className="text-meta font-medium text-gray-500 hover:text-gray-800 hover:underline">
+              意图历史 →
+            </Link>
+            <span className="hidden items-center gap-3 sm:inline-flex">
+              <ShareCardEntry />
+              <ChainHomeEntry />
+            </span>
+          </span>
+        </div>
       </div>
     </section>
   );

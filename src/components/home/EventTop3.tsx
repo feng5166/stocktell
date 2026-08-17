@@ -28,9 +28,11 @@ export function EventTop3({
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-h2 font-semibold text-gray-900">今日发生了什么</h2>
+        <h2 className="text-lg font-semibold text-gray-900">今日发生了什么</h2>
         <span className="text-meta text-gray-400">完整拆解在下方事件区与专篇</span>
       </div>
+      {/* 二级卡:轻边框无 shadow,等高;每卡=类型+影响链+标题+一句话+看传导(不塞正文)。
+          chip 收敛:事件类型中性灰,影响链浅紫(一卡一主色) */}
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         {top.map((it) => {
           const href = evtMap[it.id] ?? insightHref ?? "#feed";
@@ -38,11 +40,11 @@ export function EventTop3({
             <Link
               key={it.id}
               href={href}
-              className="flex flex-col rounded-2xl bg-white p-4 shadow-sm transition-shadow hover:shadow"
+              className="flex flex-col rounded-xl border border-gray-200/70 bg-white p-4 transition-shadow hover:shadow-sm"
             >
               <div className="flex flex-wrap items-center gap-1.5">
                 {it.triggerCode && (
-                  <span className="inline-flex rounded bg-indigo-100 px-1.5 py-0.5 text-meta font-medium text-indigo-700">
+                  <span className="inline-flex rounded bg-gray-100 px-1.5 py-0.5 text-meta font-medium text-gray-500">
                     链级触发
                   </span>
                 )}
@@ -53,7 +55,7 @@ export function EventTop3({
                 )}
               </div>
               <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-gray-900">{it.title}</p>
-              <p className="mt-1 flex-1 text-xs leading-relaxed text-gray-500">{firstClause(it.retailTake)}</p>
+              <p className="mt-1 line-clamp-2 flex-1 text-xs leading-relaxed text-gray-500">{firstClause(it.retailTake)}</p>
               <span className="mt-2 text-right text-xs font-medium text-brand-600">看传导 →</span>
             </Link>
           );

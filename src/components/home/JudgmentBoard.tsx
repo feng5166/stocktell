@@ -33,7 +33,7 @@ function CardBody({ j, full }: { j: Judged; full: boolean }) {
     return (
       <>
         {(j.changes?.length ?? 0) > 0 && (
-          <p className="mt-1.5 text-xs font-medium leading-relaxed text-indigo-700">
+          <p className="mt-1.5 text-xs font-medium leading-relaxed text-brand-700">
             与昨日:{j.changes!.map((c) => c.text).join(" · ")}
           </p>
         )}
@@ -44,7 +44,7 @@ function CardBody({ j, full }: { j: Judged; full: boolean }) {
   return (
     <>
       {(j.changes?.length ?? 0) > 0 && (
-        <p className="mt-1.5 text-xs font-medium leading-relaxed text-indigo-700">
+        <p className="mt-1.5 text-xs font-medium leading-relaxed text-brand-700">
           与昨日相比:{j.changes!.map((c) => c.text).join(" · ")}
         </p>
       )}
@@ -95,19 +95,19 @@ export function JudgmentBoard({
   const top = ordered.slice(0, 3);
   const anyChange = judgments.some((j) => (j.changes?.length ?? 0) > 0);
 
+  // 视觉优化(2026-08-16):去掉序号圆点与实色 chip——主次靠字号/卡片尺寸拉开,
+  // 一卡最多「一个品牌色 chip + 一个状态色 chip」;逻辑标签降为中性灰。
   const Head = ({ j, idx, showIntent = false }: { j: Judged; idx: number; showIntent?: boolean }) => (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span
-          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-            idx === 0 ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
-          }`}
-        >
-          {idx + 1}
-        </span>
-        <span className={`font-semibold text-gray-900 ${idx === 0 ? "text-base" : "text-[15px]"}`}>{j.chainName}</span>
+        {idx === 0 && (
+          <span className="inline-flex rounded bg-brand-50 px-2 py-0.5 text-meta font-medium text-brand-700">
+            今日主线
+          </span>
+        )}
+        <span className={`font-semibold text-gray-900 ${idx === 0 ? "text-[17px]" : "text-[15px]"}`}>{j.chainName}</span>
         {j.logicLabel && (
-          <span className="inline-flex rounded bg-brand-50 px-1.5 py-0.5 text-meta font-medium text-brand-700">
+          <span className="inline-flex rounded bg-gray-100 px-1.5 py-0.5 text-meta font-medium text-gray-500">
             {j.logicLabel}
           </span>
         )}
@@ -116,18 +116,13 @@ export function JudgmentBoard({
             {j.intentLabel}
           </span>
         )}
-        {idx === 0 && (
-          <span className="inline-flex rounded bg-brand-600 px-1.5 py-0.5 text-meta font-medium text-white">
-            今日主线
-          </span>
-        )}
         {myCount(j) > 0 && (
           <span className="inline-flex rounded bg-brand-50 px-1.5 py-0.5 text-meta font-medium text-brand-700">
             自选 {myCount(j)}
           </span>
         )}
       </div>
-      <p className={`mt-1.5 font-medium leading-relaxed text-gray-800 ${idx === 0 ? "text-[15px]" : "text-sm"}`}>{j.take}</p>
+      <p className={`mt-1.5 font-medium leading-relaxed text-[#202431] ${idx === 0 ? "text-[15px]" : "text-sm"}`}>{j.take}</p>
     </div>
   );
 
@@ -138,9 +133,10 @@ export function JudgmentBoard({
     <section className="mt-4">
       <div className="mt-0 sm:flex sm:items-stretch sm:gap-3">
         <div className="sm:w-2/3">
+          {/* 一级卡:白底 + 轻边框 + 极轻 shadow;主线卡边框带一丝品牌色,不用色块 */}
           <Link
             href={main.href}
-            className="block h-full rounded-2xl bg-white p-5 shadow-sm ring-1 ring-brand-200 transition-shadow hover:shadow sm:p-6"
+            className="block h-full rounded-xl border border-brand-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow sm:p-6"
           >
             <Head j={main} idx={0} />
             <CardBody j={main} full />
@@ -149,16 +145,16 @@ export function JudgmentBoard({
         <div className="mt-3 space-y-3 sm:mt-0 sm:flex sm:w-1/3 sm:flex-col sm:gap-3 sm:space-y-0">
           {rest.map((j, i) => (
             <div key={j.chainSlug} className="sm:flex-1">
-              {/* 桌面:完整次卡 */}
+              {/* 桌面:次卡=二级卡(边框更弱、无 shadow) */}
               <Link
                 href={j.href}
-                className="hidden h-full rounded-2xl bg-white p-4 shadow-sm transition-shadow hover:shadow sm:block"
+                className="hidden h-full rounded-xl border border-gray-200/70 bg-white p-4 transition-shadow hover:shadow-sm sm:block"
               >
                 <Head j={j} idx={i + 1} showIntent />
                 <CardBody j={j} full={false} />
               </Link>
               {/* 移动端:折叠 */}
-              <details className="rounded-2xl bg-white p-4 shadow-sm sm:hidden">
+              <details className="rounded-xl border border-gray-200/70 bg-white p-4 sm:hidden">
                 <summary className="cursor-pointer list-none">
                   <Head j={j} idx={i + 1} showIntent />
                 </summary>
@@ -192,13 +188,14 @@ export function JudgmentReview({ entries }: { entries: JudgmentReviewEntry[] }) 
   const ordered = entries.slice().sort((a, b) => Number(mine(b)) - Number(mine(a)));
   return (
     <section className="mt-8">
-      <h2 className="text-h2 font-semibold text-gray-900">验证进展</h2>
+      <h2 className="text-lg font-semibold text-gray-900">验证进展</h2>
       <p className="mt-1 text-meta text-gray-400">
         之前的判断今天怎么样了——只列最近发生变化的,长期无变化不展示
       </p>
+      {/* 信息条(非卡片):轻边框白条,不做 shadow */}
       <div className="mt-3 space-y-2">
         {ordered.map((e, i) => (
-          <div key={i} className="flex items-start gap-2 rounded-xl bg-white px-4 py-3 text-sm leading-relaxed shadow-sm">
+          <div key={i} className="flex items-start gap-2 rounded-lg border border-gray-200/60 bg-white px-4 py-2.5 text-sm leading-relaxed">
             <span className={`shrink-0 ${REVIEW_STATE[e.tone].cls}`}>{REVIEW_STATE[e.tone].mark}</span>
             <span className="min-w-0 text-gray-700">
               {mine(e) && (
