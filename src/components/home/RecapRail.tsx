@@ -11,7 +11,7 @@ export interface RecapDoc {
 
 export function RecapRail({ docs }: { docs: RecapDoc[] }) {
   return (
-    <aside className="mt-8 lg:mt-0">
+    <aside className="mt-8">
       <h2 className="text-lg font-semibold text-gray-900">值得复看</h2>
       <p className="mt-1 text-meta text-gray-400">最近的完整传导拆解与历史档案</p>
       {/* 信息条:轻边框白条,不做 shadow(右栏是入口聚合,不和左栏内容卡抢层级) */}

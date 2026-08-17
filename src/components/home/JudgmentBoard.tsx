@@ -167,45 +167,42 @@ export function JudgmentBoard({
     </div>
   );
 
-  // 布局(阅读路径改版 2026-08-14):主线 1 条(左 2/3 大卡)+ 次线 2 条(右 1/3 上下),
-  // 不再三张等宽——第一眼就知道今天哪条最重要。移动端:主线展开,次线折叠。
+  // 布局(2026-08-17 回单栏拍板):主线大卡全宽在上,次线 2 条并排一行在下——
+  // 单栏流里仍然第一眼知道今天哪条最重要(靠尺寸与顺序,不靠左右分栏)。
+  // 移动端:主线展开,次线折叠。
   const [main, ...rest] = top;
   return (
     <section className="mt-4">
-      <div className="mt-0 sm:flex sm:items-stretch sm:gap-3">
-        <div className="sm:w-2/3">
-          {/* 一级卡:白底 + 轻边框 + 极轻 shadow;主线卡边框带一丝品牌色,不用色块 */}
-          <Link
-            href={main.href}
-            className="block h-full rounded-xl border border-brand-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow sm:p-6"
-          >
-            <Head j={main} idx={0} />
-            <CardBody j={main} full trend={trends?.[main.chainSlug]} />
-          </Link>
-        </div>
-        <div className="mt-3 space-y-3 sm:mt-0 sm:flex sm:w-1/3 sm:flex-col sm:gap-3 sm:space-y-0">
-          {rest.map((j, i) => (
-            <div key={j.chainSlug} className="sm:flex-1">
-              {/* 桌面:次卡=二级卡(边框更弱、无 shadow) */}
-              <Link
-                href={j.href}
-                className="hidden h-full rounded-xl border border-gray-200/70 bg-white p-4 transition-shadow hover:shadow-sm sm:block"
-              >
+      {/* 一级卡:白底 + 轻边框 + 极轻 shadow;主线卡边框带一丝品牌色,不用色块 */}
+      <Link
+        href={main.href}
+        className="block rounded-xl border border-brand-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow sm:p-6"
+      >
+        <Head j={main} idx={0} />
+        <CardBody j={main} full trend={trends?.[main.chainSlug]} />
+      </Link>
+      <div className="mt-3 space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
+        {rest.map((j, i) => (
+          <div key={j.chainSlug}>
+            {/* 桌面:次卡=二级卡(边框更弱、无 shadow) */}
+            <Link
+              href={j.href}
+              className="hidden h-full rounded-xl border border-gray-200/70 bg-white p-4 transition-shadow hover:shadow-sm sm:block"
+            >
+              <Head j={j} idx={i + 1} showIntent />
+              <CardBody j={j} full={false} />
+            </Link>
+            {/* 移动端:折叠 */}
+            <details className="rounded-xl border border-gray-200/70 bg-white p-4 sm:hidden">
+              <summary className="cursor-pointer list-none">
                 <Head j={j} idx={i + 1} showIntent />
+              </summary>
+              <Link href={j.href} className="block">
                 <CardBody j={j} full={false} />
               </Link>
-              {/* 移动端:折叠 */}
-              <details className="rounded-xl border border-gray-200/70 bg-white p-4 sm:hidden">
-                <summary className="cursor-pointer list-none">
-                  <Head j={j} idx={i + 1} showIntent />
-                </summary>
-                <Link href={j.href} className="block">
-                  <CardBody j={j} full={false} />
-                </Link>
-              </details>
-            </div>
-          ))}
-        </div>
+            </details>
+          </div>
+        ))}
       </div>
       {hadPrev && !anyChange && (
         <p className="mt-2 text-xs text-gray-500">与昨日相比,各链判断没有方向性变化。</p>

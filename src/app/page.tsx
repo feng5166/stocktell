@@ -143,18 +143,19 @@ export default async function Home() {
   const bridge = briefStatus?.subType === "holiday_bridge" ? bridgeDoc : null;
 
   return (
-    // 视觉优化(2026-08-16 定稿):页面浅灰(#F8F9FC)、卡片白色——分区靠底色对比+留白,
-    // 不再依赖阴影;顶部导航与正文同一个 1220px 栅格
+    // 视觉优化(2026-08-16 定稿):页面浅灰(#F8F9FC)、卡片白色——分区靠底色对比+留白。
+    // 2026-08-17 负责人拍板:整页回单栏(宽幅双栏观感不和谐)——内容与导航同 max-w-3xl 栅格,
+    // 模块从上到下单列流,像研究简报不像 dashboard。
     <div className="min-h-screen bg-canvas text-ink">
-      <SiteHeader active="今日推理" maxWidthClass="max-w-[1220px]" />
+      <SiteHeader active="今日推理" />
 
-      {/* 阅读路径改版(2026-08-14 负责人二轮走查):从「模块排列」到「阅读路径」——
-          一屏半内拿到:今天怎么看 → 我的关注变了什么 → 什么值得点。
-          屏1:总判断 + 主线大卡(2/3)+次卡×2(1/3) + 我的关注;屏2:市场状态条 + 今日事件×3;
-          屏3:验证进展｜资金意图分布;屏4:和我相关/深度(双栏,右栏复看,不留大空白)。
+      {/* 阅读路径(2026-08-14 定,2026-08-17 回单栏):从「模块排列」到「阅读路径」——
+          一屏半内拿到:今天怎么看 → 我的关注变了什么 → 什么值得点。全部单列流:
+          总判断 → 主线大卡(全宽)→ 次卡×2(并排一行)→ 我的关注 → 市场状态条 →
+          今日事件×3 → 验证进展 → 和我相关 → 值得复看。
           注:因果链四大卡撤出首页(与核心判断信息重叠,完整版在链页/深读);
           FirstRunReorder 新手前置序随之退役——本次拍板覆盖 07-09 旧拍板。 */}
-      <main className="mx-auto max-w-[1220px] px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <HomeHero
           shownDate={shownDate}
           insightHref={insightHref}
@@ -183,12 +184,11 @@ export default async function Home() {
         {/* 层6:今天有哪些判断被验证/推翻(空则整层消失) */}
         <JudgmentReview entries={reviewEntries} />
 
-        {/* 层7(最后一层,到此结束):和我相关 3 条 ｜ 值得复看 2 条
-            固定双栏 65/35:左=和我相关,右=值得复看(右栏不留空白) */}
+        {/* 层7(最后一层,到此结束):和我相关 3 条 → 值得复看(单栏堆叠) */}
         {items.length === 0 ? (
           <EmptyState errored={errored} />
         ) : (
-          <div className="mt-8 lg:grid lg:grid-cols-[1.85fr_1fr] lg:items-start lg:gap-6">
+          <div className="mt-8">
             <BriefingFeed
               items={items}
               loggedIn={false}
