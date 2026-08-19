@@ -21,15 +21,18 @@ for (const seg of INTENT_SEGMENTS) for (const s of seg.sectors) segOfSector.set(
 const BULL: IntentType[] = ["accumulation", "rush"];
 const BEAR: IntentType[] = ["distribution", "exit"];
 
-// 变化列(三轮走查:变化是主角,直接写 from→to,不再只给箭头符号)
+// 变化列(三轮走查:变化是主角,直接写 from→to,不再只给箭头符号)。
+// 2026-08-18 色温校准:这一列此前是「转进场=绿 / 转流出=红」,与 A 股红涨绿跌的直觉、
+// 以及同页的主力净额、意图 chip 全部相反 —— 本轮统一翻正。四态到顶:
+// 新点名=紫(可去看的新东西) / 转进场=红 / 转流出=绿 / 其余变化与无变化=灰。
 function changeCell(pair: SegIntentPair | undefined, named: boolean) {
   if (pair?.y && pair.t.intent !== pair.y.intent) {
     const toBull = BULL.includes(pair.t.intent) && !BULL.includes(pair.y.intent);
     const toBear = BEAR.includes(pair.t.intent) && !BEAR.includes(pair.y.intent);
     const label = `${pair.y.label} → ${pair.t.label}`;
-    if (toBull) return { mark: label, cls: "text-emerald-700", active: true };
-    if (toBear) return { mark: label, cls: "text-red-600", active: true };
-    return { mark: label, cls: "text-indigo-600", active: true };
+    if (toBull) return { mark: label, cls: "text-red-600", active: true };
+    if (toBear) return { mark: label, cls: "text-emerald-700", active: true };
+    return { mark: label, cls: "text-gray-700", active: true };
   }
   if (named) return { mark: "新出现:事件点名", cls: "text-brand-600", active: true };
   return { mark: "—", cls: "text-gray-300", active: false };
@@ -67,19 +70,19 @@ export function HomeMyStocks({
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">我的关注</h2>
-        <Link href="/watchlist" className="text-xs font-medium text-brand-600 hover:underline">
+        <h2 className="text-h2 font-semibold text-gray-900">我的关注</h2>
+        <Link href="/watchlist" className="text-[13px] font-medium text-brand-600 hover:underline">
           管理关注 →
         </Link>
       </div>
-      <div className="mt-3 overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-sm">
+      <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="hidden gap-3 border-b border-gray-100 px-4 py-2 text-meta text-gray-400 sm:grid sm:grid-cols-[1.3fr_6rem_1.1fr_1.2fr]">
           <span>股票</span>
           <span>今日判断</span>
           <span>变化</span>
           <span>下一验证</span>
         </div>
-        <div className="divide-y divide-gray-50">
+        <div className="divide-y divide-gray-100">
           {rows.map((r) => (
             <Link
               key={r.code}
@@ -88,7 +91,7 @@ export function HomeMyStocks({
             >
               <span className="block min-w-0">
                 <span className="flex items-baseline gap-1.5">
-                  <span className="text-sm font-medium text-gray-900">{r.name}</span>
+                  <span className="text-sm font-semibold text-gray-900">{r.name}</span>
                   <span className="text-meta text-gray-400">{r.code}</span>
                 </span>
                 <span className="block truncate text-meta text-gray-400">
@@ -104,10 +107,10 @@ export function HomeMyStocks({
                   <span className="text-meta text-gray-300">板块未覆盖</span>
                 )}
               </span>
-              <span className={`mt-0.5 block truncate text-xs font-semibold sm:mt-0 ${r.chg.cls}`}>
+              <span className={`mt-0.5 block truncate text-[13px] font-medium sm:mt-0 ${r.chg.cls}`}>
                 {r.chg.mark}
               </span>
-              <span className="mt-0.5 block truncate text-xs text-gray-500 sm:mt-0">
+              <span className="mt-0.5 block truncate text-[13px] text-gray-600 sm:mt-0">
                 {r.info?.verify[0] ?? "—"}
               </span>
             </Link>

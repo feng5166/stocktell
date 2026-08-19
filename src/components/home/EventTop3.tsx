@@ -28,7 +28,7 @@ export function EventTop3({
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">今日发生了什么</h2>
+        <h2 className="text-h2 font-semibold text-gray-900">今日发生了什么</h2>
         <span className="text-meta text-gray-400">完整拆解在下方事件区与专篇</span>
       </div>
       {/* 二级卡:轻边框无 shadow,等高;每卡=类型+影响链+标题+一句话+看传导(不塞正文)。
@@ -40,7 +40,7 @@ export function EventTop3({
             <Link
               key={it.id}
               href={href}
-              className="flex flex-col rounded-xl border border-gray-200/70 bg-white p-4 transition-shadow hover:shadow-sm"
+              className="flex flex-col rounded-xl border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm"
             >
               <div className="flex flex-wrap items-center gap-1.5">
                 {it.triggerCode && (
@@ -54,9 +54,9 @@ export function EventTop3({
                   </span>
                 )}
               </div>
-              <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-gray-900">{it.title}</p>
-              <p className="mt-1 line-clamp-2 flex-1 text-xs leading-relaxed text-gray-500">{firstClause(it.retailTake)}</p>
-              <span className="mt-2 text-right text-xs font-medium text-brand-600">看传导 →</span>
+              <p className="mt-2 line-clamp-2 text-[15px] font-medium leading-[1.5] text-gray-900">{it.title}</p>
+              <p className="mt-1.5 line-clamp-2 flex-1 text-[13px] leading-[1.75] text-gray-600">{firstClause(it.retailTake)}</p>
+              <span className="mt-2.5 text-right text-[13px] font-medium text-brand-600">看传导 →</span>
             </Link>
           );
         })}

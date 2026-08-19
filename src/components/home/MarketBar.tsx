@@ -18,8 +18,8 @@ function Cell({ k, v, tone }: { k: string; v: string; tone?: "up" | "down" }) {
     <span className="flex shrink-0 items-baseline gap-1.5">
       <span className="text-meta text-gray-400">{k}</span>
       <span
-        className={`text-[13px] font-semibold ${
-          tone === "up" ? "text-red-600" : tone === "down" ? "text-emerald-600" : "text-gray-800"
+        className={`text-[15px] font-semibold tabular-nums ${
+          tone === "up" ? "text-red-600" : tone === "down" ? "text-emerald-600" : "text-gray-900"
         }`}
       >
         {v}
@@ -51,13 +51,13 @@ export function MarketBar({
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">市场状态</h2>
+        <h2 className="text-h2 font-semibold text-gray-900">市场状态</h2>
         <span className="text-meta text-gray-400">行情只是触发源,不代表产业链关系强弱</span>
       </div>
       {/* 紧凑 Dashboard(视觉优化 2026-08-16):一张横向白卡三行——指标 / 意图分布 / 入口,
           入口全部收进底行右侧,控制模块高度 */}
-      <div className="mt-3 rounded-xl border border-gray-200/70 bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-4 overflow-x-auto pb-0.5 sm:gap-5">
+      <div className="mt-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-4 overflow-x-auto pb-0.5 sm:gap-6">
           {a && (
             <>
               <Cell k="上涨" v={String(a.up)} />
@@ -88,7 +88,7 @@ export function MarketBar({
         {/* 底行:隔夜明细折叠(左)+ 全部入口(右)。隔夜雷达不单独占模块 */}
         <div className="mt-2 flex items-start justify-between gap-4 border-t border-gray-100 pt-2">
           <details className="min-w-0 flex-1">
-            <summary className="inline-flex cursor-pointer list-none text-xs font-medium text-brand-600 hover:underline">
+            <summary className="inline-flex cursor-pointer list-none text-[13px] font-medium text-brand-600 hover:underline">
               隔夜美股 × A 股联动明细 ▾
             </summary>
             <div className="mt-2">

@@ -122,7 +122,7 @@ export function BriefingFeed({
             {/* 三轮走查:黄色早报卡折叠——首页收口,内容保留点开即看 */}
             {mine.length > 0 && (
               <details className="rounded-xl bg-amber-50/60 px-3 py-2">
-                <summary className="cursor-pointer list-none text-xs font-medium text-amber-800">
+                <summary className="cursor-pointer list-none text-[13px] font-medium text-amber-800">
                   ☀️ 你的今日早报 ▾
                 </summary>
                 <MorningBrief codes={wl.codes} items={mine} />
@@ -159,11 +159,11 @@ export function BriefingFeed({
               />
             )}
             <div className="flex flex-wrap gap-4 pt-1">
-              <Link href="/watchlist" className="text-xs font-medium text-brand-600 hover:underline">
+              <Link href="/watchlist" className="text-[13px] font-medium text-brand-600 hover:underline">
                 查看全部与我相关 →
               </Link>
               {items[0]?.date && (
-                <Link href={`/daily/${items[0].date}`} className="text-xs font-medium text-brand-600 hover:underline">
+                <Link href={`/daily/${items[0].date}`} className="text-[13px] font-medium text-brand-600 hover:underline">
                   查看全部深度分析 →
                 </Link>
               )}
@@ -539,7 +539,7 @@ function MyWatchRelations({
     .sort((a, b) => (REL_ORDER[a.info.relation] ?? 3) - (REL_ORDER[b.info.relation] ?? 3));
 
   return (
-    <div className="rounded-xl border border-gray-200/70 bg-white p-3 shadow-sm sm:p-4">
+    <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="mb-2 text-sm font-semibold text-gray-900">
         {affected.length > 0
           ? `你的自选里,今天有 ${affected.length} 只被产业链事件点名`
@@ -662,10 +662,10 @@ function WatchRelationCard({ row, quiet }: { row: CoveredRow; quiet?: boolean })
 function SectionHead({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+      <h2 className="text-h2 font-semibold tracking-tight text-gray-900">
         {title}
       </h2>
-      {hint && <span className="text-xs text-gray-400">{hint}</span>}
+      {hint && <span className="text-meta text-gray-400">{hint}</span>}
     </div>
   );
 }
@@ -854,7 +854,7 @@ function BriefingCard({
 
   return (
     <article
-      className={`rounded-xl border border-gray-200/70 bg-white p-4 shadow-sm`}
+      className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm`}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="flex flex-wrap items-center gap-1.5">
@@ -1124,7 +1124,7 @@ function WhyLine({ code }: { code: string }) {
 function LockedCard({ item }: { item: BriefingItem }) {
   const meta = IMPACT_META[item.impact];
   return (
-    <article className="relative overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-sm p-4">
+    <article className="relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm p-4">
       <div className="pointer-events-none select-none blur-[5px]">
         <div className="mb-1 flex items-center gap-2 text-xs font-medium">
           <span>{meta.emoji}</span>

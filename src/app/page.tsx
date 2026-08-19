@@ -143,7 +143,8 @@ export default async function Home() {
   const bridge = briefStatus?.subType === "holiday_bridge" ? bridgeDoc : null;
 
   return (
-    // 视觉优化(2026-08-16 定稿):页面浅灰(#F8F9FC)、卡片白色——分区靠底色对比+留白。
+    // 视觉优化(2026-08-16 定稿→2026-08-18 校准):页面中性浅灰(#F7F8FA)、卡片纯白——
+    // 分区靠边框+留白,不靠阴影;冷蓝灰底已弃。
     // 2026-08-17 负责人拍板:整页回单栏(宽幅双栏观感不和谐)——内容与导航同 max-w-3xl 栅格,
     // 模块从上到下单列流,像研究简报不像 dashboard。
     <div className="min-h-screen bg-canvas text-ink">
@@ -203,11 +204,11 @@ export default async function Home() {
           </div>
         )}
 
-        <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
+        <p className="mt-8 text-center text-meta leading-relaxed text-gray-400">
           我们不做新闻堆叠,也不推荐买卖。StockTell 只回答一个问题:这件事会沿着哪条产业链传导,哪些
           A 股是直接相关,哪些只是情绪映射。
         </p>
-        <p className="mt-2 text-center text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
+        <p className="mt-2 text-center text-meta leading-relaxed text-gray-400">{DISCLAIMER}</p>
         <AdminHomeFooter />
       </main>
     </div>
@@ -258,7 +259,7 @@ function BriefStatusBanner({
 // (原生 details,零客户端 JS,与 track 页复盘规则同款交互)。
 function HolidayBridgeSection({ bridge }: { bridge: HolidayBridgeDoc }) {
   return (
-    <section className="mb-4 rounded-xl border border-gray-200/70 bg-white p-4 shadow-sm sm:p-5">
+    <section className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
       <h2 className="text-sm font-semibold text-gray-800">{bridge.title}</h2>
       <p className="mt-1 text-xs leading-relaxed text-gray-500">{bridge.note}</p>
       <div className="mt-3 space-y-2">

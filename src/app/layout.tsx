@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { PWARegister } from "@/components/PWARegister";
@@ -9,6 +10,19 @@ import { AuthTracker } from "@/components/AuthTracker";
 import { FunnelTracker } from "@/components/FunnelTracker";
 import { AhaPushNudge } from "@/components/AhaPushNudge";
 import { SITE_URL, safeJsonLd } from "@/lib/site";
+
+// Inter 变量字体(拉丁子集,48KB,自托管在仓库内)。
+// 必须走 next/font/local 不走 next/font/google:构建在杭州自托管机上跑,fonts.googleapis.com
+// 不可达,一旦联网取字体整个 build 就挂。display=swap + preload,中文本来就由 PingFang SC
+// 兜底,首屏不会因为它白屏。
+const inter = localFont({
+  src: "./fonts/InterVariable-latin.woff2",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
+  variable: "--font-inter",
+  fallback: ["PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "sans-serif"],
+});
 
 // Umami 网页分析(自托管 analytics.stocktell.me)。配了 WEBSITE_ID 才注入,
 // 自动采集 pageview;自定义事件经 lib/analytics 的 track() 上报。
@@ -56,7 +70,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#252833",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -68,7 +82,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" className={inter.variable}>
       <body className="antialiased pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
         <script
           type="application/ld+json"

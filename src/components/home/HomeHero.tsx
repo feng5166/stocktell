@@ -56,11 +56,11 @@ export function HomeHero({
       {/* 视觉优化(2026-08-14):Hero 压高——标题+一行副标,日期/更新时间/全部产业链收进同一条 meta 行 */}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          {/* H1 = 24px Semibold(视觉规范五级排版的顶层) */}
-          <h1 className="text-2xl font-semibold tracking-tight text-[#202431]">今日产业链推理</h1>
+          {/* H1 = 24px Semibold(视觉规范五级排版的顶层,token: text-h1) */}
+          <h1 className="text-h1 font-semibold tracking-tight text-gray-900">今日产业链推理</h1>
           <FeedbackLink />
         </div>
-        <span className="flex items-center gap-2 text-xs text-gray-400">
+        <span className="flex items-center gap-2 text-meta text-gray-400">
           <span>{shownDate}</span>
           {dataNote && <span>· 数据更新 {dataNote}</span>}
           <Link href="/chains" className="font-medium text-brand-600 hover:underline">
@@ -68,7 +68,8 @@ export function HomeHero({
           </Link>
         </span>
       </div>
-      <p className="mt-1 text-xs leading-relaxed text-gray-400">
+      {/* 副标不是 meta,是这个产品在说自己干什么——13px/灰 500,不能弱到 gray-400 */}
+      <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
         全球事件如何传导到 A 股产业链——核心逻辑与资金动向
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

@@ -54,12 +54,16 @@ export const FRONT_RELATION_RANK: Record<string, number> = {
 };
 
 // 关系档配色(单一真源:改这里,长键/短键两套映射一起变)。
+// 2026-08-18 色温校准:关系强度不该借用红/橙——红绿已被 A 股涨跌/资金口径占死,
+// 借来表示"强弱"会让同一屏里的红出现两种含义。改成「紫 + 三级灰」的强度梯度:
+// 紫只给最高一档(核心关系,符合"紫=可操作入口/当前选中/核心关系"的唯一用法),
+// 其余三档靠灰度递减,一眼看得出层级又不制造彩虹。
 const TIER_CLS = {
-  direct: "bg-rose-100 text-rose-700",
-  indirect: "bg-amber-100 text-amber-700",
-  sentiment: "bg-slate-100 text-slate-500",
-  weak: "bg-gray-200 text-gray-500",
-  trigger: "bg-indigo-100 text-indigo-700", // 触发源:美股/海外事件源,与关系模型审阅页同源
+  direct: "bg-brand-50 text-brand-700", // 直接映射=核心关系,全站唯一允许上紫的关系档
+  indirect: "bg-gray-100 text-gray-700",
+  sentiment: "bg-gray-50 text-gray-500",
+  weak: "bg-gray-50 text-gray-400",
+  trigger: "bg-gray-100 text-gray-600", // 触发源:类型标不是强度标,走中性灰(与首页事件卡一致)
   generic: "bg-gray-100 text-gray-600",
 };
 

@@ -2,17 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 排版底座(2026-08-18 色温/字体校准):
+   中文 PingFang SC(苹方)撑结构,数字与英文走 Inter(自托管拉丁子集,见 layout.tsx)。
+   Inter 只有拉丁字形,中文自动回落 PingFang SC——这就是金融 Dashboard 里"数字干净、
+   中文稳"的混排来源,不需要额外按语言切 class。
+   注:Inter 变量字体经 next/font/local 注入 --font-inter,失败时整条 fallback 仍可用。 */
 body {
-  color: #1a1d24;
-  background: #f8f9fc;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
-    sans-serif;
+  color: #252833;
+  background: #f7f8fa;
+  font-family: var(--font-inter), "PingFang SC", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* 中文正文默认关掉 Inter 的连字/上下文替换(财报数字里 "1/4" 之类不该被合字) */
+  font-variant-ligatures: none;
 }
 
+/* 数字对齐:表格/状态条里的涨跌幅、净额、家数必须等宽,否则一列数字看着在抖 */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
   }
 }
 

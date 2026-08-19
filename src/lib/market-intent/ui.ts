@@ -8,16 +8,18 @@ export const CONFIDENCE_LABEL: Record<IntentConfidence, string> = {
   low: "低置信度",
 };
 
-// 意图 chip 配色(首页视觉规范 2026-08-14:颜色只承担语义——绿=资金进场,红=资金撤出,
-// 橙族=洗盘/派发/衰竭(警惕观察),靛=分歧,灰=中性。一卡一主色,不做装饰色)。
+// 意图 chip 配色(2026-08-18 色温校准:统一 A 股口径——红=资金进场,绿=资金流出。
+// 旧配色绿=进场/红=撤出,与同一张卡里的资金微趋势柱(红=净流入)、市场状态条「主力」
+// 自相矛盾,是本轮必须消掉的不一致。橙=需要警惕(洗盘/衰竭),灰=无信息量(分歧/中性)。
+// 「分歧」与「中性」都走灰:一屏出现六七个才是彩虹的来源,靠深浅区分谁更值得看)。
 export const INTENT_CHIP_CLS: Record<IntentType, string> = {
-  accumulation: "bg-emerald-100 text-emerald-700",
-  rush: "bg-emerald-100 text-emerald-800",
-  wash: "bg-amber-100 text-amber-800",
-  distribution: "bg-orange-100 text-orange-700",
-  exit: "bg-red-100 text-red-700",
-  divergence: "bg-indigo-100 text-indigo-700",
-  exhaustion: "bg-amber-50 text-amber-700",
+  accumulation: "bg-red-50 text-red-700",
+  rush: "bg-red-100 text-red-700",
+  wash: "bg-amber-50 text-amber-700",
+  distribution: "bg-emerald-50 text-emerald-700",
+  exit: "bg-emerald-100 text-emerald-800",
+  divergence: "bg-gray-100 text-gray-700",
+  exhaustion: "bg-amber-100 text-amber-800",
   neutral: "bg-gray-100 text-gray-500",
 };
 

@@ -7,7 +7,12 @@ import type { ChainJudgment, IndustryLogic, VerificationState } from "@/lib/judg
 
 export interface JudgmentChange {
   field: "intent" | "logic" | "verification" | "trigger" | "confidence";
-  text: string; // 人话:「资金意图 分歧 → 派发特征」
+  text: string; // 人话:「资金意图 分歧 → 派发特征」(纯文本口径,总判断/分享卡/存档都用它)
+  // 拆开的三段(2026-08-18 视觉校准):首页要把「标签」渲染成灰、只给「新状态」上状态色,
+  // 整句刷成品牌紫是上一版最刺眼的问题。没有 from→to 的项(如 trigger)只有 label。
+  label: string; // 「资金意图」/「产业逻辑」/「验证」…
+  from?: string; // 昨日态
+  to?: string; // 今日态
 }
 
 const LOGIC_SHORT: Record<IndustryLogic, string> = {
@@ -32,20 +37,43 @@ export function computeJudgmentChanges(
   if (!prev) return [];
   const out: JudgmentChange[] = [];
   if (prev.intent !== today.intent)
-    out.push({ field: "intent", text: `资金意图 ${prev.intentLabel} → ${today.intentLabel}` });
+    out.push({
+      field: "intent",
+      text: `资金意图 ${prev.intentLabel} → ${today.intentLabel}`,
+      label: "资金意图",
+      from: prev.intentLabel,
+      to: today.intentLabel,
+    });
   if (prev.logic !== today.logic)
-    out.push({ field: "logic", text: `产业逻辑 ${LOGIC_SHORT[prev.logic]} → ${LOGIC_SHORT[today.logic]}` });
+    out.push({
+      field: "logic",
+      text: `产业逻辑 ${LOGIC_SHORT[prev.logic]} → ${LOGIC_SHORT[today.logic]}`,
+      label: "产业逻辑",
+      from: LOGIC_SHORT[prev.logic],
+      to: LOGIC_SHORT[today.logic],
+    });
   if (prev.verification !== today.verification)
-    out.push({ field: "verification", text: `验证 ${VERIF_SHORT[prev.verification]} → ${VERIF_SHORT[today.verification]}` });
+    out.push({
+      field: "verification",
+      text: `验证 ${VERIF_SHORT[prev.verification]} → ${VERIF_SHORT[today.verification]}`,
+      label: "验证",
+      from: VERIF_SHORT[prev.verification],
+      to: VERIF_SHORT[today.verification],
+    });
   if (prev.hasEvent === false && today.hasEvent === true)
-    out.push({ field: "trigger", text: "出现新的链级触发事件" });
+    out.push({ field: "trigger", text: "出现新的链级触发事件", label: "出现新的链级触发事件" });
   if (
     prev.confidenceRaw &&
     today.confidenceRaw &&
     ((prev.confidenceRaw === "low" && today.confidenceRaw === "high") ||
       (prev.confidenceRaw === "high" && today.confidenceRaw === "low"))
   )
-    out.push({ field: "confidence", text: `置信度明显${today.confidenceRaw === "high" ? "上升" : "下降"}` });
+    out.push({
+      field: "confidence",
+      text: `置信度明显${today.confidenceRaw === "high" ? "上升" : "下降"}`,
+      label: "置信度",
+      to: `明显${today.confidenceRaw === "high" ? "上升" : "下降"}`,
+    });
   return out;
 }
 
