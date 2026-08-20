@@ -29,6 +29,10 @@ import { CONCEPTS } from "@/data/concepts.generated";
 import { edgeInfo, type Strength } from "@/data/relations";
 import { track } from "@/lib/analytics";
 import { formatBeijingMDHM } from "@/lib/time-label";
+import {
+  type FundBehaviorItem,
+  type FundBehaviorLabel,
+} from "@/lib/fund-behavior";
 
 // 全部概念(按出现频次降序),给筛选下拉用
 const ALL_CONCEPTS = Object.values(CONCEPTS)
@@ -200,6 +204,51 @@ const POSITION_BADGE: Record<Position, string> = {
   下游: "bg-amber-50 text-amber-700",
 };
 
+const FUND_BEHAVIOR_CLS: Record<FundBehaviorLabel, string> = {
+  建仓特征: "bg-emerald-50 text-emerald-700",
+  洗盘特征: "bg-amber-50 text-amber-700",
+  抢筹特征: "bg-rose-50 text-rose-700",
+  出货特征: "bg-orange-50 text-orange-700",
+  衰竭特征: "bg-slate-100 text-slate-600",
+  待判断: "bg-gray-100 text-gray-500",
+};
+
+const A_SHARE_CODES = STOCKS.filter((stock) => stock.market === "A股").map(
+  (stock) => stock.code
+);
+
+function fundDateLabel(date: string | null): string {
+  if (!date) return "";
+  const [, month, day] = date.split("-");
+  return month && day ? `${Number(month)}/${Number(day)}` : date;
+}
+
+function FundBehaviorBadge({
+  item,
+  date,
+  loading = false,
+}: {
+  item?: FundBehaviorItem;
+  date: string | null;
+  loading?: boolean;
+}) {
+  if (!item) {
+    return (
+      <span className="whitespace-nowrap text-[11px] text-gray-300">
+        {loading ? "加载中" : "—"}
+      </span>
+    );
+  }
+  const asOf = date ? `${fundDateLabel(date)} 收盘` : "最新收盘日";
+  return (
+    <TapBadge
+      label={item.label}
+      cls={FUND_BEHAVIOR_CLS[item.label]}
+      detail={`${asOf} · ${item.reason}。${item.confidence}置信；仅为规则识别的资金形态，不代表机构真实意图或投资建议。`}
+    />
+  );
+}
+
 interface Quote {
   price: number;
   change: number;
@@ -259,6 +308,11 @@ export default function Dashboard({
   const [quotesAsOf, setQuotesAsOf] = useState<string | null>(null); // 缓存截至时间
   const [newsCodes, setNewsCodes] = useState<Set<string>>(new Set());
   const [newsGeneratedAt, setNewsGeneratedAt] = useState<string | null>(null);
+  const [fundBehaviorMap, setFundBehaviorMap] = useState<
+    Record<string, FundBehaviorItem>
+  >({});
+  const [fundBehaviorDate, setFundBehaviorDate] = useState<string | null>(null);
+  const [fundBehaviorLoading, setFundBehaviorLoading] = useState(true);
 
   // 从早报/个股页链接进来:?sector= / ?concept= / ?tier= 自动选中并放开市场到「全部」
   useEffect(() => {
@@ -281,6 +335,32 @@ export default function Dashboard({
         setNewsGeneratedAt(d.generatedAt ?? null);
       })
       .catch(() => {});
+  }, []);
+
+  // 资金形态是收盘后日频判断,与 20 秒轮询的盘中行情分开取数,避免把不同时间口径混在一起。
+  useEffect(() => {
+    let active = true;
+    fetch("/api/fund-behavior", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codes: A_SHARE_CODES }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active || !data.ok) return;
+        const items = Array.isArray(data.items)
+          ? (data.items as FundBehaviorItem[])
+          : [];
+        setFundBehaviorMap(
+          Object.fromEntries(items.map((item) => [item.code, item]))
+        );
+        setFundBehaviorDate(data.date ?? null);
+      })
+      .catch(() => {})
+      .finally(() => active && setFundBehaviorLoading(false));
+    return () => {
+      active = false;
+    };
   }, []);
 
   // 轮询真实行情;拿不到则继续用模拟数据。
@@ -575,6 +655,7 @@ export default function Dashboard({
           </div>
           <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
             美股多作为事件触发源,A 股 / H 股用于产业链映射;关系标签表示传导角色,不代表投资建议。先看关系,再看行情——涨跌只是当天市场表现,不代表产业链传导强弱。
+            资金形态基于收盘后价格与资金数据的规则识别,最高为中置信,不代表机构真实意图。
           </p>
         </div>
 
@@ -724,7 +805,15 @@ export default function Dashboard({
         {tab === "股票列表" && (
           <>
             <EtfStrip etfs={listEtfs} quotes={etfQuotes} wl={wl} />
-            <StockTable rows={listRows} newsCodes={newsCodes} wl={wl} insightMap={insightMap} />
+            <StockTable
+              rows={listRows}
+              newsCodes={newsCodes}
+              wl={wl}
+              insightMap={insightMap}
+              fundBehaviorMap={fundBehaviorMap}
+              fundBehaviorDate={fundBehaviorDate}
+              fundBehaviorLoading={fundBehaviorLoading}
+            />
           </>
         )}
         {tab === "板块ETF" && (
@@ -840,11 +929,17 @@ function StockTable({
   newsCodes,
   wl,
   insightMap,
+  fundBehaviorMap,
+  fundBehaviorDate,
+  fundBehaviorLoading,
 }: {
   rows: Stock[];
   newsCodes: Set<string>;
   wl: UseWatchlist;
   insightMap: StockInsightMap;
+  fundBehaviorMap: Record<string, FundBehaviorItem>;
+  fundBehaviorDate: string | null;
+  fundBehaviorLoading: boolean;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (code: string) =>
@@ -915,6 +1010,9 @@ function StockTable({
             onToggleWatch={() => wl.toggle(s.code)}
             isOpen={open.has(s.code)}
             toggle={() => toggle(s.code)}
+            fundBehavior={fundBehaviorMap[s.code]}
+            fundBehaviorDate={fundBehaviorDate}
+            fundBehaviorLoading={fundBehaviorLoading && s.market === "A股"}
           />
         ))}
         {mob.hasMore && (
@@ -956,6 +1054,16 @@ function StockTable({
               <Th className="text-right" onClick={() => toggleSort("change")}>
                 日涨跌{arrow("change")}
               </Th>
+              <Th>
+                <span title="基于同一收盘日的价格、资金强度与近 3 日连续性识别">
+                  资金形态
+                </span>
+                {fundBehaviorDate && (
+                  <span className="block text-[10px] font-normal text-gray-400">
+                    {fundDateLabel(fundBehaviorDate)} 收盘
+                  </span>
+                )}
+              </Th>
               <Th>为什么在这条链里</Th>
               <Th>状态</Th>
               <Th></Th>
@@ -974,13 +1082,16 @@ function StockTable({
                   onToggleWatch={() => wl.toggle(s.code)}
                   isOpen={isOpen}
                   toggle={() => toggle(s.code)}
+                  fundBehavior={fundBehaviorMap[s.code]}
+                  fundBehaviorDate={fundBehaviorDate}
+                  fundBehaviorLoading={fundBehaviorLoading && s.market === "A股"}
                 />
               );
             })}
             {desk.hasMore && (
               <tr ref={desk.setSentinel}>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="py-3 text-center text-xs text-gray-400"
                 >
                   向下滚动加载更多 · {desk.shownCount}/{desk.total}
@@ -990,7 +1101,7 @@ function StockTable({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="px-4 py-12 text-center text-sm text-gray-400"
                 >
                   没有符合条件的标的。可放宽筛选;若按链 / 环节筛选,该环节可能暂无纳入静态关系的标的(仅有「待验证」标的、尚未核定)。
@@ -1015,6 +1126,9 @@ function StockCard({
   onToggleWatch,
   isOpen,
   toggle,
+  fundBehavior,
+  fundBehaviorDate,
+  fundBehaviorLoading,
 }: {
   s: Stock;
   insight?: StockInsight;
@@ -1023,6 +1137,9 @@ function StockCard({
   onToggleWatch: () => void;
   isOpen: boolean;
   toggle: () => void;
+  fundBehavior?: FundBehaviorItem;
+  fundBehaviorDate: string | null;
+  fundBehaviorLoading: boolean;
 }) {
   const status: string = hasNews
     ? "今日有新消息"
@@ -1077,6 +1194,13 @@ function StockCard({
           {s.position}
         </span>
         <span className="text-gray-500">{s.sector}</span>
+        {s.market === "A股" && (
+          <FundBehaviorBadge
+            item={fundBehavior}
+            date={fundBehaviorDate}
+            loading={fundBehaviorLoading}
+          />
+        )}
         <StatusBadge status={status} className="ml-auto" />
       </div>
       <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
@@ -1124,6 +1248,9 @@ function ReactFragmentRow({
   onToggleWatch,
   isOpen,
   toggle,
+  fundBehavior,
+  fundBehaviorDate,
+  fundBehaviorLoading,
 }: {
   s: Stock;
   insight?: StockInsight;
@@ -1132,6 +1259,9 @@ function ReactFragmentRow({
   onToggleWatch: () => void;
   isOpen: boolean;
   toggle: () => void;
+  fundBehavior?: FundBehaviorItem;
+  fundBehaviorDate: string | null;
+  fundBehaviorLoading: boolean;
 }) {
   // 真实状态:今天进了简报才显示"今日有新消息";否则把种子里的假标降级
   const status: string = hasNews
@@ -1201,6 +1331,13 @@ function ReactFragmentRow({
         >
           {liveChange(s)}
         </Td>
+        <Td className="whitespace-nowrap">
+          <FundBehaviorBadge
+            item={fundBehavior}
+            date={fundBehaviorDate}
+            loading={fundBehaviorLoading}
+          />
+        </Td>
         <Td className="max-w-[340px] text-xs text-gray-600">
           {insight?.segment && (
             <span className="mr-1 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500">
@@ -1224,7 +1361,7 @@ function ReactFragmentRow({
       </tr>
       {isOpen && (
         <tr className="border-b border-gray-100 bg-amber-50/50">
-          <td colSpan={11} className="px-4 py-3">
+          <td colSpan={12} className="px-4 py-3">
             <div className="flex gap-2">
               <span className="shrink-0 text-base">💡</span>
               <div>
