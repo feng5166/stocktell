@@ -34,7 +34,7 @@ function Row({ row }: { row: SegmentFundRow }) {
       </div>
 
       <div className="flex items-baseline justify-between sm:block">
-        <span className="text-xs text-gray-400 sm:hidden">资金强度</span>
+        <span className="text-xs text-gray-400 sm:hidden">链内净额/成交比</span>
         <div>
           <span className={`font-mono text-sm font-semibold ${changeClass(row.strengthPct)}`}>
             {fmtSigned(row.strengthPct)}%
@@ -94,7 +94,7 @@ export function SegmentFundStatus({
   if (!data?.rows?.length) {
     return (
       <section className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-gray-800">产业链资金状态</div>
+        <div className="text-sm font-semibold text-gray-800">AI 链内资金状态</div>
         <p className="mt-1.5 text-xs text-gray-400">
           {failed ? "资金数据暂时读取不到,稍后再来看看" : "收盘数据生成中,稍后更新"}
         </p>
@@ -107,12 +107,13 @@ export function SegmentFundStatus({
       <div className="flex items-start gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-semibold text-gray-800">产业链资金状态</h2>
+            <h2 className="text-sm font-semibold text-gray-800">AI 链内资金状态</h2>
             <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
-              链内样本
+              核定样本
             </span>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-gray-600">{data.summary}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-gray-400">{data.scope}。</p>
         </div>
         {data.date && (
           <span className="ml-auto shrink-0 text-xs text-gray-400">
@@ -128,7 +129,6 @@ export function SegmentFundStatus({
         </summary>
         <div className="mt-2 space-y-1 text-xs leading-relaxed text-gray-500">
           <p>{data.formula}</p>
-          <p>{data.scope}。</p>
           <p>
             “同向/分叉”只比较同日价格与资金方向;资金是市场行为,不等于订单、收入等产业证据。
           </p>
@@ -137,7 +137,7 @@ export function SegmentFundStatus({
 
       <div className="mt-2 hidden grid-cols-[minmax(0,1.45fr)_0.8fr_0.9fr_1.25fr] gap-3 px-0 text-[11px] text-gray-400 sm:grid">
         <span>产业环节</span>
-        <span>资金强度</span>
+        <span>链内净额/成交比</span>
         <span>价格关系</span>
         <span>下一验证</span>
       </div>

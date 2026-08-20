@@ -1,4 +1,4 @@
-// 产业链资金状态:把同一交易日的链内成分股主力净额与成交额聚合到产业环节。
+// AI 链内资金状态:把同一交易日的核定链内成分股主力净额与成交额聚合到产业环节。
 // 只描述可观察的资金方向,不推断“建仓/洗盘/出货”,也不把资金行为当产业证据。
 import { Prisma } from "@prisma/client";
 import { getChain, FALLBACK_SEGMENT } from "@/data/chains";
@@ -47,6 +47,8 @@ export interface SegmentFundStatus {
 const CACHE_ID = "segment-fund-status-v2";
 const MIN_COVERED = 2;
 const MAX_ROWS = 5;
+const FORMULA = "链内净额/成交比 = 核定成分股主力净额合计 ÷ 同日成交额合计 × 100%";
+const SCOPE = "仅看 StockTell 已核定的 AI 产业链样本,用于观察链内资金方向;不代表全市场板块排名";
 let memory: { at: number; data: SegmentFundStatus } | null = null;
 
 const round = (v: number, digits = 2) => {
@@ -171,8 +173,8 @@ async function compute(ymd: string): Promise<SegmentFundStatus> {
     date: iso(ymd),
     chainId: "ai",
     chainName: "AI 产业链",
-    formula: "资金强度 = 链内成分股主力净额合计 ÷ 成交额合计 × 100%",
-    scope: "仅统计 StockTell 已核定的 AI 产业链成分股,不是全市场板块资金排名",
+    formula: FORMULA,
+    scope: SCOPE,
     summary: buildSummary(allRows),
     rows: allRows.slice(0, MAX_ROWS),
   };
@@ -186,7 +188,12 @@ async function readCached(): Promise<SegmentFundStatus | null> {
     .findUnique({ where: { id: CACHE_ID }, select: { data: true } })
     .catch(() => null);
   if (!row?.data) return null;
-  const data = row.data as unknown as SegmentFundStatus;
+  // 展示口径随代码统一收敛,不让当天旧缓存继续回放旧名称。
+  const data = {
+    ...(row.data as unknown as SegmentFundStatus),
+    formula: FORMULA,
+    scope: SCOPE,
+  };
   memory = { at: Date.now(), data };
   return data;
 }
@@ -203,8 +210,8 @@ export async function segmentFundStatus(): Promise<SegmentFundStatus> {
       date: null,
       chainId: "ai",
       chainName: "AI 产业链",
-      formula: "资金强度 = 链内成分股主力净额合计 ÷ 成交额合计 × 100%",
-      scope: "仅统计 StockTell 已核定的 AI 产业链成分股,不是全市场板块资金排名",
+      formula: FORMULA,
+      scope: SCOPE,
       summary: "资金状态数据生成中。",
       rows: [],
     };
@@ -231,8 +238,8 @@ export async function segmentFundStatus(): Promise<SegmentFundStatus> {
       date: iso(ymd),
       chainId: "ai",
       chainName: "AI 产业链",
-      formula: "资金强度 = 链内成分股主力净额合计 ÷ 成交额合计 × 100%",
-      scope: "仅统计 StockTell 已核定的 AI 产业链成分股,不是全市场板块资金排名",
+      formula: FORMULA,
+      scope: SCOPE,
       summary: "资金状态数据生成中。",
       rows: [],
     };

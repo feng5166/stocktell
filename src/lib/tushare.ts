@@ -396,7 +396,7 @@ export interface DailyMarketPoint {
 
 const dmCache = new Map<string, Map<string, DailyMarketPoint>>();
 
-// 某交易日全市场日线涨跌幅 + 成交额。产业链资金强度使用同日成交额作为分母,
+// 某交易日全市场日线涨跌幅 + 成交额。AI 链内净额/成交比使用同日成交额作为分母,
 // 因此走 strict:回源失败必须抛错,不能把缺失成交额当 0 后产出错误强度。
 export async function dailyMarketByDate(
   ymd: string
