@@ -281,12 +281,14 @@ function FundEvidencePanel({
 
   const recent = item.recent3 ?? [];
   const current = recent[0];
-  const inflowDays = recent.filter((day) => day.flowRatio >= 0.5).length;
-  const outflowDays = recent.filter((day) => day.flowRatio <= -0.5).length;
+  const inflow = recent.filter((day) => day.netMfYi > 0);
+  const outflow = recent.filter((day) => day.netMfYi < 0);
+  const inflowDays = inflow.length;
+  const outflowDays = outflow.length;
   const neutralDays = recent.length - inflowDays - outflowDays;
-  const continuity = recent.length
-    ? `${inflowDays} 日流入 · ${outflowDays} 日流出${neutralDays ? ` · ${neutralDays} 日中性` : ""}`
-    : "数据不足";
+  const inflowTotalYi = inflow.reduce((total, day) => total + day.netMfYi, 0);
+  const outflowTotalYi = outflow.reduce((total, day) => total + day.netMfYi, 0);
+  const recentTotalYi = recent.reduce((total, day) => total + day.netMfYi, 0);
 
   return (
     <div className="mt-3 border-t border-amber-100 pt-3">
@@ -348,7 +350,38 @@ function FundEvidencePanel({
       <div className="mt-2 rounded-lg border border-gray-100 bg-white/80 px-3 py-2 text-xs">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-gray-400">近 3 日连续性</span>
-          <span className="font-medium text-gray-700">{continuity}</span>
+          {recent.length ? (
+            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-medium text-gray-700">
+              <span>
+                {inflowDays} 日流入{" "}
+                <span className={metricTone(inflowTotalYi)}>
+                  {signedMetric(inflowTotalYi, " 亿")}
+                </span>
+              </span>
+              <span className="text-gray-300">·</span>
+              <span>
+                {outflowDays} 日流出{" "}
+                <span className={metricTone(outflowTotalYi)}>
+                  {signedMetric(outflowTotalYi, " 亿")}
+                </span>
+              </span>
+              {neutralDays > 0 && (
+                <>
+                  <span className="text-gray-300">·</span>
+                  <span>{neutralDays} 日持平</span>
+                </>
+              )}
+              <span className="text-gray-300">·</span>
+              <span>
+                近 3 日合计{" "}
+                <span className={metricTone(recentTotalYi)}>
+                  {signedMetric(recentTotalYi, " 亿")}
+                </span>
+              </span>
+            </span>
+          ) : (
+            <span className="font-medium text-gray-400">数据不足</span>
+          )}
         </div>
         {recent.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
