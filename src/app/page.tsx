@@ -147,8 +147,8 @@ export default async function Home() {
     // 分区靠边框+留白,不靠阴影;冷蓝灰底已弃。
     // 2026-08-17 负责人拍板:整页回单栏(宽幅双栏观感不和谐)——内容与导航同 max-w-3xl 栅格,
     // 模块从上到下单列流,像研究简报不像 dashboard。
-    <div className="min-h-screen bg-canvas text-ink">
-      <SiteHeader active="今日推理" />
+    <div className="home-atmosphere min-h-screen text-ink">
+      <SiteHeader active="今日推理" maxWidthClass="max-w-6xl" atmospheric />
 
       {/* 阅读路径(2026-08-14 定,2026-08-17 回单栏):从「模块排列」到「阅读路径」——
           一屏半内拿到:今天怎么看 → 我的关注变了什么 → 什么值得点。全部单列流:
@@ -156,19 +156,17 @@ export default async function Home() {
           今日事件×3 → 验证进展 → 和我相关 → 值得复看。
           注:因果链四大卡撤出首页(与核心判断信息重叠,完整版在链页/深读);
           FirstRunReorder 新手前置序随之退役——本次拍板覆盖 07-09 旧拍板。 */}
-      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6">
         <HomeHero
           shownDate={shownDate}
           insightHref={insightHref}
           dataNote={judgmentRes ? `${Number(judgmentRes.ymd.slice(4, 6))}/${Number(judgmentRes.ymd.slice(6, 8))} 盘后` : undefined}
+          judgment={judgmentRes && tell ? <DailyTell ymd={judgmentRes.ymd} tell={tell} /> : undefined}
         />
 
         <BriefStatusBanner status={briefStatus} stale={stale} shownDate={shownDate} />
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
-
-        {/* 屏1a:StockTell 今天怎么看(总判断——这才是 Tell) */}
-        {judgmentRes && tell && <DailyTell ymd={judgmentRes.ymd} tell={tell} />}
 
         {/* 屏1b:主线 1 大 + 次线 2 小 */}
         {judgmentRes && judged && (
@@ -179,8 +177,10 @@ export default async function Home() {
         <HomeMyStocks segIntent={segIntent} named={namedToday} watchChainMap={watchChainMap} />
 
         {/* 层4:市场状态一条(含板块意图分布,方案 A 并入)+ 层5:今日发生了什么 3 条 */}
-        <MarketBar data={snap?.data} relMap={relLabelMap} segIntent={segIntent} />
-        <EventTop3 items={items} evtMap={evtMap} chainName={aiChain?.name} insightHref={insightHref} />
+        <div className="grid items-start gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+          <MarketBar data={snap?.data} relMap={relLabelMap} segIntent={segIntent} />
+          <EventTop3 items={items} evtMap={evtMap} chainName={aiChain?.name} insightHref={insightHref} />
+        </div>
 
         {/* 层6:今天有哪些判断被验证/推翻(空则整层消失) */}
         <JudgmentReview entries={reviewEntries} />

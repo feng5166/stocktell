@@ -40,3 +40,35 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* 首页 2026-08-20：参考早期品牌视觉，使用空间网格和低透明度边缘光晕。
+   网格只做氛围，不承载信息；移动端降低密度，确保正文可读。 */
+.home-atmosphere {
+  background-color: #f5f7fa;
+  background-image:
+    radial-gradient(circle at -5% 32%, rgba(36, 184, 138, 0.18), transparent 28rem),
+    radial-gradient(circle at 104% 15%, rgba(240, 91, 104, 0.18), transparent 30rem),
+    radial-gradient(circle at 94% 62%, rgba(229, 162, 58, 0.12), transparent 28rem),
+    linear-gradient(rgba(126, 134, 152, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(126, 134, 152, 0.09) 1px, transparent 1px);
+  background-size: auto, auto, auto, 48px 48px, 48px 48px;
+  background-position: center;
+}
+
+.home-hero-grid {
+  background:
+    linear-gradient(rgba(116, 104, 242, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(116, 104, 242, 0.055) 1px, transparent 1px),
+    linear-gradient(112deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.56));
+  background-size: 36px 36px, 36px 36px, auto;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.7);
+}
+
+@media (max-width: 640px) {
+  .home-atmosphere {
+    background-size: auto, auto, auto, 64px 64px, 64px 64px;
+  }
+  .home-hero-grid {
+    border-radius: 22px;
+  }
+}

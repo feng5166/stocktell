@@ -19,14 +19,16 @@ export function SiteHeader({
   active,
   wide,
   maxWidthClass,
+  atmospheric,
 }: {
   active?: string;
   wide?: boolean;
   maxWidthClass?: string; // 与正文同栅格(首页视觉优化:导航和内容用同一个 max-width)
+  atmospheric?: boolean;
 }) {
   return (
     <>
-      <header className="border-b border-gray-200 bg-white">
+      <header className={atmospheric ? "relative z-20 border-b border-white/70 bg-white/75 backdrop-blur-xl" : "border-b border-gray-200 bg-white"}>
         <div
           className={`mx-auto flex ${
             maxWidthClass ?? (wide ? "max-w-7xl" : "max-w-3xl")
@@ -51,7 +53,7 @@ export function SiteHeader({
                 n.label === active ? (
                   <span
                     key={n.href}
-                    className="cursor-default text-gray-900"
+                    className={atmospheric ? "relative cursor-default text-gray-900 after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:w-full after:rounded-full after:bg-[#24b88a]" : "cursor-default text-gray-900"}
                   >
                     {n.label}
                   </span>

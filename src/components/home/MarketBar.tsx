@@ -56,7 +56,7 @@ export function MarketBar({
       </div>
       {/* 紧凑 Dashboard(视觉优化 2026-08-16):一张横向白卡三行——指标 / 意图分布 / 入口,
           入口全部收进底行右侧,控制模块高度 */}
-      <div className="mt-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div className="mt-3 rounded-[20px] bg-white px-4 py-3 shadow-[0_12px_34px_rgba(31,35,48,0.07)]">
         <div className="flex items-center gap-4 overflow-x-auto pb-0.5 sm:gap-6">
           {a && (
             <>

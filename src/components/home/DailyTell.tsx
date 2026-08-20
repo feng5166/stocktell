@@ -12,10 +12,10 @@ function Tag({ k, v, accent, title }: { k: string; v: string; accent?: boolean; 
     <span
       title={title}
       className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-meta ${
-        accent ? "bg-brand-50" : "bg-gray-50"
+        accent ? "bg-[#fff0f2]" : "bg-gray-50"
       }`}
     >
-      <span className={accent ? "text-brand-700" : "text-gray-400"}>{k}</span>
+      <span className={accent ? "text-[#d94758]" : "text-gray-400"}>{k}</span>
       <span className="font-medium text-gray-900">{v}</span>
     </span>
   );
@@ -23,18 +23,17 @@ function Tag({ k, v, accent, title }: { k: string; v: string; accent?: boolean; 
 
 export function DailyTell({ ymd, tell }: { ymd: string; tell: TellData }) {
   return (
-    <section className="relative mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-      <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-brand-600" />
+    <section className="relative overflow-hidden rounded-[22px] border border-white/80 bg-white/95 px-5 py-5 shadow-[0_18px_55px_rgba(31,35,48,0.12)] backdrop-blur-sm sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center rounded bg-brand-50 px-2 py-0.5 text-meta font-medium text-brand-700">
+          <span className="inline-flex items-center rounded-md bg-[#efedff] px-2 py-0.5 text-meta font-medium text-[#6558dd]">
             今日判断
           </span>
           <h2 className="text-[13px] font-medium text-gray-500">StockTell 今天怎么看</h2>
         </div>
         <span className="text-meta text-gray-400">{fmtYmd(ymd)} 盘后 · 规则合成</span>
       </div>
-      <p className="mt-2.5 line-clamp-3 text-[15px] font-medium leading-[1.65] text-gray-900 sm:text-base">
+      <p className="mt-3 line-clamp-3 text-[15px] font-medium leading-[1.7] text-gray-900 sm:text-base">
         {tell.sentence}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

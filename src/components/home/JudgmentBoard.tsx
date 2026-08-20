@@ -222,28 +222,28 @@ export function JudgmentBoard({
   // 移动端:主线展开,次线折叠。
   const [main, ...rest] = top;
   return (
-    <section className="mt-4">
+    <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.65fr_0.8fr_0.8fr]">
       {/* 一级卡:白底 + 轻边框 + 极轻 shadow;主线卡边框带一丝品牌色,不用色块 */}
       <Link
         href={main.href}
-        className="block rounded-xl border border-brand-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6"
+        className="block rounded-[20px] bg-white p-5 shadow-[0_12px_34px_rgba(31,35,48,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(31,35,48,0.11)] sm:col-span-2 sm:p-6 lg:col-span-1"
       >
         <Head j={main} idx={0} />
         <CardBody j={main} full trend={trends?.[main.chainSlug]} />
       </Link>
-      <div className="mt-3 space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
+      <div className="contents">
         {rest.map((j, i) => (
           <div key={j.chainSlug}>
             {/* 桌面:次卡=二级卡(边框更弱、无 shadow) */}
             <Link
               href={j.href}
-              className="hidden h-full rounded-xl border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm sm:block"
+              className="hidden h-full rounded-[20px] bg-white p-4 shadow-[0_12px_34px_rgba(31,35,48,0.07)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(31,35,48,0.1)] sm:block"
             >
               <Head j={j} idx={i + 1} showIntent />
               <CardBody j={j} full={false} />
             </Link>
             {/* 移动端:折叠 */}
-            <details className="rounded-xl border border-gray-200 bg-white p-4 sm:hidden">
+            <details className="rounded-[18px] bg-white p-4 shadow-[0_10px_28px_rgba(31,35,48,0.07)] sm:hidden">
               <summary className="cursor-pointer list-none">
                 <Head j={j} idx={i + 1} showIntent />
               </summary>
@@ -255,9 +255,9 @@ export function JudgmentBoard({
         ))}
       </div>
       {hadPrev && !anyChange && (
-        <p className="mt-2.5 text-[13px] text-gray-500">与昨日相比,各链判断没有方向性变化。</p>
+        <p className="text-[13px] text-gray-500 sm:col-span-2 lg:col-span-3">与昨日相比,各链判断没有方向性变化。</p>
       )}
-      <p className="mt-2.5 text-meta leading-relaxed text-gray-400">
+      <p className="text-meta leading-relaxed text-gray-400 sm:col-span-2 lg:col-span-3">
         由 事件×关系×资金意图×验证线索 规则合成,不构成投资建议 · 依据与反证在链页 · {fmtYmd(ymd)} 盘后
       </p>
     </section>

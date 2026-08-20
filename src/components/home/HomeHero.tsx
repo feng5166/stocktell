@@ -6,7 +6,7 @@
 // 看到 QuickAddWatch,有自选直达「和我相关」。不设登录墙,转化路径最短。
 // 次 CTA 直达第一条 insight 因果链。
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { FeedbackLink } from "@/components/FeedbackLink";
 import { useWatchlist } from "@/components/useWatchlist";
@@ -16,10 +16,12 @@ export function HomeHero({
   shownDate,
   insightHref,
   dataNote,
+  judgment,
 }: {
   shownDate: string;
   insightHref: string | null;
   dataNote?: string; // 数据更新说明(如「8/13 盘后」)
+  judgment?: ReactNode;
 }) {
   const { status } = useSession();
   const wl = useWatchlist();
@@ -52,33 +54,34 @@ export function HomeHero({
   };
 
   return (
-    <div className="mb-4">
-      {/* 视觉优化(2026-08-14):Hero 压高——标题+一行副标,日期/更新时间/全部产业链收进同一条 meta 行 */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          {/* H1 = 24px Semibold(视觉规范五级排版的顶层,token: text-h1) */}
-          <h1 className="text-h1 font-semibold tracking-tight text-gray-900">今日产业链推理</h1>
-          <FeedbackLink />
-        </div>
-        <span className="flex items-center gap-2 text-meta text-gray-400">
-          <span>{shownDate}</span>
-          {dataNote && <span>· 数据更新 {dataNote}</span>}
-          <Link href="/chains" className="font-medium text-brand-600 hover:underline">
-            全部产业链 →
-          </Link>
-        </span>
-      </div>
-      {/* 副标不是 meta,是这个产品在说自己干什么——13px/灰 500,不能弱到 gray-400 */}
-      <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
-        全球事件如何传导到 A 股产业链——核心逻辑与资金动向
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {/* 主按钮=品牌色唯一实色位(视觉规范:品牌色只做强调,主按钮/链接/active) */}
+    <section className="home-hero-grid relative mb-5 overflow-hidden rounded-[28px] px-5 py-7 sm:px-8 sm:py-10 lg:px-10">
+      <div className={`relative z-10 grid items-center gap-7 ${judgment ? "lg:grid-cols-[0.9fr_1.25fr] lg:gap-10" : "max-w-2xl"}`}>
+        <div>
+          <div className="flex items-center gap-2.5 text-meta font-medium text-[#7468f2]">
+            <span>每日一页 AI 推理</span>
+            <FeedbackLink />
+          </div>
+          <h1 className="mt-3 text-[34px] font-semibold leading-[1.12] tracking-[-0.035em] text-[#171a21] sm:text-[42px] lg:text-[48px]">
+            今日产业链推理
+          </h1>
+          <p className="mt-3 text-[18px] leading-relaxed text-gray-600">
+            全球事件如何传导到 A 股产业链
+          </p>
+          <p className="mt-1 max-w-md text-[13px] leading-[1.8] text-gray-500">
+            把新闻、产业链、资金面和验证线索放在同一个视角里，减少盲猜，先理解再决策。
+          </p>
+          {!judgment && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-meta text-gray-500">
+              <span>{shownDate}{dataNote ? ` · 数据更新 ${dataNote}` : ""}</span>
+              <Link href="/chains" className="font-medium text-gray-700 hover:underline">全部产业链 →</Link>
+            </div>
+          )}
+          <div className="mt-5 flex flex-wrap gap-2.5">
         <button
           onClick={goMine}
-          className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#171a21] px-5 py-2.5 text-sm font-medium text-white shadow-[0_8px_24px_rgba(23,26,33,0.16)] transition hover:-translate-y-0.5 hover:bg-[#292d36]"
         >
-          添加自选,查看和我相关
+              添加自选，查看和我相关 <span aria-hidden>→</span>
         </button>
         {insightHref && (
           <Link
@@ -90,12 +93,30 @@ export function HomeHero({
                 has_watchlist: hasWatchlist,
               })
             }
-            className="inline-flex min-h-[40px] items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/80 bg-white/90 px-5 py-2.5 text-sm font-medium text-gray-800 shadow-[0_6px_20px_rgba(31,35,48,0.06)] transition hover:-translate-y-0.5 hover:bg-white"
           >
             查看今日完整因果链 →
           </Link>
         )}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2 text-meta font-medium">
+            <span className="rounded-full bg-[#fff0f2] px-3 py-1 text-[#d94758]">市场情绪</span>
+            <span className="rounded-full bg-[#e9fbf5] px-3 py-1 text-[#148662]">自选相关</span>
+            <span className="rounded-full bg-[#efedff] px-3 py-1 text-[#6558dd]">AI 解读</span>
+          </div>
+        </div>
+        {judgment && (
+          <div className="min-w-0">
+            {judgment}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-meta text-gray-500">
+              <span>{shownDate}{dataNote ? ` · 数据更新 ${dataNote}` : ""}</span>
+              <Link href="/chains" className="font-medium text-gray-700 hover:underline">
+                全部产业链 →
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

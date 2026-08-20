@@ -75,7 +75,7 @@ export function HomeMyStocks({
           管理关注 →
         </Link>
       </div>
-      <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="mt-3 overflow-hidden rounded-[20px] bg-white shadow-[0_12px_34px_rgba(31,35,48,0.07)]">
         <div className="hidden gap-3 border-b border-gray-100 px-4 py-2 text-meta text-gray-400 sm:grid sm:grid-cols-[1.3fr_6rem_1.1fr_1.2fr]">
           <span>股票</span>
           <span>今日判断</span>

@@ -40,7 +40,7 @@ export function EventTop3({
             <Link
               key={it.id}
               href={href}
-              className="flex flex-col rounded-xl border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm"
+              className="flex flex-col rounded-[18px] bg-white p-4 shadow-[0_10px_28px_rgba(31,35,48,0.065)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(31,35,48,0.1)]"
             >
               <div className="flex flex-wrap items-center gap-1.5">
                 {it.triggerCode && (
