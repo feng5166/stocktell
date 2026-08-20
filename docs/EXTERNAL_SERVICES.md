@@ -5,9 +5,9 @@
 > **约定(重要)**:
 > 1. **新增任何外部服务前,先查本文档**,确认没有已有方案可复用。
 > 2. **接入后立刻更新本文档**(加一行/一节:用途、关键文件、环境变量、坑)。
-> 3. 新增环境变量,记得在 **Vercel 项目环境变量**里配置(本地 `.env.local` 仅本地用;线上不读它)。
+> 3. 新增环境变量,记得同步到 **杭州生产服务器的 systemd 运行环境**(本地 `.env.local` 仅本地用;线上不读它);改 `NEXT_PUBLIC_*` 后必须重新 build。
 >
-> 最后更新:2026-07-11(行情主/备口径校准:个股腾讯主源/新浪补缺,美股指数 Yahoo 主源——与 `/methodology` 公开口径同步,改行情源两处一起改)
+> 最后更新:2026-08-20(生产已迁至杭州 ECS;Vercel 已暂停,不再承担部署与 Cron)
 
 ---
 
@@ -15,8 +15,8 @@
 
 | 环境变量 | 所属服务 | 说明 |
 |---|---|---|
-| `POSTGRES_PRISMA_URL` | Vercel Postgres | 连接池(运行时用),Vercel 自动注入 |
-| `POSTGRES_URL_NON_POOLING` | Vercel Postgres | 直连(prisma migrate/db push 用),Vercel 自动注入 |
+| `POSTGRES_PRISMA_URL` | 本机 PostgreSQL 17 | 生产运行时连接串,由服务器运行环境提供 |
+| `POSTGRES_URL_NON_POOLING` | 本机 PostgreSQL 17 | 直连(prisma migrate/db push 用),由服务器运行环境提供 |
 | `NEXTAUTH_URL` | NextAuth | 站点根 URL(也用作邮件/短链里的 base) |
 | `NEXTAUTH_SECRET` | NextAuth | JWT 签名密钥 |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth | Google 登录 |
@@ -30,7 +30,7 @@
 | `VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT` | Web Push | 浏览器/PWA 通知 |
 | `CLAWBOT_BASE_URL` / `CLAWBOT_SECRET` | 自建微信桥 | 微信 iLink 推送;`https://bridge.stocktell.me`(宝塔 nginx 反代 VPS 47.84.8.167) |
 | `FEISHU_BOT_APP_ID` / `FEISHU_BOT_APP_SECRET` / `FEISHU_USER_OPEN_ID` | 飞书机器人 | 给运营者本人推送简报 |
-| `CRON_SECRET` | Vercel Cron | 定时任务鉴权(Bearer) |
+| `CRON_SECRET` | 系统 Cron | 定时任务鉴权(Bearer) |
 | `ADMIN_TOKEN` | 后台 | 管理端点鉴权(Bearer);如 init-db |
 | `ADMIN_EMAILS` | 后台 | 管理员邮箱白名单(逗号分隔) |
 | `UNSUB_SECRET` | 邮件退订 | 退订链接 HMAC 签名(未配则回退 NEXTAUTH_SECRET) |
@@ -42,15 +42,17 @@
 
 ## 1. 托管与基础设施
 
-### Vercel(托管 / 部署 / Cron)
-- **用途**:Next.js 应用托管;push main 自动部署;定时任务(Cron)。
-- **限制**:Hobby 计划 Serverless 函数 `maxDuration` 上限 **60s**(LLM 重活要靠并发/流式规避超时)。
-- **Cron**:由 `CRON_SECRET` 鉴权(`Authorization: Bearer`),见 `src/app/api/cron/*`。
+### 杭州 ECS(当前生产托管 / 部署 / Cron)
+- **主机**:`120.26.226.230`,项目目录 `/opt/stocktell`(常用 SSH alias:`aliyun-vps`)。
+- **部署**:push `main` 不会自动上线。生产执行 `git pull origin main` → `npm run build` → `systemctl restart stocktell`;改 `NEXT_PUBLIC_*` 必须重新 build。
+- **服务**:systemd unit 为 `stocktell`;上线后检查服务状态、`/api/health` 与公开首页。
+- **Cron**:`/etc/cron.d/stocktell`,使用 `CRON_TZ=UTC`,并由 `CRON_SECRET` 鉴权。它应与 `vercel.json` 的任务意图逐条对齐,但生产只读取系统 cron;仅改 `vercel.json` 不生效。
+- **Vercel**:项目已暂停,避免旧 Cron 重复发送邮件/推送;不再承担当前生产部署。
 
-### Vercel Postgres(底层 Neon)
+### 本机 PostgreSQL 17
 - **用途**:主数据库。
 - **关键文件**:`prisma/schema.prisma`(`POSTGRES_PRISMA_URL` + `POSTGRES_URL_NON_POOLING`)。
-- **坑**:Vercel token 解不开加密的环境变量,本地 `prisma db push` 拿不到连接串 → **改库走 `/api/admin/init-db` 端点**(幂等 `CREATE TABLE/ALTER ... IF NOT EXISTS`),需 `Authorization: Bearer <ADMIN_TOKEN>`。
+- **改库约定**:**改库走 `/api/admin/init-db` 端点**(幂等 `CREATE TABLE/ALTER ... IF NOT EXISTS`),需 `Authorization: Bearer <ADMIN_TOKEN>`。
 - 不是 Supabase(PRD 旧文档里的 Supabase/dev.db 都不是当前数据源)。
 
 ### Prisma(ORM)
