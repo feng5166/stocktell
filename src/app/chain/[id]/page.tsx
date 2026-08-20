@@ -24,6 +24,20 @@ export const revalidate = 60;
 const pct1 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 const pct2 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
 
+const fmtBeijingMDHM = (value: Date) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${Number(part("month"))}/${Number(part("day"))} ${part("hour")}:${part("minute")}`;
+};
+
 export function generateMetadata({ params }: { params: { id: string } }): Metadata {
   const chain = getChain(params.id);
   if (!chain) return {};
@@ -82,11 +96,15 @@ export default async function ChainPage({
   // 链级「今日一句话判断」:优先 published daily → chain-take;非 ai 链(无专属 cron/事件)
   // 用链配置的静态口径 todayFraming,不用 AI 事件兜底的 fallbackChainTake(否则说的是 AI 链的话)。
   const daily = await getPublishedDaily(chain.id, shownDate).catch(() => null);
+  const cachedChainTake = await getChainTake(chain.id, shownDate).catch(() => null);
+  const fallbackTake = fallbackChainTake(items);
   const chainTake =
-    daily?.payload.judgment ||
-    (await getChainTake(chain.id, shownDate).catch(() => null)) ||
-    chain.todayFraming ||
-    fallbackChainTake(items);
+    daily?.payload.judgment || cachedChainTake || chain.todayFraming || fallbackTake;
+  const chainTakeMeta = daily
+    ? `盘前判断 · ${fmtBeijingMDHM(daily.publishedAt ?? daily.updatedAt)} · ${daily.payload.confidence}置信`
+    : cachedChainTake || fallbackTake
+      ? `盘前判断 · ${Number(shownDate.slice(5, 7))}/${Number(shownDate.slice(8, 10))} 约 07:00`
+      : "常设判断 · 非实时";
 
   // 成分股「今天为什么被提到」:今天的简报条目里出现过的受益股 → code 到条目标题。
   // 直接复用已取到的 items,零额外请求;roster 行内渲染,让清单每天有变化。
@@ -159,11 +177,10 @@ export default async function ChainPage({
               <span className="text-xs font-medium text-brand-600">
                 今天怎么看这条链
               </span>
-              {stale && (
-                <span className="shrink-0 text-meta text-gray-400">
-                  最近一期 · {shownDate}
-                </span>
-              )}
+              <span className="shrink-0 text-meta text-gray-400">
+                {stale && !daily ? `最近一期 · ${shownDate} · ` : ""}
+                {chainTakeMeta}
+              </span>
             </div>
             <p className="text-sm leading-relaxed text-gray-800">{chainTake}</p>
             {chain.insightSlug && (
