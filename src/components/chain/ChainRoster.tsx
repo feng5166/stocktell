@@ -35,11 +35,13 @@ export function ChainRoster({
   focusSectors?: string[]; // 该环节覆盖的成分股 sector
 }) {
   const wl = useWatchlist();
+  const visibleMembers = focusSectors?.length
+    ? members.filter((member) => focusSectors.includes(member.sector))
+    : members;
 
   const groups = useMemo(() => {
     const m = new Map<string, { gloss: string; rows: RosterItem[] }>();
-    for (const it of members) {
-      if (focusSectors?.length && !focusSectors.includes(it.sector)) continue;
+    for (const it of visibleMembers) {
       const key = groupOverride?.[it.code] ?? it.sector;
       const g = m.get(key) ?? { gloss: it.gloss, rows: [] };
       g.rows.push(it);
@@ -65,9 +67,9 @@ export function ChainRoster({
     });
     return entries;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [members, mentioned && Object.keys(mentioned).join(","), bottomSectors?.join(","), groupOverride && Object.keys(groupOverride).join(","), focusSectors?.join(",")]);
+  }, [visibleMembers, mentioned && Object.keys(mentioned).join(","), bottomSectors?.join(","), groupOverride && Object.keys(groupOverride).join(",")]);
 
-  const addedCount = members.filter((m) => wl.has(m.code)).length;
+  const addedCount = visibleMembers.filter((m) => wl.has(m.code)).length;
 
   const onToggle = (code: string) => {
     const wasIn = wl.has(code);
@@ -76,7 +78,10 @@ export function ChainRoster({
   };
 
   return (
-    <section id="chain-roster" className="mt-6 scroll-mt-24">
+    <section
+      id={focusSegmentName ? undefined : "chain-roster"}
+      className="mt-6 scroll-mt-24"
+    >
       <div className="flex items-baseline justify-between">
         <div>
           <h2 className="text-h2 font-semibold text-gray-900">

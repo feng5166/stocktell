@@ -19,6 +19,7 @@ import { REL_CHIP_CLS, chainIdFromRoute } from "@/lib/relation-rank";
 import { routeInsightForItem } from "@/data/trigger-sources";
 import { DISCLAIMER } from "@/lib/constants";
 import { formatBeijingMDHM, formatYmdMD } from "@/lib/time-label";
+import { segmentFundStatusSnapshot } from "@/lib/segment-fund-status";
 
 export const revalidate = 60;
 
@@ -51,6 +52,125 @@ export default async function ChainPage({
     typeof searchParams?.segment === "string" ? searchParams.segment : null;
   const focusedSegment =
     chain.segments?.find((segment) => segment.name === requestedSegment) ?? null;
+
+  // 资金状态入口进入的是「环节详情」,不重复展示整条链的公共状态/事件模块。
+  // 否则每个环节只有页尾清单不同,用户会误以为链接没有生效。
+  if (focusedSegment) {
+    const fundStatus = await segmentFundStatusSnapshot().catch(() => null);
+    const fundRow = fundStatus?.rows.find((row) => row.segment === focusedSegment.name);
+    const insightForChain = chain.insightSlug
+      ? INSIGHT_CHAINS[chain.insightSlug]
+      : undefined;
+    const reasonByCode = new Map(
+      (insightForChain?.mappings ?? [])
+        .filter((mapping) => mapping.code)
+        .map((mapping) => [mapping.code as string, mapping.reason])
+    );
+    const focusedRoster = rosterOf(chain).map((item) => ({
+      ...item,
+      take: reasonByCode.get(item.code) ?? item.take,
+    }));
+    const relations = Object.fromEntries(
+      focusedRoster.map((item) => [
+        item.code,
+        resolveInChainLabel(item.code, chainIdFromRoute(chain.id)) ?? "产业链相关",
+      ])
+    );
+    const signed = (value: number, digits = 2) =>
+      `${value > 0 ? "+" : ""}${value.toFixed(digits)}`;
+    const signalClass = (value: number) =>
+      value > 0 ? "text-red-500" : value < 0 ? "text-emerald-600" : "text-gray-700";
+    const relationLabel = fundRow
+      ? fundRow.relation === "同向"
+        ? "价格与资金同向"
+        : fundRow.relation === "分叉"
+          ? "价格与资金分叉"
+          : "暂未形成一致信号"
+      : "资金数据生成中";
+
+    return (
+      <div className="min-h-screen bg-canvas text-ink">
+        <SiteHeader />
+        <main className="mx-auto max-w-3xl px-4 py-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6">
+          <Link href={`/chain/${chain.id}`} className="text-xs font-medium text-brand-600 hover:underline">
+            ← 返回完整{chain.name}
+          </Link>
+          <div className="mt-3">
+            <div className="text-xs font-medium text-gray-400">{chain.name} · 链内环节</div>
+            <h1 className="mt-0.5 text-display font-semibold tracking-tight text-gray-900">
+              {focusedSegment.name}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">{focusedSegment.plain}</p>
+          </div>
+
+          <section className="mt-4 rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-sm font-semibold text-gray-800">这个环节的资金状态</h2>
+              {fundStatus?.date && (
+                <span className="shrink-0 text-xs text-gray-400">
+                  {Number(fundStatus.date.slice(5, 7))}/{Number(fundStatus.date.slice(8, 10))} 收盘
+                </span>
+              )}
+            </div>
+            {fundRow ? (
+              <>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg bg-gray-50 px-3 py-2.5">
+                    <div className="text-[11px] text-gray-400">资金状态</div>
+                    <div className="mt-0.5 text-sm font-semibold text-gray-800">{fundRow.state}</div>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2.5">
+                    <div className="text-[11px] text-gray-400">链内净额/成交比</div>
+                    <div className={`mt-0.5 font-mono text-sm font-semibold ${signalClass(fundRow.strengthPct)}`}>
+                      {signed(fundRow.strengthPct)}%
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2.5">
+                    <div className="text-[11px] text-gray-400">价格关系</div>
+                    <div className="mt-0.5 text-sm font-semibold text-gray-800">{relationLabel}</div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-gray-500">
+                  主力净额 {signed(fundRow.netMfYi)} 亿 · 成交额 {fundRow.amountYi.toFixed(1)} 亿 ·
+                  链内成交额加权涨跌 {signed(fundRow.avgPct)}%
+                </p>
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <span className="text-xs text-gray-400">下一步验证</span>
+                  <p className="mt-1 text-sm text-gray-700">{fundRow.verify.join(" / ")}</p>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-gray-400">这个环节的收盘资金数据正在生成。</p>
+            )}
+            <p className="mt-3 text-[11px] leading-relaxed text-gray-400">
+              {fundStatus?.scope ?? "仅看 StockTell 已核定的链内样本,不代表全市场板块排名"}。
+            </p>
+          </section>
+
+          <ChainRoster
+            chainId={chain.id}
+            members={focusedRoster}
+            relations={relations}
+            focusSegmentName={focusedSegment.name}
+            focusSectors={focusedSegment.sectors}
+            groupOverride={chain.rosterGroups?.groupOverride}
+            sectorLabels={chain.rosterGroups?.sectorLabels}
+            groupNotes={chain.rosterGroups?.groupNotes}
+            bottomSectors={chain.rosterGroups?.bottomSectors}
+          />
+
+          {chain.insightSlug && (
+            <div className="mt-5 text-right">
+              <Link href={`/insight/${chain.insightSlug}`} className="text-sm font-medium text-brand-600 hover:underline">
+                看完整因果链 →
+              </Link>
+            </div>
+          )}
+          <p className="mt-8 text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
+        </main>
+      </div>
+    );
+  }
 
   const date = todayISO();
   // 情绪只读缓存快照(零 fetch,不在渲染里冷算堵 TTFB);过期由客户端组件后台刷新
@@ -339,8 +459,6 @@ export default async function ChainPage({
         <ChainRoster
           chainId={chain.id}
           members={roster}
-          focusSegmentName={focusedSegment?.name}
-          focusSectors={focusedSegment?.sectors}
           mentioned={mentioned}
           relations={Object.fromEntries(
             // B2-2:按【本链】核定关系(chain-scoped),不跨链取最强档把间接股越级成直接

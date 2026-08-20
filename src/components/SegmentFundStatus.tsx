@@ -19,7 +19,7 @@ const relationCopy: Record<PriceFlowRelation, string> = {
 };
 
 function Row({ row, chainId }: { row: SegmentFundRow; chainId: string }) {
-  const href = `/chain/${chainId}?segment=${encodeURIComponent(row.segment)}#chain-roster`;
+  const href = `/chain/${chainId}?segment=${encodeURIComponent(row.segment)}`;
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 py-3 first:border-t-0 sm:grid-cols-[minmax(0,1.45fr)_0.8fr_0.9fr_1.25fr] sm:items-center sm:gap-3">
       <div className="col-span-2 min-w-0 sm:col-span-1">
