@@ -6,6 +6,7 @@ import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { buildRelLabelMap, resolveInChainLabel, resolveRelationLabelForItem } from "@/lib/relation-resolver";
 import { ChainRoster } from "@/components/chain/ChainRoster";
+import { ChainQuoteSnapshot } from "@/components/chain/ChainQuoteSnapshot";
 import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert";
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
 import { listBriefing, latestBriefing, type BriefingItem } from "@/lib/briefings";
@@ -70,6 +71,9 @@ export default async function ChainPage({
       ...item,
       take: reasonByCode.get(item.code) ?? item.take,
     }));
+    const focusedQuoteMembers = focusedRoster.filter((item) =>
+      focusedSegment.sectors.includes(item.sector)
+    );
     const relations = Object.fromEntries(
       focusedRoster.map((item) => [
         item.code,
@@ -102,6 +106,11 @@ export default async function ChainPage({
             </h1>
             <p className="mt-1 text-sm text-gray-500">{focusedSegment.plain}</p>
           </div>
+
+          <ChainQuoteSnapshot
+            members={focusedQuoteMembers}
+            title="这个环节最新涨跌"
+          />
 
           <section className="mt-4 rounded-xl bg-white p-4 shadow-sm">
             <div className="flex items-baseline justify-between gap-3">
@@ -276,6 +285,8 @@ export default async function ChainPage({
           </h1>
           <p className="mt-1 text-sm text-gray-500">{chain.tagline}</p>
         </div>
+
+        <ChainQuoteSnapshot members={roster} title="这条链最新涨跌" />
 
         {/* 今日情绪(快照过期 → 先渲染旧值再后台刷新) */}
         <div className="mt-4">
