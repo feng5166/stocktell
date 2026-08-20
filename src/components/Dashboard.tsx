@@ -249,6 +249,127 @@ function FundBehaviorBadge({
   );
 }
 
+function signedMetric(value: number, suffix: string): string {
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}${suffix}`;
+}
+
+function metricTone(value: number): string {
+  if (value > 0) return "text-rose-600";
+  if (value < 0) return "text-emerald-600";
+  return "text-gray-500";
+}
+
+function FundEvidencePanel({
+  item,
+  date,
+  loading,
+}: {
+  item?: FundBehaviorItem;
+  date: string | null;
+  loading: boolean;
+}) {
+  if (loading) {
+    return <p className="mt-3 text-xs text-gray-400">资金核验数据加载中…</p>;
+  }
+  if (!item) {
+    return <p className="mt-3 text-xs text-gray-400">暂无可核验的资金数据。</p>;
+  }
+
+  const recent = item.recent3 ?? [];
+  const current = recent[0];
+  const inflowDays = recent.filter((day) => day.flowRatio >= 0.5).length;
+  const outflowDays = recent.filter((day) => day.flowRatio <= -0.5).length;
+  const neutralDays = recent.length - inflowDays - outflowDays;
+  const continuity = recent.length
+    ? `${inflowDays} 日流入 · ${outflowDays} 日流出${neutralDays ? ` · ${neutralDays} 日中性` : ""}`
+    : "数据不足";
+
+  return (
+    <div className="mt-3 border-t border-amber-100 pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-medium text-gray-700">资金核验数据</span>
+        <span className="text-[11px] text-gray-400">
+          {date ? `${fundDateLabel(date)} 收盘` : "最新完整资金日"}
+        </span>
+      </div>
+      <div className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
+        <div className="rounded-lg border border-gray-100 bg-white/80 px-3 py-2">
+          <div className="text-gray-400">当日主力净额 / 成交比</div>
+          <div className="mt-1 font-mono font-medium tabular-nums text-gray-800">
+            {current ? (
+              <>
+                <span className={metricTone(current.netMfYi)}>
+                  {signedMetric(current.netMfYi, " 亿")}
+                </span>
+                <span className="mx-1 text-gray-300">/</span>
+                <span className={metricTone(current.flowRatio)}>
+                  {signedMetric(current.flowRatio, "%")}
+                </span>
+              </>
+            ) : (
+              "—"
+            )}
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-100 bg-white/80 px-3 py-2">
+          <div className="text-gray-400">融资余额变化</div>
+          <div
+            className={`mt-1 font-mono font-medium tabular-nums ${
+              item.rzChgYi == null ? "text-gray-400" : metricTone(item.rzChgYi)
+            }`}
+          >
+            {item.rzChgYi == null
+              ? "未覆盖"
+              : `${signedMetric(item.rzChgYi, " 亿")} · 较上一交易日`}
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-100 bg-white/80 px-3 py-2">
+          <div className="text-gray-400">当日龙虎榜</div>
+          <div className="mt-1 text-gray-700">
+            {item.longhu ? (
+              <>
+                <span className={`font-mono font-medium ${metricTone(item.longhu.netYi)}`}>
+                  净额 {signedMetric(item.longhu.netYi, " 亿")}
+                </span>
+                {item.longhu.reason && (
+                  <span className="ml-1 text-gray-500">· {item.longhu.reason}</span>
+                )}
+              </>
+            ) : (
+              <span className="text-gray-400">当日未上榜</span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 rounded-lg border border-gray-100 bg-white/80 px-3 py-2 text-xs">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-gray-400">近 3 日连续性</span>
+          <span className="font-medium text-gray-700">{continuity}</span>
+        </div>
+        {recent.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {recent.map((day) => (
+              <span
+                key={day.date}
+                className="rounded bg-gray-50 px-2 py-1 font-mono text-[11px] tabular-nums text-gray-500"
+              >
+                {fundDateLabel(day.date)} · 净额 {signedMetric(day.netMfYi, "亿")} · 成交比{" "}
+                <span className={metricTone(day.flowRatio)}>
+                  {signedMetric(day.flowRatio, "%")}
+                </span>{" "}
+                · 股价 <span className={metricTone(day.pricePct)}>{signedMetric(day.pricePct, "%")}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+        “当日资金形态”只按当日数据判断；近 3 日、融资与龙虎榜用于交叉核验，不参与标签归类，也不代表机构真实意图。
+      </p>
+    </div>
+  );
+}
+
 interface Quote {
   price: number;
   change: number;
@@ -278,7 +399,7 @@ export default function Dashboard({
   segsByChain?: Record<string, { segmentId: string; segmentName: string }[]>;
 }) {
   const [tab, setTab] = useState<Tab>("股票列表");
-  const [market, setMarket] = useState<(typeof MARKETS)[number]>("全部");
+  const [market, setMarket] = useState<(typeof MARKETS)[number]>("A股");
   const [position, setPosition] = useState<(typeof POSITIONS)[number]>("全部");
   const [sector, setSector] = useState<string>("全部");
   const [tier, setTier] = useState<"全部" | "龙头" | "二线">("全部");
@@ -1220,7 +1341,7 @@ function StockCard({
         onClick={toggle}
         className="mt-1.5 text-xs text-gray-400 hover:text-gray-600"
       >
-        {isOpen ? "收起 ▲" : "为什么在这条链里 ▾"}
+        {isOpen ? "收起详情 ▲" : "展开详情 ▾"}
       </button>
       {isOpen && (
         <div className="mt-2 rounded-lg bg-amber-50/70 p-2.5">
@@ -1234,6 +1355,13 @@ function StockCard({
               个股详情 →
             </Link>
           </div>
+          {s.market === "A股" && (
+            <FundEvidencePanel
+              item={fundBehavior}
+              date={fundBehaviorDate}
+              loading={fundBehaviorLoading}
+            />
+          )}
         </div>
       )}
     </div>
@@ -1356,7 +1484,7 @@ function ReactFragmentRow({
           <StatusBadge status={status} />
         </Td>
         <Td className="whitespace-nowrap text-xs text-gray-400">
-          {isOpen ? "收起 ▲" : "为什么在这条链里 ▾"}
+          {isOpen ? "收起详情 ▲" : "展开详情 ▾"}
         </Td>
       </tr>
       {isOpen && (
@@ -1380,6 +1508,13 @@ function ReactFragmentRow({
                 </div>
               </div>
             </div>
+            {s.market === "A股" && (
+              <FundEvidencePanel
+                item={fundBehavior}
+                date={fundBehaviorDate}
+                loading={fundBehaviorLoading}
+              />
+            )}
           </td>
         </tr>
       )}

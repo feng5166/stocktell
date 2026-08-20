@@ -4,13 +4,12 @@
 import { unstable_cache } from "next/cache";
 import { STOCKS, STOCK_MAP } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
+import { getFundBundle } from "@/lib/fund-flow";
 import {
   dailyMarketByDate,
   latestFundYmd,
-  longhuByDate,
-  moneyflowByDate,
+  prevAshareTradingDay,
   type DailyMarketPoint,
-  type LonghuHit,
 } from "@/lib/tushare";
 
 export type FundBehaviorLabel =
@@ -28,6 +27,17 @@ export interface FundBehaviorItem {
   reason: string;
   flowRatio: number | null;
   pricePct: number | null;
+  // 以下字段仅供展开核验,不参与当日资金形态标签判断。
+  recent3?: FundBehaviorDay[];
+  rzChgYi?: number | null;
+  longhu?: { netYi: number; reason: string } | null;
+}
+
+export interface FundBehaviorDay {
+  date: string;
+  netMfYi: number;
+  flowRatio: number;
+  pricePct: number;
 }
 
 export interface FundBehaviorResult {
@@ -147,23 +157,43 @@ export function classifyFundBehavior(input: BehaviorInput): FundBehaviorItem {
 const ymdToISO = (ymd: string) =>
   `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
 
+async function recentFundDates(latestYmd: string): Promise<string[]> {
+  const dates = [latestYmd];
+  let cursor = ymdToISO(latestYmd);
+  for (let index = 0; index < 2; index++) {
+    const previous = await prevAshareTradingDay(cursor);
+    if (!previous) break;
+    dates.push(previous.replace(/-/g, ""));
+    cursor = previous;
+  }
+  return dates;
+}
+
 async function computeAllFundBehaviors(): Promise<FundBehaviorResult> {
   const latestYmd = await latestFundYmd(todayISO());
   if (!latestYmd) return { date: null, items: [] };
-  const [currentMoneyflow, currentLonghu, currentMarket] = await Promise.all([
-    moneyflowByDate(latestYmd).catch(() => new Map<string, number>()),
-    longhuByDate(latestYmd).catch(() => new Map<string, LonghuHit>()),
-    dailyMarketByDate(latestYmd).catch(
-      () => new Map<string, DailyMarketPoint>()
-    ),
-  ]);
+  const dates = await recentFundDates(latestYmd);
+  // 展开核验需要近 3 日与融资变化;这些字段不会传入 classifyFundBehavior。
+  const days = await Promise.all(
+    dates.map(async (ymd) => {
+      const [bundle, market] = await Promise.all([
+        getFundBundle(ymd).catch(() => null),
+        dailyMarketByDate(ymd).catch(
+          () => new Map<string, DailyMarketPoint>()
+        ),
+      ]);
+      return { ymd, bundle, market };
+    })
+  );
+  const currentBundle = days[0]?.bundle;
+  const previousBundle = days[1]?.bundle;
   const aCodes = STOCKS.filter((stock) => stock.market === "A股").map(
     (stock) => stock.code
   );
 
   const items = aCodes.map((code) => {
-    const currentNetMf = currentMoneyflow.get(code);
-    const market = currentMarket.get(code);
+    const currentNetMf = currentBundle?.mf[code];
+    const market = days[0]?.market.get(code);
     const point =
       currentNetMf != null && market && market.amountYi > 0
         ? {
@@ -171,18 +201,45 @@ async function computeAllFundBehaviors(): Promise<FundBehaviorResult> {
             pct: market.pct,
           }
         : null;
-    return classifyFundBehavior({
+    const classification = classifyFundBehavior({
       code,
       point,
-      longhuNet: currentLonghu.get(code)?.net ?? null,
+      longhuNet: currentBundle?.lh[code]?.net ?? null,
     });
+    const recent3 = days.flatMap<FundBehaviorDay>((day) => {
+      const netMfYi = day.bundle?.mf[code];
+      const daily = day.market.get(code);
+      if (netMfYi == null || !daily || daily.amountYi <= 0) return [];
+      return [
+        {
+          date: ymdToISO(day.ymd),
+          netMfYi: round(netMfYi),
+          flowRatio: round((netMfYi / daily.amountYi) * 100),
+          pricePct: round(daily.pct),
+        },
+      ];
+    });
+    const currentMargin = currentBundle?.mg[code];
+    const previousMargin = previousBundle?.mg[code];
+    const longhu = currentBundle?.lh[code];
+    return {
+      ...classification,
+      recent3,
+      rzChgYi:
+        currentMargin != null && previousMargin != null
+          ? round(currentMargin - previousMargin)
+          : null,
+      longhu: longhu
+        ? { netYi: round(longhu.net), reason: longhu.reason }
+        : null,
+    };
   });
   return { date: ymdToISO(latestYmd), items };
 }
 
 const cachedAllFundBehaviors = unstable_cache(
   computeAllFundBehaviors,
-  ["fund-behavior-v2"],
+  ["fund-behavior-v3"],
   { revalidate: 1800 }
 );
 
