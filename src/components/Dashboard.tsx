@@ -1055,8 +1055,8 @@ function StockTable({
                 日涨跌{arrow("change")}
               </Th>
               <Th>
-                <span title="基于同一收盘日的价格、资金强度与近 3 日连续性识别">
-                  资金形态
+                <span title="仅基于同一收盘日的价格、资金强度与当日龙虎榜识别">
+                  当日资金形态
                 </span>
                 {fundBehaviorDate && (
                   <span className="block text-[10px] font-normal text-gray-400">
