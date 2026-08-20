@@ -41,12 +41,16 @@ export default async function ChainPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { ref?: string | string[] };
+  searchParams: { ref?: string | string[]; segment?: string | string[] };
 }) {
   const chain = getChain(params.id);
   if (!chain) notFound();
   const refCode =
     typeof searchParams?.ref === "string" ? searchParams.ref : null;
+  const requestedSegment =
+    typeof searchParams?.segment === "string" ? searchParams.segment : null;
+  const focusedSegment =
+    chain.segments?.find((segment) => segment.name === requestedSegment) ?? null;
 
   const date = todayISO();
   // 情绪只读缓存快照(零 fetch,不在渲染里冷算堵 TTFB);过期由客户端组件后台刷新
@@ -335,6 +339,8 @@ export default async function ChainPage({
         <ChainRoster
           chainId={chain.id}
           members={roster}
+          focusSegmentName={focusedSegment?.name}
+          focusSectors={focusedSegment?.sectors}
           mentioned={mentioned}
           relations={Object.fromEntries(
             // B2-2:按【本链】核定关系(chain-scoped),不跨链取最强档把间接股越级成直接

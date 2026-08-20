@@ -19,6 +19,8 @@ export function ChainRoster({
   groupOverride,
   groupNotes,
   takeOverride,
+  focusSegmentName,
+  focusSectors,
 }: {
   chainId: string;
   members: RosterItem[];
@@ -29,12 +31,15 @@ export function ChainRoster({
   groupOverride?: Record<string, string>; // code → 分组键(把某只票从 sector 组挪到自定义组,如思源→输配电/电网侧外溢)
   groupNotes?: Record<string, string>; // 组键 → 组说明(覆盖 sector gloss)
   takeOverride?: Record<string, string>; // code → 一句话(覆盖 AI 口径的 retailTake,电力链用 insight 核定 reason)
+  focusSegmentName?: string; // 从资金状态进入时,只看被点击的链内环节
+  focusSectors?: string[]; // 该环节覆盖的成分股 sector
 }) {
   const wl = useWatchlist();
 
   const groups = useMemo(() => {
     const m = new Map<string, { gloss: string; rows: RosterItem[] }>();
     for (const it of members) {
+      if (focusSectors?.length && !focusSectors.includes(it.sector)) continue;
       const key = groupOverride?.[it.code] ?? it.sector;
       const g = m.get(key) ?? { gloss: it.gloss, rows: [] };
       g.rows.push(it);
@@ -60,7 +65,7 @@ export function ChainRoster({
     });
     return entries;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [members, mentioned && Object.keys(mentioned).join(","), bottomSectors?.join(","), groupOverride && Object.keys(groupOverride).join(",")]);
+  }, [members, mentioned && Object.keys(mentioned).join(","), bottomSectors?.join(","), groupOverride && Object.keys(groupOverride).join(","), focusSectors?.join(",")]);
 
   const addedCount = members.filter((m) => wl.has(m.code)).length;
 
@@ -71,12 +76,29 @@ export function ChainRoster({
   };
 
   return (
-    <section className="mt-6">
+    <section id="chain-roster" className="mt-6 scroll-mt-24">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-h2 font-semibold text-gray-900">这条链有哪些票</h2>
-        <span className="text-xs text-gray-400">
-          {addedCount > 0 ? `已加自选 ${addedCount} 只` : "点 + 加入自选,每天看它怎么动"}
-        </span>
+        <div>
+          <h2 className="text-h2 font-semibold text-gray-900">
+            {focusSegmentName ? `${focusSegmentName}有哪些票` : "这条链有哪些票"}
+          </h2>
+          {focusSegmentName && (
+            <p className="mt-1 text-xs text-gray-400">仅显示这个环节的核定样本</p>
+          )}
+        </div>
+        <div className="text-right">
+          <span className="block text-xs text-gray-400">
+            {addedCount > 0 ? `已加自选 ${addedCount} 只` : "点 + 加入自选,每天看它怎么动"}
+          </span>
+          {focusSegmentName && (
+            <Link
+              href={`/chain/${chainId}#chain-roster`}
+              className="mt-1 block text-xs font-medium text-brand-600 hover:underline"
+            >
+              查看全部环节 →
+            </Link>
+          )}
+        </div>
       </div>
       {!wl.loggedIn && wl.ready && (
         <p className="mt-1 text-xs text-gray-400">

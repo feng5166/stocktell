@@ -18,12 +18,20 @@ const relationCopy: Record<PriceFlowRelation, string> = {
   暂不一致: "暂未形成一致信号",
 };
 
-function Row({ row }: { row: SegmentFundRow }) {
+function Row({ row, chainId }: { row: SegmentFundRow; chainId: string }) {
+  const href = `/chain/${chainId}?segment=${encodeURIComponent(row.segment)}#chain-roster`;
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 py-3 first:border-t-0 sm:grid-cols-[minmax(0,1.45fr)_0.8fr_0.9fr_1.25fr] sm:items-center sm:gap-3">
       <div className="col-span-2 min-w-0 sm:col-span-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium text-gray-900">{row.segment}</span>
+          <Link
+            href={href}
+            className="group min-w-0 truncate text-sm font-medium text-gray-900 hover:text-brand-700"
+            aria-label={`查看${row.segment}环节`}
+          >
+            <span className="group-hover:underline">{row.segment}</span>
+            <span className="ml-1 text-gray-300 group-hover:text-brand-500">›</span>
+          </Link>
           <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
             {row.state}
           </span>
@@ -143,7 +151,7 @@ export function SegmentFundStatus({
       </div>
       <div className="mt-1 sm:hidden">
         {data.rows.slice(0, 3).map((row) => (
-          <Row key={row.segment} row={row} />
+          <Row key={row.segment} row={row} chainId={data.chainId} />
         ))}
       </div>
       {data.rows.length > 3 && (
@@ -154,14 +162,14 @@ export function SegmentFundStatus({
           </summary>
           <div>
             {data.rows.slice(3).map((row) => (
-              <Row key={row.segment} row={row} />
+              <Row key={row.segment} row={row} chainId={data.chainId} />
             ))}
           </div>
         </details>
       )}
       <div className="mt-1 hidden sm:block">
         {data.rows.map((row) => (
-          <Row key={row.segment} row={row} />
+          <Row key={row.segment} row={row} chainId={data.chainId} />
         ))}
       </div>
 
