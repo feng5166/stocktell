@@ -93,7 +93,7 @@ const AI_INFRA: InsightChain = {
   title: "AI 推理基础设施 · 因果链",
   // ⚠️ 模板规则:凡改本文件内容(文案/结构/references),必须同步 bump updatedAt——
   // 页头"更新 X"和免责句承诺的「更新时间」都指着它,内容动了日期不动=自打脸。
-  updatedAt: "2026-07-12",
+  updatedAt: "2026-08-20",
   event:
     "英伟达季度财报上调数据中心收入指引,叠加新一代推理模型发布带动「单位算力 token 成本明显下降」——即一次「模型能力跃迁 / 推理成本↓」型全球事件。",
   eventNote:
@@ -139,6 +139,7 @@ const AI_INFRA: InsightChain = {
     { segment: "光模块 / 高速互连", plain: "数据中心里机器之间高速传数据的「光接头」", direction: "升温", intensity: 5, relation: "直接", confidence: "高", hopOrder: 6, reason: "万卡/十万卡集群横向扩展(scale-out)刚性拉动,速率向 800G/1.6T 迭代,北美云厂订单能见度高——本链证据链最完整、传导最直接的一环" },
     { segment: "存储 / HBM", plain: "贴着 AI 芯片的「快内存」", direction: "升温", intensity: 4, relation: "直接", confidence: "高", hopOrder: 3, reason: "每颗 AI GPU 强制配套多颗 HBM,出货强绑定 + 持续供不应求。备注:A 股缺真正 HBM 自研标的,本环节无强直接映射" },
     { segment: "先进封装 / 封测", plain: "把芯片和内存「叠装」在一起的高级工艺", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 4, reason: "CoWoS/2.5D 是算力供给实际卡点;国产封测受全球 AI 芯片放量 + 国产替代双驱动,业绩兑现需时间" },
+    { segment: "先进封装材料", plain: "封装芯片用的塑封料、填充/粉体和电镀化学品", direction: "升温", intensity: 2, relation: "间接", confidence: "中", hopOrder: 4, reason: "先进封装扩产会向材料端传导,但隔着封测厂客户验证与放量周期;需看先进封装材料收入、客户导入和毛利率,不能按普通半导体材料整体外推" },
     { segment: "液冷 / 温控", plain: "机器太热,用液体给它降温", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 5, reason: "单机柜功率顶到风冷极限,液冷由可选变刚需、渗透率抬升;落地与订单确认节奏存在不确定性" },
     { segment: "铜连接 / 高速互连(铜)", plain: "机柜里近距离连接用的「铜线」", direction: "分化", intensity: 3, relation: "间接", confidence: "中", hopOrder: 7, reason: "GB 系统铜背板放量利好短距 scale-up,但光/铜路线随距离速率存在替代博弈,内部分化" },
     { segment: "数据中心电力 / 供配电", plain: "给数据中心供电、配电的设备", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 8, reason: "电力从「成本项」变「能否上电」的核心约束;但传导到 A 股电力设备偏间接、噪声大" },
@@ -195,6 +196,12 @@ const AI_INFRA: InsightChain = {
     { name: "香农芯创", code: "300475", segment: "存储代理(HBM影子)", relation: "情绪映射", reason: "海力士存储代理,本质是代理生意、非自研 HBM,与 HBM 景气仅间接关联;高波动", confidence: "低" },
     { name: "长电科技", code: "600584", segment: "先进封装/封测", relation: "间接", reason: "全球封测龙头,先进封装稼动率随全球 AI 芯片放量;AI 暴露占比需核实收入结构,叠加国产替代", confidence: "中" },
     { name: "通富微电", code: "002156", segment: "先进封装/封测", relation: "间接", reason: "深度绑定 AMD,先进封装与 AI 芯片封测订单,受海外 AI 放量间接带动", confidence: "中" },
+    { name: "盛合晶微", code: "688820", segment: "先进封装/封测", relation: "间接", reason: "晶圆级先进封装与 2.5D 多芯片集成为业务入口,更贴近 AI 芯片封装扩产;未据公开材料确认特定 AI 芯片客户,后续看 2.5D 业务收入、客户结构、产能利用率和毛利率", confidence: "中" },
+    { name: "华天科技", code: "002185", segment: "先进封装/封测", relation: "间接", reason: "封测主业并布局先进封装,可承接国产芯片与存储封装需求;AI 相关订单和收入占比待核,后续看先进封装放量、稼动率与毛利率", confidence: "中" },
+    { name: "甬矽电子", code: "688362", segment: "先进封装/封测", relation: "间接", reason: "封测主业覆盖 SiP、倒装等先进封装方向,处于扩产传导环节;客户和 AI 业务暴露仍需核实,后续看先进封装收入、稼动率与现金流", confidence: "低" },
+    { name: "华海诚科", code: "688535", segment: "先进封装材料", relation: "间接", reason: "环氧塑封料与底部填充材料进入先进封装材料环节;传导需经过封测客户验证,后续看 HBM/Chiplet 材料收入、客户导入与毛利率", confidence: "中" },
+    { name: "联瑞新材", code: "688300", segment: "先进封装材料", relation: "间接", reason: "球形硅微粉等功能性粉体可用于先进封装材料体系;业务还覆盖高频高速板材,纯度不高,后续看先进封装相关收入、产能和客户验证", confidence: "低" },
+    { name: "上海新阳", code: "300236", segment: "先进封装材料", relation: "间接", reason: "电镀液等湿电子化学品可进入晶圆凸点与先进封装工艺;与 AI 需求隔着封测扩产和客户验证,后续看先进封装应用订单、收入占比与毛利率", confidence: "低" },
     { name: "英维克", code: "002837", segment: "液冷/温控", relation: "间接", reason: "数据中心液冷龙头,受液冷渗透率提升带动;下游以国内数据中心为主,与海外事件隔一层", confidence: "中" },
     { name: "沃尔核材", code: "002130", segment: "铜连接/高速互连", relation: "间接", reason: "市场预期其受 GB 系统铜连接放量带动(供货关系待订单/公告验证);高波动", confidence: "中" },
     { name: "电连技术", code: "300679", segment: "铜连接/高速互连", relation: "情绪映射", reason: "主业消费电子/汽车连接器,AI 高速铜缆为新拓展、收入占比小、供货未见确认,需盯客户验证", confidence: "低" },
@@ -216,6 +223,7 @@ const AI_INFRA: InsightChain = {
     { kind: "常设入口", name: "OpenAI 官方定价页", url: "https://openai.com/api/pricing/", type: "官方定价", supports: "主线第1步(AI 算一次更便宜)", note: "核实「AI 算一次更便宜」:每百万 token 价格逐代变化", targets: [{ type: "hop", id: "1" }] },
     { kind: "常设入口", name: "美光投资者关系", url: "https://investors.micron.com", type: "财报", supports: "HBM/存储环节", note: "HBM 产能与预定情况(SK 海力士同理)", targets: [{ type: "heat", id: "存储 / HBM" }] },
     { kind: "常设入口", name: "台积电投资者关系(法说会)", url: "https://investor.tsmc.com", type: "法说会", supports: "先进封装(CoWoS)环节", note: "CoWoS 先进封装扩产表述", targets: [{ type: "heat", id: "先进封装 / 封测" }] },
+    { kind: "具体来源", date: "2026-04-21", name: "盛合晶微正式登陆科创板", url: "https://www.sjsemi.com/about/22699/154754.html", type: "公司官方", supports: "盛合晶微上市身份与晶圆级先进封装、2.5D/多芯片集成业务入口", note: "公司官方上市信息;客户与收入结构仍以法定披露为准", targets: [{ type: "mapping", id: "688820" }] },
   ],
   disclaimer:
     "本内容为 AI 推理基础设施产业链的关联梳理,基于公开、公认的行业因果逻辑。当前页面包含部分已核实官方来源和部分常设核验入口;演示事件仍为样板事件,正式上线时会替换为当天真实事件,并为每一跳补充具体来源、发布时间、引用字段和更新时间。文中所有关系均为「关联/映射/受影响」,属非确认因果关系、仅统计非预测,不构成任何投资建议、不含买卖指令、目标价或涨跌预测。多跳链为「逻辑 + 证据」框架,非回测统计胜率。本工具不提供证券投资咨询服务,所列个股仅为产业链关联的说明性示例,不构成任何推荐;个股波动风险自负。",

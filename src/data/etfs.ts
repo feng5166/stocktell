@@ -23,7 +23,7 @@ export const ETFS: Etf[] = [
     theme: "半导体 / 芯片",
     tracksIndex: "国证半导体芯片指数",
     scaleYi: 260,
-    covers: ["AI芯片/GPU", "CPU", "存储/HBM", "半导体设备", "封装测试/代工", "半导体材料", "EDA/IP"],
+    covers: ["AI芯片/GPU", "CPU", "存储/HBM", "半导体设备", "封装测试/代工", "半导体材料", "先进封装材料", "EDA/IP"],
     note: "最大最活跃的芯片主题 ETF,综合覆盖半导体全链;沪市平替 512480 半导体ETF",
   },
   {
@@ -43,7 +43,7 @@ export const ETFS: Etf[] = [
     theme: "半导体设备 / 材料",
     tracksIndex: "中证半导体材料设备主题指数",
     scaleYi: 190,
-    covers: ["半导体设备", "半导体材料", "封装测试/代工"],
+    covers: ["半导体设备", "半导体材料", "先进封装材料", "封装测试/代工"],
     note: "设备+材料合并主题最大 ETF(A股无纯材料 ETF);沪市同指数 562590",
   },
   {

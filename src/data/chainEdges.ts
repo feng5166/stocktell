@@ -284,6 +284,7 @@ export const CHAIN_EDGES: ChainEdge[] = [
   // 封测
   { from: "600584", to: "688256", strength: "中", basis: "长电封测产能配套国产 AI 芯片" },
   { from: "600584", to: "TSM", strength: "中", basis: "封测对标台积电 OSAT/CoWoS" },
+  { from: "688820", to: "600584", strength: "中", basis: "晶圆级先进封装同链,2.5D/多芯片集成与传统 OSAT 路线互补" },
   { from: "002185", to: "TSM", strength: "中", basis: "华天封测国产替代对标台积电" },
   { from: "688362", to: "600584", strength: "中", basis: "甬矽先进封装二线,跟随长电" },
   // 存储 / HBM

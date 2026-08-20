@@ -17,6 +17,13 @@ eq("英维克 电力=direct", resolveInChain("002837", "data-center-power")?.rel
 eq("英维克 ai-infra 应为 null(已 remove,不串链)", resolveInChain("002837", "ai-infra"), null);
 eq("盛弘 ai-infra 应为 null", resolveInChain("300693", "ai-infra"), null);
 
+// 2026-08-20 先进封装拆分:封测与材料分段,新上市盛合晶微入池;
+// 普通半导体材料/特气不得再靠 sector 粗筛进入先进封装关系。
+eq("盛合晶微 ai-infra=indirect", resolveInChain("688820", "ai-infra")?.relationType, "indirect");
+eq("盛合晶微 segment=先进封装/封测", resolveInChain("688820", "ai-infra")?.segmentName, "先进封装/封测");
+eq("华海诚科 segment=先进封装材料", resolveInChain("688535", "ai-infra")?.segmentName, "先进封装材料");
+eq("华特气体不进入先进封装关系", resolveInChain("688268", "ai-infra"), null);
+
 // P1-3:AI 应用不挂 ai-infra——金山归 ai-application indirect,【不在 ai-infra】
 eq("金山 ai-application=indirect", resolveInChain("688111", "ai-application")?.relationType, "indirect");
 eq("金山 ai-infra 应为 null(不被 ai-infra 承载)", resolveInChain("688111", "ai-infra"), null);

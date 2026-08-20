@@ -19,6 +19,7 @@
 | 2026-07-07 | (二次校准) | 工作台 diff 回灌:盛美上海 candidate→direct、概伦电子 candidate→direct(采纳 AI 建议)、长川科技 candidate→indirect(测试设备偏后道隔一层);华大九天保留 candidate;两新 direct 补 references(上交所检索入口)+四段验证点 | 3 改档 | 负责人导出 CSV → direct-evidence.ts + chain-relations §2.5 | 半导体链 10 成分:7 direct + 1 indirect + 2 candidate(华大九天/精测) |
 | 2026-07-30 | (华为链一批) | 华为产业生态链扩链:赛力斯/软通动力/润和软件/常山北明入池,+中芯国际(池内原无关系档)、拓维信息自 ai-infra sentiment 移档(audit 原建议"更偏华为生态",同华大九天先例);6 只一律 candidate 待终审;4 环节注册;深读页+链页上线;【不接 segments】(无美股触发源+sector 与 AI 链重叠,每日推理待事件源扩展) | +6 candidate(其中 1 移档) | src/data/{stocks,chains,chain-relations,segment-registry,insight-chains}.ts | 中芯一档为推理假设(无官方披露),终审不得高于 sentiment;光迅/深南/沪电/华工关系档留 ai-infra 不串链 |
 | 2026-07-30 | (华为链终审) | 负责人授权自动化终审(判据=relation-grading-standard 四字段):赛力斯→direct 置信中(智选车核心环节+问界收入主导+传导一跳+月度交付快报可验,四项全中,references=上交所检索入口);拓维→indirect 置信中、软通/润和→indirect 置信低(合作公开但华为相关收入占比不纯/待核,references=巨潮披露页+partially_verified);常山北明→sentiment(无业务暴露入口);中芯→sentiment(推理假设=终审上限,manual_only,出现官方披露前不升) | 6 定档(1 direct/3 indirect/2 sentiment) | chain-relations §2.6 HUAWEI_GRADED + insight-chains mappings 同步 | resolver-samples 断言锁档;后续按公告/复盘滚动复核 |
+| 2026-08-20 | (先进封装拆分) | AI 链将「先进封装/封测」与「先进封装材料」拆为独立环节;封测核定长电/通富/盛合晶微/华天/甬矽,材料核定华海诚科/联瑞新材/上海新阳;新增上市标的盛合晶微 688820,全部按 indirect 并补法定披露核验入口 | +6 indirect / +1 股票 | src/data/{stocks,chains,insight-chains,indirect-evidence.generated}.ts | 不再把普通半导体材料与特气按 sector 粗筛进先进封装;资金状态缓存升 v3 并展示全部环节 |
 
 ## 回灌工作流(标准动作)
 1. 负责人在审阅台(/admin/relation-review)改档/改 reason/批量标记 → 导出 diff(含 dry-run 预览)。
