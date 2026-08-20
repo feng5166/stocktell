@@ -389,6 +389,49 @@ export async function marginByDate(ymd: string): Promise<Map<string, number>> {
 
 const dCache = new Map<string, Map<string, number>>(); // ymd -> (裸code -> 当日涨跌%)
 
+export interface DailyMarketPoint {
+  pct: number; // 当日涨跌幅 %
+  amountYi: number; // 成交额 亿元(Tushare daily.amount 原始单位为千元)
+}
+
+const dmCache = new Map<string, Map<string, DailyMarketPoint>>();
+
+// 某交易日全市场日线涨跌幅 + 成交额。产业链资金强度使用同日成交额作为分母,
+// 因此走 strict:回源失败必须抛错,不能把缺失成交额当 0 后产出错误强度。
+export async function dailyMarketByDate(
+  ymd: string
+): Promise<Map<string, DailyMarketPoint>> {
+  const hit = dmCache.get(ymd);
+  if (hit) return hit;
+  return singleFlight(`daily-market:${ymd}`, async () => {
+    const cached = dmCache.get(ymd);
+    if (cached) return cached;
+    const out = new Map<string, DailyMarketPoint>();
+    const d = await tsCallStrict(
+      "daily",
+      { trade_date: ymd },
+      "ts_code,pct_chg,amount"
+    );
+    const ci = d.fields.indexOf("ts_code");
+    const pi = d.fields.indexOf("pct_chg");
+    const ai = d.fields.indexOf("amount");
+    for (const r of d.items) {
+      const code = String(r[ci]).split(".")[0];
+      const pct = n(r[pi]);
+      const amount = n(r[ai]);
+      if (pct !== null && amount !== null && amount > 0) {
+        out.set(code, {
+          pct,
+          amountYi: amount / 1e5,
+        });
+      }
+    }
+    dmCache.set(ymd, out);
+    capDates(dmCache);
+    return out;
+  });
+}
+
 // 某交易日全市场日线涨跌幅(pct_chg %)。用于情绪仪表盘(整日涨跌家数/均幅)。
 export async function dailyByDate(ymd: string): Promise<Map<string, number>> {
   const hit = dCache.get(ymd);

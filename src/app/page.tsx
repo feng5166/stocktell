@@ -5,11 +5,13 @@ import { FirstRunReorder } from "@/components/home/FirstRunReorder";
 import { ReasoningCards } from "@/components/home/ReasoningCards";
 import { BriefingFeed } from "@/components/BriefingFeed";
 import { ChainSentiment } from "@/components/ChainSentiment";
+import { SegmentFundStatus } from "@/components/SegmentFundStatus";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
 import { ShareCardEntry } from "@/components/share/ShareCardEntry";
 import { AdminHomeFooter } from "@/components/AdminHomeFooter";
 import { sentimentSnapshot } from "@/lib/sentiment";
+import { segmentFundStatusSnapshot } from "@/lib/segment-fund-status";
 import { buildReasoningCards } from "@/lib/home-feed";
 import { buildWatchChainMap } from "@/lib/watch-relation";
 import { buildRelLabelMap, resolveRelationLabelForItem } from "@/lib/relation-resolver";
@@ -42,9 +44,10 @@ export default async function Home() {
   // Next 14 渲染期间碰到 no-store fetch 会把整页打成动态(ISR 报废、每请求跑函数、大陆更慢),
   // 所以首页绝不在服务端触发情绪冷算;快照过期由客户端组件后台拉 /api/chain-sentiment 刷新。
   // R12(三轮收尾):状态/桥 KV 读并进同一批(全部相互独立,一跳出全量)
-  const [briefingsRes, snap, briefStatus, bridgeDoc] = await Promise.all([
+  const [briefingsRes, snap, fundStatus, briefStatus, bridgeDoc] = await Promise.all([
     listBriefing({ date, status: "published" }).catch(() => null),
     sentimentSnapshot().catch(() => null),
+    segmentFundStatusSnapshot().catch(() => null),
     getBriefStatus(date).catch(() => null),
     getHolidayBridge(date).catch(() => null),
   ]);
@@ -119,6 +122,7 @@ export default async function Home() {
                     </span>
                   }
                 />
+                <SegmentFundStatus initial={fundStatus} />
               </div>
               <OvernightRadar relMap={relLabelMap} />
             </>
