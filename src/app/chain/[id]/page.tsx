@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ChainSentiment } from "@/components/ChainSentiment";
 import { OvernightRadar } from "@/components/OvernightRadar";
-import { buildRelLabelMap, resolveInChainLabel, resolveEventFaceLabel } from "@/lib/relation-resolver";
+import { buildRelLabelMap, resolveInChainLabel, resolveRelationLabelForItem } from "@/lib/relation-resolver";
 import { ChainRoster } from "@/components/chain/ChainRoster";
 import { ChainConvert, type ShareSummary } from "@/components/chain/ChainConvert";
 import { sentimentSnapshot, type ChainSentiment as SentimentData } from "@/lib/sentiment";
@@ -18,12 +18,6 @@ import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { REL_CHIP_CLS, chainIdFromRoute } from "@/lib/relation-rank";
 import { routeInsightForItem } from "@/data/trigger-sources";
 import { DISCLAIMER } from "@/lib/constants";
-import MarketIntentCard from "@/components/MarketIntentCard";
-import { latestSnapshots } from "@/lib/market-intent/store";
-import { SEGMENT_BY_KEY } from "@/lib/market-intent/segments";
-import { INTENT_DISCLAIMER, fmtYmd } from "@/lib/market-intent/ui";
-import { buildChainTimeline } from "@/lib/chain-timeline";
-import { ChainTimeline } from "@/components/ChainTimeline";
 
 export const revalidate = 60;
 
@@ -136,29 +130,8 @@ export default async function ChainPage({
     take: reasonByCode.get(r.code) ?? r.take,
   }));
 
-  // 资金意图(2.2.3 主阵地):本链关联板块的最新意图快照。AI 主链页同时挂 AI 应用段
-  // (ai-application 无独立 /chain 路由,chainRouteId 归并到 /chain/ai)。
-  const intentData = await latestSnapshots().catch(() => null);
-  const intentSlugs = new Set(
-    chain.id === "ai" ? [chain.insightSlug, "ai-application"] : [chain.insightSlug]
-  );
-  const intentSnaps = (intentData?.snaps ?? [])
-    .filter((s) => SEGMENT_BY_KEY[s.segment]?.chainSlugs.some((sl) => intentSlugs.has(sl)))
-    .sort((a, b) => a.segment.localeCompare(b.segment));
-
-  // 逻辑时间轴(2.2.4):事件→资金意图→专篇→复盘,纯聚合现成数据
-  const timeline = await buildChainTimeline({
-    chainId: chainIdFromRoute(chain.id),
-    insightSlugs: Array.from(intentSlugs).filter((s): s is string => !!s),
-    evtDocs: evtDocs.map((d) => ({
-      date: d.date,
-      slug: d.slug,
-      title: d.payload.eventMeta?.title ?? d.slug,
-    })),
-  }).catch(() => []);
-
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6">
         {/* Hero */}
@@ -249,40 +222,6 @@ export default async function ChainPage({
           </section>
         )}
 
-        {/* 资金意图(2.2.3 主阵地):市场资金正在怎么交易这条链——结论→证据→反证→失效条件 */}
-        {intentSnaps.length > 0 && intentData && (
-          <section id="market-intent" className="mt-6">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-h2 font-semibold text-gray-900">资金意图</h2>
-              <span className="text-xs text-gray-400">{fmtYmd(intentData.ymd)} 盘后</span>
-            </div>
-            <p className="mt-1 text-xs text-gray-400">
-              市场资金正在怎么交易这条链——与产业链逻辑同向、背离,还是只是情绪交易
-            </p>
-            <div className="mt-3 space-y-2">
-              {intentSnaps.map((s) => (
-                <MarketIntentCard
-                  key={s.segment}
-                  snap={s}
-                  segmentName={SEGMENT_BY_KEY[s.segment]?.name ?? s.segment}
-                />
-              ))}
-            </div>
-            <p className="mt-2 text-meta leading-relaxed text-gray-400">{INTENT_DISCLAIMER}</p>
-          </section>
-        )}
-
-        {/* 逻辑时间轴(2.2.4):这条链的逻辑生命周期——事件、资金、复盘怎么一步步走过来 */}
-        {timeline.length > 0 && (
-          <section className="mt-6">
-            <h2 className="text-h2 font-semibold text-gray-900">逻辑时间轴</h2>
-            <p className="mt-1 text-xs text-gray-400">
-              事件触发 → 资金意图变化 → 传导拆解 → 复盘判定,一条逻辑的生命周期(近 20 交易日)
-            </p>
-            <ChainTimeline entries={timeline} />
-          </section>
-        )}
-
         {/* 隔夜美股 · A股联动 */}
         <div className="mt-4">
           <OvernightRadar relMap={buildRelLabelMap()} />
@@ -312,10 +251,10 @@ export default async function ChainPage({
                   <div className="flex items-center gap-2">
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                        REL_CHIP_CLS[resolveEventFaceLabel(it)] ?? "bg-gray-100 text-gray-600"
+                        REL_CHIP_CLS[resolveRelationLabelForItem(it)] ?? "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {resolveEventFaceLabel(it)}
+                      {resolveRelationLabelForItem(it)}
                     </span>
                     <span className="font-medium text-gray-900">{it.title}</span>
                   </div>

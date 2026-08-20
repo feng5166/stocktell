@@ -88,7 +88,7 @@ export default async function InsightArchivePage({
   };
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日推理" />
       {/* 三轮 review T1:LLM 内容进 JSON-LD 必须 safeJsonLd 转义 '<'(防 </script> 逃逸=存储型 XSS) */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />

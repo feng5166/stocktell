@@ -13,14 +13,12 @@ const UPDATED = "2026 年 7 月";
 
 export default function DisclaimerPage() {
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <header>
-          <h1 className="text-h1 font-semibold tracking-tight">免责声明</h1>
-          <p className="mt-1 text-xs text-gray-400">最近更新:{UPDATED}</p>
-        </header>
+        <h1 className="text-h1 font-semibold tracking-tight">免责声明</h1>
+        <p className="mt-1 text-xs text-gray-400">最近更新:{UPDATED}</p>
 
         <div className="mt-6 space-y-6 text-sm leading-relaxed text-gray-700">
           <Section title="1. 我们是什么,不是什么">

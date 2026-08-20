@@ -162,16 +162,3 @@ export function resolveRelationLabelForItem(item: { beneficiaries: { code: strin
   }
   return best ?? "产业链相关";
 }
-
-// 事件卡门面标签(2.2.1b 展示解耦,2026-08-13 负责人调研实证):
-// 「Vertiv 大涨」的门面标签是 事件→链 的触发关系,不是 股票→链 的映射档——
-// 事件卡标「直接映射」会被读成「Vertiv 与英维克存在直接供应关系」。
-// 有海外触发源的事件一律标「链级触发」;映射档只出现在卡内逐票 chip(那里语义本来就对)。
-// 无触发源的条目(链内动态/国内事件)维持 beneficiaries 最强档聚合,语义不冲突。
-export function resolveEventFaceLabel(item: {
-  triggerCode?: string | null;
-  beneficiaries: { code: string }[];
-}): string {
-  if (item.triggerCode) return "链级触发";
-  return resolveRelationLabelForItem(item);
-}

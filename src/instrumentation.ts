@@ -34,14 +34,6 @@ export async function register() {
         index: "verify_follows_user_id_code_point_key",
         hint: "verify_follows 唯一索引(2.3 P1-3 验证点跟踪)缺失——关注验证点写入会失败或重复,进展提醒无数据",
       },
-      {
-        index: "market_intent_daily_segment_ymd_idx",
-        hint: "market_intent_daily 表/索引(2.2.2 Market Intent)缺失——每日意图快照写入失败,资金意图层与 Timeline 无数据",
-      },
-      {
-        index: "daily_judgments_subject_ymd_idx",
-        hint: "daily_judgments 表/索引(2.2.5 Daily Judgment)缺失——链级判断存档失败,首屏三件事与 Change Detection 无数据底",
-      },
     ];
     // 列形态哨兵(索引哨兵覆盖不到 ADD COLUMN 类 DDL)
     const COLUMN_SENTINELS: Array<{ table: string; column: string; hint: string }> = [

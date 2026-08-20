@@ -38,17 +38,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function AboutPage() {
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="关于我们" />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <header>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-h1 font-semibold tracking-tight">关于 StockTell</h1>
-            <FeedbackLink />
-          </div>
-          <p className="mt-2 text-sm text-gray-500">把复杂产业链翻译成普通投资者能核实的判断框架。</p>
-        </header>
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-h1 font-semibold tracking-tight">关于 StockTell</h1>
+          <FeedbackLink />
+        </div>
 
         <div className="mt-6 space-y-3 text-body text-gray-700">
           <p>StockTell 是一个面向产业链投资理解的 AI 推理工具。</p>

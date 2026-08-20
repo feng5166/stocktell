@@ -5,9 +5,9 @@
 > **约定(重要)**:
 > 1. **新增任何外部服务前,先查本文档**,确认没有已有方案可复用。
 > 2. **接入后立刻更新本文档**(加一行/一节:用途、关键文件、环境变量、坑)。
-> 3. 新增环境变量,**2026-08-17 起写在杭州机器 `/opt/stocktell/.env.production`(600)**,改完 `systemctl restart stocktell`;`NEXT_PUBLIC_*` 还要重新 `npm run build`(构建时嵌进前端包)。本地 `.env.local` 仅本地用。Vercel 项目已 pause,不用再配。
+> 3. 新增环境变量,记得在 **Vercel 项目环境变量**里配置(本地 `.env.local` 仅本地用;线上不读它)。
 >
-> 最后更新:2026-08-17(**迁离 Vercel,自建杭州 ECS**:托管/数据库/Cron 三节全部改写,新增 Web Push 正向代理)
+> 最后更新:2026-07-11(行情主/备口径校准:个股腾讯主源/新浪补缺,美股指数 Yahoo 主源——与 `/methodology` 公开口径同步,改行情源两处一起改)
 
 ---
 
@@ -15,8 +15,8 @@
 
 | 环境变量 | 所属服务 | 说明 |
 |---|---|---|
-| `POSTGRES_PRISMA_URL` | 本机 PostgreSQL 17 | 运行时用;自建后与直连同值(无 pgbouncer) |
-| `POSTGRES_URL_NON_POOLING` | 本机 PostgreSQL 17 | 直连(prisma migrate/db push 用) |
+| `POSTGRES_PRISMA_URL` | Vercel Postgres | 连接池(运行时用),Vercel 自动注入 |
+| `POSTGRES_URL_NON_POOLING` | Vercel Postgres | 直连(prisma migrate/db push 用),Vercel 自动注入 |
 | `NEXTAUTH_URL` | NextAuth | 站点根 URL(也用作邮件/短链里的 base) |
 | `NEXTAUTH_SECRET` | NextAuth | JWT 签名密钥 |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth | Google 登录 |
@@ -24,13 +24,13 @@
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | ModelVerse(LLM) | 简报/解读/早报生成。默认模型 `deepseek-v4-pro` |
 | `WHY_ENABLED` / `WHY_LLM_MODEL` | LLM(为什么动) | 「为什么动」开关 + 专用模型 |
 | `TUSHARE_TOKEN` | Tushare | 交易日历 / 基本面 / 资金面 |
-| `INSIGHT_SKIP_URL_VERIFY` | insight 管线(回放/CI 专用) | =1 跳过 references HEAD 可达探测(refs 保持 verified=false)。**严禁配置到生产**:误设会让每日 insight 全部 refs 永久 0/N 可达,与源站全挂不可区分(review F7)。仅 pipeline-replay --llm=off 与 CI 使用 |
+| `INSIGHT_SKIP_URL_VERIFY` | insight 管线(回放/CI 专用) | =1 跳过 references HEAD 可达探测(refs 保持 verified=false)。**严禁配置到 Vercel**:误设会让每日 insight 全部 refs 永久 0/N 可达,与源站全挂不可区分(review F7)。仅 pipeline-replay --llm=off 与 CI 使用 |
 | `BOCHA_API_KEY` | 博查 Bocha Search | 「为什么动」真实新闻检索 |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Resend | 发邮件(早报/通知/密码重置/后台群发) |
 | `VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT` | Web Push | 浏览器/PWA 通知 |
 | `CLAWBOT_BASE_URL` / `CLAWBOT_SECRET` | 自建微信桥 | 微信 iLink 推送;`https://bridge.stocktell.me`(宝塔 nginx 反代 VPS 47.84.8.167) |
 | `FEISHU_BOT_APP_ID` / `FEISHU_BOT_APP_SECRET` / `FEISHU_USER_OPEN_ID` | 飞书机器人 | 给运营者本人推送简报 |
-| `CRON_SECRET` | 系统 cron(`/etc/cron.d/stocktell`) | 定时任务鉴权(Bearer),由 `bin/cron-run.sh` 自动带上 |
+| `CRON_SECRET` | Vercel Cron | 定时任务鉴权(Bearer) |
 | `ADMIN_TOKEN` | 后台 | 管理端点鉴权(Bearer);如 init-db |
 | `ADMIN_EMAILS` | 后台 | 管理员邮箱白名单(逗号分隔) |
 | `UNSUB_SECRET` | 邮件退订 | 退订链接 HMAC 签名(未配则回退 NEXTAUTH_SECRET) |
@@ -42,22 +42,15 @@
 
 ## 1. 托管与基础设施
 
-### 自建杭州 ECS(托管 / 部署 / Cron)—— 2026-08-17 起,已取代 Vercel
-- **为什么迁**:`stocktell.me` 已 ICP 备案,**备案要求域名解析必须落在备案的那台服务器上**,绑到 Vercel 会被撤销备案。不是性能选择,是合规硬要求。
-- **机器**:`120.26.226.230`(cn-hangzhou,实例 `i-bp18zg44iy35iv0q0njq`),Alibaba Cloud Linux 3,2 vCPU / 1.8G + 4G swap。SSH 别名 `aliyun-vps`。
-- **上线三步**:`cd /opt/stocktell && git pull origin main && npm run build && systemctl restart stocktell`。**push main 不再自动部署**。
-- **进程**:systemd `stocktell.service` → `next start` 监听 **127.0.0.1:3000**(不对外);nginx 反代 80/443,80 跳 443、裸域跳 www;证书 acme.sh 自动续期。
-- **不再有 60s 上限**:原 Vercel Hobby 的 `maxDuration` 限制消失(代码里的 `export const maxDuration` 现已无效但无害)。长任务不再需要为规避超时而拆分。
-- **Cron**:`/etc/cron.d/stocktell`,**`CRON_TZ=UTC`** 与 `vercel.json` 逐条对齐(改 cron 改这里,`vercel.json` 仅存作口径参照)。执行器 `bin/cron-run.sh` 自动带 `Authorization: Bearer $CRON_SECRET`;执行记录 `/var/log/stocktell-cron.log`。
-- **日志**:应用 `/var/log/stocktell.log`,cron `/var/log/stocktell-cron.log`,备份 `/var/log/stocktell-backup.log`;均按 logrotate 每日轮转保留 14 份。
-- **Vercel 现状**:项目已 **pause**(`paused:true`/`live:false`)。**必须保持暂停**——否则它的 12 个 cron 会继续读 Neon 并给真实用户重复发邮件/微信推送。
+### Vercel(托管 / 部署 / Cron)
+- **用途**:Next.js 应用托管;push main 自动部署;定时任务(Cron)。
+- **限制**:Hobby 计划 Serverless 函数 `maxDuration` 上限 **60s**(LLM 重活要靠并发/流式规避超时)。
+- **Cron**:由 `CRON_SECRET` 鉴权(`Authorization: Bearer`),见 `src/app/api/cron/*`。
 
-### 本机 PostgreSQL 17(2026-08-17 起,已取代 Vercel Postgres / Neon)
-- **用途**:主数据库,与应用同机,监听 **127.0.0.1:5432**(不对外)。
-- **关键文件**:`prisma/schema.prisma`(`POSTGRES_PRISMA_URL` + `POSTGRES_URL_NON_POOLING`,自建后同值)。
-- **为什么是 17 不是 16**:源库 Neon 是 PG17,`pg_dump` 不允许从更高版本的服务器导出,故本地必须 ≥17。
-- **备份(自建后必须自己做,Neon 那层自动备份没有了)**:`/opt/stocktell/bin/pg-backup.sh` 每日 03:30(北京)dump 到 `/var/backups/stocktell`,gzip + 完整性校验,保留 14 天。
-- **改库**:仍走 `/api/admin/init-db`(幂等),需 `Authorization: Bearer <ADMIN_TOKEN>`;现在也可直接在机器上 `npx prisma db push`(连接串就在本机 `.env`,不再有"拿不到连接串"的问题)。
+### Vercel Postgres(底层 Neon)
+- **用途**:主数据库。
+- **关键文件**:`prisma/schema.prisma`(`POSTGRES_PRISMA_URL` + `POSTGRES_URL_NON_POOLING`)。
+- **坑**:Vercel token 解不开加密的环境变量,本地 `prisma db push` 拿不到连接串 → **改库走 `/api/admin/init-db` 端点**(幂等 `CREATE TABLE/ALTER ... IF NOT EXISTS`),需 `Authorization: Bearer <ADMIN_TOKEN>`。
 - 不是 Supabase(PRD 旧文档里的 Supabase/dev.db 都不是当前数据源)。
 
 ### Prisma(ORM)
@@ -80,9 +73,9 @@
 ### ModelVerse(OpenAI 兼容)— `api.modelverse.cn`
 - **用途**:今日简报、「StockTell 解读」、个性化早报、「散户怎么想」、「为什么动」总结。
 - **关键文件**:`src/lib/llm.ts`(默认模型 `deepseek-v4-pro`,推理模型,慢、流式)。
-- **环境变量**:`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`;为什么动另有 `WHY_ENABLED` / `WHY_LLM_MODEL`。`LLM_API_KEY` 2026-07-01 轮换过(改 env 后需 `systemctl restart stocktell` 才生效)。
+- **环境变量**:`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`;为什么动另有 `WHY_ENABLED` / `WHY_LLM_MODEL`。`LLM_API_KEY` 2026-07-01 轮换过(改 env 后需重部署才生效)。
 - **主/兜底**:ModelVerse 为主,**DeepSeek 官方 API 为兜底**;劣化时 `/admin/llm` **运行时手动切换**(两家模型名一致,一键链接);劣化会飞书提醒但**不自动切**。
-- **坑**:reasoning 模型会先吐 `reasoning_content` 吃 token,**`max_tokens` 要给够**(给少了会出现 `completion_tokens` 全被 `reasoning_tokens` 吃掉、`content` 为空)。并发(每条一调)+ 模板兜底是原 Vercel 60s 上限的遗产,自建后无此限制,可按需简化。
+- **坑**:reasoning 模型会先吐 `reasoning_content` 吃 token,`max_tokens` 要给够;60s 限制下用并发(每条一调)+ 模板兜底。
 
 ---
 
@@ -104,8 +97,8 @@
 - **用途**:「为什么动」真实新闻检索(避免编造)。
 - **关键文件**:`src/lib/bocha.ts`(端点 `POST /v1/web-search`)。
 - **环境变量**:`BOCHA_API_KEY`(没配则返回 null,调用方降级,不编造)。
-- **⚠️ 区域坑(2026-08-17 已失效,保留供追溯)**:原文是「`api.bochaai.com` 解析到**阿里云北京 SLB**,Vercel 美区(iad1)连不上,故必须钉香港区 `preferredRegion = "hkg1"`」。**自建杭州后该问题消失**:`preferredRegion` 是 Vercel 专有指令,自建环境下**完全无效**(留在代码里无害,但别再当成保护措施);从杭州直连博查已实测可用(`code=200`,有命中)。同源在国内反而更快。
-- **诊断**:`GET /api/admin/why-diag`(管理员登录即可)报 key 是否存在/博查 HTTP 状态/命中数/LLM 状态;`?clear=1` 清 `whyCache`(旧 null 结果会挡新数据)。bocha.ts 失败也会 `console.warn`(看 `/var/log/stocktell.log`,401/402/429)。
+- **⚠️ 区域坑(必看)**:`api.bochaai.com` 解析到**阿里云北京 SLB**,**Vercel 美区(iad1)连不上**(报 `fetch failed`)。因此调博查的接口**必须钉香港区**:`src/app/api/briefing/why/route.ts` 与 `src/app/api/admin/why-diag/route.ts` 都有 `export const preferredRegion = "hkg1"` —— **别删**,删了「为什么动」来源会再次消失。
+- **诊断**:`GET /api/admin/why-diag`(管理员登录即可)报 key 是否存在/博查 HTTP 状态/命中数/实际执行区/LLM 状态;`?clear=1` 清 `whyCache`(旧 null 结果会挡新数据)。bocha.ts 失败也会 `console.warn`(Vercel 日志可见 401/402/429)。
 
 ---
 
@@ -116,16 +109,12 @@
 - **关键文件**:`src/lib/mailer.ts`、`src/lib/digest.ts`、`src/app/api/admin/email-push/route.ts`。
 - **环境变量**:`RESEND_API_KEY` / `EMAIL_FROM`(没配则降级打印、返回 false,不报错)。
 - 邮件均带「取消推送」入口(`src/lib/unsub.ts` HMAC 签名)+ `List-Unsubscribe` 头。
-- **暂停态(2026-07 起)**:发件域失效 → `EMAIL_DIGEST_PAUSED=1`(`src/lib/mailer.ts`),早报早退、看门狗不误报。**恢复步骤**:① Resend 后台验证新发件域(DNS SPF/DKIM)② 更新 `EMAIL_FROM` ③ 删掉 `/opt/stocktell/.env.production` 里的 `EMAIL_DIGEST_PAUSED` 并 `systemctl restart stocktell` ④ `/admin/metrics` 触达区确认「今日发送」恢复非零。恢复即按自选个性化生效,无需改代码。
+- **暂停态(2026-07 起)**:发件域失效 → `EMAIL_DIGEST_PAUSED=1`(`src/lib/mailer.ts`),早报早退、看门狗不误报。**恢复步骤**:① Resend 后台验证新发件域(DNS SPF/DKIM)② 更新 `EMAIL_FROM` ③ 删掉 `EMAIL_DIGEST_PAUSED` 环境变量并 redeploy ④ `/admin/metrics` 触达区确认「今日发送」恢复非零。恢复即按自选个性化生效,无需改代码。
 
 ### Web Push / VAPID(浏览器 & PWA 通知)
 - **用途**:浏览器/PWA 推送。广播主路径折在 briefing cron(`maybeWebPush`);`/api/cron/push-web` 仅手动补推。
 - **关键文件**:`src/lib/push.ts`(`pushEnabled()` 是启用与否的**唯一判定**)、`src/app/api/push/subscribe/route.ts`、`src/components/pwa/PwaActions.tsx`(`web-push` 库)。
 - **环境变量**:`VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT`;`WEB_PUSH_ENABLED=0` 为显式停用 kill-switch(不设=配了 VAPID 即启用,2026-07-30 收敛三处口径矛盾)。
-- **正向代理 `WEB_PUSH_PROXY`(2026-08-17,自建杭州后必需)**:`fcm.googleapis.com` 在中国大陆不可达,Chrome/Edge 订阅端点全在 FCM,境内直发必超时。现经新加坡 VPS(47.84.8.167)的 tinyproxy 转发,值为 `http://47.84.8.167:3128`。
-  - **必须是正向代理,不能用反代**:VAPID JWT 的 `aud` 由 endpoint 源计算,改写 host 会被 FCM 判签名无效;CONNECT 隧道下 TLS 仍端到端直连 Google,`aud` 不变。
-  - 代理侧配置 `/etc/tinyproxy/tinyproxy.conf`:`Allow 120.26.226.230`(仅杭州 ECS)+ `ConnectPort 443`(禁止被当通用跳板);新加坡安全组与 firewalld 均只放行 120.26.226.230/32 到 3128。
-  - 海外部署无需此项,不设即直连。
 
 ### 自建微信桥(ClawBot / iLink)— `https://bridge.stocktell.me`(VPS 47.84.8.167)
 - **用途**:微信 iLink 推送(扫码绑定 + 盘前/手动推送)。

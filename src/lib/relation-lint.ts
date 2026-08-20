@@ -7,7 +7,7 @@ import { allRelations, type StockChainRelation } from "@/data/chain-relations";
 import { isKnownSegment } from "@/data/segment-registry";
 
 // 交易化喊单词(窄表:真买卖/仓位/目标价指令)。不含"出货/放量"等产业术语(那些是供应链/量能词,非喊单)。
-const TRADE_WORDS = /买入|卖出|加仓|减仓|建仓|补仓|清仓|满仓|空仓|重仓|抄底|逃顶|止损|止盈|打板|上车|梭哈|接盘|目标价|涨停|跌停|必涨|翻倍/; // copylint-allow(准入 lint 的交易词表,护栏自身)
+const TRADE_WORDS = /买入|卖出|加仓|减仓|建仓|补仓|清仓|满仓|空仓|重仓|抄底|逃顶|止损|止盈|打板|上车|梭哈|接盘|目标价|涨停|跌停|必涨|翻倍/;
 
 export type LintViolation = {
   code: string;

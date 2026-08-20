@@ -15,16 +15,14 @@ export default async function SettingsPage() {
   const session = await getServerSession(authOptions);
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
       <main className="mx-auto max-w-xl px-4 py-6 sm:px-6">
-        <header>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-h1 font-semibold tracking-tight">个人设置</h1>
-            <FeedbackLink />
-          </div>
-          <p className="mt-2 text-sm text-gray-500">管理你的推送渠道</p>
-        </header>
+        <div className="mb-1 flex items-center gap-2.5">
+          <h1 className="text-h1 font-semibold tracking-tight">个人设置</h1>
+          <FeedbackLink />
+        </div>
+        <p className="mb-5 text-sm text-gray-500">管理你的推送渠道</p>
 
         {session?.user ? (
           <SettingsClient email={session.user.email ?? null} />

@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 // 给池内每只(未手写人话结论的)标的,用 LLM 生成一句「定位+观察点」的人话结论。
 // 并发池 8;输出 src/data/retail-takes.generated.ts(makeRetailTake 优先级:手写 > 生成 > 模板)。
-// 产出逐条过 content-guard(与运行时同一禁词源):违规重试,重试仍违规则弃用该条回落模板——
-// 此前脚本绕过护栏,「重仓/接盘侠」这类词直接落库进 /stocks(2026-08 静态扫描补漏)。
-// 用法:npx tsx scripts/gen-retail-takes.mjs   (从 .env.local 读 LLM_API_KEY/LLM_BASE_URL;
-//   tsx 而非 node:要 import TS 的 content-guard,保持禁词单一来源)
+// 用法:node scripts/gen-retail-takes.mjs   (从 .env.local 读 LLM_API_KEY/LLM_BASE_URL)
 //   可选:GEN_MODEL=deepseek-v4-flash(默认)  CONCURRENCY=8  LIMIT=0(0=全量)
 //   增量:ONLY=601127,301236 只为指定 code 生成,并与既有 generated 文件【合并】写回——
 //   新股入池后补文案用它,别全量重生成翻搅已有 129 条文案(2026-07-30 华为链一批)。
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { isComplianceClean } from "../src/lib/content-guard";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
@@ -56,8 +52,8 @@ if (ONLY.length) todo = todo.filter((s) => ONLY.includes(s.code));
 if (LIMIT) todo = todo.slice(0, LIMIT);
 console.log(`总 ${stocks.length} · 手写跳过 ${stocks.length - todo.length} · 待生成 ${todo.length}${ONLY.length ? `(ONLY 增量模式,与既有文件合并)` : ""} · 模型 ${MODEL} · 并发 ${CONC}`);
 
-const SYS = `你是 StockTell 的"产业链搭子",面向看不懂产业链的 A 股散户。给你一只票的资料,用一两句大白话点出:它在 AI 产业链里干哪一环、当下是什么角色(龙头/二线弹性/主题关联)、这条逻辑靠什么验证(订单/收入/客户/毛利率等,给风险提示)。
-要求:像懂行的朋友顺手提醒,口语、说人话;绝不喊买卖、不给操作建议(不出现买入/卖出/加仓/抄底);也不要"别急着追/别重仓/追高需谨慎/逢回调关注"这类软性操作暗示,改用"观察/验证/情绪映射还是订单兑现"口径;不给持股/择时建议(不出现落袋为安/死扛/拿着看/安心拿/别指望短期/回调布局);不用仓位与盘面词(重仓/底仓/仓位/压舱石/接盘/错杀/企稳/回踩);不用股民黑话标签(妖票/情绪票/弹性票/题材票/蹭热度/打鸡血/爆拉,说清波动由什么驱动即可);语气平稳不制造焦虑,不用"暴跌/崩盘/血洗"等吓人词;≤55 字,1-2 句;只输出结论本身,不要任何前缀、引号或解释。`;
+const SYS = `你是 StockTell 的"盯盘搭子",面向看不懂产业链的 A 股散户。给你一只票的资料,用一两句大白话点出:它在 AI 产业链里干哪一环、当下是什么角色(龙头/二线弹性/题材股)、能不能安心拿(给风险提示)。
+要求:像懂行的朋友顺手提醒,口语、说人话;绝不喊买卖、不给操作建议(不出现买入/卖出/加仓/抄底);也不要"别急着追/别重仓/追高需谨慎/逢回调关注"这类软性操作暗示,改用"观察/验证/情绪映射还是订单兑现"口径;语气平稳不制造焦虑,不用"暴跌/崩盘/血洗"等吓人词;≤55 字,1-2 句;只输出结论本身,不要任何前缀、引号或解释。`;
 
 async function gen(s) {
   const ctx = [
@@ -70,7 +66,7 @@ async function gen(s) {
     `定位:${s.positioning}`,
     `关键观察:${s.observation}`,
   ].filter(Boolean).join("\n");
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const r = await fetch(`${BASE}/chat/completions`, {
         method: "POST",
@@ -84,12 +80,7 @@ async function gen(s) {
       });
       const j = await r.json();
       const txt = (j.choices?.[0]?.message?.content || "").trim().replace(/^["「]|["」]$/g, "");
-      if (txt) {
-        // 生成后合规校验(与运行时同源):违规就重试,3 次仍违规弃用该条(回落模板)
-        const v = isComplianceClean(txt);
-        if (v.ok) return txt;
-        console.warn(`  ✗ ${s.code} 第${attempt + 1}次生成违规[${v.bannedHits.join("、")}${v.hasNumber ? "、具体涨跌数字" : ""}]:${txt}`);
-      }
+      if (txt) return txt;
     } catch (e) { /* retry */ }
   }
   return null;

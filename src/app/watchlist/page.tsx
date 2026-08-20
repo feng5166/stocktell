@@ -54,7 +54,7 @@ export default async function WatchlistPage() {
   }
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="自选" />
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <header className="mb-4">

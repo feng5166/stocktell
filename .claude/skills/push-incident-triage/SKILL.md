@@ -10,10 +10,8 @@ description: 排查「简报/早报/推送没收到」类事故的标准流程�
 - 运维补救(补发邮件等对外动作)时效紧迫时可做,但先向用户说明。
 - 先取证后下结论:2026-07-03 事故里"完全没发"的推断被 Resend 记录纠正为"发了 6/11 被截断"——**发送日志是铁证,推断只是推断**。
 
-## 背景(链路,北京时间;cron 定义在杭州机器 `/etc/cron.d/stocktell`,`CRON_TZ=UTC` —— 2026-08-17 起自建,不再由 Vercel 触发)
+## 背景(链路,北京时间;cron 定义在 vercel.json,UTC)
 07:00 `cron/briefing`:生成(LLM)→ 发布 → runPreOpenDigest(邮件,逐用户)→ runWebPush。
-浏览器推送经新加坡正向代理发往 FCM(`WEB_PUSH_PROXY`)——境内直连 fcm.googleapis.com 不可达,**推送全挂时先查代理**:`curl -x $WEB_PUSH_PROXY https://fcm.googleapis.com/` 与新加坡 `systemctl is-active tinyproxy`。
-执行记录看 `/var/log/stocktell-cron.log`(每行含路径+HTTP 码+响应体摘要),应用日志 `/var/log/stocktell.log`。
 07:40 `cron/briefing-backup` 幂等补位;08:30 `cron/briefing-watchdog` 飞书心跳(✅/❌,核对简报存在 + 当日 digest_send_log 条数)。
 凭据都在本地 `.env.local`:ADMIN_TOKEN / CRON_SECRET / RESEND_API_KEY。
 

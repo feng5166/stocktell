@@ -11,9 +11,6 @@ import {
 } from "@/lib/outcomes";
 import { storageBackend, type Impact } from "@/lib/briefings";
 import { IMPACT_META } from "@/lib/impact";
-import { recentSnapshots } from "@/lib/market-intent/store";
-import { INTENT_SEGMENTS } from "@/lib/market-intent/segments";
-import { CONFIDENCE_LABEL, INTENT_CHIP_CLS, INTENT_DISCLAIMER, fmtYmd } from "@/lib/market-intent/ui";
 
 // 战绩是全局、非个性化数据(回填随收盘后 cron 更新),无需 force-dynamic 每次跑函数+查库。
 // 改 ISR:走 Vercel 边缘缓存,5 分钟再生成一次 —— 大陆用户更快,DB 压力更小。
@@ -31,26 +28,17 @@ export default async function TrackPage() {
     // 2.1-W3:按关系档/链拆复盘(只拆实盘——回测是明牌参考,不值得再细分)
     statsOutcomesByRelation(false).catch(() => ({ byRelation: [], byChain: [] })),
   ]);
-  // 2.2.3:资金意图快照历史(近 10 交易日 × 8 板块)——回看「那天判断了什么」,Timeline 的前身
-  const intentHistory = await recentSnapshots(10).catch(() => []);
-  const intentYmds = Array.from(new Set(intentHistory.map((s) => s.ymd))).sort();
-  const intentBySeg = new Map<string, Map<string, (typeof intentHistory)[number]>>();
-  for (const s of intentHistory) {
-    const m = intentBySeg.get(s.segment) ?? new Map();
-    m.set(s.ymd, s);
-    intentBySeg.set(s.segment, m);
-  }
   const liveStats = liveAgg.stats;
   const btStats = btAgg.stats;
   const liveByImpact = liveAgg.byImpact;
   const btByImpact = btAgg.byImpact;
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="复盘" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <header>
+        <div className="mb-4">
           <div className="flex items-center gap-2.5">
             <h1 className="text-h1 font-semibold tracking-tight">推理复盘 · 关系有没有被验证</h1>
             <FeedbackLink />
@@ -59,7 +47,7 @@ export default async function TrackPage() {
             复盘 StockTell 过去给出的事件、产业链关系和映射判断,看看哪些被后续市场表现验证。
             复盘的是产业链关系,不是买卖建议;历史统计不代表未来表现。
           </p>
-        </header>
+        </div>
 
         {/* 规则 + 三态图例:默认折叠,点 ⓘ 展开(原生 details,无需客户端 JS) */}
         <details className="group mb-5 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
@@ -139,56 +127,6 @@ export default async function TrackPage() {
             />
           )}
         </section>
-
-        {/* 资金意图快照(2.2.3):按日留痕的板块意图历史——回看当时的判断 */}
-        {intentYmds.length > 0 && (
-          <section className="mb-8">
-            <h2 className="mb-2 text-sm font-semibold text-gray-700">
-              资金意图快照 · {fmtYmd(intentYmds[0])}~{fmtYmd(intentYmds[intentYmds.length - 1])}
-            </h2>
-            <p className="mb-3 text-xs leading-relaxed text-gray-400">
-              每个交易日盘后记录一次各板块的资金意图判定,存档不回改——之后逐步回答
-              「那天判断吸筹,后来发生了什么」。判定依据与反证见各链页「资金意图」。
-            </p>
-            <div className="space-y-1.5">
-              {INTENT_SEGMENTS.map((seg) => {
-                const m = intentBySeg.get(seg.key);
-                if (!m) return null;
-                return (
-                  <div
-                    key={seg.key}
-                    className="flex items-center gap-2 overflow-x-auto rounded-lg bg-white px-3 py-2"
-                  >
-                    <span className="w-24 shrink-0 truncate text-xs font-medium text-gray-700">
-                      {seg.name}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      {intentYmds.map((ymd) => {
-                        const s = m.get(ymd);
-                        if (!s)
-                          return (
-                            <span key={ymd} className="inline-flex rounded bg-gray-50 px-1.5 py-0.5 text-meta text-gray-300">
-                              –
-                            </span>
-                          );
-                        return (
-                          <span
-                            key={ymd}
-                            title={`${fmtYmd(ymd)} ${s.intent.label}·${CONFIDENCE_LABEL[s.intent.confidence]}`}
-                            className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-meta font-medium ${INTENT_CHIP_CLS[s.intent.intent]}`}
-                          >
-                            {s.intent.label}
-                          </span>
-                        );
-                      })}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-2 text-meta leading-relaxed text-gray-400">{INTENT_DISCLAIMER}</p>
-          </section>
-        )}
 
         {/* 历史回测(明牌) */}
         {btFirst.rows.length > 0 && (
@@ -379,3 +317,4 @@ function Overview({
     </div>
   );
 }
+

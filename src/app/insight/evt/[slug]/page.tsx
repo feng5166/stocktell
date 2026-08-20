@@ -72,7 +72,7 @@ export default async function EventInsightPage({ params }: { params: { slug: str
   };
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="今日推理" />
       {/* LLM 内容进 JSON-LD 必须 safeJsonLd 转义(防 </script> 逃逸,与归档页同口径) */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />

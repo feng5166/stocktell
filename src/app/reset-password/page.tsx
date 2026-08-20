@@ -56,7 +56,7 @@ function ResetForm() {
   }
 
   return (
-    <div className="site-atmosphere flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-sm">
         <Link href="/" aria-label="StockTell 首页" className="inline-block">
           <Logo className="h-6 w-auto" />

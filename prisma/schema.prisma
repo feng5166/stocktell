@@ -1,8 +1,7 @@
 // StockTell 数据库 schema(Prisma)
-// 底层 Postgres:2026-08-17 起 = 杭州 ECS 上的**本机 PostgreSQL 17**(此前是 Vercel Postgres/Neon,
-// 迁移原因见 CLAUDE.md「部署」)。连接串写在 /opt/stocktell/.env.production,不再由平台注入。
-// POSTGRES_PRISMA_URL = 运行时用;POSTGRES_URL_NON_POOLING = 给 prisma migrate / db push 用。
-// 自建后两者指向同一个本机实例(无 pgbouncer,本地连接无需连接池)。
+// 底层 Postgres = Vercel Postgres(Neon)。Vercel 会把连接串自动注入项目环境变量。
+// POSTGRES_PRISMA_URL = 连接池(pgbouncer,运行时用);
+// POSTGRES_URL_NON_POOLING = 直连(给 prisma migrate / db push 用)。
 
 generator client {
   provider = "prisma-client-js"
@@ -181,30 +180,6 @@ model DeepAnalysisCache {
 
 // 资金面按日缓存:某交易日全市场 主力净流入/龙虎榜/融资余额 的整包(data),
 // 每天首个请求拉一次 Tushare 大表落库,之后跨实例秒回(原 unstable_cache 不跨实例持久)。
-// Market Intent 每日快照(2.2.2):板块指标 + 意图判定按日留痕,Track 回看与 Chain Timeline 的地基。
-model MarketIntentDaily {
-  ymd       String // 交易日 YYYYMMDD
-  segment   String // segments.ts 的 segment key
-  data      Json // { metrics: SegmentDayMetrics, intent: MarketIntent }
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  @@id([ymd, segment])
-  @@index([segment, ymd])
-  @@map("market_intent_daily")
-}
-
-// Daily Judgment 按日存档(2.2.5):链级三输入合成判断,yesterday→today diff(2.2.6)的数据底。
-model DailyJudgment {
-  ymd       String // 交易日 YYYYMMDD
-  subject   String // 链 slug(后续可扩 stock code)
-  data      Json // ChainJudgment
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
-  @@id([ymd, subject])
-  @@index([subject, ymd])
-  @@map("daily_judgments")
-}
-
 model FundDayCache {
   ymd       String   @id // 交易日 YYYYMMDD
   data      Json // { mf: {code:净流入亿}, lh: {code:{net,reason}}, mg: {code:融资余额亿} }

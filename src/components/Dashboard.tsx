@@ -433,7 +433,7 @@ export default function Dashboard({
   };
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader active="股票池" wide />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
@@ -467,7 +467,7 @@ export default function Dashboard({
         <ChainSwitcher />
 
         {/* Tab 导航:手机吸顶(长列表里随时切视图)+ 换行全露(不再横向溢出把「主动发现」切到屏外)*/}
-        <div className="sticky top-0 z-20 -mx-4 mb-4 flex flex-wrap gap-1 border-b border-white/80 bg-white/80 px-4 backdrop-blur-xl sm:static sm:mx-0 sm:flex-nowrap sm:overflow-x-auto sm:rounded-xl sm:px-2">
+        <div className="sticky top-0 z-20 -mx-4 mb-4 flex flex-wrap gap-1 border-b border-gray-200 bg-canvas px-4 sm:static sm:mx-0 sm:flex-nowrap sm:overflow-x-auto sm:px-0">
           {TABS.map((t) => (
             <button
               key={t}

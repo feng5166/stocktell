@@ -33,16 +33,14 @@ export default function RelationsGlossaryPage() {
   // 套全站导航壳(同 /methodology 模式,2026-07-30 review):此前无 SiteHeader,
   // 该页在 sitemap priority 0.6、被 footer//methodology 多处链入,SEO 落地用户进来是死路。
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
-      <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <header>
-        <h1 className="text-h1 font-semibold tracking-tight text-gray-900">关系说明</h1>
-        <p className="mt-2 text-sm leading-relaxed text-gray-500">
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <h1 className="text-h1 font-semibold tracking-tight text-gray-900">关系说明</h1>
+      <p className="mt-2 text-sm leading-relaxed text-gray-500">
         StockTell 把「一件海外大事会不会影响国内某只票」翻译成一套关系档。这些是<b className="text-gray-700">研究框架的梳理</b>,不是荐股、不是买卖建议。
         下面是每种关系、证据状态怎么读,以及为什么历史统计不等于预测。
-        </p>
-      </header>
+      </p>
 
       {/* 关系档 */}
       <h2 className="mt-8 text-h2 font-semibold text-gray-900">关系档:一只票和产业链的关系</h2>
@@ -99,7 +97,7 @@ export default function RelationsGlossaryPage() {
         </Link>
         。
       </p>
-      </main>
+      </div>
     </div>
   );
 }

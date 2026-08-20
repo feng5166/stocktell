@@ -39,12 +39,6 @@ export interface PushPayload {
 // 不设 TTL(用默认 4 周):强设短 TTL 会让离线设备重连后收不到当天提醒(评审 finding 12)。
 const PUSH_TIMEOUT_MS = 8000;
 
-// 正向代理(2026-08-17 自建杭州后新增):fcm.googleapis.com 在中国大陆不可达,
-// Chrome/Edge 的订阅端点全在 FCM 上,境内直发必超时。走境外机器的 CONNECT 代理转发。
-// 必须是正向代理而非反代:VAPID JWT 的 aud 由 endpoint 源计算,改写 host 会被 FCM 判签名无效;
-// CONNECT 隧道下 TLS 仍端到端直连 Google,aud 不变。不设则维持直连(海外部署无需此项)。
-const PUSH_PROXY = process.env.WEB_PUSH_PROXY;
-
 // 返回 "ok" | "gone"(订阅失效需删除)| "error"
 export async function sendPush(
   sub: SubLike,
@@ -56,7 +50,7 @@ export async function sendPush(
     await webpush.sendNotification(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
       JSON.stringify(payload),
-      { timeout: PUSH_TIMEOUT_MS, ...(PUSH_PROXY ? { proxy: PUSH_PROXY } : {}) }
+      { timeout: PUSH_TIMEOUT_MS }
     );
     return "ok";
   } catch (e: unknown) {

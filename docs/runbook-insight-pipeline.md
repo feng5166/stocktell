@@ -1,7 +1,7 @@
 # Runbook · insight 生产管线(M1 运行手册)
 
 > 排障/日常操作。所有写端点需 `Authorization: Bearer $ADMIN_TOKEN`。生产 BASE=https://www.stocktell.me。
-> 上线前提:目标库已 `POST /api/admin/init-db`(建 insight_docs 表);cron 已配(2026-08-17 起在杭州机器 `/etc/cron.d/stocktell`,`CRON_TZ=UTC`;`vercel.json` 仅留作口径参照,改它不生效)。
+> 上线前提:目标库已 `POST /api/admin/init-db`(建 insight_docs 表);vercel.json 已含 07:05 cron。
 
 ## 日常(每个交易日)
 1. **07:05** cron `/api/cron/insight-daily` 自动生成 AI 链 daily draft → 飞书推「📋 待审」卡片。
@@ -19,7 +19,7 @@
 | 飞书告警 | 含义 | 处置 |
 |---|---|---|
 | `insight-daily(护栏阻断)` | 生成产物撞阻断型护栏(schema/禁词/数字),未进审 | 07:40 briefing-backup 会重试;连续阻断 → 查 prompt 或当日简报数据是否异常 |
-| `insight-daily(生成)` 报错 | LLM/DB 异常 | 看 `/var/log/stocktell.log` 与 `/var/log/stocktell-cron.log`;`force=1` 手动重跑 |
+| `insight-daily(生成)` 报错 | LLM/DB 异常 | 看 Vercel 日志;`force=1` 手动重跑 |
 | `❌ 链级每日推理缺失`(08:30 看门狗) | 主跑+补跑都没产出草稿 | `POST /api/admin/insight-daily?force=1` 手动补;查简报是否 0 条 |
 | `insight-daily(同图谱暂停)` | 连续 3 天热力方向**零变化**,疑似预制图谱(§7.2-6) | 判断是"真实连续行情"还是"退化成预制图谱":真实连续行情属正常;若确为预制,查 prompt/数据。**确认后 `POST /api/admin/insight-daily?force=1&chain=ai` 恢复**(force 自动解除暂停) |
 | `insight-daily(已暂停)` | 管线处于暂停态,当日 cron 跳过生成 | 同上,`force=1` 恢复;恢复前页面走地板内容 |
@@ -46,6 +46,6 @@
 - 生成成本(guard.detail):每篇约 LLM 2 次(判断+热力)+ 检索 0~2 次;S3 映射/S4 风险纯规则不打模型。
 
 ## 关掉/回滚
-- 停自动生成:注释掉 `/etc/cron.d/stocktell` 里的 `insight-daily` 那行(改 vercel.json 不生效)。
+- 停自动生成:vercel.json 去掉 `/api/cron/insight-daily` cron。
 - 页面回落地板:无需操作——没有 published daily 时页面自动走 chain-take/规则。
 - 彻底回滚:代码层删 `src/lib/insight-pipeline/*` + 页面消费的 getPublishedDaily 调用;表可留(不影响)。

@@ -31,7 +31,7 @@ export default async function ShareSentimentPage() {
     `(信息参考,不构成投资建议。市场有风险。)`;
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       <SiteHeader />
       <ShareCardTracker cardType="sentiment" />
       <main className="mx-auto max-w-md px-4 py-6">

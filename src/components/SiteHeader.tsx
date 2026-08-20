@@ -18,20 +18,16 @@ const NAV = [
 export function SiteHeader({
   active,
   wide,
-  maxWidthClass,
-  atmospheric = true,
 }: {
   active?: string;
   wide?: boolean;
-  maxWidthClass?: string; // 与正文同栅格(首页视觉优化:导航和内容用同一个 max-width)
-  atmospheric?: boolean;
 }) {
   return (
     <>
-      <header className={atmospheric ? "relative z-20 border-b border-white/70 bg-white/75 backdrop-blur-xl" : "border-b border-gray-200 bg-white"}>
+      <header className="border-b border-gray-200 bg-white">
         <div
           className={`mx-auto flex ${
-            maxWidthClass ?? (wide ? "max-w-7xl" : "max-w-3xl")
+            wide ? "max-w-7xl" : "max-w-3xl"
           } items-center justify-between px-4 py-3 sm:px-6`}
         >
           <div className="flex flex-col gap-0.5">
@@ -45,15 +41,14 @@ export function SiteHeader({
               我不懂产业链,你告诉我怎么想
             </span>
           </div>
-          {/* 导航 14px / 500:不加粗到 600,active 只靠墨色区分(视觉规范 2026-08-18) */}
-          <nav className="flex items-center gap-4 text-sm font-medium text-gray-500">
+          <nav className="flex items-center gap-4 text-sm text-gray-500">
             {/* 页面入口在手机端收起,改由底部 TabBar 承载;桌面端保持原样 */}
             <div className="hidden items-center gap-4 sm:flex">
               {NAV.map((n) =>
                 n.label === active ? (
                   <span
                     key={n.href}
-                    className={atmospheric ? "relative cursor-default text-gray-900 after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:w-full after:rounded-full after:bg-[#24b88a]" : "cursor-default text-gray-900"}
+                    className="cursor-default font-medium text-gray-900"
                   >
                     {n.label}
                   </span>

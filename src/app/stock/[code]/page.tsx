@@ -227,7 +227,7 @@ export default async function StockDetail({
   }
 
   return (
-    <div className="site-atmosphere min-h-screen text-ink">
+    <div className="min-h-screen bg-canvas text-ink">
       {/* 复用全站统一头部(logo + slogan + nav + 移动端底部 TabBar),不再自带专属顶栏 */}
       <SiteHeader />
 

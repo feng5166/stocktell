@@ -54,6 +54,7 @@ export function BriefingFeed({
     it.beneficiaries.some((b) => wl.has(b.code));
 
   const mine = items.filter(isMine);
+  const others = items.filter((it) => !isMine(it));
 
   // 从推送(微信/邮件/Web 通知,链接带 #mine)点进来时,自动滚到「和我相关」,直达"你的票今天"。
   // 内容是客户端水合的,等 wl.ready 后再滚才滚得准。
@@ -104,9 +105,7 @@ export function BriefingFeed({
   return (
     <WhyProvider triggers={mineTriggers}>
     <div className="space-y-7">
-      {/* 视觉优化(2026-08-16):撤掉浅紫底的「卡片套卡片」外壳——区块靠标题+留白分区,
-          内部卡片直接落在页面浅灰底上 */}
-      <section id="mine" className="scroll-mt-20">
+      <section id="mine" className="scroll-mt-20 rounded-2xl bg-brand-50/40 p-3 sm:p-4">
         <SectionHead
           title="和我相关"
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
@@ -119,15 +118,7 @@ export function BriefingFeed({
         ) : (
           <div className="space-y-3">
             <RiskSummary codes={wl.codes} />
-            {/* 三轮走查:黄色早报卡折叠——首页收口,内容保留点开即看 */}
-            {mine.length > 0 && (
-              <details className="rounded-xl bg-amber-50/60 px-3 py-2">
-                <summary className="cursor-pointer list-none text-[13px] font-medium text-amber-800">
-                  ☀️ 你的今日早报 ▾
-                </summary>
-                <MorningBrief codes={wl.codes} items={mine} />
-              </details>
-            )}
+            {mine.length > 0 && <MorningBrief codes={wl.codes} items={mine} />}
             {/* 即时关系卡:本会话刚加的票当场自动解读(aha 不等第二天,命中/安静日都渲染) */}
             <InstantTake codes={wl.codes} chainMap={watchChainMap} />
             {/* P1 自选闭环:你的每只自选股 × 今日事件(所属链/环节/关系/验证点) */}
@@ -145,9 +136,8 @@ export function BriefingFeed({
                 <WatchOverview codes={wl.codes} />
               </>
             ) : (
-              /* 三轮走查:首页只保留 3 条,完整列表进 /daily 归档——首页是分发台不是内容站 */
               <CardFeed
-                items={mine.slice(0, 3)}
+                items={mine}
                 loggedIn={loggedIn}
                 watchedCodes={wl.codes}
                 insightHref={insightHref}
@@ -158,21 +148,31 @@ export function BriefingFeed({
                 mine
               />
             )}
-            <div className="flex flex-wrap gap-4 pt-1">
-              <Link href="/watchlist" className="text-[13px] font-medium text-brand-600 hover:underline">
-                查看全部与我相关 →
-              </Link>
-              {items[0]?.date && (
-                <Link href={`/daily/${items[0].date}`} className="text-[13px] font-medium text-brand-600 hover:underline">
-                  查看全部深度分析 →
-                </Link>
-              )}
-            </div>
           </div>
         )}
       </section>
-      {/* 「今天这些事件」完整事件流撤出首页(三轮走查:下半页必须收口,首页长度 -30%+)。
-          事件索引由上方 EventTop3 承担,完整深读在 /daily/[date] 归档与事件专篇。 */}
+
+      {others.length > 0 && (
+        <section className="rounded-2xl bg-gray-100/50 p-3 sm:p-4">
+          <SectionHead
+            title="今天这些事件,正在影响 A 股产业链"
+            hint="只看能传导到 A 股产业链的事件"
+          />
+          {/* 付费分层暂未开启:所有用户简报功能一致,不再上免费墙(gated 默认 false)。
+              仅自选保存、推送订阅需登录;LockedCard/FREE_LIMIT 基础设施保留,日后分层再开。 */}
+          <CardFeed
+            items={others}
+            loggedIn={loggedIn}
+            watchedCodes={wl.codes}
+            insightHref={insightHref}
+            chainName={chainName}
+            chainHref={chainHref}
+            relations={relations}
+            evtMap={evtMap}
+            collapsed
+          />
+        </section>
+      )}
     </div>
     </WhyProvider>
   );
@@ -351,7 +351,7 @@ function CardFeed({
   collapsed?: boolean; // 首页事件区:默认只放 5 条,其余手动「查看更多」——首页是分发台不是事件库(评审)
 }) {
   const STEP = 6;
-  const INITIAL = collapsed ? 4 : STEP; // 首页事件降噪(视觉优化 2026-08-14):5→4,首页是分发台不是事件库
+  const INITIAL = collapsed ? 5 : STEP;
   const [visible, setVisible] = useState(INITIAL);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -539,7 +539,7 @@ function MyWatchRelations({
     .sort((a, b) => (REL_ORDER[a.info.relation] ?? 3) - (REL_ORDER[b.info.relation] ?? 3));
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
       <div className="mb-2 text-sm font-semibold text-gray-900">
         {affected.length > 0
           ? `你的自选里,今天有 ${affected.length} 只被产业链事件点名`
@@ -662,10 +662,10 @@ function WatchRelationCard({ row, quiet }: { row: CoveredRow; quiet?: boolean })
 function SectionHead({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <h2 className="text-h2 font-semibold tracking-tight text-gray-900">
+      <h2 className="text-base font-semibold tracking-tight text-gray-900">
         {title}
       </h2>
-      {hint && <span className="text-meta text-gray-400">{hint}</span>}
+      {hint && <span className="text-xs text-gray-400">{hint}</span>}
     </div>
   );
 }
@@ -854,7 +854,7 @@ function BriefingCard({
 
   return (
     <article
-      className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm`}
+      className={`rounded-xl bg-white p-4 shadow-sm`}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="flex flex-wrap items-center gap-1.5">
@@ -1124,7 +1124,7 @@ function WhyLine({ code }: { code: string }) {
 function LockedCard({ item }: { item: BriefingItem }) {
   const meta = IMPACT_META[item.impact];
   return (
-    <article className="relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+    <article className="relative overflow-hidden rounded-xl bg-white shadow-sm p-4">
       <div className="pointer-events-none select-none blur-[5px]">
         <div className="mb-1 flex items-center gap-2 text-xs font-medium">
           <span>{meta.emoji}</span>

@@ -2,29 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 排版底座(2026-08-18 色温/字体校准):
-   中文 PingFang SC(苹方)撑结构,数字与英文走 Inter(自托管拉丁子集,见 layout.tsx)。
-   Inter 只有拉丁字形,中文自动回落 PingFang SC——这就是金融 Dashboard 里"数字干净、
-   中文稳"的混排来源,不需要额外按语言切 class。
-   注:Inter 变量字体经 next/font/local 注入 --font-inter,失败时整条 fallback 仍可用。 */
 body {
-  color: #252833;
+  color: #1a1d24;
   background: #f7f8fa;
-  font-family: var(--font-inter), "PingFang SC", "Microsoft YaHei",
-    "Noto Sans CJK SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont,
-    "Helvetica Neue", Helvetica, Arial, sans-serif;
-  /* 中文正文默认关掉 Inter 的连字/上下文替换(财报数字里 "1/4" 之类不该被合字) */
-  font-variant-ligatures: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
 }
 
-/* 数字对齐:表格/状态条里的涨跌幅、净额、家数必须等宽,否则一列数字看着在抖 */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
-  }
-  .tnum {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" 1;
   }
 }
 
@@ -38,100 +26,5 @@ body {
   select,
   textarea {
     font-size: 16px !important;
-  }
-}
-
-/* 首页 2026-08-20：参考早期品牌视觉，使用空间网格和低透明度边缘光晕。
-   网格只做氛围，不承载信息；移动端降低密度，确保正文可读。 */
-.home-atmosphere {
-  background-color: #f5f7fa;
-  background-image:
-    radial-gradient(circle at -5% 32%, rgba(36, 184, 138, 0.18), transparent 28rem),
-    radial-gradient(circle at 104% 15%, rgba(240, 91, 104, 0.18), transparent 30rem),
-    radial-gradient(circle at 94% 62%, rgba(229, 162, 58, 0.12), transparent 28rem),
-    linear-gradient(rgba(126, 134, 152, 0.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(126, 134, 152, 0.09) 1px, transparent 1px);
-  background-size: auto, auto, auto, 48px 48px, 48px 48px;
-  background-position: center;
-}
-
-/* 用户侧页面共享视觉壳：比首页更克制，保留同一套网格、边缘光晕与浮卡语言。
-   后台页面不挂此 class，避免影响高密度运营界面。 */
-.site-atmosphere {
-  background-color: #f5f7fa;
-  background-image:
-    radial-gradient(circle at -8% 24%, rgba(36, 184, 138, 0.12), transparent 28rem),
-    radial-gradient(circle at 108% 12%, rgba(240, 91, 104, 0.12), transparent 30rem),
-    radial-gradient(circle at 96% 76%, rgba(229, 162, 58, 0.08), transparent 26rem),
-    linear-gradient(rgba(126, 134, 152, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(126, 134, 152, 0.055) 1px, transparent 1px);
-  background-size: auto, auto, auto, 56px 56px, 56px 56px;
-  background-position: center;
-}
-
-.site-atmosphere main .shadow-sm {
-  box-shadow: 0 12px 34px rgba(31, 35, 48, 0.07);
-}
-
-.site-atmosphere main .shadow-md {
-  box-shadow: 0 18px 44px rgba(31, 35, 48, 0.1);
-}
-
-.site-atmosphere main .border-gray-200 {
-  border-color: rgba(255, 255, 255, 0.82);
-}
-
-.site-atmosphere main .text-h1 {
-  color: #171a21;
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  letter-spacing: -0.035em;
-}
-
-.site-atmosphere main > header,
-.site-atmosphere main > section:first-child {
-  position: relative;
-}
-
-.site-atmosphere main > header {
-  margin-bottom: 1.25rem;
-  padding: 1.5rem;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  border-radius: 24px;
-  background:
-    linear-gradient(rgba(116, 104, 242, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(116, 104, 242, 0.04) 1px, transparent 1px),
-    rgba(255, 255, 255, 0.74);
-  background-size: 32px 32px, 32px 32px, auto;
-  box-shadow: 0 16px 42px rgba(31, 35, 48, 0.07);
-}
-
-.site-atmosphere main .bg-brand-600 {
-  background-color: #171a21;
-}
-
-.site-atmosphere main .bg-brand-600:hover {
-  background-color: #292d36;
-}
-
-.home-hero-grid {
-  background:
-    linear-gradient(rgba(116, 104, 242, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(116, 104, 242, 0.055) 1px, transparent 1px),
-    linear-gradient(112deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.56));
-  background-size: 36px 36px, 36px 36px, auto;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.7);
-}
-
-@media (max-width: 640px) {
-  .home-atmosphere {
-    background-size: auto, auto, auto, 64px 64px, 64px 64px;
-  }
-  .home-hero-grid {
-    border-radius: 22px;
-  }
-  .site-atmosphere main > header {
-    padding: 1.25rem;
-    border-radius: 20px;
   }
 }
