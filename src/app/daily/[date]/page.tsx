@@ -48,7 +48,7 @@ export default async function DailyArchivePage({ params }: { params: { date: str
   const ui = status ? BRIEF_STATUS_UI[status.status] : null;
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="site-atmosphere min-h-screen text-ink">
       <SiteHeader active="今日推理" />
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <header className="mb-4">

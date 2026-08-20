@@ -46,15 +46,17 @@ export default function ChainsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="site-atmosphere min-h-screen text-ink">
       <SiteHeader active="产业链" />
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <h1 className="text-h1 font-semibold tracking-tight">产业链图谱总览</h1>
-        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+        <header>
+          <h1 className="text-h1 font-semibold tracking-tight">产业链图谱总览</h1>
+          <p className="mt-2 text-sm leading-relaxed text-gray-600">
           StockTell 只回答一个问题:全球事件会沿着哪条产业链传导、哪些 A
           股是直接相关、哪些只是情绪映射。下面是当前覆盖的产业链——每条都有传导结构深读与每日推理。
-        </p>
+          </p>
+        </header>
 
         <div className="mt-6 space-y-4">
           {chains.map((c) => (

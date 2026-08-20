@@ -19,7 +19,7 @@ export function SiteHeader({
   active,
   wide,
   maxWidthClass,
-  atmospheric,
+  atmospheric = true,
 }: {
   active?: string;
   wide?: boolean;

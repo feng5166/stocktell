@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default async function ShareLandingSentiment() {
   const snap = await sentimentSnapshot().catch(() => null);
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="site-atmosphere min-h-screen text-ink">
       <ShareLandingTracker />
       <main className="mx-auto max-w-md px-4 py-6">
         {/* 极简品牌头 */}

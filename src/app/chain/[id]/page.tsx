@@ -158,7 +158,7 @@ export default async function ChainPage({
   }).catch(() => []);
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="site-atmosphere min-h-screen text-ink">
       <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6">
         {/* Hero */}

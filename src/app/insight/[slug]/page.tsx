@@ -217,7 +217,7 @@ export default async function InsightPage({ params }: { params: { slug: string }
   const askOn = process.env.INSIGHT_CHAT_ENABLED === "1";
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="site-atmosphere min-h-screen text-ink">
       <SiteHeader />
       <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
         <header className="mb-3">

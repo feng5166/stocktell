@@ -46,11 +46,11 @@ export default async function TrackPage() {
   const btByImpact = btAgg.byImpact;
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="site-atmosphere min-h-screen text-ink">
       <SiteHeader active="复盘" />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <div className="mb-4">
+        <header>
           <div className="flex items-center gap-2.5">
             <h1 className="text-h1 font-semibold tracking-tight">推理复盘 · 关系有没有被验证</h1>
             <FeedbackLink />
@@ -59,7 +59,7 @@ export default async function TrackPage() {
             复盘 StockTell 过去给出的事件、产业链关系和映射判断,看看哪些被后续市场表现验证。
             复盘的是产业链关系,不是买卖建议;历史统计不代表未来表现。
           </p>
-        </div>
+        </header>
 
         {/* 规则 + 三态图例:默认折叠,点 ⓘ 展开(原生 details,无需客户端 JS) */}
         <details className="group mb-5 rounded-lg bg-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500">
@@ -379,4 +379,3 @@ function Overview({
     </div>
   );
 }
-

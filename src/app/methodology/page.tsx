@@ -39,15 +39,17 @@ const STEP_FLOW = [
 
 export default function MethodologyPage() {
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="site-atmosphere min-h-screen text-ink">
       <SiteHeader />
       <MethodologyView />
       <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-        <h1 className="text-h1 font-semibold tracking-tight text-gray-900">数据来源与方法</h1>
-        <p className="mt-2 text-sm leading-relaxed text-gray-500">
-          这页回答五个问题:数据来自哪里、多久更新一次、AI 负责什么、人工负责什么、哪里可能出错。
-          我们不要求你信任结论,只保证每个结论都能顺着来源往回查。
-        </p>
+        <header>
+          <h1 className="text-h1 font-semibold tracking-tight text-gray-900">数据来源与方法</h1>
+          <p className="mt-2 text-sm leading-relaxed text-gray-500">
+            这页回答五个问题:数据来自哪里、多久更新一次、AI 负责什么、人工负责什么、哪里可能出错。
+            我们不要求你信任结论,只保证每个结论都能顺着来源往回查。
+          </p>
+        </header>
 
         <Section no="01" title="一条推理是怎么形成的">
           <ol className="space-y-1.5">
