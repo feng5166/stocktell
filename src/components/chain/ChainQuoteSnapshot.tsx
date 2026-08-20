@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { changeClass, fmtChange } from "@/lib/format";
 import { formatBeijingMDHM } from "@/lib/time-label";
+import { useChainQuotes, type ChainQuote } from "@/components/chain/useChainQuotes";
 
 type Member = { code: string; name: string };
-type Quote = { price: number; change: number; asOf?: string };
 
 export function ChainQuoteSnapshot({
   members,
@@ -15,68 +15,18 @@ export function ChainQuoteSnapshot({
   members: Member[];
   title: string;
 }) {
-  const symbols = useMemo(
-    () => Array.from(new Set(members.map((member) => member.code))).join(","),
-    [members]
-  );
-  const [quotes, setQuotes] = useState<Record<string, Quote> | null>(null);
-  const [live, setLive] = useState(false);
-  const [cached, setCached] = useState(false);
-  const [asOf, setAsOf] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!symbols) return;
-    let active = true;
-    let timer: ReturnType<typeof setInterval> | null = null;
-
-    const load = () => {
-      fetch(`/api/quotes?symbols=${encodeURIComponent(symbols)}`, { cache: "no-store" })
-        .then((response) => {
-          if (!response.ok) throw new Error("quote request failed");
-          return response.json();
-        })
-        .then((data) => {
-          if (!active) return;
-          setQuotes(data.quotes ?? {});
-          setLive(Boolean(data.live));
-          setCached(Boolean(data.cached));
-          setAsOf(data.asOf ?? null);
-        })
-        .catch(() => {
-          if (active) setQuotes({});
-        });
-    };
-    const start = () => {
-      if (!timer) timer = setInterval(load, 20_000);
-    };
-    const stop = () => {
-      if (timer) clearInterval(timer);
-      timer = null;
-    };
-    const onVisibility = () => {
-      if (document.hidden) stop();
-      else {
-        load();
-        start();
-      }
-    };
-
-    load();
-    if (!document.hidden) start();
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      active = false;
-      stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [symbols]);
+  const payload = useChainQuotes(members.map((member) => member.code));
+  const quotes = payload?.quotes ?? null;
+  const live = payload?.live ?? false;
+  const cached = payload?.cached ?? false;
+  const asOf = payload?.asOf ?? null;
 
   const items = useMemo(
     () =>
       members
         .map((member) => ({ ...member, quote: quotes?.[member.code] }))
         .filter(
-          (item): item is Member & { quote: Quote } =>
+          (item): item is Member & { quote: ChainQuote } =>
             item.quote != null && Number.isFinite(item.quote.change)
         ),
     [members, quotes]

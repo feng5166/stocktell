@@ -8,6 +8,9 @@ import { useWatchlist } from "@/components/useWatchlist";
 import { track } from "@/lib/analytics";
 import type { RosterItem } from "@/data/chains";
 import { FRONT_RELATION_RANK, REL_CHIP_CLS } from "@/lib/relation-rank";
+import { changeClass, fmtChange } from "@/lib/format";
+import { formatBeijingMDHM } from "@/lib/time-label";
+import { useChainQuotes } from "@/components/chain/useChainQuotes";
 
 export function ChainRoster({
   chainId,
@@ -38,6 +41,8 @@ export function ChainRoster({
   const visibleMembers = focusSectors?.length
     ? members.filter((member) => focusSectors.includes(member.sector))
     : members;
+  const quotePayload = useChainQuotes(visibleMembers.map((member) => member.code));
+  const quoteTime = formatBeijingMDHM(quotePayload?.asOf);
 
   const groups = useMemo(() => {
     const m = new Map<string, { gloss: string; rows: RosterItem[] }>();
@@ -95,6 +100,11 @@ export function ChainRoster({
           <span className="block text-xs text-gray-400">
             {addedCount > 0 ? `已加自选 ${addedCount} 只` : "点 + 加入自选,每天看它怎么动"}
           </span>
+          {quoteTime && (
+            <span className="mt-1 block text-[11px] text-gray-400">
+              {quotePayload?.cached || !quotePayload?.live ? "缓存截至" : "行情截至"} {quoteTime}
+            </span>
+          )}
           {focusSegmentName && (
             <Link
               href={`/chain/${chainId}#chain-roster`}
@@ -121,6 +131,7 @@ export function ChainRoster({
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               {g.rows.map((it, i) => {
                 const on = wl.has(it.code);
+                const quote = quotePayload?.quotes[it.code];
                 return (
                   <div
                     key={it.code}
@@ -155,17 +166,33 @@ export function ChainRoster({
                         </div>
                       )}
                     </Link>
-                    <button
-                      onClick={() => onToggle(it.code)}
-                      className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                        on
-                          ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                          : "bg-brand-600 text-white hover:bg-brand-700"
-                      }`}
-                      aria-label={on ? "已在自选" : "加入自选"}
-                    >
-                      {on ? "✓ 已加" : "+ 自选"}
-                    </button>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <div className="min-h-[18px] text-right">
+                        {quote ? (
+                          <div className="flex items-baseline justify-end gap-1.5 whitespace-nowrap">
+                            <span className="font-mono text-xs tabular-nums text-gray-500">
+                              {quote.price.toFixed(2)}
+                            </span>
+                            <span className={`font-mono text-xs font-semibold tabular-nums ${changeClass(quote.change)}`}>
+                              {fmtChange(quote.change)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => onToggle(it.code)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                          on
+                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                            : "bg-brand-600 text-white hover:bg-brand-700"
+                        }`}
+                        aria-label={on ? "已在自选" : "加入自选"}
+                      >
+                        {on ? "✓ 已加" : "+ 自选"}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
