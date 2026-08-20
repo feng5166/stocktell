@@ -1,6 +1,7 @@
 // 个股资金形态:只用同一收盘日的价格、主力净额/成交比与当日龙虎榜
 // 识别「形态特征」。这些标签不是对机构真实意图的确认,因此最高只给中置信;
-// 证据不够必须返回「待判断」,不为填满表格而强行贴建仓/洗盘/出货标签。
+// 只有同日数据缺失才返回「待判断」;数据完整但不属于五类行为特征时,
+// 用共振/分歧/观望描述市场状态,不强行贴建仓/洗盘/出货标签。
 import { unstable_cache } from "next/cache";
 import { STOCKS, STOCK_MAP } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
@@ -18,6 +19,10 @@ export type FundBehaviorLabel =
   | "抢筹特征"
   | "出货特征"
   | "衰竭特征"
+  | "偏强共振"
+  | "弱势共振"
+  | "资金分歧"
+  | "震荡观望"
   | "待判断";
 
 export interface FundBehaviorItem {
@@ -146,11 +151,44 @@ export function classifyFundBehavior(input: BehaviorInput): FundBehaviorItem {
     };
   }
 
+  // 原五类未命中时仍给市场状态判断,避免把「有数据但不属于行为特征」混成数据不足。
+  if (current.pct >= 0.5 && current.ratio >= 0.25) {
+    return {
+      ...base,
+      label: "偏强共振",
+      confidence:
+        current.pct >= 1 && current.ratio >= 1 ? "中" : "低",
+      reason: `当日股价 ${signed(current.pct)}、主力净额/成交比 ${signed(current.ratio)},价格与资金同向偏强${longhuNote}`,
+    };
+  }
+
+  if (current.pct <= -0.5 && current.ratio <= -0.25) {
+    return {
+      ...base,
+      label: "弱势共振",
+      confidence:
+        current.pct <= -1 && current.ratio <= -1 ? "中" : "低",
+      reason: `当日股价 ${signed(current.pct)}、主力净额/成交比 ${signed(current.ratio)},价格与资金同步走弱${longhuNote}`,
+    };
+  }
+
+  if (Math.abs(current.pct) >= 0.5 || Math.abs(current.ratio) >= 0.5) {
+    return {
+      ...base,
+      label: "资金分歧",
+      confidence:
+        Math.abs(current.pct) >= 1 && Math.abs(current.ratio) >= 1
+          ? "中"
+          : "低",
+      reason: `当日股价 ${signed(current.pct)}、主力净额/成交比 ${signed(current.ratio)},两者未形成明确同向共振${longhuNote}`,
+    };
+  }
+
   return {
     ...base,
-    label: "待判断",
+    label: "震荡观望",
     confidence: "低",
-    reason: "当日价格与资金方向尚未形成上述五类一致形态",
+    reason: `当日股价 ${signed(current.pct)}、主力净额/成交比 ${signed(current.ratio)},价格与资金波动均较有限${longhuNote}`,
   };
 }
 
@@ -239,7 +277,7 @@ async function computeAllFundBehaviors(): Promise<FundBehaviorResult> {
 
 const cachedAllFundBehaviors = unstable_cache(
   computeAllFundBehaviors,
-  ["fund-behavior-v3"],
+  ["fund-behavior-v4"],
   { revalidate: 1800 }
 );
 

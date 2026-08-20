@@ -210,6 +210,10 @@ const FUND_BEHAVIOR_CLS: Record<FundBehaviorLabel, string> = {
   抢筹特征: "bg-rose-50 text-rose-700",
   出货特征: "bg-orange-50 text-orange-700",
   衰竭特征: "bg-slate-100 text-slate-600",
+  偏强共振: "bg-rose-50 text-rose-700",
+  弱势共振: "bg-emerald-50 text-emerald-700",
+  资金分歧: "bg-amber-50 text-amber-700",
+  震荡观望: "bg-slate-100 text-slate-600",
   待判断: "bg-gray-100 text-gray-500",
 };
 
