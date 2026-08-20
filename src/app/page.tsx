@@ -122,9 +122,9 @@ export default async function Home() {
                     </span>
                   }
                 />
-                <SegmentFundStatus initial={fundStatus} />
               </div>
               <OvernightRadar relMap={relLabelMap} />
+              <SegmentFundStatus initial={fundStatus} />
             </>
           }
           demo={
