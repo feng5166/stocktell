@@ -133,7 +133,7 @@ export function EtfBoard({
             }`}
           />
           {live
-            ? `行情已连接 · ${covered}/${ETFS.length}`
+            ? `行情已连接 · 截至 ${fmtAsOf(asOf)} · ${covered}/${ETFS.length}`
             : cached
             ? `行情未连接 · 截至 ${fmtAsOf(asOf)} 的缓存`
             : "行情未连接 · 暂无数据"}

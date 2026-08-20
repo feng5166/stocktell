@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { STOCK_MAP } from "@/data/stocks";
 import { riskEventsFor } from "@/lib/risk-radar";
+import { todayISO } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -15,5 +16,5 @@ export async function POST(req: NextRequest) {
   );
   const byCode: Record<string, unknown> = {};
   for (const [c, evs] of entries) if (evs.length) byCode[c] = evs;
-  return NextResponse.json({ ok: true, byCode });
+  return NextResponse.json({ ok: true, byCode, dataDate: todayISO() });
 }

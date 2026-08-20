@@ -13,6 +13,7 @@ import { ProIntentNudge } from "@/components/ProIntentNudge";
 import { dailyRefsFor } from "@/lib/evidence";
 import { readOutcomeAgg, segBadgeText, codeBadgeText } from "@/lib/outcome-agg";
 import { chainIdFromSlug } from "@/lib/relation-rank";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 // 每日 insight 归档页(2.1-W4):把每天的链级推理沉淀成可被搜索引擎抓取的内容资产。
 // 只渲染 published(fallback 引擎产出的 doc 也是人审后 published,不伪装口径由置信度徽章表达);
@@ -81,7 +82,7 @@ export default async function InsightArchivePage({
     "@context": "https://schema.org",
     "@type": "Article",
     headline: `${params.date} ${chainName}产业链每日推理`,
-    datePublished: params.date,
+    datePublished: (doc.publishedAt ?? doc.updatedAt).toISOString(),
     inLanguage: "zh-CN",
     author: { "@type": "Organization", name: "StockTell" },
     description: aiDescription(p.judgment),
@@ -103,11 +104,12 @@ export default async function InsightArchivePage({
           <h1 className="mt-1 text-h1 font-semibold tracking-tight">
             {params.date} · {chainName}链级推理
           </h1>
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-400">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-400">
             <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${CONF_CLS[p.confidence] ?? CONF_CLS["低"]}`}>
               置信度 {p.confidence}
             </span>
-            <span>历史归档,反映当日判断,不随后市更新</span>
+            <span>盘前发布 · {formatBeijingMDHM(doc.publishedAt ?? doc.updatedAt)}</span>
+            <span>历史归档,不随后市更新</span>
           </div>
         </header>
 

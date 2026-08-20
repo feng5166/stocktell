@@ -28,6 +28,7 @@ import {
 import { CONCEPTS } from "@/data/concepts.generated";
 import { edgeInfo, type Strength } from "@/data/relations";
 import { track } from "@/lib/analytics";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 // 全部概念(按出现频次降序),给筛选下拉用
 const ALL_CONCEPTS = Object.values(CONCEPTS)
@@ -134,6 +135,7 @@ type LinkageStat = {
   rate: number;
   avgNext: number;
   windowYears: number;
+  throughDate?: string;
 };
 const LINKAGE_MIN = 12;
 function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
@@ -143,7 +145,7 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
       <TapBadge
         label={`样本${stat.events}`}
         cls="bg-gray-100 text-gray-500"
-        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。历史同向统计·非预测,历史不代表未来。`}
+        detail={`样本仅 ${stat.events} 次${stat.throughDate ? `,截至 ${stat.throughDate}` : ""},统计不足、仅供参考。历史同向统计·非预测,历史不代表未来。`}
       />
     );
   const pct = Math.round(stat.rate * 100);
@@ -151,7 +153,7 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
     <TapBadge
       label={`同向${pct}%`}
       cls="bg-sky-50 text-sky-600"
-      detail={`历史同向统计:过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。历史统计·非预测,历史不代表未来。`}
+      detail={`历史同向统计:过去2年${stat.throughDate ? `(截至 ${stat.throughDate})` : ""}该美股单日≥2%异动 → 次日A股同向且≥1% 的比例为 ${pct}%(样本${stat.events}次)。历史统计·非预测,历史不代表未来。`}
     />
   );
 }
@@ -256,6 +258,7 @@ export default function Dashboard({
   const [cached, setCached] = useState(false); // 行情未连接时显示的是缓存数据
   const [quotesAsOf, setQuotesAsOf] = useState<string | null>(null); // 缓存截至时间
   const [newsCodes, setNewsCodes] = useState<Set<string>>(new Set());
+  const [newsGeneratedAt, setNewsGeneratedAt] = useState<string | null>(null);
 
   // 从早报/个股页链接进来:?sector= / ?concept= / ?tier= 自动选中并放开市场到「全部」
   useEffect(() => {
@@ -273,7 +276,10 @@ export default function Dashboard({
   useEffect(() => {
     fetch("/api/briefing/news", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => setNewsCodes(new Set<string>(d.codes ?? [])))
+      .then((d) => {
+        setNewsCodes(new Set<string>(d.codes ?? []));
+        setNewsGeneratedAt(d.generatedAt ?? null);
+      })
       .catch(() => {});
   }, []);
 
@@ -449,17 +455,24 @@ export default function Dashboard({
               按产业链环节和关系强弱整理相关股票。这里不是推荐名单,而是帮你理解:谁是核心节点、谁是间接映射、谁只是情绪相关。数据来源于研究框架梳理 · 非确认关系 · 不构成投资建议。
             </p>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span
-              className={`inline-block h-1.5 w-1.5 rounded-full ${
-                live ? "bg-emerald-500" : cached ? "bg-amber-400" : "bg-gray-300"
-              }`}
-            />
-            {live
-              ? `行情已连接 · 覆盖 ${stats.coverage}/${filtered.length}`
-              : cached
-              ? `行情未连接 · 显示截至 ${fmtAsOf(quotesAsOf)} 的缓存行情`
-              : "行情未连接 · 暂无数据"}
+          <div className="flex flex-col items-end gap-1 text-xs text-gray-500">
+            <span className="flex items-center gap-1.5">
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  live ? "bg-emerald-500" : cached ? "bg-amber-400" : "bg-gray-300"
+                }`}
+              />
+              {live
+                ? `行情已连接 · 截至 ${fmtAsOf(quotesAsOf)} · 覆盖 ${stats.coverage}/${filtered.length}`
+                : cached
+                ? `行情未连接 · 显示截至 ${fmtAsOf(quotesAsOf)} 的缓存行情`
+                : "行情未连接 · 暂无数据"}
+            </span>
+            {newsGeneratedAt && newsCodes.size > 0 && (
+              <span className="text-meta text-gray-400">
+                今日消息 · 盘前简报 {formatBeijingMDHM(newsGeneratedAt)}
+              </span>
+            )}
           </div>
         </div>
 

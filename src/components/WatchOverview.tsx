@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { STOCK_MAP } from "@/data/stocks";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 interface Quote {
   price: number;
@@ -14,6 +15,7 @@ interface Quote {
 export function WatchOverview({ codes }: { codes: Set<string> }) {
   const [quotes, setQuotes] = useState<Record<string, Quote> | null>(null);
   const [live, setLive] = useState(true);
+  const [asOf, setAsOf] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -23,6 +25,7 @@ export function WatchOverview({ codes }: { codes: Set<string> }) {
         if (!active) return;
         setQuotes(d.quotes ?? {});
         setLive(Boolean(d.live));
+        setAsOf(d.asOf ?? null);
       })
       .catch(() => {});
     return () => {
@@ -73,7 +76,11 @@ export function WatchOverview({ codes }: { codes: Set<string> }) {
           <span className={cls(worst.change)}>{pct(worst.change)}</span>
         </>
       )}
-      {!live && <span className="ml-1 text-xs text-gray-400">(休市/缓存行情)</span>}
+      {asOf && (
+        <span className="ml-1 text-xs text-gray-400">
+          ({live ? "截至" : "缓存截至"} {formatBeijingMDHM(asOf)})
+        </span>
+      )}
     </div>
   );
 }

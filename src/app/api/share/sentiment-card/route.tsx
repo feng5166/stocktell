@@ -1,8 +1,7 @@
 import { ImageResponse } from "next/og";
 import { NextResponse } from "next/server";
-import { sentimentSnapshot } from "@/lib/sentiment";
+import { sentimentDisplayDate, sentimentSnapshot } from "@/lib/sentiment";
 import { getOrCreateShareLink } from "@/lib/share-link";
-import { todayISO } from "@/lib/date";
 
 // 「AI链今日情绪」竖版海报(2.3 P0-3,viral-growth-plan 卡1)。
 // 硬规则(方案 §4):固定免责水印为模板层(非参数、无删除入口);无个人信息;
@@ -99,7 +98,7 @@ export async function GET() {
 async function renderCard() {
   const snap = await sentimentSnapshot().catch(() => null);
   const s = snap?.data;
-  const date = s?.date ?? todayISO();
+  const date = sentimentDisplayDate(s);
   const a = s?.a ?? null;
   const us = s?.us ?? null;
   const temp = temperature(a ? a.avgPct : null);
@@ -116,7 +115,7 @@ async function renderCard() {
   const indices = us?.indices ?? [];
   const allText = [
     "AI链今日情绪·市场一瞥", date, temp.label, temp.note,
-    "A股AI链上涨下跌平家平均主力净流入亿隔夜美股覆盖只扫码看今天的完整传导",
+    "A股AI链上涨下跌平家平均主力净流入亿隔夜美股覆盖只扫码看今天的完整传导实时截至收盘资金美东",
     ...indices.map((i) => i.name),
     SLOGAN, DISCLAIMER_WATERMARK,
     "0123456789.%+-·—:,。()",
@@ -174,7 +173,10 @@ async function renderCard() {
         {/* A 股数据 */}
         {a && (
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 22, color: "#9ca3af" }}>{`A 股 AI 链(${a.covered} 只)`}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 22, color: "#9ca3af" }}>
+              <span>{`A 股 AI 链(${a.covered} 只)`}</span>
+              <span>{a.pctLive ? `实时 ${a.pctAsOf}` : `${a.pctAsOf.slice(5)} 收盘`}</span>
+            </div>
             <div style={{ marginTop: 14, display: "flex", gap: 14 }}>
               <Stat label="上涨" value={`${a.up} 家`} color="#e0524d" />
               <Stat label="下跌" value={`${a.down} 家`} color="#3b82c4" />
@@ -187,13 +189,21 @@ async function renderCard() {
                 />
               )}
             </div>
+            {a.netMfDate && (a.pctLive || a.netMfDate !== a.pctAsOf) && (
+              <div style={{ marginTop: 8, fontSize: 18, color: "#9ca3af" }}>
+                主力资金截至 {a.netMfDate.slice(5)} 收盘
+              </div>
+            )}
           </div>
         )}
 
         {/* 隔夜美股 */}
         {us && (
           <div style={{ marginTop: 26, display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 22, color: "#9ca3af" }}>{`隔夜美股 AI 链(${us.covered} 只)`}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 22, color: "#9ca3af" }}>
+              <span>{`隔夜美股 AI 链(${us.covered} 只)`}</span>
+              {us.asOf && <span>截至 {us.asOf.slice(5)} 美东</span>}
+            </div>
             <div style={{ marginTop: 14, display: "flex", gap: 14 }}>
               <Stat label="上涨" value={`${us.up} 家`} color="#e0524d" />
               <Stat label="下跌" value={`${us.down} 家`} color="#3b82c4" />

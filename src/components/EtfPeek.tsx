@@ -4,6 +4,7 @@
 //(东方财富降级为弹框里可选的"看详情"外链)。数据:ETF_HOLDINGS(code/name/本股占比)+ 实时行情。
 import { useEffect, useState } from "react";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 interface Holding {
   code: string;
@@ -55,6 +56,8 @@ function EtfModal({
   useLockBodyScroll();
   const [q, setQ] = useState<{ price: number; change: number } | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [asOf, setAsOf] = useState<string | null>(null);
+  const [cached, setCached] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -63,6 +66,8 @@ function EtfModal({
       .then((d) => {
         if (!active) return;
         setQ(d?.quotes?.[holding.code] ?? null);
+        setAsOf(d?.asOf ?? null);
+        setCached(Boolean(d?.cached));
         setLoaded(true);
       })
       .catch(() => active && setLoaded(true));
@@ -122,6 +127,11 @@ function EtfModal({
             <span className="text-sm leading-8 text-gray-500">休市 / 暂无行情</span>
           )}
         </div>
+        {q && asOf && (
+          <p className="mt-1 text-xs text-gray-400">
+            {cached ? "缓存截至" : "行情截至"} {formatBeijingMDHM(asOf)}
+          </p>
+        )}
 
         {/* 本股占比 + 说明 */}
         <p className="mt-3 text-sm leading-relaxed text-gray-700">

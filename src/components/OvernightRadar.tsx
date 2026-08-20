@@ -14,7 +14,7 @@ import { fmtChange, changeClass } from "@/lib/format";
 import { track } from "@/lib/analytics";
 
 type Quote = { price: number; change: number; asOf?: string };
-type LinkageStat = { events: number; rate: number };
+type LinkageStat = { events: number; rate: number; throughDate?: string };
 const STRENGTH_RANK: Record<Strength, number> = { 强: 0, 中: 1, 弱: 2 };
 const GAP = 1.5; // 美股领先 A 股 ≥1.5 个点才算预期差
 const US_MOVE = 1; // 美股至少涨 1%
@@ -28,7 +28,7 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
       <TapBadge
         label={`样本${stat.events}`}
         cls="bg-gray-100 text-gray-500"
-        detail={`样本仅 ${stat.events} 次,统计不足、仅供参考。历史同向统计·非预测,历史不代表未来。`}
+        detail={`样本仅 ${stat.events} 次${stat.throughDate ? `,截至 ${stat.throughDate}` : ""},统计不足、仅供参考。历史同向统计·非预测,历史不代表未来。`}
       />
     );
   const pct = Math.round(stat.rate * 100);
@@ -36,7 +36,7 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
     <TapBadge
       label={`同向${pct}%`}
       cls="bg-sky-50 text-sky-600"
-      detail={`历史同向统计:过去2年该美股单日≥2%异动 → 次日A股同向且≥1% 的比例 ${pct}%(样本${stat.events}次)。历史统计·非预测,历史不代表未来。`}
+      detail={`历史同向统计:过去2年${stat.throughDate ? `(截至 ${stat.throughDate})` : ""}该美股单日≥2%异动 → 次日A股同向且≥1% 的比例 ${pct}%(样本${stat.events}次)。历史统计·非预测,历史不代表未来。`}
     />
   );
 }

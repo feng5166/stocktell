@@ -31,6 +31,7 @@ export interface ChainSentiment {
     avgPct: number;
     covered: number;
     indices?: { name: string; change: number }[]; // 隔夜大盘 context:纳指/标普/费半
+    asOf?: string; // 美股最新交易日(美东 YYYY-MM-DD)
   } | null;
 }
 
@@ -219,17 +220,33 @@ async function computeSentiment(): Promise<ChainSentiment> {
     const up = ch.filter((v) => v > 0).length;
     const down = ch.filter((v) => v < 0).length;
     const avg = ch.length ? ch.reduce((s, v) => s + v, 0) / ch.length : 0;
+    const asOf = [
+      ...Object.values(quotes).map((q) => q.asOf),
+      ...indices.map((i) => i.asOf),
+    ]
+      .filter((v): v is string => Boolean(v))
+      .sort()
+      .at(-1);
     return {
       up,
       down,
       avgPct: Math.round(avg * 100) / 100,
       covered: ch.length,
       indices: idx,
+      asOf,
     };
   })();
 
   const [aRes, us] = await Promise.all([aTask, usTask]);
   return { date: aRes.date, a: aRes.a, us };
+}
+
+// 情绪卡“今日”的日期跟 A 股涨跌口径走,不能跟滞后一日的主力资金日期走。
+export function sentimentDisplayDate(data: ChainSentiment | null | undefined): string {
+  if (data?.a?.pctLive) return todayISO();
+  if (data?.a?.pctAsOf && /^\d{4}-\d{2}-\d{2}$/.test(data.a.pctAsOf))
+    return data.a.pctAsOf;
+  return data?.date ?? todayISO();
 }
 
 // 只读快照(ISR 页面专用):纯 L1/DB 读,**绝不触发冷算/任何 fetch**。

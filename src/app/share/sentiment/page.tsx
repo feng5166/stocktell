@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCardTracker, CopyShareText } from "@/components/share/ShareCardActions";
-import { sentimentSnapshot } from "@/lib/sentiment";
+import { sentimentDisplayDate, sentimentSnapshot } from "@/lib/sentiment";
 import { getOrCreateShareLink } from "@/lib/share-link";
-import { todayISO } from "@/lib/date";
 import { DISCLAIMER } from "@/lib/constants";
 
 // 情绪卡生成页(2.3 P0-3):海报图 + 保存提示 + 只读转发文案。
@@ -18,7 +17,7 @@ export const metadata: Metadata = {
 
 export default async function ShareSentimentPage() {
   const snap = await sentimentSnapshot().catch(() => null);
-  const date = snap?.data.date ?? todayISO();
+  const date = sentimentDisplayDate(snap?.data);
   const link = await getOrCreateShareLink("sentiment", date, "/land/sentiment").catch(() => null);
   const avg = snap?.data.a?.avgPct ?? null;
   const mood =

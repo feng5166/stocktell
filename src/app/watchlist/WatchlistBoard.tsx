@@ -51,12 +51,14 @@ export default function WatchlistBoard({
   signalMap,
   names,
   date,
+  signalTime,
 }: {
   chainMap: Record<string, WatchChainInfo>;
   triggerMap: Record<string, { chainName: string }>;
   signalMap: Record<string, { strength: string; note: string }>;
   names: Record<string, { name: string; market: string }>;
   date: string;
+  signalTime: string | null;
 }) {
   const { codes, ready } = useWatchlist();
   const [submitted, setSubmitted] = useState<Record<string, "ok" | "fail">>({});
@@ -218,7 +220,7 @@ export default function WatchlistBoard({
       )}
 
       <p className="text-meta text-gray-400">
-        今日触发({date})来自当日简报事件,只影响今日状态,不改变长期关系档;关系档来自人工核定的静态关系库。
+        今日触发来自当日盘前简报{signalTime ? `(${signalTime})` : `(${date})`},只影响今日状态,不改变长期关系档;关系档来自人工核定的静态关系库。
       </p>
     </div>
   );

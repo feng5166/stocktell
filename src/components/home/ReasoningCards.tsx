@@ -74,7 +74,7 @@ function Card({ c, rank }: { c: HomeReasoningCard; rank: number }) {
             )}
           </span>
           <span className="shrink-0 text-meta text-gray-400">
-            {c.stale ? `最近一期 · ${c.date.slice(5)}` : c.date.slice(5)}
+            {c.stale ? "最近一期 · " : ""}{c.timingLabel}
           </span>
         </div>
 

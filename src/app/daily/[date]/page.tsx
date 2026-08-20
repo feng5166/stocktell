@@ -9,6 +9,7 @@ import { getHolidayBridge } from "@/lib/holiday-bridge";
 import { IMPACT_META } from "@/lib/impact";
 import type { Impact } from "@/lib/briefings";
 import { DISCLAIMER } from "@/lib/constants";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 // 历史简报归档页(2.1-W4):某日的简报条目 + 当日五档状态 + 节后观察(如有)。
 // 状态口径与首页同源(BRIEF_STATUS_UI):fallback 展示"模板兜底"徽章绝不伪装 generated,
@@ -46,6 +47,11 @@ export default async function DailyArchivePage({ params }: { params: { date: str
   const newer = idx > 0 ? dates[idx - 1] : null;
   const older = idx >= 0 && idx < dates.length - 1 ? dates[idx + 1] : null;
   const ui = status ? BRIEF_STATUS_UI[status.status] : null;
+  const generatedAt = items
+    .map((it) => it.createdAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -58,6 +64,11 @@ export default async function DailyArchivePage({ params }: { params: { date: str
             </Link>
           </p>
           <h1 className="mt-1 text-h1 font-semibold tracking-tight">{date} · 产业链简报</h1>
+          {generatedAt && (
+            <p className="mt-1 text-xs text-gray-400">
+              盘前简报 · 生成于 {formatBeijingMDHM(generatedAt)}
+            </p>
+          )}
           {ui && (
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
               <span className={`rounded px-1.5 py-0.5 font-medium ${BRIEF_TONE_CHIP_CLS[ui.tone]}`}>{ui.badge}</span>

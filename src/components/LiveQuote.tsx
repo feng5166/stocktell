@@ -3,6 +3,7 @@
 // 个股详情页头部的实时行情。从服务端组件抽出,让详情页本体可走 ISR(静态外壳秒出),
 // 行情按需在客户端拉取,不再让"等新浪"卡住整页首字节。
 import { useEffect, useState } from "react";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 interface Quote {
   price: number;
@@ -52,16 +53,9 @@ export function LiveQuote({ code }: { code: string }) {
         {q.change > 0 ? "+" : ""}
         {q.change.toFixed(2)}%
       </span>
-      {stale && asOf && (
+      {asOf && (
         <span className="ml-1 text-xs font-normal text-gray-500">
-          · 截至{" "}
-          {new Intl.DateTimeFormat("zh-CN", {
-            timeZone: "Asia/Shanghai",
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }).format(new Date(asOf))}
+          · {stale ? "缓存截至" : "截至"} {formatBeijingMDHM(asOf)}
         </span>
       )}
     </span>

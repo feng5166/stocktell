@@ -60,6 +60,21 @@ export function signalsFromItems(items: BriefingItem[], date: string): DailyRela
 // 异步真源入口:读当日已发布简报派生。DB 失败返回空(信号缺席只影响"今日触发"标记,
 // 不影响静态关系展示,fail-safe)。
 export async function deriveDailySignals(date: string): Promise<DailyRelationSignal[]> {
+  return (await deriveDailySignalSnapshot(date)).signals;
+}
+
+export async function deriveDailySignalSnapshot(date: string): Promise<{
+  signals: DailyRelationSignal[];
+  generatedAt: string | null;
+}> {
   const items = await listBriefing({ date, status: "published" }).catch(() => []);
-  return signalsFromItems(items, date);
+  return {
+    signals: signalsFromItems(items, date),
+    generatedAt:
+      items
+        .map((it) => it.createdAt)
+        .filter(Boolean)
+        .sort()
+        .at(-1) ?? null,
+  };
 }

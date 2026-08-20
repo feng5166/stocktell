@@ -18,25 +18,12 @@ import { INSIGHT_CHAINS } from "@/data/insight-chains";
 import { REL_CHIP_CLS, chainIdFromRoute } from "@/lib/relation-rank";
 import { routeInsightForItem } from "@/data/trigger-sources";
 import { DISCLAIMER } from "@/lib/constants";
+import { formatBeijingMDHM, formatYmdMD } from "@/lib/time-label";
 
 export const revalidate = 60;
 
 const pct1 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
 const pct2 = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
-
-const fmtBeijingMDHM = (value: Date) => {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Shanghai",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(value);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((item) => item.type === type)?.value ?? "";
-  return `${Number(part("month"))}/${Number(part("day"))} ${part("hour")}:${part("minute")}`;
-};
 
 export function generateMetadata({ params }: { params: { id: string } }): Metadata {
   const chain = getChain(params.id);
@@ -92,6 +79,11 @@ export default async function ChainPage({
   const directItems = sortedItems.filter(hitsChain);
   const topItems = (directItems.length > 0 ? directItems : sortedItems).slice(0, 3);
   const noDirectEvent = directItems.length === 0; // 无命中本链的直接事件
+  const briefingGeneratedAt = items
+    .map((it) => it.createdAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
 
   // 链级「今日一句话判断」:优先 published daily → chain-take;非 ai 链(无专属 cron/事件)
   // 用链配置的静态口径 todayFraming,不用 AI 事件兜底的 fallbackChainTake(否则说的是 AI 链的话)。
@@ -101,9 +93,9 @@ export default async function ChainPage({
   const chainTake =
     daily?.payload.judgment || cachedChainTake || chain.todayFraming || fallbackTake;
   const chainTakeMeta = daily
-    ? `盘前判断 · ${fmtBeijingMDHM(daily.publishedAt ?? daily.updatedAt)} · ${daily.payload.confidence}置信`
+    ? `盘前判断 · ${formatBeijingMDHM(daily.publishedAt ?? daily.updatedAt)} · ${daily.payload.confidence}置信`
     : cachedChainTake || fallbackTake
-      ? `盘前判断 · ${Number(shownDate.slice(5, 7))}/${Number(shownDate.slice(8, 10))} 约 07:00`
+      ? `盘前判断 · ${formatYmdMD(shownDate)} 约 07:00`
       : "常设判断 · 非实时";
 
   // 成分股「今天为什么被提到」:今天的简报条目里出现过的受益股 → code 到条目标题。
@@ -249,8 +241,10 @@ export default async function ChainPage({
           <section className="mt-6">
             <div className="flex items-baseline justify-between">
               <h2 className="text-h2 font-semibold text-gray-900">今日关键动态</h2>
-              {stale && (
-                <span className="text-xs text-gray-400">最近一期 · {shownDate}</span>
+              {briefingGeneratedAt && (
+                <span className="text-xs text-gray-400">
+                  {stale ? "最近一期 · " : "盘前简报 · "}{formatBeijingMDHM(briefingGeneratedAt)}
+                </span>
               )}
             </div>
             {/* 无命中本链的直接事件时明说,不硬把 AI/半导体/机器人事件当本链主动态 */}

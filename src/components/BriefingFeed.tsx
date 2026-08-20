@@ -24,6 +24,7 @@ import { routeInsightForItem } from "@/data/trigger-sources";
 import { REL_CHIP_CLS } from "@/lib/relation-rank";
 import type { WatchChainInfo } from "@/lib/watch-relation";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 const FREE_LIMIT = 3;
 
@@ -55,6 +56,14 @@ export function BriefingFeed({
 
   const mine = items.filter(isMine);
   const others = items.filter((it) => !isMine(it));
+  const briefingGeneratedAt = items
+    .map((it) => it.createdAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const briefingTiming = briefingGeneratedAt
+    ? `${items[0]?.date !== todayISO() ? "最近一期 · " : ""}盘前简报 · ${formatBeijingMDHM(briefingGeneratedAt)}`
+    : undefined;
 
   // 从推送(微信/邮件/Web 通知,链接带 #mine)点进来时,自动滚到「和我相关」,直达"你的票今天"。
   // 内容是客户端水合的,等 wl.ready 后再滚才滚得准。
@@ -109,6 +118,7 @@ export function BriefingFeed({
         <SectionHead
           title="和我相关"
           hint={wl.codes.size ? `按你的 ${wl.codes.size} 只自选筛选` : undefined}
+          asOf={briefingTiming}
         />
         {!wl.ready ? (
           <MineEmpty guest={false} onAdd={() => {}} />
@@ -273,6 +283,11 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
   const codeKey = Array.from(codes).sort().join(",");
   // 条目日期变化(如页面跨 07:00 重渲染换到今天这期)时重新拉取,正文跟上新一期
   const itemsDate = items[0]?.date;
+  const sourceAt = items
+    .map((it) => it.createdAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -309,10 +324,17 @@ function MorningBrief({ codes, items }: { codes: Set<string>; items: BriefingIte
   if (!brief) return null;
   return (
     <div className="rounded-xl bg-amber-50 px-4 py-3">
-      <div className="mb-1 text-xs font-medium text-amber-700">
-        {brief.stale && brief.date
-          ? `☀️ 你的早报(最近一期 · ${brief.date.slice(5)})`
-          : "☀️ 你的今日早报"}
+      <div className="mb-1 flex flex-wrap items-baseline gap-2 text-xs">
+        <span className="font-medium text-amber-700">
+          {brief.stale && brief.date
+            ? `☀️ 你的早报(最近一期 · ${brief.date.slice(5)})`
+            : "☀️ 你的今日早报"}
+        </span>
+        {sourceAt && (
+          <span className="ml-auto text-meta font-normal text-amber-700/60">
+            基于盘前简报 · {formatBeijingMDHM(sourceAt)}
+          </span>
+        )}
       </div>
       <p className="text-sm leading-relaxed text-gray-800">
         {linkifyBrief(brief.text, items)}
@@ -659,13 +681,14 @@ function WatchRelationCard({ row, quiet }: { row: CoveredRow; quiet?: boolean })
   );
 }
 
-function SectionHead({ title, hint }: { title: string; hint?: string }) {
+function SectionHead({ title, hint, asOf }: { title: string; hint?: string; asOf?: string }) {
   return (
     <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <h2 className="text-base font-semibold tracking-tight text-gray-900">
         {title}
       </h2>
       {hint && <span className="text-xs text-gray-400">{hint}</span>}
+      {asOf && <span className="ml-auto text-meta text-gray-400">{asOf}</span>}
     </div>
   );
 }

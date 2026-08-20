@@ -209,6 +209,17 @@ export async function listOutcomes(
   return rows.map(fromRow);
 }
 
+export async function latestOutcomeEvaluatedAt(backtest = false): Promise<string | null> {
+  const db = getPrisma();
+  if (!db) return null;
+  const row = await db.briefingOutcome.findFirst({
+    where: { isBacktest: backtest },
+    orderBy: { evaluatedAt: "desc" },
+    select: { evaluatedAt: true },
+  });
+  return row?.evaluatedAt.toISOString() ?? null;
+}
+
 export interface HitStats {
   evaluated: number; // 已判定(change 非空)条数
   hits: number;

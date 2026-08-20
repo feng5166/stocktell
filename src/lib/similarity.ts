@@ -22,6 +22,7 @@ export interface SimilarityResult {
   triggerName: string;
   aName: string;
   windowYears: number;
+  throughDate: string; // 样本截止到哪一个 A 股交易日
   total: number;
   groups: SimGroup[];
 }
@@ -101,6 +102,7 @@ export async function similarityFor(
     triggerName: primary.name,
     aName: a.name,
     windowYears: 2,
+    throughDate: aDates.at(-1)!,
     total,
     groups,
   };

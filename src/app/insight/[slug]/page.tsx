@@ -7,6 +7,7 @@ import { CHAINS } from "@/data/chains";
 import { REL_CHIP_CLS_SHORT, EVIDENCE_LABEL, chainIdFromSlug } from "@/lib/relation-rank";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import { todayISO } from "@/lib/date";
+import { formatBeijingMDHM } from "@/lib/time-label";
 import { resolveInChain } from "@/lib/relation-resolver";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { AskButton, InsightChatPanel } from "@/components/InsightChat";
@@ -234,8 +235,10 @@ export default async function InsightPage({ params }: { params: { slug: string }
 
         {daily && (
           <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-brand-100">
-            <div className="mb-1 flex items-baseline justify-between gap-2">
-              <span className="text-xs font-medium text-brand-600">📡 今日更新 · {daily.date}</span>
+            <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-xs font-medium text-brand-600">
+                📡 盘前判断 · {formatBeijingMDHM(daily.publishedAt ?? daily.updatedAt)} · {daily.payload.confidence}置信
+              </span>
               {/* 归档入口(2.1-W4):进入当日归档页,页内有前后日互链,构成 SEO 抓取路径 */}
               <Link
                 href={`/insight/${params.slug}/${daily.date}`}

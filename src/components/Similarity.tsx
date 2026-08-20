@@ -14,6 +14,7 @@ interface SimResult {
   triggerName: string;
   aName: string;
   windowYears: number;
+  throughDate?: string;
   total: number;
   groups: SimGroup[];
 }
@@ -54,7 +55,7 @@ export function Similarity({ code }: { code: string }) {
       <p className="mb-2 text-xs text-gray-500">
         主关联美股:
         <span className="font-medium text-gray-700">{data.triggerName}</span> ·
-        过去 {data.windowYears} 年
+        过去 {data.windowYears} 年{data.throughDate ? ` · 截至 ${data.throughDate}` : ""}
       </p>
       <div className="space-y-2 text-sm">
         {data.groups.map((g) => (

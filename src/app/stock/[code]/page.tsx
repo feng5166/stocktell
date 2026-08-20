@@ -24,6 +24,7 @@ import { ENRICH } from "@/data/enrichment.generated";
 import { CONCEPTS } from "@/data/concepts.generated";
 import { TIER } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
+import { formatBeijingMDHM, formatYmdMD } from "@/lib/time-label";
 import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType, chainRouteId } from "@/lib/relation-rank";
 import { VerifyFollowChips } from "@/components/VerifyFollow";
@@ -126,6 +127,11 @@ export default async function StockDetail({
   const todayNews = todayBriefs.filter(
     (it) => it.triggerCode === s.code || it.beneficiaries.some((b) => b.code === s.code)
   );
+  const todayNewsAt = todayNews
+    .map((it) => it.createdAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
 
   // 真实「需要验证什么」:优先取今天提到这只票的简报条目(retailTake 真实、可拆解);没有则退回静态文案
   const newsItem =
@@ -339,7 +345,9 @@ export default async function StockDetail({
             {nodeReason}
           </p>
           <p className="mt-1.5 text-xs text-gray-500">
-            <span className="text-gray-400">今日触发:</span>
+            <span className="text-gray-400">
+              今日触发({todayNewsAt ? `盘前简报 · ${formatBeijingMDHM(todayNewsAt)}` : `截至 ${formatYmdMD(todayISO())}`}):
+            </span>
             {todayTrigger}
           </p>
           {nodeVerify.length > 0 && (
@@ -371,6 +379,11 @@ export default async function StockDetail({
         </Section>
 
         <Section icon="📰" title="今天为什么被提到">
+          {todayNewsAt && (
+            <p className="mb-2 text-meta text-gray-400">
+              盘前事件 · 生成于 {formatBeijingMDHM(todayNewsAt)}
+            </p>
+          )}
           <ul className="space-y-1.5 text-sm text-gray-700">
             {todayNews.map((it) => (
               <li key={it.id} className="text-rose-600">
@@ -514,7 +527,7 @@ export default async function StockDetail({
               ))}
             </ul>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              公开信息整理(Tushare),提示风险,不构成投资建议。
+              公开信息整理(Tushare) · 数据日 {todayISO()},提示风险,不构成投资建议。
             </p>
           </Section>
         )}

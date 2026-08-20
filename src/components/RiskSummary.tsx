@@ -15,6 +15,7 @@ interface RiskEvent {
 export function RiskSummary({ codes }: { codes: Set<string> }) {
   const [byCode, setByCode] = useState<Record<string, RiskEvent[]>>({});
   const [open, setOpen] = useState(false);
+  const [dataDate, setDataDate] = useState<string | null>(null);
   const codeKey = Array.from(codes).sort().join(",");
 
   useEffect(() => {
@@ -27,7 +28,10 @@ export function RiskSummary({ codes }: { codes: Set<string> }) {
     })
       .then((r) => r.json())
       .then((d) => {
-        if (active && d?.byCode) setByCode(d.byCode);
+        if (active && d?.byCode) {
+          setByCode(d.byCode);
+          setDataDate(d.dataDate ?? null);
+        }
       })
       .catch(() => {});
     return () => {
@@ -87,7 +91,9 @@ export function RiskSummary({ codes }: { codes: Set<string> }) {
               </ul>
             </div>
           ))}
-          <p className="text-meta text-gray-300">公开信息整理,提示风险,不构成投资建议。</p>
+          <p className="text-meta text-gray-300">
+            公开信息整理{dataDate ? ` · 数据日 ${dataDate}` : ""},提示风险,不构成投资建议。
+          </p>
         </div>
       )}
     </div>

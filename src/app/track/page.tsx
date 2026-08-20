@@ -5,12 +5,14 @@ import {
   pageOutcomes,
   statsOutcomes,
   statsOutcomesByRelation,
+  latestOutcomeEvaluatedAt,
   HIT_THRESHOLD,
   MIN_SAMPLE,
   type HitStats,
 } from "@/lib/outcomes";
 import { storageBackend, type Impact } from "@/lib/briefings";
 import { IMPACT_META } from "@/lib/impact";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 // 战绩是全局、非个性化数据(回填随收盘后 cron 更新),无需 force-dynamic 每次跑函数+查库。
 // 改 ISR:走 Vercel 边缘缓存,5 分钟再生成一次 —— 大陆用户更快,DB 压力更小。
@@ -20,13 +22,14 @@ const PAGE = 20;
 
 export default async function TrackPage() {
   // 真分页:服务端只取首页 + 轻量统计;其余滚动时由 OutcomeFeed 向 /api/outcomes 拉
-  const [liveAgg, btAgg, liveFirst, btFirst, liveRel] = await Promise.all([
+  const [liveAgg, btAgg, liveFirst, btFirst, liveRel, latestEvaluatedAt] = await Promise.all([
     statsOutcomes(false).catch(() => ({ stats: emptyStats(), byImpact: [] })),
     statsOutcomes(true).catch(() => ({ stats: emptyStats(), byImpact: [] })),
     pageOutcomes(false, null, PAGE).catch(() => ({ rows: [], hasMore: false, nextCursor: null })),
     pageOutcomes(true, null, PAGE).catch(() => ({ rows: [], hasMore: false, nextCursor: null })),
     // 2.1-W3:按关系档/链拆复盘(只拆实盘——回测是明牌参考,不值得再细分)
     statsOutcomesByRelation(false).catch(() => ({ byRelation: [], byChain: [] })),
+    latestOutcomeEvaluatedAt(false).catch(() => null),
   ]);
   const liveStats = liveAgg.stats;
   const btStats = btAgg.stats;
@@ -105,9 +108,14 @@ export default async function TrackPage() {
 
         {/* 实盘记录 */}
         <section className="mb-8">
-          <h2 className="mb-2 text-sm font-semibold text-gray-700">
-            实盘记录 · 自动记账起
-          </h2>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-gray-700">实盘记录 · 自动记账起</h2>
+            {latestEvaluatedAt && (
+              <span className="text-meta font-normal text-gray-400">
+                收盘复盘 · 更新于 {formatBeijingMDHM(latestEvaluatedAt)}
+              </span>
+            )}
+          </div>
           <Overview stats={liveStats} byImpact={liveByImpact} />
           <RelationBreakdown byRelation={liveRel.byRelation} byChain={liveRel.byChain} />
           {liveFirst.rows.length === 0 ? (
@@ -317,4 +325,3 @@ function Overview({
     </div>
   );
 }
-

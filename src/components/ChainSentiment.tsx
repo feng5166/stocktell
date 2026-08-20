@@ -4,6 +4,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { changeClass } from "@/lib/format";
 import { INDEX_FULL, FEIBAN_NOTE } from "@/data/indices";
+import { formatYmdMD } from "@/lib/time-label";
 
 interface A {
   up: number;
@@ -22,6 +23,7 @@ interface US {
   avgPct: number;
   covered: number;
   indices?: { name: string; change: number }[];
+  asOf?: string;
 }
 interface Data {
   date: string | null;
@@ -215,6 +217,11 @@ export function ChainSentiment({
                 </div>
                 <p className="pl-[4.25rem] text-[10px] text-gray-400">{FEIBAN_NOTE}</p>
               </>
+            )}
+            {d.us.asOf && (
+              <p className="pl-[4.25rem] text-[10px] text-gray-400">
+                美股行情截至 {formatYmdMD(d.us.asOf)} 美东
+              </p>
             )}
           </div>
         )}

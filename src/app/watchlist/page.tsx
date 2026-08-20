@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { buildWatchChainMap } from "@/lib/watch-relation";
-import { deriveDailySignals } from "@/lib/daily-signals";
+import { deriveDailySignalSnapshot } from "@/lib/daily-signals";
 import { resolvePrimary } from "@/lib/relation-resolver";
 import { SIGNAL_RANK } from "@/lib/signal-rank";
 import { todayISO } from "@/lib/date";
 import { STOCKS } from "@/data/stocks";
 import { ETFS } from "@/data/etfs";
 import { DISCLAIMER } from "@/lib/constants";
+import { formatBeijingMDHM } from "@/lib/time-label";
 import WatchlistBoard from "./WatchlistBoard";
 
 // Watchlist 产业链状态页(2.1-W5,2026-07-07 拍板):从「我的自选股」升级成「我的产业链状态」。
@@ -31,7 +32,11 @@ export default async function WatchlistPage() {
   const chainMap = buildWatchChainMap();
   // 今日信号(层②真源):按 code 取最强档给客户端(板级展示不需要逐链信号;
   // 不变量#3:信号只做"今日触发"标记,relationType 仍来自 chainMap=staticRelations)
-  const signals = await deriveDailySignals(date).catch(() => []);
+  const signalSnapshot = await deriveDailySignalSnapshot(date).catch(() => ({
+    signals: [],
+    generatedAt: null,
+  }));
+  const signals = signalSnapshot.signals;
   const signalMap: Record<string, { strength: string; note: string }> = {};
   for (const s of signals) {
     const prev = signalMap[s.code];
@@ -70,6 +75,7 @@ export default async function WatchlistPage() {
           signalMap={signalMap}
           names={names}
           date={date}
+          signalTime={formatBeijingMDHM(signalSnapshot.generatedAt)}
         />
         <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">{DISCLAIMER}</p>
       </main>

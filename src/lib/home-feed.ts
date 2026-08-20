@@ -11,6 +11,7 @@ import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { getPublishedDaily } from "@/lib/insight-pipeline/docs";
 import type { BriefingItem } from "@/lib/briefings";
 import type { Relation } from "@/data/insight-chains";
+import { formatBeijingMDHM, formatYmdMD } from "@/lib/time-label";
 
 // heat 方向 → 因果链卡三层"关系级别"文案(有 daily 时用真实热力替换静态三行)
 const HEAT_EMOJI: Record<string, string> = { 升温: "🔥", 降温: "🧊", 分化: "🌡️", 观察: "👀" };
@@ -26,6 +27,7 @@ export interface HomeReasoningCard {
   insightSlug: string;
   date: string; // 内容所属期(回退时=最近一期)
   stale: boolean;
+  timingLabel: string; // 动态判断的生成/推导时点,避免“今日判断”无时间锚点
   trigger: string | null; // 今日触发概述,如「泛林半导体、迈威尔、相干 隔夜集体走弱」
   humanSummary: string | null; // 今日人话判断(chain-take);null=生成中
   tiers: { emoji: string; level: string; what: string; rel?: Relation }[]; // 三层环节(insight 结构)
@@ -95,10 +97,21 @@ export async function buildReasoningCards(
     }));
     const tiers = (daily && topHeatTiers(daily.payload.heat)) || staticTiers;
 
-    const take =
-      daily?.payload.judgment ||
-      (await getChainTake(chain.id, shownDate).catch(() => null)) ||
-      fallbackChainTake(items);
+    const cachedTake = await getChainTake(chain.id, shownDate).catch(() => null);
+    const fallbackTake = fallbackChainTake(items);
+    const take = daily?.payload.judgment || cachedTake || fallbackTake;
+    const latestBriefingTime = items
+      .map((it) => it.createdAt)
+      .filter(Boolean)
+      .sort()
+      .at(-1);
+    const timingLabel = daily
+      ? `盘前判断 · ${formatBeijingMDHM(daily.publishedAt ?? daily.updatedAt)} · ${daily.payload.confidence}置信`
+      : cachedTake
+        ? `盘前判断 · ${formatYmdMD(shownDate)} 约 07:00`
+        : latestBriefingTime
+          ? `盘前简报推导 · ${formatBeijingMDHM(latestBriefingTime)}`
+          : `规则判断 · ${formatYmdMD(shownDate)}`;
 
     cards.push({
       chainId: chain.id,
@@ -106,6 +119,7 @@ export async function buildReasoningCards(
       insightSlug: chain.insightSlug,
       date: shownDate,
       stale,
+      timingLabel,
       trigger: daily?.payload.trigger.summary ?? triggerSummary(ownItems(items, chainIdFromSlug(chain.insightSlug) ?? chain.id)),
       humanSummary: take,
       tiers,

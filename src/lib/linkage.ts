@@ -15,6 +15,7 @@ export interface LinkageStat {
   rate: number; // hits/events(0..1)
   avgNext: number; // A 股次日平均涨跌 %
   windowYears: number;
+  throughDate: string; // 样本截止到哪一个 A 股交易日
 }
 
 function ymdYearsAgo(years: number): string {
@@ -71,5 +72,6 @@ export async function linkageStat(
     rate: Math.round((hits / events) * 1000) / 1000,
     avgNext: Math.round((sum / events) * 100) / 100,
     windowYears: 2,
+    throughDate: aDates.at(-1)!,
   };
 }

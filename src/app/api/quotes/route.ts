@@ -29,7 +29,8 @@ async function _GET(req: NextRequest) {
   if (live) {
     // 行情连上 → 刷新缓存为真实数据(只在全量请求时写,避免子集污染缓存)
     if (!param) await writeQuotesCache(quotes);
-    payload = { quotes, live: true, cached: false, asOf: null };
+    // asOf=本次成功取行情的北京时间锚点(前端显示“截至 HH:mm”);个股 Quote.asOf 仍保留交易日。
+    payload = { quotes, live: true, cached: false, asOf: new Date().toISOString() };
   } else {
     // 行情未连接 → 读缓存(上次真实行情),带上"截至几号"
     const cache = await readQuotesCache();

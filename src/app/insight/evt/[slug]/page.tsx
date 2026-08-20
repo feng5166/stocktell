@@ -12,6 +12,7 @@ import { ProIntentNudge } from "@/components/ProIntentNudge";
 import { dailyRefsFor } from "@/lib/evidence";
 import { readOutcomeAgg, segBadgeText, codeBadgeText } from "@/lib/outcome-agg";
 import { chainIdFromSlug } from "@/lib/relation-rank";
+import { formatBeijingMDHM } from "@/lib/time-label";
 
 // 事件专篇页(M2,PRD prd-2.3-iteration-review §2):事件级 ReasoningChain 的主展示页。
 // 只渲染 published(全审轨:人审发布前本页 404,不硬造);发布后内容不可变 → 长 revalidate。
@@ -65,7 +66,7 @@ export default async function EventInsightPage({ params }: { params: { slug: str
     "@context": "https://schema.org",
     "@type": "Article",
     headline: em.title,
-    datePublished: doc.date,
+    datePublished: (doc.publishedAt ?? doc.updatedAt).toISOString(),
     inLanguage: "zh-CN",
     author: { "@type": "Organization", name: "StockTell" },
     description: aiDescription(p.judgment),
@@ -89,11 +90,12 @@ export default async function EventInsightPage({ params }: { params: { slug: str
             · 事件专篇 · {doc.date}
           </p>
           <h1 className="mt-1 text-h1 font-semibold tracking-tight">{em.title}</h1>
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-400">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-400">
             <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${CONF_CLS[p.confidence] ?? CONF_CLS["低"]}`}>
               置信度 {p.confidence}
             </span>
-            <span>反映 {doc.date} 当日判断,不随后市更新</span>
+            <span>发布于 {formatBeijingMDHM(doc.publishedAt ?? doc.updatedAt)}</span>
+            <span>反映当日判断,不随后市更新</span>
           </div>
         </header>
 

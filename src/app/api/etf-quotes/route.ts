@@ -17,12 +17,22 @@ async function _GET(req: NextRequest) {
   if (symbols) {
     const codes = symbols.split(",").filter((c) => /^\d{6}$/.test(c)).slice(0, 20);
     const { quotes, live } = await fetchEtfQuotes(codes);
-    return NextResponse.json({ quotes, live, cached: false, asOf: null });
+    return NextResponse.json({
+      quotes,
+      live,
+      cached: false,
+      asOf: live ? new Date().toISOString() : null,
+    });
   }
   const { quotes, live } = await fetchEtfQuotes(ETF_CODES);
   if (live) {
     await writeQuotesCache(quotes, ETF_CACHE_ID);
-    return NextResponse.json({ quotes, live: true, cached: false, asOf: null });
+    return NextResponse.json({
+      quotes,
+      live: true,
+      cached: false,
+      asOf: new Date().toISOString(),
+    });
   }
   const cache = await readQuotesCache(ETF_CACHE_ID);
   if (cache) {

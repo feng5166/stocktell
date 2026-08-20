@@ -17,7 +17,12 @@ export async function GET() {
         (byCode[c] ??= []).push(it.title);
       });
     }
-    return NextResponse.json({ ok: true, codes: Object.keys(byCode), byCode });
+    const generatedAt = items
+      .map((it) => it.createdAt)
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? null;
+    return NextResponse.json({ ok: true, codes: Object.keys(byCode), byCode, generatedAt });
   } catch {
     return NextResponse.json({ ok: true, codes: [], byCode: {} });
   }
