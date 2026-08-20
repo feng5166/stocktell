@@ -1,8 +1,7 @@
 // 站点常量(三轮 review 清理:https://www.stocktell.me 曾在 9 处硬编码)。
 // 页面 canonical 走 metadataBase 相对化;绝对 URL(sitemap/robots/JSON-LD)统一从这里取。
-// 2026-07-08 二次切换:stocktell.me 送备案;maoadao.com 被负责人转作他用(解析已指阿里)。
-// 暂用 Vercel 平台域名,拿到可用自有域名后再切回(只改这一处 + Vercel env NEXTAUTH_URL)。
-export const SITE_URL = "https://stocktell.vercel.app";
+// 2026-08-17 起生产迁至杭州 ECS,stocktell.me 已备案并作为正式站点域名。
+export const SITE_URL = "https://stocktell.me";
 
 // JSON-LD 安全序列化(三轮 review T1:JSON.stringify 不转义 '<',LLM 生成内容含
 // '</script><script>…' 可从 dangerouslySetInnerHTML 的 ld+json 块逃逸执行=存储型 XSS)。

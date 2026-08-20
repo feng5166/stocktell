@@ -5,7 +5,7 @@
 # 本脚本用 NextAuth 凭证登录拿到会话 cookie,再跑登录态用例,任何人/CI 都能自动验证。
 #
 # 用法:
-#   bash scripts/smoke.sh                      # 默认打生产 stocktell.vercel.app
+#   bash scripts/smoke.sh                      # 默认打生产 stocktell.me
 #   BASE_URL=https://<preview>.vercel.app bash scripts/smoke.sh
 #   QA_EMAIL=... QA_PASSWORD=... bash scripts/smoke.sh   # 用自定义测试账号
 #
@@ -16,7 +16,7 @@
 
 set -uo pipefail
 
-BASE="${BASE_URL:-https://stocktell.vercel.app}"
+BASE="${BASE_URL:-https://stocktell.me}"
 EMAIL="${QA_EMAIL:-selftest-qa@stocktell.app}"
 PASS="${QA_PASSWORD:-SelfTest-QA-2026!}"
 JAR="$(mktemp -t stbot-jar.XXXXXX)"

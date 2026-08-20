@@ -12,9 +12,9 @@
 cd ilink-bridge
 npm install
 npm run login          # 出二维码 → 用微信扫码确认(这个微信号当 bot)→ 生成 token.json
-BRIDGE_SECRET=xxx STOCKTELL_BASE=https://stocktell.vercel.app npm start
+BRIDGE_SECRET=xxx STOCKTELL_BASE=https://stocktell.me npm start
 ```
-`BRIDGE_SECRET` 要和 StockTell Vercel 的 `CLAWBOT_SECRET` 一致。
+`BRIDGE_SECRET` 要和 StockTell 主站的 `CLAWBOT_SECRET` 一致。
 
 ## 接到 StockTell
 桥要有**公网地址**(给 Vercel 调)。本地可用 `cloudflared tunnel --url http://localhost:8787` 暴露,拿到公网 URL 后,在 Vercel 设:
