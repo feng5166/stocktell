@@ -190,7 +190,7 @@ async function renderCard() {
               )}
             </div>
             {a.netMfDate && (a.pctLive || a.netMfDate !== a.pctAsOf) && (
-              <div style={{ marginTop: 8, fontSize: 18, color: "#9ca3af" }}>
+              <div style={{ marginTop: 8, display: "flex", fontSize: 18, color: "#9ca3af" }}>
                 主力资金截至 {a.netMfDate.slice(5)} 收盘
               </div>
             )}
