@@ -85,7 +85,7 @@ export function StockTellRichText({ text }: { text: string }) {
       const headingText = content.replace(/^\*\*/, "").replace(/\*\*[::]?$/, "");
       blocks.push(
         <p key={index} className="mt-3 text-sm font-semibold text-gray-900 first:mt-0">
-          <StockTextLinks text={headingText} />
+          {headingText}
         </p>
       );
     } else if (isList) {

@@ -16,6 +16,13 @@ const EXCLUDED_SELECTOR = [
   "code",
   "pre",
   "summary",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "[role='heading']",
   "[contenteditable='true']",
   "[data-no-entity-links]",
 ].join(",");
