@@ -41,7 +41,7 @@ export function StockTextLinks({ text }: { text: string }) {
             key={`${part}-${index}`}
             href={`/stock/${target.code}`}
             title={`查看${target.name}个股页`}
-            className="font-medium text-brand-600 underline decoration-brand-200 underline-offset-2 hover:text-brand-700"
+            className="font-medium text-inherit underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500"
           >
             {part}
           </Link>

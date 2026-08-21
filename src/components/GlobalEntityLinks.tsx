@@ -84,7 +84,7 @@ export function GlobalEntityLinks({
           anchor.title = match.entity.kind === "stock" ? `查看${match.entity.label}个股页` : `查看${match.entity.label}产业链`;
           anchor.dataset.stocktellEntity = match.entity.kind;
           anchor.className =
-            "font-medium text-brand-600 underline decoration-brand-200 underline-offset-2 hover:text-brand-700";
+            "font-medium text-inherit underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500";
           fragment.append(anchor);
           linked = true;
         }
