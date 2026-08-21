@@ -9,6 +9,8 @@ import { AuthTracker } from "@/components/AuthTracker";
 import { FunnelTracker } from "@/components/FunnelTracker";
 import { AhaPushNudge } from "@/components/AhaPushNudge";
 import { SITE_URL, safeJsonLd } from "@/lib/site";
+import { GlobalEntityLinks } from "@/components/GlobalEntityLinks";
+import { ENTITY_LINK_CATALOG } from "@/lib/entity-link-catalog";
 
 // Umami 网页分析(自托管 analytics.stocktell.me)。配了 WEBSITE_ID 才注入,
 // 自动采集 pageview;自定义事件经 lib/analytics 的 track() 上报。
@@ -80,6 +82,7 @@ export default function RootLayout({
           <AhaPushNudge />
           <AuthTracker />
           <FunnelTracker />
+          <GlobalEntityLinks entities={ENTITY_LINK_CATALOG} />
         </Providers>
         <SiteFooter />
         <PWARegister />

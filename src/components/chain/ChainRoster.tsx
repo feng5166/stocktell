@@ -139,14 +139,14 @@ export function ChainRoster({
                       i > 0 ? "border-t border-gray-100" : ""
                     }`}
                   >
-                    <Link
-                      href={`/stock/${it.code}`}
-                      className="group min-w-0 flex-1"
-                    >
+                    <div className="group min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-gray-900 group-hover:text-brand-700 group-hover:underline">
+                        <Link
+                          href={`/stock/${it.code}`}
+                          className="font-medium text-gray-900 hover:text-brand-700 hover:underline"
+                        >
                           {it.name}
-                        </span>
+                        </Link>
                         {relations?.[it.code] && (
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${REL_CHIP_CLS[relations[it.code]] ?? "bg-gray-100 text-gray-600"}`}>
                             {relations[it.code]}
@@ -165,7 +165,7 @@ export function ChainRoster({
                           <span className="text-gray-500"> · {mentioned[it.code]}</span>
                         </div>
                       )}
-                    </Link>
+                    </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
                       <div className="min-h-[18px] text-right">
                         {quote ? (
