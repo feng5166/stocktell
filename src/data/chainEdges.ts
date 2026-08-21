@@ -352,6 +352,8 @@ export const CHAIN_EDGES: ChainEdge[] = [
   { from: "MU", to: "000021", strength: "弱", basis: "深科技(沛顿)DRAM 封测,美光颗粒下游" },
   { from: "000021", to: "301308", strength: "弱", basis: "存储模组/封测产业链" },
   { from: "000021", to: "600667", strength: "中", basis: "存储封测同业(沛顿/海太)" },
+  { from: "688825", to: "688008", strength: "强", basis: "长鑫提供 DDR5/DRAM 颗粒与模组,澜起提供服务器内存接口芯片,同属服务器内存链" },
+  { from: "688825", to: "MU", strength: "中", basis: "DRAM 原厂同业对标;长鑫公开产品覆盖 DDR5/LPDDR,HBM 状态单独核验" },
   // 机器人 3D 视觉(奥比中光)
   { from: "688322", to: "002747", strength: "弱", basis: "奥比中光 3D 视觉传感供应工业机器人" },
   { from: "688322", to: "TSLA", strength: "弱", basis: "人形机器人 3D 视觉感知主题(Optimus)" },

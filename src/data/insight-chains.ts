@@ -93,7 +93,7 @@ const AI_INFRA: InsightChain = {
   title: "AI 推理基础设施 · 因果链",
   // ⚠️ 模板规则:凡改本文件内容(文案/结构/references),必须同步 bump updatedAt——
   // 页头"更新 X"和免责句承诺的「更新时间」都指着它,内容动了日期不动=自打脸。
-  updatedAt: "2026-08-20",
+  updatedAt: "2026-08-21",
   event:
     "英伟达季度财报上调数据中心收入指引,叠加新一代推理模型发布带动「单位算力 token 成本明显下降」——即一次「模型能力跃迁 / 推理成本↓」型全球事件。",
   eventNote:
@@ -137,7 +137,7 @@ const AI_INFRA: InsightChain = {
     "「升温/降温/分化」= 产业景气/关注度,非股价涨跌预测;强度 = 逻辑关联与证据完整度,非收益或涨幅排序。",
   heatmap: [
     { segment: "光模块 / 高速互连", plain: "数据中心里机器之间高速传数据的「光接头」", direction: "升温", intensity: 5, relation: "直接", confidence: "高", hopOrder: 6, reason: "万卡/十万卡集群横向扩展(scale-out)刚性拉动,速率向 800G/1.6T 迭代,北美云厂订单能见度高——本链证据链最完整、传导最直接的一环" },
-    { segment: "存储 / HBM", plain: "贴着 AI 芯片的「快内存」", direction: "升温", intensity: 4, relation: "直接", confidence: "高", hopOrder: 3, reason: "每颗 AI GPU 强制配套多颗 HBM,出货强绑定 + 持续供不应求。备注:A 股缺真正 HBM 自研标的,本环节无强直接映射" },
+    { segment: "存储 / HBM", plain: "贴着 AI 芯片的「快内存」与服务器内存", direction: "升温", intensity: 4, relation: "直接", confidence: "高", hopOrder: 3, reason: "每颗 AI GPU 强制配套多颗 HBM,服务器也需要大容量 DDR5。A 股已有国产 DRAM 原厂长鑫科技,但公开材料尚不能把它等同为已量产 HBM 标的,两者需分开验证" },
     { segment: "先进封装 / 封测", plain: "把芯片和内存「叠装」在一起的高级工艺", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 4, reason: "CoWoS/2.5D 是算力供给实际卡点;国产封测受全球 AI 芯片放量 + 国产替代双驱动,业绩兑现需时间" },
     { segment: "先进封装材料", plain: "封装芯片用的塑封料、填充/粉体和电镀化学品", direction: "升温", intensity: 2, relation: "间接", confidence: "中", hopOrder: 4, reason: "先进封装扩产会向材料端传导,但隔着封测厂客户验证与放量周期;需看先进封装材料收入、客户导入和毛利率,不能按普通半导体材料整体外推" },
     { segment: "液冷 / 温控", plain: "机器太热,用液体给它降温", direction: "升温", intensity: 3, relation: "间接", confidence: "中", hopOrder: 5, reason: "单机柜功率顶到风冷极限,液冷由可选变刚需、渗透率抬升;落地与订单确认节奏存在不确定性" },
@@ -194,6 +194,7 @@ const AI_INFRA: InsightChain = {
     { name: "寒武纪", code: "688256", segment: "国产算力芯片", relation: "情绪映射", reason: "国产 AI 芯片纯标的,靠国产订单放量而非海外事件直接驱动,属高波动标的", confidence: "中" },
     { name: "澜起科技", code: "688008", segment: "服务器内存接口/DDR5", relation: "间接", reason: "内存接口芯片龙头,驱动是 DDR5 渗透与 AI 服务器内存用量;注意 HBM 集成在 GPU 封装内、不走它,别按 HBM 理解", confidence: "中" },
     { name: "香农芯创", code: "300475", segment: "存储代理(HBM影子)", relation: "情绪映射", reason: "海力士存储代理,本质是代理生意、非自研 HBM,与 HBM 景气仅间接关联;高波动", confidence: "低" },
+    { name: "长鑫科技", code: "688825", segment: "存储/HBM", relation: "间接", reason: "国产 DRAM 设计制造一体化厂商,DDR5 及模组已覆盖服务器场景,处于 AI 服务器内存的核心制造环节;但公开材料未确认 HBM 已量产及 AI 服务器收入占比,后续看服务器内存客户、产品结构、产能利用率与 HBM 研发/量产披露", confidence: "中" },
     { name: "长电科技", code: "600584", segment: "先进封装/封测", relation: "间接", reason: "全球封测龙头,先进封装稼动率随全球 AI 芯片放量;AI 暴露占比需核实收入结构,叠加国产替代", confidence: "中" },
     { name: "通富微电", code: "002156", segment: "先进封装/封测", relation: "间接", reason: "深度绑定 AMD,先进封装与 AI 芯片封测订单,受海外 AI 放量间接带动", confidence: "中" },
     { name: "盛合晶微", code: "688820", segment: "先进封装/封测", relation: "间接", reason: "晶圆级先进封装与 2.5D 多芯片集成为业务入口,更贴近 AI 芯片封装扩产;未据公开材料确认特定 AI 芯片客户,后续看 2.5D 业务收入、客户结构、产能利用率和毛利率", confidence: "中" },
@@ -222,6 +223,8 @@ const AI_INFRA: InsightChain = {
     { kind: "具体来源", name: "中际旭创 · 巨潮资讯法定披露页", url: "http://www.cninfo.com.cn/new/disclosure/stock?stockCode=300308", type: "光模块厂财报", supports: "光模块环节 · 直接相关票的订单验证", note: "定期报告与业绩/订单公告原文,以此为准", targets: [{ type: "heat", id: "光模块 / 高速互连" }, { type: "mapping", id: "300308" }] },
     { kind: "常设入口", name: "OpenAI 官方定价页", url: "https://openai.com/api/pricing/", type: "官方定价", supports: "主线第1步(AI 算一次更便宜)", note: "核实「AI 算一次更便宜」:每百万 token 价格逐代变化", targets: [{ type: "hop", id: "1" }] },
     { kind: "常设入口", name: "美光投资者关系", url: "https://investors.micron.com", type: "财报", supports: "HBM/存储环节", note: "HBM 产能与预定情况(SK 海力士同理)", targets: [{ type: "heat", id: "存储 / HBM" }] },
+    { kind: "具体来源", date: "2025-12-30", name: "长鑫科技招股说明书", url: "https://static.sse.com.cn/stock/disclosure/announcement/c/202512/002170_20251230_B8QS.pdf", type: "法定披露", supports: "长鑫科技 DRAM/DDR5 服务器内存业务入口与量产状态", note: "招股书披露 DRAM 模组技术、服务器应用和核心技术收入;HBM 状态仍需后续公告核验", targets: [{ type: "mapping", id: "688825" }] },
+    { kind: "具体来源", date: "2026-07-24", name: "长鑫科技科创板上市交易公告", url: "https://www.sse.com.cn/disclosure/announcement/listing/ipo/c/c_20260724_10826610.shtml", type: "交易所公告", supports: "长鑫科技证券简称、代码与上市日期", note: "上交所确认证券代码 688825,2026-07-27 起上市交易", targets: [{ type: "mapping", id: "688825" }] },
     { kind: "常设入口", name: "台积电投资者关系(法说会)", url: "https://investor.tsmc.com", type: "法说会", supports: "先进封装(CoWoS)环节", note: "CoWoS 先进封装扩产表述", targets: [{ type: "heat", id: "先进封装 / 封测" }] },
     { kind: "具体来源", date: "2026-04-21", name: "盛合晶微正式登陆科创板", url: "https://www.sjsemi.com/about/22699/154754.html", type: "公司官方", supports: "盛合晶微上市身份与晶圆级先进封装、2.5D/多芯片集成业务入口", note: "公司官方上市信息;客户与收入结构仍以法定披露为准", targets: [{ type: "mapping", id: "688820" }] },
   ],

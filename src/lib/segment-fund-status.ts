@@ -44,7 +44,7 @@ export interface SegmentFundStatus {
   rows: SegmentFundRow[];
 }
 
-const CACHE_ID = "segment-fund-status-v3";
+const CACHE_ID = "segment-fund-status-v4";
 const MIN_COVERED = 2;
 const MAX_ROWS = 10;
 const FORMULA = "链内净额/成交比 = 核定成分股主力净额合计 ÷ 同日成交额合计 × 100%";

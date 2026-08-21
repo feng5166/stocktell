@@ -277,7 +277,7 @@ async function computeAllFundBehaviors(): Promise<FundBehaviorResult> {
 
 const cachedAllFundBehaviors = unstable_cache(
   computeAllFundBehaviors,
-  ["fund-behavior-v4"],
+  ["fund-behavior-v5"],
   { revalidate: 1800 }
 );
 

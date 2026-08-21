@@ -23,6 +23,8 @@ eq("盛合晶微 ai-infra=indirect", resolveInChain("688820", "ai-infra")?.relat
 eq("盛合晶微 segment=先进封装/封测", resolveInChain("688820", "ai-infra")?.segmentName, "先进封装/封测");
 eq("华海诚科 segment=先进封装材料", resolveInChain("688535", "ai-infra")?.segmentName, "先进封装材料");
 eq("华特气体不进入先进封装关系", resolveInChain("688268", "ai-infra"), null);
+eq("长鑫科技 ai-infra=indirect", resolveInChain("688825", "ai-infra")?.relationType, "indirect");
+eq("长鑫科技 segment=存储/HBM", resolveInChain("688825", "ai-infra")?.segmentName, "存储/HBM");
 
 // P1-3:AI 应用不挂 ai-infra——金山归 ai-application indirect,【不在 ai-infra】
 eq("金山 ai-application=indirect", resolveInChain("688111", "ai-application")?.relationType, "indirect");
