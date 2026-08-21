@@ -25,6 +25,7 @@ import { REL_CHIP_CLS } from "@/lib/relation-rank";
 import type { WatchChainInfo } from "@/lib/watch-relation";
 import { useLockBodyScroll } from "@/lib/useLockBodyScroll";
 import { formatBeijingMDHM } from "@/lib/time-label";
+import { StockTellRichText } from "@/components/StockTellRichText";
 
 const FREE_LIMIT = 3;
 
@@ -756,54 +757,6 @@ function QuietMorningBrief({ issueDate }: { issueDate?: string }) {
   );
 }
 
-// 行内加粗:把 **xxx** 渲染成 <strong>(快读/解读里都用)
-function inlineBold(s: string, kp: string) {
-  return s.split(/(\*\*[^*]+\*\*)/g).map((seg, i) =>
-    /^\*\*[^*]+\*\*$/.test(seg) ? (
-      <strong key={kp + i} className="font-semibold text-gray-900">
-        {seg.slice(2, -2)}
-      </strong>
-    ) : (
-      <span key={kp + i}>{seg}</span>
-    )
-  );
-}
-
-// 轻量 Markdown 渲染(给 StockTell 解读的流式文本):加粗、小标题、列表;忽略 --- 分隔线
-function renderRich(text: string): JSX.Element[] {
-  const blocks: JSX.Element[] = [];
-  text.split("\n").forEach((raw, i) => {
-    const line = raw.trim();
-    if (!line) return;
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) return; // 忽略分隔线
-    const heading = /^#{1,6}\s/.test(line) || /^\*\*[^*]+\*\*[::]?$/.test(line);
-    let content = line.replace(/^#{1,6}\s*/, "");
-    const isList = /^[-*]\s+/.test(content);
-    if (isList) content = content.replace(/^[-*]\s+/, "");
-    if (heading) {
-      const t = content.replace(/^\*\*/, "").replace(/\*\*[::]?$/, "");
-      blocks.push(
-        <p key={i} className="mt-3 text-sm font-semibold text-gray-900 first:mt-0">
-          {t}
-        </p>
-      );
-    } else if (isList) {
-      blocks.push(
-        <p key={i} className="ml-1 mt-1 text-sm leading-relaxed text-gray-700">
-          • {inlineBold(content, i + "-")}
-        </p>
-      );
-    } else {
-      blocks.push(
-        <p key={i} className="mt-1.5 text-sm leading-relaxed text-gray-700">
-          {inlineBold(content, i + "-")}
-        </p>
-      );
-    }
-  });
-  return blocks;
-}
-
 // 关系标签配色(评审:事件卡用关系分级替代「高影响」,与 insight 页同色系)
 // TakeBody 迁到 components/RetailTake.tsx(共享,链页等消费点复用);顶部已 import。
 
@@ -1008,7 +961,7 @@ function BriefingCard({
             )}
             {deep && (
               <div>
-                {renderRich(deep)}
+                <StockTellRichText text={deep} />
                 {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
                 {!deepLoading && (
                   <p className="mt-2 text-[11px] leading-relaxed text-gray-500">

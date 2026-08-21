@@ -10,6 +10,7 @@ import { IMPACT_META } from "@/lib/impact";
 import type { Impact } from "@/lib/briefings";
 import { DISCLAIMER } from "@/lib/constants";
 import { formatBeijingMDHM } from "@/lib/time-label";
+import { InlineStockText } from "@/components/StockTellRichText";
 
 // 历史简报归档页(2.1-W4):某日的简报条目 + 当日五档状态 + 节后观察(如有)。
 // 状态口径与首页同源(BRIEF_STATUS_UI):fallback 展示"模板兜底"徽章绝不伪装 generated,
@@ -123,7 +124,9 @@ export default async function DailyArchivePage({ params }: { params: { date: str
                     ))}
                   </p>
                 )}
-                <p className="mt-1.5 text-xs leading-relaxed text-gray-600">{it.retailTake}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
+                  <InlineStockText text={it.retailTake} />
+                </p>
               </article>
             ))}
           </section>

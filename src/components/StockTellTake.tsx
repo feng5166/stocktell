@@ -5,54 +5,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useAuthModal } from "@/components/Providers";
-
-// 行内加粗:**xxx** → <strong>
-function inlineBold(s: string, kp: string) {
-  return s.split(/(\*\*[^*]+\*\*)/g).map((seg, i) =>
-    /^\*\*[^*]+\*\*$/.test(seg) ? (
-      <strong key={kp + i} className="font-semibold text-gray-900">
-        {seg.slice(2, -2)}
-      </strong>
-    ) : (
-      <span key={kp + i}>{seg}</span>
-    )
-  );
-}
-
-// 轻量 Markdown 渲染(解读流式文本):加粗、小标题、列表;忽略 --- 分隔线
-function renderRich(text: string): JSX.Element[] {
-  const blocks: JSX.Element[] = [];
-  text.split("\n").forEach((raw, i) => {
-    const line = raw.trim();
-    if (!line) return;
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) return;
-    const heading = /^#{1,6}\s/.test(line) || /^\*\*[^*]+\*\*[::]?$/.test(line);
-    let content = line.replace(/^#{1,6}\s*/, "");
-    const isList = /^[-*]\s+/.test(content);
-    if (isList) content = content.replace(/^[-*]\s+/, "");
-    if (heading) {
-      const t = content.replace(/^\*\*/, "").replace(/\*\*[::]?$/, "");
-      blocks.push(
-        <p key={i} className="mt-3 text-sm font-semibold text-gray-900 first:mt-0">
-          {t}
-        </p>
-      );
-    } else if (isList) {
-      blocks.push(
-        <p key={i} className="ml-1 mt-1 text-sm leading-relaxed text-gray-700">
-          • {inlineBold(content, i + "-")}
-        </p>
-      );
-    } else {
-      blocks.push(
-        <p key={i} className="mt-1.5 text-sm leading-relaxed text-gray-700">
-          {inlineBold(content, i + "-")}
-        </p>
-      );
-    }
-  });
-  return blocks;
-}
+import { InlineStockText, StockTellRichText } from "@/components/StockTellRichText";
 
 export function StockTellTake({
   itemId,
@@ -118,7 +71,7 @@ export function StockTellTake({
   return (
     <>
       <p className="text-sm leading-relaxed text-gray-800">
-        {inlineBold(retailTake, "rt-")}
+        <InlineStockText text={retailTake} />
       </p>
 
       {canDeep && !deepStarted && (
@@ -156,7 +109,7 @@ export function StockTellTake({
           ) : (
             deep && (
               <div>
-                {renderRich(deep)}
+                <StockTellRichText text={deep} />
                 {deepLoading && <span className="animate-pulse text-gray-400">▍</span>}
                 {!deepLoading && (
                   <p className="mt-2 text-[11px] leading-relaxed text-gray-500">

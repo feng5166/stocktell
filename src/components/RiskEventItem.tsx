@@ -1,4 +1,5 @@
 import { explainRiskEvent, type RiskEventForExplain } from "@/lib/risk-event-explain";
+import { StockTextLinks } from "@/components/StockTellRichText";
 
 const LEVEL_CLASS = {
   风险提醒: "bg-rose-50 text-rose-600",
@@ -34,14 +35,14 @@ export function RiskEventItem({
           </span>
         </summary>
         <div className="mt-2 space-y-1.5 border-l-2 border-gray-200 pl-3 text-xs leading-relaxed text-gray-600">
-          <p className="font-medium text-gray-800">{take.conclusion}</p>
+          <p className="font-medium text-gray-800"><StockTextLinks text={take.conclusion} /></p>
           <p>
             <span className="text-gray-400">为什么列入：</span>
-            {take.why}
+            <StockTextLinks text={take.why} />
           </p>
           <p>
             <span className="text-gray-400">接下来验证：</span>
-            {take.verify}
+            <StockTextLinks text={take.verify} />
           </p>
         </div>
       </details>

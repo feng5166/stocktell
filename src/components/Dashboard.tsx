@@ -29,6 +29,7 @@ import { CONCEPTS } from "@/data/concepts.generated";
 import { edgeInfo, type Strength } from "@/data/relations";
 import { track } from "@/lib/analytics";
 import { formatBeijingMDHM } from "@/lib/time-label";
+import { TakeBody } from "@/components/RetailTake";
 import {
   type FundBehaviorItem,
   type FundBehaviorLabel,
@@ -1382,7 +1383,7 @@ function StockCard({
       </button>
       {isOpen && (
         <div className="mt-2 rounded-lg bg-amber-50/70 p-2.5">
-          <p className="text-sm leading-relaxed text-gray-800">{s.retailTake}</p>
+          <TakeBody text={s.retailTake} />
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <ChainLinks insight={insight} />
             <Link
@@ -1530,9 +1531,7 @@ function ReactFragmentRow({
             <div className="flex gap-2">
               <span className="shrink-0 text-base">💡</span>
               <div>
-                <p className="text-sm leading-relaxed text-gray-800">
-                  {s.retailTake}
-                </p>
+                <TakeBody text={s.retailTake} />
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <ChainLinks insight={insight} />
                   <Link
