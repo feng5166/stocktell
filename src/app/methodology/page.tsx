@@ -75,7 +75,7 @@ export default function MethodologyPage() {
         <Section no="03" title="金融数据">
           {/* 事实来源:src/lib/tushare.ts 及 risk-radar/financials/similarity */}
           <p>
-            交易日历、基本面(市值 / 换手 / PE)、资金面、雷区雷达(解禁 / 增减持 / 质押 / 回购 / ST)、
+            交易日历、基本面(市值 / 换手 / PE)、资金面、公司重要事项(解禁 / 增减持 / 质押 / 回购 / ST)、
             财报体检与历史相似性,来自 <b className="text-gray-700">Tushare</b>。
             各模块更新频率不同:行情类当日更新,基本面 / 概念归属等静态增强数据每周刷新,
             <b className="text-gray-700">不承诺全站实时</b>。

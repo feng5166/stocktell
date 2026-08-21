@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     ok ? "已取消推送" : "操作失败",
     ok
       ? `<h2 style="font-size:18px;margin:0 0 10px">已为你取消邮件提醒 🔕</h2>
-         <p style="color:#888;font-size:14px;margin:0 0 18px">之后不会再给你发盘前早报和雷区提醒邮件。想只保留其中一类,可在<a href="${base}/settings" style="color:#2563eb">设置</a>里单独开启。</p>
+         <p style="color:#888;font-size:14px;margin:0 0 18px">之后不会再给你发盘前早报和重要事项提醒邮件。想只保留其中一类,可在<a href="${base}/settings" style="color:#2563eb">设置</a>里单独开启。</p>
          <a href="${resub}" style="display:inline-block;background:#111;color:#fff;font-size:14px;text-decoration:none;padding:10px 20px;border-radius:10px">手滑了?重新订阅</a>`
       : `<h2 style="font-size:18px;margin:0 0 8px">操作失败</h2><p style="color:#888;font-size:14px">请稍后再试。</p>`
   );

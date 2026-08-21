@@ -28,6 +28,7 @@ import { formatBeijingMDHM, formatYmdMD } from "@/lib/time-label";
 import { resolvePrimary, resolveInChain } from "@/lib/relation-resolver";
 import { REL_CHIP_CLS, relationTypeToDisplayBadge, strengthToRelationType, chainRouteId } from "@/lib/relation-rank";
 import { VerifyFollowChips } from "@/components/VerifyFollow";
+import { RiskEventItem } from "@/components/RiskEventItem";
 
 // relationType → 前台关系档标签(与 /stocks、relationResolver 同源,消双轨)
 const STOCK_REL_LABEL: Record<string, string> = {
@@ -509,25 +510,14 @@ export default async function StockDetail({
         )}
 
         {riskEvents.length > 0 && (
-          <Section icon="⚠️" title="重要事件 / 雷区">
-            <ul className="space-y-1.5 text-sm">
+          <Section icon="⚠️" title="关注事项 / 风险提醒">
+            <ul className="space-y-2">
               {riskEvents.map((e, i) => (
-                <li
-                  key={i}
-                  className={
-                    e.severity === "high"
-                      ? "text-rose-600"
-                      : e.severity === "info"
-                      ? "text-gray-500"
-                      : "text-amber-700"
-                  }
-                >
-                  {e.text}
-                </li>
+                <RiskEventItem key={`${e.key}:${i}`} event={e} />
               ))}
             </ul>
             <p className="mt-2 text-meta leading-relaxed text-gray-400">
-              公开信息整理(Tushare) · 数据日 {todayISO()},提示风险,不构成投资建议。
+              公开信息整理(Tushare) · 数据日 {todayISO()}。事项分级不代表涨跌判断,不构成投资建议。
             </p>
           </Section>
         )}

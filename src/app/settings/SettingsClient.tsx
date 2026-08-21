@@ -133,7 +133,7 @@ function BrowserPushCard() {
   );
 }
 
-// ---------------- 雷区提醒(解禁/增减持/质押/ST)----------------
+// ---------------- 重要事项提醒(解禁/增减持/质押/ST)----------------
 function RiskCard() {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -167,16 +167,16 @@ function RiskCard() {
 
   return (
     <Card
-      title="⚠️ 雷区提醒"
-      desc="你的自选有解禁、大股东增减持、高质押、ST 风险等重要事件时,盘前提前提醒(走邮件)。"
+      title="⚠️ 重要事项提醒"
+      desc="你的自选有解禁、大股东增减持、高质押、ST、回购等重要事项时,盘前提前提醒(走邮件)。"
     >
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-700">
           {enabled === null
             ? "读取中…"
             : enabled
-            ? "已开启:有雷区事件时盘前提醒"
-            : "已关闭:不会再收到雷区提醒"}
+            ? "已开启:有重要事项时盘前提醒"
+            : "已关闭:不会再收到重要事项提醒"}
         </span>
         <Switch checked={!!enabled} disabled={enabled === null || busy} onChange={toggle} />
       </div>

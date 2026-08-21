@@ -207,12 +207,12 @@ function formatMessage(items: { name: string; ev: RiskEvent }[]): string {
     arr.push(it.ev);
     byStock.set(it.name, arr);
   }
-  const lines = ["⚠️ 雷区提醒 · 你的自选有重要事件", ""];
+  const lines = ["⚠️ 重要事项提醒 · 你的自选有新情况", ""];
   for (const [name, evs] of Array.from(byStock.entries())) {
     lines.push(`【${name}】`);
     for (const e of evs) lines.push(`  ${e.text}`);
   }
-  lines.push("", "以上为公开信息整理,提示风险,不构成投资建议。", "stocktell.me/#mine");
+  lines.push("", "以上为公开信息整理,事项分级不代表涨跌判断,不构成投资建议。", "stocktell.me/#mine");
   return lines.join("\n");
 }
 
@@ -238,22 +238,22 @@ async function sendRiskEmail(
     )
     .join("");
   const text =
-    "你的自选有重要风险事件:\n\n" +
+    "你的自选有重要事项需要关注:\n\n" +
     Array.from(byStock.entries())
       .map(([name, evs]) => `${name}\n` + evs.map((e) => `  ${e.text}`).join("\n"))
       .join("\n\n") +
-    `\n\n打开看详情:${base}/#mine\n以上为公开信息整理,提示风险,不构成投资建议。` +
+    `\n\n打开看详情:${base}/#mine\n以上为公开信息整理,事项分级不代表涨跌判断,不构成投资建议。` +
     unsub.text;
   const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1d24">
-    <p style="color:#888;font-size:12px;margin:0 0 10px">⚠️ StockTell 雷区提醒</p>
+    <p style="color:#888;font-size:12px;margin:0 0 10px">⚠️ StockTell 重要事项提醒</p>
     ${blocks}
     <p><a href="${base}/#mine" style="display:inline-block;background:#111;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px">打开 StockTell 看详情</a></p>
-    <p style="color:#aaa;font-size:11px">以上为公开信息整理,提示风险,不构成投资建议。</p>
+    <p style="color:#aaa;font-size:11px">以上为公开信息整理,事项分级不代表涨跌判断,不构成投资建议。</p>
     ${unsub.html}
   </div>`;
   return sendMail({
     to,
-    subject: "你的自选有重要风险事件 · StockTell",
+    subject: "你的自选有重要事项 · StockTell",
     text,
     html,
     headers: unsub.headers,

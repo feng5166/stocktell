@@ -1,15 +1,17 @@
 "use client";
 
-// 「和我相关」顶部:你的自选有哪些雷区事件(解禁/增减持/质押/ST/回购)。
+// 「和我相关」顶部:你的自选有哪些重要事项(解禁/增减持/质押/ST/回购)。
 // 默认折叠成一条徽标,点开看明细。数据来自 /api/risk-events(按天缓存)。
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { STOCK_MAP } from "@/data/stocks";
+import { RiskEventItem } from "@/components/RiskEventItem";
 
 interface RiskEvent {
   kind: string;
   severity: "high" | "mid" | "info";
   text: string;
+  date?: string | null;
 }
 
 export function RiskSummary({ codes }: { codes: Set<string> }) {
@@ -50,7 +52,7 @@ export function RiskSummary({ codes }: { codes: Set<string> }) {
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-gray-50"
       >
-        <span className="text-sm font-medium text-gray-800">⚠️ 你的票·雷区</span>
+        <span className="text-sm font-medium text-gray-800">⚠️ 你的票·关注事项</span>
         <span
           className={`rounded px-1.5 py-0.5 text-meta ${
             hasHigh ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-700"
@@ -73,26 +75,15 @@ export function RiskSummary({ codes }: { codes: Set<string> }) {
               >
                 {STOCK_MAP[c]?.name ?? c}
               </Link>
-              <ul className="mt-1 space-y-1">
+              <ul className="mt-2 space-y-2">
                 {byCode[c].map((e, i) => (
-                  <li
-                    key={i}
-                    className={`text-xs ${
-                      e.severity === "high"
-                        ? "text-rose-600"
-                        : e.severity === "info"
-                        ? "text-gray-500"
-                        : "text-amber-700"
-                    }`}
-                  >
-                    {e.text}
-                  </li>
+                  <RiskEventItem key={`${e.kind}:${e.date ?? i}`} event={e} compact />
                 ))}
               </ul>
             </div>
           ))}
           <p className="text-meta text-gray-300">
-            公开信息整理{dataDate ? ` · 数据日 ${dataDate}` : ""},提示风险,不构成投资建议。
+            公开信息整理{dataDate ? ` · 数据日 ${dataDate}` : ""}。事项分级不代表涨跌判断,不构成投资建议。
           </p>
         </div>
       )}
