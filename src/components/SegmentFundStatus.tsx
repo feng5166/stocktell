@@ -102,7 +102,7 @@ export function SegmentFundStatus({
   if (!data?.rows?.length) {
     return (
       <section className="mb-4 rounded-xl bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-gray-800">AI 链内资金状态</div>
+        <h2 className="text-sm font-semibold text-gray-800">AI 链内资金状态</h2>
         <p className="mt-1.5 text-xs text-gray-400">
           {failed ? "资金数据暂时读取不到,稍后再来看看" : "收盘数据生成中,稍后更新"}
         </p>

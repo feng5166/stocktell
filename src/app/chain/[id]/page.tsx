@@ -402,7 +402,7 @@ export default async function ChainPage({
                     >
                       {resolveRelationLabelForItem(it)}
                     </span>
-                    <span className="font-medium text-gray-900">{it.title}</span>
+                    <h3 className="font-medium text-gray-900">{it.title}</h3>
                   </div>
                   {it.beneficiaries.length > 0 && (
                     <div className="mt-1 text-xs text-gray-500">

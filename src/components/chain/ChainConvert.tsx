@@ -261,7 +261,7 @@ export function ChainConvert({
                             >
                               {it.impact}
                             </span>
-                            <span className="font-medium text-gray-800">{it.title}</span>
+                            <h3 className="font-medium text-gray-800">{it.title}</h3>
                           </div>
                           {it.benes && (
                             <div className="mt-0.5 text-xs text-gray-500">涉及:{it.benes}</div>

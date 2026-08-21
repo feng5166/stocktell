@@ -36,7 +36,7 @@ export function QuickAddWatch({ wl }: { wl: UseWatchlist }) {
 
   return (
     <div className="rounded-xl border border-brand-100 bg-white p-3 sm:p-4">
-      <div className="text-sm font-medium text-gray-800">{title}</div>
+      <h2 className="text-sm font-medium text-gray-800">{title}</h2>
       <div className="mt-1 text-xs text-gray-500">{desc}</div>
 
       {EXAMPLE_STOCKS.length > 0 && (
