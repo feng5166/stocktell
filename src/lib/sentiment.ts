@@ -278,11 +278,11 @@ export async function chainSentiment(): Promise<ChainSentiment> {
   // 盘中家数/均涨跌是实时的,缓存要短(否则挂 20min 就不"实时"了);盘后回到长缓存。
   const trading = inTradingClock();
   const ttl = trading ? 45_000 : TTL;
-  const dbFresh = trading ? 90_000 : DB_FRESH;
   if (cache && Date.now() - cache.at < ttl) return cache.data;
   const db = getPrisma();
 
-  // L2:DB 缓存(跨实例)。够新直接返回;否则留作回退
+  // L2:DB 只作 last-good 回退。不能因为 updatedAt 很新就直接返回——旧交易日数据
+  // 可能刚被一次请求重新写入,时间戳新但内容仍旧,会继续挡住最新资金日探测。
   let stale: ChainSentiment | null = null;
   if (db) {
     const row = await db.quotesCache
@@ -290,10 +290,6 @@ export async function chainSentiment(): Promise<ChainSentiment> {
       .catch(() => null);
     if (row?.data) {
       stale = row.data as unknown as ChainSentiment;
-      if (Date.now() - new Date(row.updatedAt).getTime() < dbFresh) {
-        cache = { at: Date.now(), data: stale };
-        return stale;
-      }
     }
   }
 
