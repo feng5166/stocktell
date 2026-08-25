@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SITE_URL } from "@/lib/site";
 import { isCronAuthorized } from "@/lib/api-guard";
 import { alertCron } from "@/lib/monitor";
 
@@ -10,9 +9,9 @@ export const maxDuration = 300; // 要等主流程(生成+推送)跑完,主流�
 // 主流程幂等(已发布→跳过;发布了但没推→补推),所以主 cron 成功时这里近似 no-op。
 // 同时补跑 insight 每日推理(主跑 07:05,若失败这里 07:40 兜底)——独立且幂等,无论主简报补位
 // 结果如何都触发一次(evidence:insight 不依赖本次简报补位的成功与否,08:30 看门狗再兜一层)。
-async function backupInsightDaily(base: string, secret: string) {
+async function backupInsightDaily(base: string, authorization: string) {
   return fetch(`${base}/api/cron/insight-daily`, {
-    headers: { Authorization: `Bearer ${secret}` },
+    headers: { Authorization: authorization },
     cache: "no-store",
   })
     .then((x) => x.json())
@@ -23,12 +22,11 @@ export async function GET(req: NextRequest) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
-  // 自愈 self-fetch 固定走 Vercel 平台生产域(SITE_URL = *.vercel.app,始终可解析、GH Actions
-  // 已证可达且未被部署保护拦),【不再】用 NEXTAUTH_URL —— 它是面向用户/OAuth 的自有域名,
-  // 备案切换窗口内解析可能停摆(2026-07-09 实况:主域切 maoadao.com 备案期解析停,补位 self-fetch
-  // 连不上、自愈打不通,当天简报只能人工补发)。self-fetch 不依赖自有域名 DNS,自愈才不受备案影响。
-  const base = SITE_URL;
-  const secret = process.env.CRON_SECRET || "";
+  // 补位调用沿当前请求同源返回应用实例:自建生产由 cron-run.sh 请求 127.0.0.1:3000,
+  // 避免公开域名规范化跳转丢失 Authorization,也不依赖公网 DNS。原样转发已经通过
+  // isCronAuthorized 校验的请求头,避免再次拼装或读取不同环境的密钥。
+  const base = new URL(req.url).origin;
+  const authorization = req.headers.get("authorization")!;
   // 本函数 maxDuration=300 与下游主流程最坏耗时相同,裸等会先被平台硬杀。留余量 280s 主动 abort,
   // 但 abort ≠ 失败:补位真正管用的那天(07:00 漏了)下游要跑满生成+推送 ~300s,280s abort 属正常,
   // 不能误报"补位失败"(评审 finding 8)。abort 交给 08:30 看门狗核对真相,这里只对"明确失败"告警:
@@ -41,7 +39,7 @@ export async function GET(req: NextRequest) {
   }, 280_000);
   try {
     const r = await fetch(`${base}/api/cron/briefing`, {
-      headers: { Authorization: `Bearer ${secret}` },
+      headers: { Authorization: authorization },
       cache: "no-store",
       signal: ctrl.signal,
     });
@@ -66,13 +64,13 @@ export async function GET(req: NextRequest) {
         `补位回调主 cron 返回 HTTP ${r.status},主流程可能失败:${JSON.stringify(primary).slice(0, 200)}`
       );
       // 主简报失败也补一次 insight(独立;insight 读的是"已发布简报",没有就自然 skip)
-      const insight = await backupInsightDaily(base, secret);
+      const insight = await backupInsightDaily(base, authorization);
       return NextResponse.json(
         { ok: false, backup: true, status: r.status, primary, insight },
         { status: 502 }
       );
     }
-    const insight = await backupInsightDaily(base, secret);
+    const insight = await backupInsightDaily(base, authorization);
     return NextResponse.json({ ok: true, backup: true, primary, insight });
   } catch (e) {
     if (aborted) {
