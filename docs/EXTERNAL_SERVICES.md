@@ -46,7 +46,7 @@
 - **主机**:`120.26.226.230`,项目目录 `/opt/stocktell`(常用 SSH alias:`aliyun-vps`)。
 - **部署**:push `main` 不会自动上线。生产执行 `git pull origin main` → `npm run build` → `systemctl restart stocktell`;改 `NEXT_PUBLIC_*` 必须重新 build。
 - **服务**:systemd unit 为 `stocktell`;上线后检查服务状态、`/api/health` 与公开首页。
-- **Cron**:`/etc/cron.d/stocktell`,使用 `CRON_TZ=UTC`,并由 `CRON_SECRET` 鉴权。它应与 `vercel.json` 的任务意图逐条对齐,但生产只读取系统 cron;仅改 `vercel.json` 不生效。
+- **Cron**:`/etc/cron.d/stocktell`,使用 `CRON_TZ=UTC`,并由 `CRON_SECRET` 鉴权。它应与 `vercel.json` 的任务意图逐条对齐,但生产只读取系统 cron;仅改 `vercel.json` 不生效。备份或停用的配置必须移到 `/var/backups/stocktell/` 等非 Cron 目录,不得以 `.bak` 等名字留在 `/etc/cron.d`(当前发行版的 `crond` 仍可能加载它,造成任务双跑)。
 - **Vercel**:项目已暂停,避免旧 Cron 重复发送邮件/推送;不再承担当前生产部署。
 
 ### 本机 PostgreSQL 17
