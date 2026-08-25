@@ -201,7 +201,9 @@ export function ChainTemperatureBoard({
     <section className="mb-4 rounded-xl bg-white px-4 py-4 shadow-sm sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-meta font-medium text-brand-600">AI 产业链 · 今日状态</p>
+          <p data-no-entity-links className="text-meta font-medium text-brand-600">
+            AI 产业链 · 今日状态
+          </p>
           <h2 className="mt-0.5 text-h2 font-semibold text-gray-900">今天这条链怎么走</h2>
         </div>
         <p className="text-right text-meta text-gray-400">
