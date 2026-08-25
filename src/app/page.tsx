@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { HomeHero } from "@/components/home/HomeHero";
+import { FirstRunReorder } from "@/components/home/FirstRunReorder";
 import { ReasoningCards } from "@/components/home/ReasoningCards";
-import { ChainTemperatureBoard } from "@/components/home/ChainTemperatureBoard";
 import { BriefingFeed } from "@/components/BriefingFeed";
+import { ChainSentiment } from "@/components/ChainSentiment";
+import { SegmentFundStatus } from "@/components/SegmentFundStatus";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
 import { ShareCardEntry } from "@/components/share/ShareCardEntry";
@@ -21,7 +23,6 @@ import {
 } from "@/lib/brief-status";
 import { getHolidayBridge, type HolidayBridgeDoc } from "@/lib/holiday-bridge";
 import { getChain } from "@/data/chains";
-import { aSharePeers, STOCKS } from "@/data/stocks";
 import {
   listBriefing,
   latestBriefing,
@@ -83,22 +84,6 @@ export default async function Home() {
   }
   const aiChain = getChain("ai");
   const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
-  const temperatureSegments = (aiChain?.segments ?? [])
-    .filter((segment) => segment.sectors.length > 0)
-    .map((segment) => ({
-      name: segment.name,
-      plain: segment.plain,
-      verify: segment.verifyTemplate,
-      members: (aiChain?.aMembers ?? [])
-        .filter((member) => segment.sectors.includes(member.sector))
-        .map((member) => ({ code: member.code, name: member.name })),
-    }));
-  const aiMemberCodes = new Set((aiChain?.aMembers ?? []).map((member) => member.code));
-  const usMembers = STOCKS.filter(
-    (stock) =>
-      stock.market === "美股" &&
-      aSharePeers(stock).some((peer) => aiMemberCodes.has(peer.code))
-  ).map((stock) => ({ code: stock.code, name: stock.name }));
   // 事件卡关系标签(替代「高影响」):服务端按 insight 人工核过的关系分级推导
   const relations = Object.fromEntries(
     items.map((it) => [it.id, resolveRelationLabelForItem(it)])
@@ -121,25 +106,33 @@ export default async function Home() {
 
         {bridge && <HolidayBridgeSection bridge={bridge} />}
 
-        {/* 今日状态固定在首页上方；隔夜雷达紧随其后，再进入完整因果链。 */}
-        <div className="mt-2">
-          <ChainTemperatureBoard
-            initialSentiment={snap?.data}
-            initialFundStatus={fundStatus}
-            segments={temperatureSegments}
-            usMembers={usMembers}
-            action={
-              <span className="inline-flex items-center gap-3">
-                <ShareCardEntry />
-                <ChainHomeEntry />
-              </span>
-            }
-          />
-        </div>
-        <OvernightRadar relMap={relLabelMap} />
-        <div className="mt-5">
-          <ReasoningCards cards={cards} />
-        </div>
+        {/* 链情绪+雷达 与 因果链 的顺序按访客态翻转(新手路径 v2):
+            老访客/有自选 = 盘面在前(负责人 2026-07-09 拍板);新访客 = 因果链演示在前 */}
+        <FirstRunReorder
+          market={
+            <>
+              <div className="mt-2">
+                <ChainSentiment
+                  initial={snap?.data}
+                  refresh={snap ? !snap.fresh : false}
+                  action={
+                    <span className="inline-flex items-center gap-3">
+                      <ShareCardEntry />
+                      <ChainHomeEntry />
+                    </span>
+                  }
+                />
+              </div>
+              <OvernightRadar relMap={relLabelMap} />
+              <SegmentFundStatus initial={fundStatus} />
+            </>
+          }
+          demo={
+            <div className="mt-5">
+              <ReasoningCards cards={cards} />
+            </div>
+          }
+        />
 
         {/* 3. 和我相关(P0 原样保留)+ 4. 今日关键事件推理列表 */}
         {items.length === 0 ? (
