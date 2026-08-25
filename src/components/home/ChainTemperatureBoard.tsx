@@ -64,13 +64,13 @@ function SegmentTile({
       aria-pressed={selected}
       onClick={onSelect}
       className={`min-w-0 rounded-lg px-3 py-2.5 text-left transition-colors ${
-        selected ? "bg-brand-50" : "bg-gray-50 hover:bg-gray-100"
+        selected ? "bg-gray-100" : "bg-gray-50 hover:bg-gray-100"
       }`}
     >
       <span className="flex items-center justify-between gap-2">
         <span
           className={`truncate text-xs font-medium ${
-            selected ? "text-brand-700" : "text-gray-800"
+            selected ? "text-gray-900" : "text-gray-800"
           }`}
         >
           {row.segment}
@@ -201,7 +201,7 @@ export function ChainTemperatureBoard({
     <section className="mb-4 rounded-xl bg-white px-4 py-4 shadow-sm sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p data-no-entity-links className="text-meta font-medium text-brand-600">
+          <p data-no-entity-links className="text-meta font-medium text-gray-500">
             AI 产业链 · 今日状态
           </p>
           <h2 className="mt-0.5 text-h2 font-semibold text-gray-900">今天这条链怎么走</h2>
@@ -219,7 +219,7 @@ export function ChainTemperatureBoard({
       </div>
 
       <div className="mt-3 rounded-lg bg-gray-50 px-3 py-3">
-        <p className="text-meta font-medium text-brand-600">一句话判断</p>
+        <p className="text-meta font-medium text-gray-500">一句话判断</p>
         <p className="mt-1 text-sm font-medium leading-relaxed text-gray-800">
           {buildJudgment(sentiment, fundStatus)}
         </p>
@@ -230,7 +230,7 @@ export function ChainTemperatureBoard({
 
       <div className="mt-4 flex items-baseline justify-between gap-3">
         <div>
-          <p className="text-meta font-medium text-brand-600">产业链热力</p>
+          <p className="text-meta font-medium text-gray-500">产业链热力</p>
           <h3 className="mt-0.5 text-sm font-semibold text-gray-800">
             从触发源一路看到 A 股验证
           </h3>
@@ -335,12 +335,12 @@ export function ChainTemperatureBoard({
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg bg-brand-50/70 px-3 py-3">
+      <div className="mt-4 rounded-lg bg-gray-50 px-3 py-3">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-gray-800">
           <span>{triggerLabel}</span>
-          <span className="text-brand-300">→</span>
+          <span className="text-gray-300">→</span>
           <span>{segmentLabel}</span>
-          <span className="text-brand-300">→</span>
+          <span className="text-gray-300">→</span>
           <span>{sampleLabel}</span>
         </div>
         <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
