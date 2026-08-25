@@ -12,14 +12,16 @@ import { useWatchlist } from "@/components/useWatchlist";
 import { TapBadge } from "@/components/TapBadge";
 import { fmtChange, changeClass } from "@/lib/format";
 import { track } from "@/lib/analytics";
+import { useChainQuotes } from "@/components/chain/useChainQuotes";
 
-type Quote = { price: number; change: number; asOf?: string };
 type LinkageStat = { events: number; rate: number; throughDate?: string };
 const STRENGTH_RANK: Record<Strength, number> = { 强: 0, 中: 1, 弱: 2 };
 const GAP = 1.5; // 美股领先 A 股 ≥1.5 个点才算预期差
 const US_MOVE = 1; // 美股至少涨 1%
 const LINKAGE_MIN = 12;
 const MAX_SIGNALS = 4;
+const ALL_QUOTE_CODES = STOCKS.map((stock) => stock.code);
+const EMPTY_QUOTES: Record<string, { price: number; change: number; asOf?: string }> = {};
 
 function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
   if (!stat) return null;
@@ -42,26 +44,12 @@ function LinkageBadge({ stat }: { stat: LinkageStat | null | undefined }) {
 }
 
 export function OvernightRadar({ relMap = {} }: { relMap?: Record<string, string> }) {
-  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
-  const [live, setLive] = useState(false);
+  const quotePayload = useChainQuotes(ALL_QUOTE_CODES);
+  const quotes = quotePayload?.quotes ?? EMPTY_QUOTES;
+  const live = quotePayload?.live ?? false;
   const [linkage, setLinkage] = useState<Record<string, LinkageStat | null>>({});
   const [showHelp, setShowHelp] = useState(false);
   const wl = useWatchlist();
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/quotes", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!active) return;
-        setQuotes(d.quotes ?? {});
-        setLive(Boolean(d.live));
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const q = (c: string) => quotes[c];
   const signals = !live

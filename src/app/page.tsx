@@ -3,9 +3,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { HomeHero } from "@/components/home/HomeHero";
 import { FirstRunReorder } from "@/components/home/FirstRunReorder";
 import { ReasoningCards } from "@/components/home/ReasoningCards";
+import { ChainTemperatureBoard } from "@/components/home/ChainTemperatureBoard";
 import { BriefingFeed } from "@/components/BriefingFeed";
-import { ChainSentiment } from "@/components/ChainSentiment";
-import { SegmentFundStatus } from "@/components/SegmentFundStatus";
 import { OvernightRadar } from "@/components/OvernightRadar";
 import { ChainHomeEntry } from "@/components/chain/ChainHomeEntry";
 import { ShareCardEntry } from "@/components/share/ShareCardEntry";
@@ -23,6 +22,7 @@ import {
 } from "@/lib/brief-status";
 import { getHolidayBridge, type HolidayBridgeDoc } from "@/lib/holiday-bridge";
 import { getChain } from "@/data/chains";
+import { aSharePeers, STOCKS } from "@/data/stocks";
 import {
   listBriefing,
   latestBriefing,
@@ -84,6 +84,22 @@ export default async function Home() {
   }
   const aiChain = getChain("ai");
   const insightHref = aiChain?.insightSlug ? `/insight/${aiChain.insightSlug}` : null;
+  const temperatureSegments = (aiChain?.segments ?? [])
+    .filter((segment) => segment.sectors.length > 0)
+    .map((segment) => ({
+      name: segment.name,
+      plain: segment.plain,
+      verify: segment.verifyTemplate,
+      members: (aiChain?.aMembers ?? [])
+        .filter((member) => segment.sectors.includes(member.sector))
+        .map((member) => ({ code: member.code, name: member.name })),
+    }));
+  const aiMemberCodes = new Set((aiChain?.aMembers ?? []).map((member) => member.code));
+  const usMembers = STOCKS.filter(
+    (stock) =>
+      stock.market === "美股" &&
+      aSharePeers(stock).some((peer) => aiMemberCodes.has(peer.code))
+  ).map((stock) => ({ code: stock.code, name: stock.name }));
   // 事件卡关系标签(替代「高影响」):服务端按 insight 人工核过的关系分级推导
   const relations = Object.fromEntries(
     items.map((it) => [it.id, resolveRelationLabelForItem(it)])
@@ -112,9 +128,11 @@ export default async function Home() {
           market={
             <>
               <div className="mt-2">
-                <ChainSentiment
-                  initial={snap?.data}
-                  refresh={snap ? !snap.fresh : false}
+                <ChainTemperatureBoard
+                  initialSentiment={snap?.data}
+                  initialFundStatus={fundStatus}
+                  segments={temperatureSegments}
+                  usMembers={usMembers}
                   action={
                     <span className="inline-flex items-center gap-3">
                       <ShareCardEntry />
@@ -124,7 +142,6 @@ export default async function Home() {
                 />
               </div>
               <OvernightRadar relMap={relLabelMap} />
-              <SegmentFundStatus initial={fundStatus} />
             </>
           }
           demo={
