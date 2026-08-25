@@ -1,6 +1,5 @@
 // 你的票·资金面:聚合某用户自选(A 股)的主力净流入 + 龙虎榜 + 融资余额变化。
 // 共享给 /api/fund-flow(网页卡片)和 morning-brief(早报/邮件/微信),口径一致、各自缓存复用。
-import { unstable_cache } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { STOCK_MAP } from "@/data/stocks";
 import { getPrisma } from "@/lib/prisma";
@@ -90,11 +89,14 @@ export interface FundFlowResult {
 const ymdToISO = (ymd: string) =>
   `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
 
-async function computeFundFlow(codes: string[]): Promise<FundFlowResult> {
+async function computeFundFlow(
+  codes: string[],
+  resolvedYmd?: string | null
+): Promise<FundFlowResult> {
   const aCodes = codes.filter((c) => STOCK_MAP[c]?.market === "A股");
   if (aCodes.length === 0) return { date: null, items: [], complete: true };
 
-  const ymd = await latestFundYmd(todayISO());
+  const ymd = resolvedYmd ?? (await latestFundYmd(todayISO()));
   if (!ymd) return { date: null, items: [], complete: false };
 
   const prevIso = await prevAshareTradingDay(ymdToISO(ymd));
@@ -127,36 +129,42 @@ async function computeFundFlow(codes: string[]): Promise<FundFlowResult> {
   return { date: ymdToISO(ymd), items, complete };
 }
 
-// 按(去重排序后的)代码组合缓存 30 分钟。资金面是 T+1 日频数据,半小时足够新。
-// 关键收益:morning-brief 内部与 /api/fund-flow 两个独立 serverless 调用共享同一份结果
-// (Next Data Cache 跨实例持久),不再各打一遍 Tushare(moneyflow/top_list/margin)。
-export async function fundFlowFor(codes: string[]): Promise<FundFlowResult> {
+// 资金整包本身已经按 ymd 落 fund_day_cache,这里不再叠加不含交易日的 Next Data Cache。
+// 旧缓存键只含股票组合,会把 8/21 的结果跨交易日回放,再被详情页写进“今天”的 DB 键。
+export async function fundFlowFor(
+  codes: string[],
+  resolvedYmd?: string | null
+): Promise<FundFlowResult> {
   const sorted = Array.from(
     new Set(codes.filter((c) => STOCK_MAP[c]?.market === "A股"))
   ).sort();
   if (sorted.length === 0) return { date: null, items: [] };
-  return unstable_cache(() => computeFundFlow(sorted), ["fund-flow", sorted.join(",")], {
-    revalidate: 1800,
-  })();
+  return computeFundFlow(sorted, resolvedYmd);
 }
 
-// 详情页(单码)专用:在 fundFlowFor 之上再加一层 DB 跨实例缓存(quotes_cache,id=fundflow:code:当天)。
-// fundFlowFor 外层是 unstable_cache(不跨实例),冷实例仍要跑 latestFundYmd 全市场探测 + bundle,易撞
-// 详情页 8s cap 致资金面整行消失。改后:命中秒回、当天有真实数据才写(防"盘前/数据未出"空包毒化)。
+// 详情页(单码)专用:在 fundFlowFor 之上加一层 DB 跨请求缓存(quotes_cache,id=fundflow:code:当天)。
+// 读缓存时还要核对 payload 的真实资金交易日,避免旧结果被当天键名伪装成新数据。
+// 命中秒回、当天有真实数据才写(防"盘前/数据未出"空包毒化)。
 // 批量路径(morning-brief/digest)仍走 fundFlowFor,不经此层(避免 per-code N 次 upsert)。
 export async function cachedFundFlowSingle(code: string): Promise<FundFlowResult> {
   if (STOCK_MAP[code]?.market !== "A股") return { date: null, items: [] };
   const id = `fundflow:${code}:${todayISO()}`;
+  const latestYmd = await latestFundYmd(todayISO()).catch(() => null);
+  const expectedDate = latestYmd ? ymdToISO(latestYmd) : null;
   const db = getPrisma();
   if (db) {
     const row = await db.quotesCache
       .findUnique({ where: { id }, select: { data: true } })
       .catch(() => null);
-    if (row?.data) return row.data as unknown as FundFlowResult;
+    if (row?.data) {
+      const cached = row.data as unknown as FundFlowResult;
+      // 上游暂时不可用时仍可回放 last-good;一旦已确认有更新的交易日,旧内容必须失效。
+      if (!expectedDate || cached.date === expectedDate) return cached;
+    }
   }
   let res: FundFlowResult;
   try {
-    res = await fundFlowFor([code]);
+    res = await fundFlowFor([code], latestYmd);
   } catch (e) {
     await alertThrottled(
       "fetch-fail:fundflow",

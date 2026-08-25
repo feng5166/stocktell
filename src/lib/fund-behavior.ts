@@ -2,7 +2,6 @@
 // 识别「形态特征」。这些标签不是对机构真实意图的确认,因此最高只给中置信;
 // 只有同日数据缺失才返回「待判断」;数据完整但不属于五类行为特征时,
 // 用共振/分歧/观望描述市场状态,不强行贴建仓/洗盘/出货标签。
-import { unstable_cache } from "next/cache";
 import { STOCKS, STOCK_MAP } from "@/data/stocks";
 import { todayISO } from "@/lib/date";
 import { getFundBundle } from "@/lib/fund-flow";
@@ -207,9 +206,9 @@ async function recentFundDates(latestYmd: string): Promise<string[]> {
   return dates;
 }
 
-async function computeAllFundBehaviors(): Promise<FundBehaviorResult> {
-  const latestYmd = await latestFundYmd(todayISO());
-  if (!latestYmd) return { date: null, items: [] };
+async function computeAllFundBehaviors(
+  latestYmd: string
+): Promise<FundBehaviorResult> {
   const dates = await recentFundDates(latestYmd);
   // 展开核验需要近 3 日与融资变化;这些字段不会传入 classifyFundBehavior。
   const days = await Promise.all(
@@ -275,15 +274,28 @@ async function computeAllFundBehaviors(): Promise<FundBehaviorResult> {
   return { date: ymdToISO(latestYmd), items };
 }
 
-const cachedAllFundBehaviors = unstable_cache(
-  computeAllFundBehaviors,
-  ["fund-behavior-v5"],
-  { revalidate: 1800 }
-);
+let behaviorMemory: { ymd: string; at: number; data: FundBehaviorResult } | null = null;
+const BEHAVIOR_MEMORY_MS = 5 * 60 * 1000;
 
 export async function fundBehaviorFor(codes: string[]): Promise<FundBehaviorResult> {
-  const wanted = new Set(codes.filter((code) => STOCK_MAP[code]?.market === "A股"));
+  const wanted = new Set(
+    codes.filter((code) => STOCK_MAP[code]?.market === "A股")
+  );
   if (!wanted.size) return { date: null, items: [] };
-  const result = await cachedAllFundBehaviors();
-  return { date: result.date, items: result.items.filter((item) => wanted.has(item.code)) };
+  const latestYmd = await latestFundYmd(todayISO());
+  if (!latestYmd) return { date: null, items: [] };
+  let result: FundBehaviorResult;
+  if (
+    behaviorMemory?.ymd === latestYmd &&
+    Date.now() - behaviorMemory.at < BEHAVIOR_MEMORY_MS
+  ) {
+    result = behaviorMemory.data;
+  } else {
+    result = await computeAllFundBehaviors(latestYmd);
+    behaviorMemory = { ymd: latestYmd, at: Date.now(), data: result };
+  }
+  return {
+    date: result.date,
+    items: result.items.filter((item) => wanted.has(item.code)),
+  };
 }

@@ -301,7 +301,23 @@ function capDates<V>(m: Map<string, V>, max = CACHE_MAX_DATES) {
 }
 
 const mfCache = new Map<string, Map<string, number>>(); // ymd -> (裸code -> 主力净流入 亿元)
+// 当日盘前 / 数据尚未发布时,Tushare 会成功返回空表。空表不能像历史实数一样永久
+// 留在进程缓存里,否则服务不重启就永远看不到当天稍后发布的数据。短暂缓存空结果只为
+// 避免高频请求击穿上游,到期后允许再次探测。
+const mfEmptyAt = new Map<string, number>();
+const EMPTY_MONEYFLOW_RETRY_MS = 5 * 60 * 1000;
 const lhCache = new Map<string, Map<string, LonghuHit>>(); // ymd -> (裸code -> 龙虎榜)
+
+function cachedMoneyflow(ymd: string): Map<string, number> | null {
+  const cached = mfCache.get(ymd);
+  if (!cached) return null;
+  if (cached.size > 0) return cached;
+  const emptyAt = mfEmptyAt.get(ymd) ?? 0;
+  if (Date.now() - emptyAt < EMPTY_MONEYFLOW_RETRY_MS) return cached;
+  mfCache.delete(ymd);
+  mfEmptyAt.delete(ymd);
+  return null;
+}
 
 export interface LonghuHit {
   net: number; // 净买入额(亿元)
@@ -310,10 +326,10 @@ export interface LonghuHit {
 
 // 某交易日全市场主力净流入(亿元)。net_mf_amount 单位万元 → /1e4 = 亿元。
 export async function moneyflowByDate(ymd: string): Promise<Map<string, number>> {
-  const hit = mfCache.get(ymd);
+  const hit = cachedMoneyflow(ymd);
   if (hit) return hit;
   return singleFlight(`mf:${ymd}`, async () => {
-    const cached = mfCache.get(ymd); // 双检:排队期间可能已被前一个填好
+    const cached = cachedMoneyflow(ymd); // 双检:排队期间可能已被前一个填好
     if (cached) return cached;
     const out = new Map<string, number>();
     const d = await tsCallStrict("moneyflow", { trade_date: ymd }, "ts_code,net_mf_amount");
@@ -326,7 +342,10 @@ export async function moneyflowByDate(ymd: string): Promise<Map<string, number>>
         if (v !== null) out.set(code, Math.round((v / 1e4) * 100) / 100);
       }
       mfCache.set(ymd, out); // 仅缓存成功结果
+      if (out.size === 0) mfEmptyAt.set(ymd, Date.now());
+      else mfEmptyAt.delete(ymd);
       capDates(mfCache);
+      capDates(mfEmptyAt);
     }
     return out;
   });

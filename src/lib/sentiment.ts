@@ -88,9 +88,12 @@ function ashareClockPhase(): "pre" | "live" | "post" {
   return "post";
 }
 
-// 最近一个有数据的交易日 ymd:优先读 fund_day_cache(DB,资金面/早报已落库),
-// 拿不到再退回 latestFundYmd(会打 Tushare)。避免每次冷算都探 moneyflow(today)。
+// 最近一个有数据的交易日 ymd:先探测当前可用交易日,DB 旧缓存仅作上游异常兜底。
 async function latestYmd(): Promise<string | null> {
+  // 当前交易日探测优先,DB 只作上游异常时的 last-good 回退。若反过来先读 DB,
+  // 一旦写入过旧日缓存,之后永远不会再探测新的资金交易日。
+  const current = await latestFundYmd(todayISO()).catch(() => null);
+  if (current) return current;
   const db = getPrisma();
   if (db) {
     const row = await db.fundDayCache
@@ -98,7 +101,7 @@ async function latestYmd(): Promise<string | null> {
       .catch(() => null);
     if (row?.ymd) return row.ymd;
   }
-  return latestFundYmd(todayISO());
+  return null;
 }
 
 // 池内 A 股当日涨跌幅(pct)按交易日落 DB 缓存:全市场日线大表只在当天首个冷算拉一次,

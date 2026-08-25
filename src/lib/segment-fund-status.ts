@@ -81,6 +81,10 @@ function iso(ymd: string) {
 }
 
 async function latestYmd(): Promise<string | null> {
+  // 先探测当前应使用的最新资金交易日。旧实现只要 DB 有任意历史缓存就直接返回,
+  // 会让 8/21 之类的旧日期永久挡住 8/24 之后的新数据。
+  const current = await latestFundYmd(todayISO()).catch(() => null);
+  if (current) return current;
   const db = getPrisma();
   if (db) {
     const row = await db.fundDayCache
@@ -88,7 +92,7 @@ async function latestYmd(): Promise<string | null> {
       .catch(() => null);
     if (row?.ymd) return row.ymd;
   }
-  return latestFundYmd(todayISO());
+  return null;
 }
 
 function buildSummary(rows: SegmentFundRow[]): string {
