@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveShareLink } from "@/lib/share-link";
-import { SITE_URL } from "@/lib/site";
+import { APP_HOME, SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: { code: strin
   const hit = /^[a-z0-9]+$/.test(code) ? await resolveShareLink(code).catch(() => null) : null;
   const target = hit
     ? `${hit.target}${hit.target.includes("?") ? "&" : "?"}sc=${encodeURIComponent(code)}&card=${encodeURIComponent(hit.cardType)}`
-    : "/";
+    : APP_HOME;
   // 杭州 ECS 由 Nginx 反向代理到 localhost:3000,Next.js 看到的 origin 可能是
   // 内部地址。短链必须始终跳转到正式公网域名,避免扫码后落到 localhost。
   const res = NextResponse.redirect(new URL(target, SITE_URL), 302);

@@ -6,9 +6,10 @@ import { AuthStatus } from "@/components/auth/AuthStatus";
 import { Logo } from "@/components/Logo";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { InstalledBadge } from "@/components/InstalledBadge";
+import { APP_HOME } from "@/lib/site";
 
 const NAV = [
-  { href: "/", label: "今日推理" },
+  { href: APP_HOME, label: "今日推理" },
   { href: "/watchlist", label: "自选" },
   { href: "/stocks", label: "股票池" },
   { href: "/track", label: "复盘" },
@@ -32,7 +33,7 @@ export function SiteHeader({
         >
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1.5">
-              <Link href="/" aria-label="StockTell 首页">
+              <Link href={APP_HOME} aria-label="StockTell 首页">
                 <Logo className="h-7 w-auto" />
               </Link>
               <InstalledBadge />

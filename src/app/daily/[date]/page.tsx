@@ -11,6 +11,7 @@ import type { Impact } from "@/lib/briefings";
 import { DISCLAIMER } from "@/lib/constants";
 import { formatBeijingMDHM } from "@/lib/time-label";
 import { InlineStockText } from "@/components/StockTellRichText";
+import { APP_HOME } from "@/lib/site";
 
 // 历史简报归档页(2.1-W4):某日的简报条目 + 当日五档状态 + 节后观察(如有)。
 // 状态口径与首页同源(BRIEF_STATUS_UI):fallback 展示"模板兜底"徽章绝不伪装 generated,
@@ -144,7 +145,7 @@ export default async function DailyArchivePage({ params }: { params: { date: str
           ) : (
             <span />
           )}
-          <Link href="/" className="text-gray-400 hover:text-gray-600">
+          <Link href={APP_HOME} className="text-gray-400 hover:text-gray-600">
             查看今日
           </Link>
           {newer ? (

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { APP_HOME } from "@/lib/site";
 
 // 详情页骨架(头部与详情页一致:StockTell + 返回股票池),避免用到根 loading 的错误头部。
 export default function Loading() {
@@ -7,7 +8,7 @@ export default function Loading() {
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" aria-label="StockTell 首页">
+          <Link href={APP_HOME} aria-label="StockTell 首页">
             <Logo className="h-6 w-auto" />
           </Link>
           <Link

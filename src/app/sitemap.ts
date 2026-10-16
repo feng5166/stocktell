@@ -14,7 +14,8 @@ export const revalidate = 3600; // 归档每天最多多一天,1h 再生成足�
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const out: MetadataRoute.Sitemap = [
-    { url: `${BASE}/`, changeFrequency: "daily", priority: 1 },
+    { url: `${BASE}/`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/home`, changeFrequency: "daily", priority: 1 },
     { url: `${BASE}/track`, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/stocks`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/relations`, changeFrequency: "weekly", priority: 0.6 },

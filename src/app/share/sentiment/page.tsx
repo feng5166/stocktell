@@ -5,6 +5,7 @@ import { ShareCardTracker, CopyShareText } from "@/components/share/ShareCardAct
 import { sentimentDisplayDate, sentimentSnapshot } from "@/lib/sentiment";
 import { getOrCreateShareLink } from "@/lib/share-link";
 import { DISCLAIMER } from "@/lib/constants";
+import { APP_HOME } from "@/lib/site";
 
 // 情绪卡生成页(2.3 P0-3):海报图 + 保存提示 + 只读转发文案。
 // 微信内无 JS-SDK 自动分享闭环(方案 §8.2)——统一「长按保存图片 + 复制文案」降级。
@@ -49,7 +50,7 @@ export default async function ShareSentimentPage() {
           <CopyShareText text={copyText} />
         </div>
         <p className="mt-4 text-center text-xs text-gray-400">
-          <Link href="/" className="text-brand-600 hover:underline">
+          <Link href={APP_HOME} className="text-brand-600 hover:underline">
             ← 回今日推理
           </Link>
         </p>

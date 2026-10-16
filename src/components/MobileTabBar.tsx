@@ -6,6 +6,7 @@
 // 仅布局/结构,不引入图标库(内联 SVG)、不改视觉 token,配色用中性灰。
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { APP_HOME } from "@/lib/site";
 
 type Tab = { label: string; href: string; icon: (active: boolean) => React.ReactNode };
 
@@ -14,7 +15,7 @@ const sw = (a: boolean) => (a ? 2.4 : 1.8);
 const TABS: Tab[] = [
   {
     label: "今日",
-    href: "/",
+    href: APP_HOME,
     icon: (a) => (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw(a)} className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 4h16v16H4z" />
@@ -65,7 +66,7 @@ const TABS: Tab[] = [
 export function MobileTabBar() {
   const pathname = usePathname();
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+    href === APP_HOME ? pathname === APP_HOME : pathname.startsWith(href);
 
   return (
     <nav

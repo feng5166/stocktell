@@ -3,7 +3,7 @@
   "name": "StockTell · AI产业链简报",
   "short_name": "StockTell",
   "description": "面向 A 股散户的 AI 金融信息工具:把 AI 产业链动态翻译成跟你持仓的关系。",
-  "start_url": "/",
+  "start_url": "/home",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -51,7 +51,7 @@
   "shortcuts": [
     {
       "name": "今日简报",
-      "url": "/",
+      "url": "/home",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {

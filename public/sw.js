@@ -27,14 +27,14 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: "/icon-192.png",
       badge: "/icon-192.png",
-      data: { url: data.url || "/" },
+      data: { url: data.url || "/home" },
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/";
+  const url = event.notification.data?.url || "/home";
   event.waitUntil(
     self.clients.matchAll({ type: "window" }).then((list) => {
       for (const c of list) {

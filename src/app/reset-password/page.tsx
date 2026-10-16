@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { useSearchParams } from "next/navigation";
+import { APP_HOME } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ function ResetForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-sm">
-        <Link href="/" aria-label="StockTell 首页" className="inline-block">
+        <Link href={APP_HOME} aria-label="StockTell 首页" className="inline-block">
           <Logo className="h-6 w-auto" />
         </Link>
         <h1 className="mt-4 text-h1 font-semibold">重置密码</h1>
@@ -68,14 +69,14 @@ function ResetForm() {
         ) : !token || !valid ? (
           <div className="mt-4">
             <p className="text-sm text-rose-600">重置链接无效或已过期,请重新申请。</p>
-            <Link href="/" className="mt-4 inline-block text-sm text-brand-600 hover:underline">
+            <Link href={APP_HOME} className="mt-4 inline-block text-sm text-brand-600 hover:underline">
               返回首页
             </Link>
           </div>
         ) : done ? (
           <div className="mt-4">
             <p className="text-sm text-emerald-600">密码已重置成功,请用新密码登录。</p>
-            <Link href="/" className="mt-4 inline-block text-sm text-brand-600 hover:underline">
+            <Link href={APP_HOME} className="mt-4 inline-block text-sm text-brand-600 hover:underline">
               返回首页登录
             </Link>
           </div>

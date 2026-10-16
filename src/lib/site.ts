@@ -3,6 +3,11 @@
 // 2026-08-17 起生产迁至杭州 ECS,stocktell.me 已备案并作为正式站点域名。
 export const SITE_URL = "https://stocktell.me";
 
+// 产品首页路径。备案期间根路径 / 是「个人工具网」备案首页(src/app/page.tsx),
+// 产品首页(今日推理)挪到 /home。过审后改回:删 src/app/page.tsx、把 home/page.tsx
+// 挪回 src/app/page.tsx、这里改回 "/",再把 public/manifest.webmanifest 与 public/sw.js 里的 /home 改回 /。
+export const APP_HOME = "/home";
+
 // JSON-LD 安全序列化(三轮 review T1:JSON.stringify 不转义 '<',LLM 生成内容含
 // '</script><script>…' 可从 dangerouslySetInnerHTML 的 ld+json 块逃逸执行=存储型 XSS)。
 // 所有 JSON-LD 注入必须走这里,不得裸用 JSON.stringify。
